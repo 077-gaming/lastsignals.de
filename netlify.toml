@@ -1,0 +1,118 @@
+# LAST SIGNALS · Website auf Netlify (noch NICHT veröffentlicht, erst nach Tonis Okay)
+# Domains (Strato): lastsignals.de = Deutsch (Hauptseite), lastsignals.online = Englisch,
+# lastsignals.org leitet auf lastsignals.de, lastsignals.info leitet auf das Wiki.
+# Supabase-Zugang in Netlify unter Site settings > Environment variables eintragen:
+#   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (öffentliche Werte, kein geheimer Schlüssel)
+#   VITE_RESERVATION_OPEN=true erst, wenn ein eigener Mailserver (SMTP) in Supabase eingetragen und das Double-Opt-in
+#   mit einer fremden Adresse getestet ist. Google/Discord erkennt der Build selbst (Supabase /auth/v1/settings).
+# Sprachen: Jede Seite verlinkt die andere Sprache absolut (https://lastsignals.de/<seite> bzw. https://lastsignals.online/<seite>).
+# lastsignals.online liefert die englischen Seiten aus /en/ ohne /en/ in der Adresse aus (Rewrite 200 unten).
+
+[build]
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# ---------- Weiterleitungen ----------
+
+# lastsignals.org -> Hauptseite
+[[redirects]]
+  from = "https://lastsignals.org/*"
+  to = "https://lastsignals.de/:splat"
+  status = 301
+  force = true
+[[redirects]]
+  from = "https://www.lastsignals.org/*"
+  to = "https://lastsignals.de/:splat"
+  status = 301
+  force = true
+
+# lastsignals.info -> Wiki
+[[redirects]]
+  from = "https://lastsignals.info/*"
+  to = "https://lastsignals.de/wiki/"
+  status = 301
+  force = true
+[[redirects]]
+  from = "https://www.lastsignals.info/*"
+  to = "https://lastsignals.de/wiki/"
+  status = 301
+  force = true
+
+# www -> ohne www
+[[redirects]]
+  from = "https://www.lastsignals.de/*"
+  to = "https://lastsignals.de/:splat"
+  status = 301
+  force = true
+[[redirects]]
+  from = "https://www.lastsignals.online/*"
+  to = "https://lastsignals.online/:splat"
+  status = 301
+  force = true
+
+# Englische Seiten auf der deutschen Domain -> internationale Adresse
+[[redirects]]
+  from = "https://lastsignals.de/en/*"
+  to = "https://lastsignals.online/:splat"
+  status = 301
+  force = true
+
+# lastsignals.online zeigt die englische Fassung ohne /en/ in der Adresse
+[[redirects]]
+  from = "https://lastsignals.online/en/*"
+  to = "https://lastsignals.online/:splat"
+  status = 301
+  force = true
+[[redirects]]
+  from = "https://lastsignals.online/assets/*"
+  to = "/assets/:splat"
+  status = 200
+  force = true
+[[redirects]]
+  from = "https://lastsignals.online/img/*"
+  to = "/img/:splat"
+  status = 200
+  force = true
+[[redirects]]
+  from = "https://lastsignals.online/models/*"
+  to = "/models/:splat"
+  status = 200
+  force = true
+[[redirects]]
+  from = "https://lastsignals.online/favicon.svg"
+  to = "/favicon.svg"
+  status = 200
+  force = true
+[[redirects]]
+  from = "https://lastsignals.online/*"
+  to = "/en/:splat"
+  status = 200
+  force = true
+
+# ---------- Kopfzeilen ----------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+    X-Frame-Options = "DENY"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://cdn.discordapp.com; connect-src 'self' blob: data: https://*.supabase.co wss://*.supabase.co; font-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/models/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
