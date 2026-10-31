@@ -12,8 +12,8 @@ const Q_INDEX = { low: 0, medium: 1, high: 2, ultra: 3, niedrig: 0, mittel: 1, h
 const SET_KEY = 'ls.settings';
 const AUTO_KEY = 'ls.qauto';
 const VERSION = 2; // 2: Kampf-Modell, Bildwiederholrate, einmaliges Anheben
-// Pixeldichte-Obergrenze je Stufe (wie renderer.js PR_CAP)
-const PR_CAP = [1, 1.5, 2, 2];
+// Pixeldichte-Obergrenze je Stufe – einzige Quelle, auch für renderer.js (vorher zwei abweichende Tabellen)
+export const PR_CAP = [1, 1.5, 1.75, 2];
 // Grafikkosten des Spiels je Megapixel in Einheiten der Messszene. Modell: Grafikzeit = Messwert × (FIX + PX ×
 // Kosten[Stufe] × Megapixel). Abgeglichen mit KAMPFSZENEN statt Ruhebildern (window.__suite: Schwarm-Nest, 30 Gegner
 // in der Nähe, Explosionen), Apple M5, Messwert beim Start 0,31–0,34, Puffer 1366×768 und 1440×900 je Stufe:
@@ -59,7 +59,14 @@ export function gpuInfo() {
     const o = new URLSearchParams(location.search).get('gpu'); // nur Test: fremden Chip vortäuschen
     if (o) renderer = o;
   }
-  gpuCache = { renderer, vendor, webgl2, maxTex, ...classifyGpu(renderer, vendor) };
+  const cls = classifyGpu(renderer, vendor);
+  // Handy/Tablet: höchstens MITTEL. Mobile Chips drosseln unter Dauerlast (Hitze/Akku), und "Apple GPU" meldet
+  // ein iPhone genauso wie ein Mac – ohne diese Grenze durfte ein iPhone ULTRA wählen.
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const mobile = /Android|iPhone|iPod|iPad|Mobile|Silk|Kindle/i.test(ua)
+    || (/Macintosh/.test(ua) && typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1); // iPadOS meldet sich als Mac
+  if (mobile) { cls.cap = Math.min(cls.cap, 1); if (cls.tier === 'strong' || cls.tier === 'unknown') cls.tier = 'mid'; cls.mobile = true; }
+  gpuCache = { renderer, vendor, webgl2, maxTex, ...cls };
   return gpuCache;
 }
 
@@ -71,6 +78,9 @@ export function classifyGpu(renderer, vendor = '') {
   const r = String(renderer || '') + ' ' + String(vendor || '');
   const t = (tier, cap, integrated) => ({ tier, cap, integrated });
   if (/swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic/i.test(r)) return t('soft', 0, true);
+  // Mobile Chips (Android): Adreno 7xx/Mali-G7xx/Immortalis ordentlich, ältere schwach
+  if (/Adreno\D*(7[3-9]\d|8\d\d)|Mali-G7[1-9]|Mali-G[6-9]\d{2}|Immortalis|Xclipse/i.test(r)) return t('mid', 1, true);
+  if (/Adreno|Mali|PowerVR|Vivante|Tegra/i.test(r)) return t('weak', 0, true);
   // Apple Silicon: alle stark, Grund-M1 eine Stufe vorsichtiger
   if (/Apple M\d+ (Pro|Max|Ultra)/i.test(r)) return t('strong', 3, true);
   if (/Apple M[2-9]/i.test(r)) return t('strong', 3, true);

@@ -716,7 +716,7 @@ export class Hud {
       case 'winvis': this.wins.toggleHidden(t.dataset.id); this.menu.syncWins(); break;
       case 'calm': this.menu.setCalm(!this.menu.calm); break;
       case 'save':
-        if (w && w.save) { w.save(); this._saved = this._t; this.menu._acc = 1; }
+        if (w && w.saveNow) { w.saveNow(); this._saved = this._t; this.menu._acc = 1; }
         break;
       default: break;
     }

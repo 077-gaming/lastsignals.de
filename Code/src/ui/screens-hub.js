@@ -1189,7 +1189,7 @@ export async function hubScreen(root, profile, store) {
     const w = ctx.world();
     if (!w) return;
     const ok = w.equip(kind, i, item);
-    if (ok) w.save();
+    if (ok) w.saveNow();
     const it = item ? (kind === 'laser' ? LASERS : GENERATORS)[item] : null;
     flashMsg(ok, ok ? (it ? `${it.name} in ${kind === 'laser' ? 'L' : 'G'}${i + 1} eingebaut.` : `${kind === 'laser' ? 'L' : 'G'}${i + 1} ausgebaut, Teil liegt im Lager.`) : '');
     ctx.pick = '';
@@ -1403,6 +1403,8 @@ export async function hubScreen(root, profile, store) {
     const finish = async (v) => {
       if (done) return;
       done = true;
+      // Ausstehende Speicherung (Kauf/Umbau im Hub) sofort schreiben, bevor der Flug den Spielstand neu liest
+      try { if (world) world.saveNow(); } catch { /* egal */ }
       await s.close(v === 'launch' ? 200 : 240);
       resolve(v);
     };

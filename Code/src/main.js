@@ -56,7 +56,7 @@ function playSession(profile, opts = {}) {
     // Spielstand sichern und geordnet zur Station zurückkehren; beim nächsten Abflug entsteht eine frische Grafik-Engine.
     const onCtxLost = (e) => {
       e.preventDefault();
-      try { world.save(); } catch { /* egal */ }
+      try { world.saveNow(); } catch { /* egal */ }
       bus.emit('message', { kind: 'warn', title: 'GRAFIK', text: 'Grafikkarte wurde zurückgesetzt – Spielstand gesichert, Rückkehr zur Station.' });
       setTimeout(() => bus.emit('toHub'), 400);
     };
@@ -133,7 +133,7 @@ function playSession(profile, opts = {}) {
       if (t - errWindow > 10000) { errWindow = t; errCount = 0; }
       if (++errCount === 1) bus.emit('message', { kind: 'warn', title: 'SYSTEM', text: 'Ein Fehler ist aufgetreten – das Spiel läuft weiter.' });
       if (errCount >= 5) {
-        try { world.save(); } catch { /* egal */ }
+        try { world.saveNow(); } catch { /* egal */ }
         bus.emit('message', { kind: 'warn', title: 'SYSTEM', text: 'Wiederholte Fehler – Spielstand gesichert, Rückkehr zur Station.' });
         setTimeout(() => bus.emit('toHub'), 600);
         return true;
@@ -151,13 +151,12 @@ function playSession(profile, opts = {}) {
       last = now;
       if (dt > MAX_FRAME) dt = MAX_FRAME;
       if (dt < 0) dt = 0;
-      acc += dt;
       const tf = performance.now();
       input.update(dt);
-      while (acc >= STEP) {
-        world.update(STEP);
-        acc -= STEP;
-      }
+      // Ein einziger Akkumulator (in World.update, feste 1/60-s-Schritte, höchstens MAX_STEPS_PER_UPDATE je Bild).
+      // Vorher rechnete main.js zusätzlich mit eigenem Akkumulator: bis zu 15 Schritte je Bild auf schwachen Geräten.
+      world.update(dt);
+      acc = world._acc;
       const t0 = performance.now();
       if (DEV_LAG) { const e = t0 + DEV_LAG; while (performance.now() < e) { /* künstliche Last */ } }
       renderer.render(dt, acc / STEP);
@@ -173,15 +172,15 @@ function playSession(profile, opts = {}) {
     const onResize = () => renderer.resize();
     window.addEventListener('resize', onResize);
 
-    const saveOnLeave = () => world.save();
+    const saveOnLeave = () => world.saveNow();
     window.addEventListener('beforeunload', saveOnLeave);
-    const onVisibility = () => { if (document.hidden) world.save(); };
+    const onVisibility = () => { if (document.hidden) world.saveNow(); };
     document.addEventListener('visibilitychange', onVisibility);
 
     const offHub = bus.on('toHub', () => {
       running = false;
       cancelAnimationFrame(frameId);
-      world.save();
+      world.saveNow();
       offHub(); offSector();
       window.removeEventListener('resize', onResize);
       window.removeEventListener('beforeunload', saveOnLeave);

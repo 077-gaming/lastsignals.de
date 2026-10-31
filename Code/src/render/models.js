@@ -519,6 +519,8 @@ async function glbLoader() {
       import('three/examples/jsm/libs/meshopt_decoder.module.js'),
     ]);
     const l = new mod.GLTFLoader();
+    // Hinweis: MeshoptDecoder.useWorkers() funktioniert im Vite-Build nicht (Worker-Code wird beim Bündeln zerlegt:
+    // 'workerProcess is not defined'). Entpacken bleibt im Hauptthread, bis ein eigener Worker gebaut ist.
     l.setMeshoptDecoder(opt.MeshoptDecoder);
     return l;
   })();

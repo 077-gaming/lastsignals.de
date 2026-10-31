@@ -1904,7 +1904,24 @@ export class World {
 
   // ───────────────────────── Speichern ─────────────────────────
 
+  /** Speichern vormerken: höchstens einmal je 2 s, im Leerlauf des Browsers (kein Voll-Speichern mitten im Gefecht,
+   *  z. B. bei jedem Beuteaufsammeln). Kritische Momente (Seite verlassen, zur Station) nutzen saveNow(). */
   save() {
+    if (typeof window === 'undefined') { this.saveNow(); return; } // Selbsttest (Node): sofort
+    this._saveDirty = true;
+    if (this._saveT) return;
+    const wait = Math.max(0, (this._lastSaveAt || 0) + 2000 - Date.now());
+    this._saveT = setTimeout(() => {
+      const run = () => { this._saveT = 0; if (this._saveDirty) this.saveNow(); };
+      if (window.requestIdleCallback) window.requestIdleCallback(run, { timeout: 1000 }); else run();
+    }, wait);
+  }
+
+  /** Sofort speichern (Seite verlassen, Tab verstecken, zurück zur Station). */
+  saveNow() {
+    if (this._saveT) { clearTimeout(this._saveT); this._saveT = 0; }
+    this._saveDirty = false;
+    this._lastSaveAt = Date.now();
     try { syncConfig(this); } catch { /* Konfiguration nie kritisch */ }
     try { store.save(this.profile); } catch { /* Speichern darf das Spiel nie anhalten */ }
   }

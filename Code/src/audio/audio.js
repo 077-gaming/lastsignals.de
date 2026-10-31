@@ -24,6 +24,57 @@ function settings() {
   catch { return { master: 0.8, sfx: 0.9, music: 0.5 }; }
 }
 
+// ───────────── Gemeinsame Audio-Engine (einmal pro Seite) ─────────────
+// Früher bekam jeder Flug einen eigenen AudioContext und dekodierte alle Effekte und die Musik neu
+// (~90 MB PCM pro Abflug, dazu "context is closed"-Warnungen nach dispose). Jetzt: ein Context, Effekte einmal
+// dekodiert und zwischengespeichert, Musik wird gestreamt (<audio> + MediaElementSource) statt komplett dekodiert.
+let S = null;
+function engine() {
+  if (S) return S;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  const ctx = new Ctx();
+  const master = ctx.createGain(), sfxGain = ctx.createGain(), musicGain = ctx.createGain();
+  sfxGain.connect(master); musicGain.connect(master); master.connect(ctx.destination);
+  S = { ctx, master, sfxGain, musicGain, buffers: new Map(), sfxLoad: null, tracks: new Map() };
+  // Nach Tab-Wechsel/Sperrbildschirm setzt der Browser den Context aus: beim Zurückkehren fortsetzen
+  const resume = () => { if (ctx.state === 'suspended' && !document.hidden) ctx.resume().catch(() => { }); };
+  document.addEventListener('visibilitychange', resume);
+  window.addEventListener('pointerdown', resume, { passive: true });
+  window.addEventListener('keydown', resume);
+  return S;
+}
+function loadSfx(E) {
+  if (E.sfxLoad) return E.sfxLoad;
+  const load = async (url) => {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(url);
+    return E.ctx.decodeAudioData(await r.arrayBuffer());
+  };
+  E.sfxLoad = Promise.all(SFX.map(async (id) => {
+    try { E.buffers.set(id, await load(`/audio/sfx/${id}.mp3`)); } catch { /* fehlt: still */ }
+  }));
+  return E.sfxLoad;
+}
+// Musikspur als gestreamtes <audio>-Element, einmal je Stück angelegt und wiederverwendet
+function musicTrack(E, key) {
+  if (E.tracks.has(key)) return E.tracks.get(key);
+  const id = MUSIC[key];
+  if (!id) return null;
+  const el = new Audio(`/audio/music/${id}.mp3`);
+  el.loop = true; el.preload = 'auto'; el.crossOrigin = 'anonymous';
+  let t = null;
+  try {
+    const src = E.ctx.createMediaElementSource(el);
+    const gain = E.ctx.createGain(); gain.gain.value = 0;
+    src.connect(gain).connect(E.musicGain);
+    t = { el, gain, ok: true };
+    el.addEventListener('error', () => { t.ok = false; }, { once: true });
+  } catch { t = null; }
+  E.tracks.set(key, t);
+  return t;
+}
+
 export class AudioSystem {
   constructor(bus, world, renderer) {
     this.bus = bus;
@@ -64,30 +115,19 @@ export class AudioSystem {
   }
 
   async start() {
-    if (this.ctx) return;
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    this.ctx = new Ctx();
-    this.master = this.ctx.createGain();
-    this.sfxGain = this.ctx.createGain();
-    this.musicGain = this.ctx.createGain();
-    this.sfxGain.connect(this.master);
-    this.musicGain.connect(this.master);
-    this.master.connect(this.ctx.destination);
+    if (this.ctx || this._disposed) return;
+    const E = engine();
+    if (!E) return;
+    this.E = E;
+    this.ctx = E.ctx; this.master = E.master; this.sfxGain = E.sfxGain; this.musicGain = E.musicGain;
+    this.buffers = E.buffers;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => { });
     this.applySettings();
-    const load = async (url) => {
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(url);
-      return this.ctx.decodeAudioData(await r.arrayBuffer());
-    };
-    await Promise.all(SFX.map(async (id) => {
-      try { this.buffers.set(id, await load(`/audio/sfx/${id}.mp3`)); } catch { /* fehlt: still */ }
-    }));
+    await loadSfx(E); // beim zweiten Flug sofort fertig (zwischengespeichert)
+    if (this._disposed) return;
     this.ready = true;
     this.startEngine();
-    Promise.all(Object.entries(MUSIC).map(async ([k, id]) => {
-      try { this.music.set(k, await load(`/audio/music/${id}.mp3`)); } catch { /* noch nicht erzeugt */ }
-    })).then(() => this.updateMusic(true));
+    this.updateMusic(true);
   }
 
   applySettings() {
@@ -163,27 +203,29 @@ export class AudioSystem {
   }
 
   updateMusic(force = false) {
-    if (!this.ctx || !this.music.size) return;
+    if (!this.ctx || !this.E) return;
     const sector = this.world.sector?.id || '';
     let want = performance.now() < this.combatUntil ? 'combat' : 'calm';
     if (/^STILLE|^IS-/.test(sector)) want = 'silence';
-    if (!this.music.has(want)) want = this.music.has('calm') ? 'calm' : [...this.music.keys()][0];
+    let tr = musicTrack(this.E, want);
+    if (!tr || !tr.ok) { want = 'calm'; tr = musicTrack(this.E, want); }
+    if (!tr || !tr.ok) return;
+    // Autoplay-Sperre: Musik nachstarten, sobald der Browser Ton erlaubt (erste Eingabe)
+    if (want === this.musicState && tr.el.paused && this.ctx.state === 'running') tr.el.play().catch(() => { });
     if (want === this.musicState && !force) return;
     const now = this.ctx.currentTime;
-    if (this.track) {
+    if (this.track && this.track !== tr) {
       const old = this.track;
+      old.gain.gain.cancelScheduledValues(now);
       old.gain.gain.setTargetAtTime(0, now, 1.2);
-      setTimeout(() => { try { old.src.stop(); } catch { } }, 5000);
+      clearTimeout(old.stopT);
+      old.stopT = setTimeout(() => { if (this.track !== old) old.el.pause(); }, 5000);
     }
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.music.get(want);
-    src.loop = true;
-    const gain = this.ctx.createGain();
-    gain.gain.value = 0;
-    gain.gain.setTargetAtTime(want === 'combat' ? 0.7 : 0.55, now, 1.5);
-    src.connect(gain).connect(this.musicGain);
-    src.start();
-    this.track = { src, gain };
+    clearTimeout(tr.stopT);
+    tr.gain.gain.cancelScheduledValues(now);
+    tr.gain.gain.setTargetAtTime(want === 'combat' ? 0.7 : 0.55, now, 1.5);
+    if (tr.el.paused) tr.el.play().catch(() => { });
+    this.track = tr;
     this.musicState = want;
   }
 
@@ -205,9 +247,24 @@ export class AudioSystem {
   }
 
   dispose() {
+    this._disposed = true;
     for (const off of this.offs) off();
     window.removeEventListener('pointerdown', this._unlock);
     window.removeEventListener('keydown', this._unlock);
-    if (this.ctx) this.ctx.close().catch(() => { });
+    if (!this.ctx) return;
+    // Der Context bleibt (gemeinsam für die ganze Seite); nur die Klänge dieses Flugs weich beenden
+    const now = this.ctx.currentTime;
+    if (this.engine) {
+      try { this.engineGain.gain.setTargetAtTime(0, now, 0.1); this.engine.stop(now + 0.5); } catch { /* egal */ }
+      const eg = this.engineGain, en = this.engine;
+      setTimeout(() => { try { en.disconnect(); eg.disconnect(); } catch { /* egal */ } }, 700);
+    }
+    if (this.track) {
+      const tr = this.track;
+      tr.gain.gain.cancelScheduledValues(now);
+      tr.gain.gain.setTargetAtTime(0, now, 0.6);
+      clearTimeout(tr.stopT);
+      tr.stopT = setTimeout(() => tr.el.pause(), 3000);
+    }
   }
 }

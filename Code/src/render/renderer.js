@@ -16,7 +16,7 @@ import { Trails } from './trails.js';
 import { disposeTextures, hashString } from './textures.js';
 import { scaleRingMaterial, scaleRingGeometry } from './overlay.js';
 import { GpuTimer } from '../perf/gputimer.js';
-import { renderHints } from '../perf/quality.js';
+import { renderHints, PR_CAP } from '../perf/quality.js';
 import { CameraRig, FOV_TAC, FOV_CHASE } from './camrig.js';
 import { Telegraph } from './telegraph.js';
 import { StationLife } from './stationlife.js';
@@ -93,7 +93,7 @@ const SAFE_R = 400, PORTAL_R = 148;
 const QUALITY = { niedrig: 0, mittel: 1, hoch: 2, ultra: 3, low: 0, medium: 1, high: 2 };
 // Pixeldichte-Obergrenze und kleinster Auflösungsfaktor der adaptiven Auflösung je Stufe (niedrig … ultra)
 // HOCH 1,75 statt 2: auf Retina kaum sichtbar, spart ≈ 23 % Bildpunkte (Kampf unter 8 ms auf Apple-Chips); ULTRA bleibt 2
-const PR_CAP = [1, 1.5, 1.75, 2];
+// PR_CAP kommt aus perf/quality.js (eine Quelle für Messung und Darstellung)
 const SCALE_MIN = [0.7, 0.65, 0.6, 0.75];
 // Schwache Grafik (Intel UHD/HD, ältere Radeon-APU, Software): tiefer herunterregeln dürfen (halbe Kantenlänge =
 // Viertel der Pixel), sonst reicht selbst NIEDRIG auf 1080p nicht für 50 Bilder/s
