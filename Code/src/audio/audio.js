@@ -211,6 +211,9 @@ export class AudioSystem {
       const dx = s.x / w - 0.5, dy = s.y / h - 0.5;
       const d = Math.sqrt(dx * dx + dy * dy);
       vol = s.visible ? Math.max(0.25, 1 - d * 0.9) : 0.15;
+      // Punkt auf der Kameraebene projiziert zu ±Unendlich/NaN → mittig und leise statt Fehler (vorher Hunderte je Gefecht)
+      if (!Number.isFinite(pan)) pan = 0;
+      if (!Number.isFinite(vol)) vol = 0.15;
     }
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
