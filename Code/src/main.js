@@ -30,6 +30,25 @@ const applyQuality = (name) => setSetting('quality', name);
 // Nur Entwicklungsserver: ?lag=ms bremst jedes Bild künstlich (schwache Rechner nachstellen, Absicherung prüfen)
 const DEV_LAG = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('lag')) || 0 : 0;
 
+// Handy und Tablet: Das Spiel ist für ≥ 1360 × 760 gebaut. Statt Menüs zu zerquetschen, bekommt der Browser eine
+// feste Layout-Breite und skaliert alles verhältnisgleich auf den Bildschirm (wie eine App). Desktop: unverändert.
+function fitViewport() {
+  const touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1;
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (!touch || !vp) return;
+  const sw = Math.max(screen.width, screen.height), sh = Math.min(screen.width, screen.height);
+  const land = window.matchMedia('(orientation: landscape)').matches;
+  const w = land ? sw : sh, h = land ? sh : sw;
+  if (w >= 1360 && h >= 760) { vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'); delete document.documentElement.dataset.vpfit; return; }
+  const lw = Math.round(Math.max(1360, 760 * w / h));
+  vp.setAttribute('content', `width=${lw}, user-scalable=no, viewport-fit=cover`);
+  document.documentElement.dataset.vpfit = '1';
+  document.documentElement.classList.toggle('is-portrait-phone', !land && w < 700);
+}
+fitViewport();
+window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
+window.matchMedia('(orientation: landscape)').addEventListener?.('change', () => setTimeout(fitViewport, 300));
+
 function showError(err) {
   console.error(err);
   const el = document.createElement('div');

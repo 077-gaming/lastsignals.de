@@ -1672,3 +1672,6 @@ body.in-game .sc-stage { display: none; }
 .hb-install b { font-family: var(--ls-display); letter-spacing: .16em; }
 .hb-install p { margin: 0; line-height: 1.5; color: var(--ls-tx-2); }
 .hb-coop { width: 100%; margin-top: 8px; }
+
+/* Menü-Größe (KLEIN/MITTEL/GROSS) × automatische Bildschirm-Anpassung: ganzer Hub verhältnisgleich, füllt den Bildschirm */
+.sc-page.hb { zoom: var(--hub-k, 1); height: calc(100% / var(--hub-k, 1)); }

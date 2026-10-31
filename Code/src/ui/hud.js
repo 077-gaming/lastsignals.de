@@ -340,7 +340,9 @@ export class Hud {
     // automatisch 85 %, solange der Spieler 100 % eingestellt hat – sonst verdeckt das HUD das eigene Schiff.
     this._applyHudK = () => {
       const s = settings(), base = Number(s.hudScale) || 1;
-      const k = base === 1 && window.innerHeight <= 800 ? 0.85 : base;
+      // Handy/Tablet/kleine Fenster: zusätzlich verhältnisgleich auf den Bildschirm (Bezug 1440 × 900)
+      const fit = Math.max(0.5, Math.min(1, window.innerWidth / 1400, window.innerHeight / 860));
+      const k = +((base === 1 && window.innerHeight <= 800 && fit > 0.85 ? 0.85 : base) * fit).toFixed(3);
       if (k === this._hudK) return false;
       this._hudK = k; layer.style.setProperty('--hud-k', String(k));
       return true;

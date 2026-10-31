@@ -421,7 +421,7 @@ export class World {
     }
     // Hülle: sichere Zone 2 %/s, Reparaturroboter (REP-1…3) überall – beides nur außerhalb des Kampfes, das Bessere zählt
     if (p.hp < p.hpMax && !(t - this._lastCombat < C.COMBAT_TIMEOUT)) {
-      let rate = this.inSafeZone ? C.SAFE_HULL_REGEN : 0;
+      let rate = this.inSafeZone || this.atGate ? C.SAFE_HULL_REGEN : 0; // Station oder Sprungtor (Werftbake)
       const rb = REPAIR_BOTS[this.profile.repBot];
       if (rb && rb.rate > rate) rate = rb.rate;
       if (rate > 0) {
@@ -586,6 +586,9 @@ export class World {
       this.inSafeZone = dx * dx + dz * dz <= C.SAFE_RADIUS * C.SAFE_RADIUS;
     } else this.inSafeZone = false;
     p.safe = this.inSafeZone;
+    // Reparatur auch an jedem Sprungtor (Werftbake, 450 m): nicht nur in der Heimatstation (Toni 31.10.)
+    this.atGate = false;
+    for (let i = 0; i < this.portals.length; i++) { const o = this.portals[i], gx = p.x - o.x, gz = p.z - o.z; if (gx * gx + gz * gz <= C.GATE_REPAIR_RADIUS * C.GATE_REPAIR_RADIUS) { this.atGate = true; break; } }
     let np = null;
     for (let i = 0; i < this.portals.length; i++) {
       const o = this.portals[i];

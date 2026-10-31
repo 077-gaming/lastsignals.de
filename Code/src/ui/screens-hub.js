@@ -853,6 +853,7 @@ function einstView() {
         ${sub('HD', 'HUD IM FLUG', '<span class="ls-label">SOFORT</span>')}
         <div class="mc-set st-set">
           ${setRow('HUD-GRÖSSE', 'Skaliert alle Fenster im Flug.', seg('hudScale', [[0.85, '85 %'], [1, '100 %'], [1.15, '115 %'], [1.3, '130 %']], s.hudScale))}
+          ${setRow('MENÜ-GRÖSSE', 'Skaliert Mission Control (Hub). Auf kleinen Bildschirmen passt sich alles zusätzlich automatisch an.', seg('hubScale', [[0.85, 'KLEIN'], [1, 'MITTEL'], [1.15, 'GROSS']], s.hubScale))}
           ${setRow('SCHNELLKAUF-RÜCKFRAGE', 'Leiste 5 kauft mit einem Klick. Vorher nachfragen?', seg('quickbuyAsk', [[true, 'AN'], [false, 'AUS']], quickbuyAsk()))}
           ${setRow('ANZEIGE STANDARD', 'Schiff, Ziel, Pilot, Auftrag, Waffen. Je Fenster weiter umschaltbar.', seg('hudMode', [['bar', 'BALKEN'], ['num', 'WERTE']], h.mode))}
           ${setRow('LAYOUT SPERREN', 'Fenster bleiben an ihrem Platz.', seg('hudLock', [[false, 'AUS'], [true, 'AN']], h.locked))}
@@ -1362,7 +1363,7 @@ export async function hubScreen(root, profile, store) {
     else if (key === 'hudLock') { val = val === 'true'; hudSet((v) => { v.locked = val; }); }
     else if (key === 'quickbuyAsk') { val = val === 'true'; try { if (val) localStorage.removeItem('ls.quickbuy.ok'); else localStorage.setItem('ls.quickbuy.ok', '1'); } catch { /* privat */ } }
     else {
-      if (key === 'hudScale' || key === 'master' || key === 'sfx' || key === 'music') val = Number(val);
+      if (key === 'hudScale' || key === 'hubScale' || key === 'master' || key === 'sfx' || key === 'music') val = Number(val);
       else if (key === 'reducedMotion') val = val === 'true';
       setSetting(key, val);
     }

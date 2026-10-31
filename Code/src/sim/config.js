@@ -47,7 +47,8 @@ export const ROCKET_FLIGHT = 0.6;         // Treffer nach 0,6 s
 export const COMBAT_TIMEOUT = 5;          // so lange gilt man nach Kampfhandlung als „im Kampf“
 export const SHIELD_REGEN_DELAY = 5;
 export const SHIELD_REGEN = 0.05;         // 5 % pro Sekunde
-export const SAFE_HULL_REGEN = 0.02;      // 2 % pro Sekunde in der sicheren Zone
+export const SAFE_HULL_REGEN = 0.02;      // 2 % pro Sekunde in der sicheren Zone und am Sprungtor
+export const GATE_REPAIR_RADIUS = 450;    // Reparatur-Umkreis an jedem Sprungtor (nicht geschützt, nur außerhalb des Kampfes)
 export const OUT_OF_MAP_DAMAGE = 0.02;    // 2 % Leben pro Sekunde
 export const INVULN_AFTER_REPAIR = 5;
 

@@ -55,7 +55,7 @@ export function rankOf(level) { return RANKS[rankIndex(level)]; }
 // ---------------------------------------------------------------- Einstellungen (localStorage 'ls.settings')
 
 export const SETTINGS_KEY = 'ls.settings';
-export const SETTINGS_DEFAULT = Object.freeze({ quality: 'high', hudScale: 1, reducedMotion: false, master: 0.8, sfx: 0.9, music: 0.5 });
+export const SETTINGS_DEFAULT = Object.freeze({ quality: 'high', hudScale: 1, hubScale: 1, reducedMotion: false, master: 0.8, sfx: 0.9, music: 0.5 });
 const QUALITIES = ['ultra', 'high', 'medium', 'low'];
 // Einstellungsstand: ab 2 gibt es ULTRA. Ältere Stände mit HOCH (damals höchste Stufe) werden auf starken
 // Rechnern auf ULTRA gehoben, eine bewusst gewählte niedrigere Stufe bleibt.
@@ -80,8 +80,9 @@ export function strongDevice() {
   return strongCache;
 }
 const HUD_SCALES = [0.85, 1, 1.15, 1.3];
+export const HUB_SCALES = [0.85, 1, 1.15]; // Hub: KLEIN · MITTEL · GROSS
 export const VOLUMES = [0, 0.25, 0.5, 0.75, 1];
-export const SETTING_CHOICES = { quality: QUALITIES, hudScale: HUD_SCALES, reducedMotion: [false, true], master: VOLUMES, sfx: VOLUMES, music: VOLUMES };
+export const SETTING_CHOICES = { quality: QUALITIES, hudScale: HUD_SCALES, hubScale: HUB_SCALES, reducedMotion: [false, true], master: VOLUMES, sfx: VOLUMES, music: VOLUMES };
 
 export function loadSettings() {
   let raw = null;
@@ -92,6 +93,8 @@ export function loadSettings() {
     if (QUALITIES.includes(raw.quality) && !(old && raw.quality === 'high')) s.quality = raw.quality;
     const hs = Number(raw.hudScale);
     if (hs >= 0.7 && hs <= 1.6) s.hudScale = hs;
+    const hb = Number(raw.hubScale);
+    if (HUB_SCALES.includes(hb)) s.hubScale = hb;
     s.reducedMotion = raw.reducedMotion === true;
     // Lautstärken (0..1) – das Audiosystem las sie schon, sie wurden hier aber beim Speichern verworfen
     for (const k of ['master', 'sfx', 'music']) { const v = Number(raw[k]); if (raw[k] != null && v >= 0 && v <= 1) s[k] = v; }
@@ -101,9 +104,19 @@ export function loadSettings() {
 export function applySettings(s) {
   const el = document.documentElement;
   el.style.setProperty('--hud-scale', String(s.hudScale));
+  el.style.setProperty('--hub-k', String(fitK() * (s.hubScale || 1)));
   el.dataset.quality = s.quality;
   if (s.reducedMotion) el.dataset.reducedMotion = '1'; else delete el.dataset.reducedMotion;
 }
+// Bildschirm-Anpassung: Hub und Menüs sind für 1440 × 900 gebaut. Kleinere Bildschirme (Handy, Tablet, kleine
+// Laptops) bekommen alles verhältnisgleich kleiner, statt dass etwas abgeschnitten wird; größere bleiben bei 100 %.
+export function fitK() {
+  if (typeof window === 'undefined') return 1;
+  if (document.documentElement.dataset.vpfit) return 1; // Handy/Tablet: das macht schon der Viewport (main.js)
+  const w = window.innerWidth, h = window.innerHeight;
+  return Math.max(0.42, Math.min(1, w / 1360, h / 820));
+}
+if (typeof window !== 'undefined') window.addEventListener('resize', () => { if (settingsCache) applySettings(settingsCache); });
 export function saveSettings(s) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...s, rev: SETTINGS_REV })); } catch { /* privater Modus */ }
   applySettings(s);

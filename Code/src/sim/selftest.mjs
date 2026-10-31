@@ -1017,6 +1017,19 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Können: kritische Treffer um 8 % (1,5-facher Schaden)', share > 0.05 && share < 0.11 && C.CRIT_MULT === 1.5, `${(share * 100).toFixed(1)} % von ${n} Treffern`);
 }
 
+// Reparatur am Sprungtor (31.10.2026)
+{
+  const pr = newProfile('Torwart', 'europa');
+  const w = new World(pr, makeBus(), { seed: 95 });
+  w.update(1 / 60);
+  for (const e of w.enemies) { e.alive = false; e.respawnAt = 1e9; w.entities.delete(e.id); }
+  const g = w.portals[0];
+  w.player.x = g.x + 250; w.player.z = g.z; w.player.vx = 0; w.player.vz = 0; w._lastCombat = -999;
+  w.player.hp = w.player.hpMax * 0.5; const h0 = w.player.hp;
+  for (let i = 0; i < 120; i++) w.update(1 / 60);
+  check('Sprungtor: Hülle wird außerhalb des Kampfes repariert', w.atGate && w.player.hp > h0 + w.player.hpMax * 0.03, `+${((w.player.hp - h0) / w.player.hpMax * 100).toFixed(1)} % in 2 s`);
+}
+
 // ───────────── Wirtschaft v2 (31.10.2026): Drohnenpreise, Cassini/Juno, Voyager, REP, Aufträge, Notration ─────────────
 {
   const D = await import('../core/data.js');

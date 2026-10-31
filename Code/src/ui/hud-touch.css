@@ -6,3 +6,4 @@
 /* Ganze Seite: keine Browser-Gesten (Zoomen, Ziehen, Text markieren, Lupe) im Spiel */
 body.is-touch, body.is-touch canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
 @media (orientation: portrait) and (pointer: coarse) { .ht-pad { bottom: calc(360px + env(safe-area-inset-bottom)); } }
+html[data-vpfit] .ht-pad { zoom: 1.45; } /* Handy: Knöpfe trotz verkleinertem Layout daumengroß */
