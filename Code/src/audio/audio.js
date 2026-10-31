@@ -35,7 +35,10 @@ function engine() {
   if (!Ctx) return null;
   const ctx = new Ctx();
   const master = ctx.createGain(), sfxGain = ctx.createGain(), musicGain = ctx.createGain();
-  sfxGain.connect(master); musicGain.connect(master); master.connect(ctx.destination);
+  // Limiter am Ende: viele gleichzeitige Explosionen/Laser übersteuern nicht mehr (kein Kratzen, gleichmäßiger Pegel)
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -10; limiter.knee.value = 6; limiter.ratio.value = 12; limiter.attack.value = 0.003; limiter.release.value = 0.18;
+  sfxGain.connect(master); musicGain.connect(master); master.connect(limiter); limiter.connect(ctx.destination);
   S = { ctx, master, sfxGain, musicGain, buffers: new Map(), sfxLoad: null, tracks: new Map() };
   // Nach Tab-Wechsel/Sperrbildschirm setzt der Browser den Context aus: beim Zurückkehren fortsetzen
   const resume = () => { if (ctx.state === 'suspended' && !document.hidden) ctx.resume().catch(() => { }); };
@@ -111,6 +114,11 @@ export class AudioSystem {
       on('undocked', () => this.play('dock', null, 1.1)),
       on('message', (p) => { if (p && p.kind === 'radio') this.play('radio'); }),
       on('playerDead', () => this.play('explosion_big')),
+      // Rückmeldungen ohne eigene Datei: kurz synthetisiert (Treffer-Tick, Abschuss, Auftrag, Warnung, Combo)
+      on('explode', (p) => { if (p && p.kind === 'enemy') { this.synth('kill'); this.duck(p.size >= 2 ? 0.45 : 0.7, 0.9); } }),
+      on('quest', (p) => { if (p && p.done) this.play('levelup', null, 1.2, 0.7); }),
+      on('telegraph', (p) => { if (p && !p.own && p.enemyType) this.synth('warn'); }),
+      on('combo', (p) => { if (p && !p.ended && p.count > 1) this.synth('combo', Math.min(12, p.count)); }),
     ];
   }
 
@@ -185,9 +193,45 @@ export class AudioSystem {
   }
 
   onDamage(p) {
+    // Eigener Treffer am Gegner: kurzer, heller Bestätigungs-Tick (Krit höher und kräftiger)
+    if (p.from === 'player' && p.id !== 'player' && !p.drone && (p.hull || 0) + (p.shield || 0) > 0) this.synth(p.crit ? 'crit' : 'hit');
     const where = { x: p.x, z: p.z };
     if (p.shield > 0 && !p.hull) this.play('hit_shield', where);
     else if (p.hull > 0) this.play('hit_hull', where);
+  }
+
+  /** Kurze synthetische Rückmeldetöne (keine Datei nötig, kaum Rechenzeit). kind: hit | crit | kill | warn | combo */
+  synth(kind, n = 0) {
+    if (!this.ready || !this.ctx || this.ctx.state !== 'running') return;
+    const now = this.ctx.currentTime;
+    const key = 'syn:' + kind, prev = this.last.get(key) || 0;
+    if (now - prev < (kind === 'hit' ? 0.05 : 0.08)) return;
+    this.last.set(key, now);
+    const tone = (f0, f1, dur, vol, type = 'square', at = 0) => {
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(f0, now + at);
+      o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), now + at + dur);
+      g.gain.setValueAtTime(0.0001, now + at);
+      g.gain.exponentialRampToValueAtTime(vol, now + at + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + at + dur);
+      o.connect(g).connect(this.sfxGain);
+      o.start(now + at); o.stop(now + at + dur + 0.02);
+    };
+    if (kind === 'hit') tone(1900, 1200, 0.035, 0.05);
+    else if (kind === 'crit') { tone(2600, 1500, 0.05, 0.08); tone(1300, 900, 0.07, 0.05, 'triangle'); }
+    else if (kind === 'kill') { tone(880, 880, 0.06, 0.07, 'triangle'); tone(1320, 1320, 0.12, 0.07, 'triangle', 0.06); }
+    else if (kind === 'warn') { tone(520, 380, 0.16, 0.06, 'sawtooth'); tone(520, 380, 0.16, 0.05, 'sawtooth', 0.2); }
+    else if (kind === 'combo') tone(600 * Math.pow(1.06, n), 900 * Math.pow(1.06, n), 0.07, 0.05, 'triangle');
+  }
+
+  /** Musik kurz absenken (große Explosion, Abschuss), dann weich zurück */
+  duck(to = 0.5, dur = 1) {
+    if (!this.ctx || !this.musicGain) return;
+    const g = this.musicGain.gain, now = this.ctx.currentTime, base = settings().music;
+    g.cancelScheduledValues(now);
+    g.setTargetAtTime(base * to, now, 0.03);
+    g.setTargetAtTime(base, now + dur * 0.4, dur * 0.4);
   }
 
   startEngine() {

@@ -252,7 +252,7 @@ export class Renderer {
     // Ereignisse
     this._offs = [];
     const on = (t, fn) => this._offs.push(bus.on(t, fn));
-    on('shot', (p) => this.effects.shot(p));
+    on('shot', (p) => { this.effects.shot(p); if (p && p.from === this.world?.player?.id && !p.drone) this.rig.fire(p.ammo === 'SAL' ? 1.6 : 1); });
     on('rocket', (p) => this.effects.rocket(p));
     on('explode', (p) => this._onExplode(p));
     on('damage', (p) => { this.effects.damage(p); this._onDamage(p); });
@@ -601,6 +601,7 @@ export class Renderer {
   _removeView(id) {
     const v = this.views.get(id);
     if (!v) return;
+    if (v._flashSaved) this._flash(v, false);
     if (v.life) { v.life.dispose(); v.life = null; }
     this.entityGroup.remove(v.root);
     this.views.delete(id);
@@ -803,6 +804,8 @@ export class Renderer {
     }
     root.visible = true;
     v.dieT = 0;
+    // mindestens ein Bild lang sichtbar, auch bei langen Bildern (erst zeigen, dann herunterzählen)
+    if (v.hitT > 0) { this._flash(v, true); v.hitT -= dt; } else if (v._flashSaved) this._flash(v, false);
     const m = v.model;
     // Treffer-Zucken: kurzer Stoß in Einschlagrichtung, federt schnell zurück
     let fx = 0, fz = 0;
@@ -1066,6 +1069,7 @@ export class Renderer {
     v.dieT = 0.33; v.dieX = v.root.position.x; v.dieY = v.root.position.y; v.dieZ = v.root.position.z;
     if (v.kind === 'player') return; // Spieleransicht bleibt in der Liste (wird nicht entfernt)
     this.views.delete(id);
+    if (v._flashSaved) this._flash(v, false);
     this.dying.push(v);
   }
   _dieStep(v, dt) {
@@ -1106,6 +1110,31 @@ export class Renderer {
     const L = Math.hypot(dx, dz) || 1;
     v.fdx = dx / L; v.fdz = dz / L;
     v.fl = Math.min(1.6, v.fl + amt);
+    // Treffer-Blitz: Gegner leuchtet ~70 ms weiß auf (klassisches, gut lesbares Trefferfeedback)
+    if (v.kind === 'enemy') v.hitT = 0.07;
+  }
+  // Blitz-Material einmal anlegen und für alle Gegner teilen (kein neuer Shader je Treffer)
+  _flashMat() {
+    if (!this._hitMat) this._hitMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.55, 1.45), fog: false });
+    return this._hitMat;
+  }
+  _flash(v, on) {
+    if (on === !!v._flashSaved) return;
+    if (on) {
+      const saved = [], fm = this._flashMat();
+      v.root.traverse((o) => {
+        if (!o.isMesh || !o.visible || !o.material || Array.isArray(o.material)) return;
+        const m = o.material;
+        if (!(m.isMeshStandardMaterial || m.isMeshPhysicalMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial)) return;
+        if (m.transparent || m.blending === THREE.AdditiveBlending) return;
+        saved.push(o, m); o.material = fm;
+      });
+      v._flashSaved = saved;
+    } else {
+      const sv = v._flashSaved;
+      for (let i = 0; i < sv.length; i += 2) sv[i].material = sv[i + 1];
+      v._flashSaved = null;
+    }
   }
   // Laser des Spielers hat gefeuert: Rückstoß
   recoil(id, amt = 0.6) { const v = this.views.get(id); if (v) v.recoil = Math.min(1.2, v.recoil + amt); }
@@ -1192,6 +1221,11 @@ export class Renderer {
   }
   // Treffer am eigenen Schiff: kurzer Kamerastoß in Trefferrichtung (Stärke nach Schadensanteil)
   _onDamage(p) {
+    // Treffer-Blitz am getroffenen Gegner (~70 ms weiß)
+    if (p && p.id != null && ((p.hull || 0) + (p.shield || 0)) > 0) {
+      const tv = this.views.get(p.id);
+      if (tv && tv.kind === 'enemy') tv.hitT = 0.07;
+    }
     const P = this.world?.player;
     if (!p || !P || p.id !== P.id) return;
     const dmg = (p.hull || 0) + (p.shield || 0);
@@ -1520,7 +1554,8 @@ export class Renderer {
     cam.lookAt(_cl);
     if (K > 0.001) cam.rotateZ((-(pv ? pv.bank : 0) * 0.16 + rig.shakeRoll(this.time)) * K);
     // Sichtfeld: Kick bei hohem Tempo und Nachbrenner (Taktik nur leicht)
-    const fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (FOV_CHASE - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K;
+    const fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (FOV_CHASE - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K
+      - (rig.firePunch || 0) * (0.6 + 1.4 * K); // Schuss: kurzes Heranrücken (negativer FOV-Puls)
     if (Math.abs(fov - this._fov) > 0.01) {
       this._fov = fov; this._tanH = Math.tan(fov * Math.PI / 360);
       cam.fov = fov; cam.updateProjectionMatrix();
@@ -1899,7 +1934,7 @@ export class Renderer {
     this.speedDust.dispose();
     this.views.forEach((v) => { if (v.life) v.life.dispose(); });
     this._clearDying();
-    this.sel.geometry.dispose(); this.selMat.dispose();
+    this.sel.geometry.dispose(); this.selMat.dispose(); this._hitMat?.dispose();
     this.selInner.geometry.dispose(); this.selInner.material.dispose();
     this.factory.dispose();
     disposeTextures();

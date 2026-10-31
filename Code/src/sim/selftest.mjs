@@ -303,7 +303,8 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
     maxDs = Math.max(maxDs, Math.abs(p.speed - last)); last = p.speed;
     if ([30, 60, 120, 210, 270].includes(i)) at[i / 60] = p.speed / vmax;
   }
-  check('Beschleunigen weich (kein Sprung auf Höchsttempo)', at[0.5] < 0.2 && at[1] < 0.4 && at[2] > 0.45 && at[2] < 0.9 && firstThrust < 0.3, Object.entries(at).map(([t, v]) => `${t}s ${(v * 100).toFixed(0)} %`).join(' · '));
+  // Vorgabe seit 31.10.2026: weich anfahren, aber ≈ 2 s bis (fast) Höchsttempo (vorher 3,5 s, wirkte träge)
+  check('Beschleunigen weich (kein Sprung auf Höchsttempo)', at[0.5] < 0.2 && at[1] < 0.4 && at[2] > 0.6 && at[2] < 0.97 && firstThrust < 0.3, Object.entries(at).map(([t, v]) => `${t}s ${(v * 100).toFixed(0)} %`).join(' · '));
   check('Nach 3,5–4,5 s Höchsttempo', at[3.5] >= 0.92 && at[4.5] >= 0.99, `${(at[3.5] * 100).toFixed(1)} % / ${(at[4.5] * 100).toFixed(1)} %`);
   check('player.thrust und player.speed gesetzt', thrustOk && p.thrust > 0.3 && p.thrust < 0.8 && Math.abs(p.speed - Math.hypot(p.vx, p.vz)) < 1e-6);
   w.stopMove();

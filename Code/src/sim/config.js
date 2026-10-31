@@ -6,9 +6,10 @@ export const MAX_STEPS_PER_UPDATE = 8;    // nach Rucklern nicht endlos nachrech
 
 // Spieler
 export const PLAYER_RADIUS = 20;
-// Trägheit: Schub fährt weich hoch (Spool), Beschleunigung läuft oben sanft aus → ca. 3,5 s von 0 auf Höchsttempo.
-export const PLAYER_SPOOL = 1.8;          // wie schnell der Schub dem Steuerbefehl folgt (1/s)
-export const PLAYER_ACCEL = 0.45;         // × Höchsttempo pro Sekunde bei vollem Schub
+// Trägheit: Schub fährt weich hoch (Spool), Beschleunigung läuft oben sanft aus → ca. 2 s von 0 auf Höchsttempo
+// (vorher 3,5 s: fühlte sich im Test träge an).
+export const PLAYER_SPOOL = 3.0;          // wie schnell der Schub dem Steuerbefehl folgt (1/s)
+export const PLAYER_ACCEL = 0.8;          // × Höchsttempo pro Sekunde bei vollem Schub
 export const PLAYER_ACCEL_TAPER = 0.35;   // im obersten Drittel des Tempos läuft die Beschleunigung weich aus
 export const PLAYER_BRAKE = 0.9;          // × Höchsttempo pro Sekunde beim Bremsen (≈ 1,8 s bis Stillstand, unten weich)
 export const PLAYER_TURN = 2.6;           // Drehrate in Radiant/s im Stand …

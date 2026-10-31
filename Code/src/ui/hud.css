@@ -836,3 +836,11 @@
 .hb-b:hover .hb-tip, .hb-b:focus-visible .hb-tip { opacity: 1; visibility: visible; transition-delay: .12s, 0s; }
 .hd-calm .hb-b, .hd-calm .hb-tip { transition: none; }
 @media (prefers-reduced-motion: reduce) { .hb-b, .hb-tip { transition: none; } }
+
+/* Warnvignette bei wenig Hülle (unter 30 %): roter Rand, pulsiert leicht; nicht bei „Bewegung reduzieren“ */
+.hud-lowhp { position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0; transition: opacity .4s;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(170,16,16,calc(.18 + .32 * var(--low, 0))) 100%); }
+.hud-lowhp.on { opacity: 1; animation: hud-lowhp-pulse 1.1s ease-in-out infinite; }
+@keyframes hud-lowhp-pulse { 50% { opacity: .65; } }
+@media (prefers-reduced-motion: reduce) { .hud-lowhp.on { animation: none; } }
+.hd-calm .hud-lowhp.on { animation: none; }

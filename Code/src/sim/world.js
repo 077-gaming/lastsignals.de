@@ -825,7 +825,7 @@ export class World {
     e.respawnAt = this.time + this.rng.range(C.ENEMY_RESPAWN[0], C.ENEMY_RESPAWN[1]);
     this.entities.delete(e.id);
     if (p.targetId === e.id) { p.targetId = null; p.attacking = false; }
-    this.bus.emit('explode', { id: e.id, x: e.x, z: e.z, size: this.explodeSize(e) });
+    this.bus.emit('explode', { id: e.id, x: e.x, z: e.z, size: this.explodeSize(e), kind: 'enemy', rank: e.rank || null });
     this.bus.emit('despawn', { id: e.id });
     if (this._alpha === e) this._alpha = null;
     if (this._announce === e) this._announce = null;

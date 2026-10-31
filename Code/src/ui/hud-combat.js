@@ -141,12 +141,13 @@ export class HudCombat {
     if (!p) return;
     const C = this.combo;
     const n = Math.max(0, Math.floor(p.count ?? p.combo ?? p.n ?? 0));
-    if (p.end || n < 2) {
+    if (p.end || p.ended || n < 2) {
       if (C.count >= 2) { C.endT = 1.4; C.end.set(true); C.l.set('SERIE ENDET · ×' + C.count); }
       C.count = 0; C.left = 0;
       return;
     }
-    const bonus = typeof p.bonus === 'number' ? p.bonus : typeof p.mult === 'number' ? p.mult - 1 : 0;
+    // mult ist bereits der Bonus-Anteil (0,15 … 0,6), nicht der Faktor – vorher "mult - 1" → nie sichtbar
+    const bonus = typeof p.bonus === 'number' ? p.bonus : typeof p.mult === 'number' ? p.mult : 0;
     C.count = n;
     C.total = Math.max(0.5, p.window ?? p.duration ?? p.timeLeft ?? p.time ?? 5);
     C.left = Math.max(0, p.timeLeft ?? p.left ?? C.total);

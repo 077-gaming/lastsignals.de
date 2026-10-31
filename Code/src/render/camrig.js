@@ -95,6 +95,8 @@ export class CameraRig {
   // ---------- Stöße ----------
   /** Wackeln (Stärke in „Metern“ wie bisher renderer.shake): wird zu Trauma 0..1 */
   shake(a) { if (this.shakeOn) this.trauma = Math.min(1, this.trauma + a / 34); }
+  /** Eigener Schuss: winziger Sichtfeld-Puls (federt in ~0,15 s zurück) – Waffen fühlen sich kräftig an */
+  fire(amt = 1) { if (this.shakeOn) this.firePunch = Math.min(1, (this.firePunch || 0) + 0.35 * amt * this.motion); }
   /** Stoß in Welt-Richtung (dx, dz), amt 0..1 (z. B. Treffer am eigenen Schiff) */
   hit(dx, dz, amt) {
     if (!this.shakeOn) return;
@@ -188,6 +190,7 @@ export class CameraRig {
     const fw = fk * fk * (3 - 2 * fk) + ab * 0.45;
     this.fovKick += (fw - this.fovKick) * (1 - Math.exp(-dt * (fw > this.fovKick ? 1.6 : 2.4)));
     this.ab = ab;
+    if (this.firePunch) { this.firePunch *= Math.exp(-dt * 14); if (this.firePunch < 0.002) this.firePunch = 0; }
     // Druckwellen
     const W = this.waves;
     for (let i = 0; i < W.length; i += 4) {

@@ -622,6 +622,17 @@ export class Hud {
 
     this.sDocked.set(w.docked);
     if (!!w.playerDead !== this._deadShown) this._showDead(!!w.playerDead);
+    // Warnvignette am Bildrand: ab 30 % Hülle einblenden, stärker je weniger Hülle (Wert über CSS-Variable)
+    {
+      const k = pl && pl.alive !== false && !w.docked && !w.playerDead && pl.hpMax ? Math.max(0, Math.min(1, (0.3 - pl.hp / pl.hpMax) / 0.3)) : 0;
+      const q = Math.round(k * 20) / 20;
+      if (q !== this._lowK) {
+        this._lowK = q;
+        if (!this._lowEl) { this._lowEl = document.createElement('div'); this._lowEl.className = 'hud-lowhp'; this._lowEl.setAttribute('aria-hidden', 'true'); this.root.appendChild(this._lowEl); }
+        this._lowEl.style.setProperty('--low', String(q));
+        this._lowEl.classList.toggle('on', q > 0);
+      }
+    }
     this._updateFeed(dt);
     this._updateFloats(dt);
     this._updateToasts(dt);

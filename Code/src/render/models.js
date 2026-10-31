@@ -121,6 +121,11 @@ const SHIP_LAYOUT = {
     gens: [[-9.5, 3.3, 10], [9.5, 3.3, 10], [0, 6.6, 8.5]],
   },
 };
+// Größere Klassen: sichtbar wachsende Rümpfe (vorher fielen alle ab S2 auf die S2-Größe zurück, ein S8 wirkte
+// so groß wie ein S2). Länge ≈ 44 m × scale: S3 ≈ 62 m … S8 ≈ 106 m. Bauteil-Punkte wie S2, wachsen mit dem Rumpf.
+for (const [id, scale] of [['s3', 1.4], ['s4', 1.6], ['s5', 1.8], ['s6', 2.0], ['s7', 2.2], ['s8', 2.4]]) {
+  SHIP_LAYOUT[id] = { ...SHIP_LAYOUT.s2, scale };
+}
 function laserSlotPos(layout, i, out) {
   const l = layout.lasers[i];
   if (l) return out.set(l[0], l[1], l[2]);
@@ -731,6 +736,9 @@ export class ModelFactory {
       const list = Array.isArray(o.material) ? o.material : [o.material];
       const mats = list.map((m) => {
         if (!m.isMeshStandardMaterial || m.emissiveMap || (m.emissive && m.emissive.getHex() !== 0)) return m;
+        // Texturierte (authored) PBR-Materialien behalten ihren Look: Farbe, Normal- und Rauheitskarten aus dem
+        // Modell. Vorher übermalte der Shader sie mit Einheits-Dunkelmetall, die Texturen waren unsichtbar.
+        if (m.map) { m.envMapIntensity = Math.max(m.envMapIntensity ?? 1, 1); return m; }
         const key = `glbship:${faction}:${m.uuid}:${o.name}`;
         return this.mat(key, () => {
           const c = m.clone();

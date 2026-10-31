@@ -10,7 +10,7 @@ import { Input } from './input.js';
 import { AudioSystem } from './audio/audio.js';
 import { PerfHud } from './perf/perfhud.js';
 import { autoQuality, isAutoQuality, storeAutoQuality, raiseCap, QualityGuard, Q_NAMES, Q_LABEL } from './perf/quality.js';
-import { setSetting } from './ui/screens-kit.js';
+import { setSetting, settings } from './ui/screens-kit.js';
 import './ui/theme.css';
 
 const STEP = 1 / 60;          // feste Simulationsschrittweite
@@ -121,6 +121,11 @@ function playSession(profile, opts = {}) {
 
     let last = performance.now();
     let acc = 0;
+    let hitStop = 0;
+    const offKill = bus.on('explode', (p) => {
+      if (!p || p.kind !== 'enemy' || settings().reducedMotion) return;
+      hitStop = Math.max(hitStop, p.size >= 2 || p.rank === 'alpha' ? 0.11 : 0.045);
+    });
     let running = true;
     let frameId = 0;
 
@@ -155,7 +160,8 @@ function playSession(profile, opts = {}) {
       input.update(dt);
       // Ein einziger Akkumulator (in World.update, feste 1/60-s-Schritte, höchstens MAX_STEPS_PER_UPDATE je Bild).
       // Vorher rechnete main.js zusätzlich mit eigenem Akkumulator: bis zu 15 Schritte je Bild auf schwachen Geräten.
-      world.update(dt);
+      // Hit-Stop: nach einem Abschuss steht die Simulation kurz still (Bild läuft weiter) – gibt Kills Gewicht
+      if (hitStop > 0) { hitStop -= dt; world.update(0); } else world.update(dt);
       acc = world._acc;
       const t0 = performance.now();
       if (DEV_LAG) { const e = t0 + DEV_LAG; while (performance.now() < e) { /* künstliche Last */ } }
@@ -181,7 +187,7 @@ function playSession(profile, opts = {}) {
       running = false;
       cancelAnimationFrame(frameId);
       world.saveNow();
-      offHub(); offSector();
+      offHub(); offSector(); offKill();
       window.removeEventListener('resize', onResize);
       window.removeEventListener('beforeunload', saveOnLeave);
       document.removeEventListener('visibilitychange', onVisibility);
