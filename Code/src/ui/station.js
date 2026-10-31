@@ -1,7 +1,7 @@
 // Station: Andock-Terminal mit Hangar, Shop, Erz. Öffnet sich bei 'docked', schließt bei 'undocked'.
 // Wird nur bei Ereignissen, Klicks oder Größenänderung neu gezeichnet, nie pro Bild.
 import './station.css';
-import { LASERS, GENERATORS, AMMO, ROCKETS, SHIPS, ORES, FACTIONS, DRONES, DRONE_SHOP, DRONE_RULES } from '../core/data.js';
+import { LASERS, GENERATORS, AMMO, ROCKETS, SHIPS, ORES, FACTIONS, DRONES, DRONE_SHOP, DRONE_RULES, REPAIR_BOTS } from '../core/data.js';
 import { fmt, esc, rankFor } from './hud.js';
 import { HangarBay } from './station-bay.js';
 
@@ -53,7 +53,7 @@ export function priceFor(kind, id, world) {
 }
 
 function tableOf(kind) {
-  return kind === 'laser' ? LASERS : kind === 'gen' ? GENERATORS : kind === 'ammo' ? AMMO : kind === 'rocket' ? ROCKETS : kind === 'ship' ? SHIPS : kind === 'drone' ? DRONE_SHOP : null;
+  return kind === 'laser' ? LASERS : kind === 'gen' ? GENERATORS : kind === 'ammo' ? AMMO : kind === 'rocket' ? ROCKETS : kind === 'ship' ? SHIPS : kind === 'drone' ? DRONE_SHOP : kind === 'rep' ? REPAIR_BOTS : null;
 }
 
 // ---------- Katalog (feste Reihenfolge, alles immer sichtbar) ----------
@@ -64,7 +64,13 @@ const CATS = [
   { id: 'rocket', no: '04', name: 'Raketen', items: Object.keys(ROCKETS) },
   { id: 'ship', no: '05', name: 'Schiffe', items: Object.keys(SHIPS) },
   { id: 'drone', no: '06', name: 'Drohnen', items: Object.keys(DRONE_SHOP) },
+  { id: 'rep', no: '07', name: 'Reparatur', items: Object.keys(REPAIR_BOTS) },
 ];
+const REP_KEYS = Object.keys(REPAIR_BOTS);
+// Kaufbare Drohnen (ohne Cassini/Juno) und erspielte
+const buyable = (p) => (p.drones || []).filter((x) => DRONES[x.type] && !DRONES[x.type].earned).length;
+const earnedN = (p) => (p.drones || []).length - buyable(p);
+const slotText = (p) => `${buyable(p)}/${DRONE_RULES.max}${earnedN(p) ? ' + ' + earnedN(p) : ''}`;
 const LASER_TIER = {};
 Object.keys(LASERS).forEach((id, i) => { LASER_TIER[id] = i + 1; });
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
@@ -84,10 +90,12 @@ function codeOf(kind, id) {
   if (kind === 'ammo') return 'MU-' + id;
   if (kind === 'rocket') return 'RK-' + id;
   if (kind === 'ship') return 'SF-0' + SHIPS[id].no;
-  if (kind === 'drone') return 'DR-' + (DRONE_SHOP[id].module === 'laser' ? 'L' : 'S') + '1';
+  if (kind === 'drone') return 'D' + DRONE_SHOP[id].type[0].toUpperCase() + '-' + (DRONE_SHOP[id].module === 'laser' ? 'L' : 'S') + '1';
+  if (kind === 'rep') return 'RB-0' + (REP_KEYS.indexOf(id) + 1);
   return id;
 }
 
+function pct(r) { return String(Math.round(r * 1000) / 10).replace('.', ',') + ' %'; }
 const DESC = {
   laser: {
     pulse: 'Standard-Pulslaser der Werft. Robust, billig, ein Schuss pro Sekunde.',
@@ -111,6 +119,14 @@ const DESC = {
   drone: {
     'pioneer-laser': 'Robuste Begleitdrohne mit Lasermodul. Feuert mit deinen Lasern auf dein Ziel, mit deiner Munition. Wird durch Kämpfen stärker (Stufe 1–10) und mehr wert.',
     'pioneer-shield': 'Robuste Begleitdrohne mit Schildmodul. Verstärkt den Schild deines Schiffs. Wird durch Kämpfen stärker (Stufe 1–10) und mehr wert.',
+    'voyager-laser': 'Schwere Begleitdrohne der Flotte mit Lasermodul, deutlich stärker als die Pioneer. Ab Stufe 10, nur gegen Tritium.',
+    'voyager-shield': 'Schwere Begleitdrohne der Flotte mit Schildmodul, deutlich mehr Schild als die Pioneer. Ab Stufe 10, nur gegen Tritium.',
+  },
+  // Werte aus data.js (REPAIR_BOTS), damit Text und Spiel nie auseinanderlaufen
+  rep: {
+    rep1: `Repariert die Hülle überall, sobald du 5 s nicht kämpfst: ${pct(REPAIR_BOTS.rep1.rate)} je Sekunde.`,
+    rep2: `Zwei Schweißarme: ${pct(REPAIR_BOTS.rep2.rate)} Hülle je Sekunde, sobald du 5 s nicht kämpfst.`,
+    rep3: `Flottenmodell: ${pct(REPAIR_BOTS.rep3.rate)} Hülle je Sekunde außerhalb des Kampfes. Nur gegen Tritium.`,
   },
   ship: {
     s1: 'Leichter Jäger der Werft. Zwei Laser, zwei Generatoren.',
@@ -241,7 +257,7 @@ function laserShape(id) {
 }
 
 // Ausschnitt je Art für die Mini-Zeichnung im Katalog
-const MINI_VB = { laser: '30 16 268 64', gen: '56 18 196 72', ammo: '104 6 92 92', rocket: '24 18 232 68', drone: '70 10 160 92' };
+const MINI_VB = { laser: '30 16 268 64', gen: '56 18 196 72', ammo: '104 6 92 92', rocket: '24 18 232 68', drone: '70 10 160 92', rep: '40 20 220 70' };
 function itemSvg(kind, id, mini) {
   let g = '';
   let style = '';
@@ -326,7 +342,22 @@ function itemSvg(kind, id, mini) {
       ${callout(208, 70, 230, 92, 'SCHALE')}
       ${callout(126, 88, 80, 100, 'DÜSEN ×4', 'end')}
       ${dimH(92, 208, 104, 'B 0,8 M')}
-      <text class="lbl" x="6" y="16">PIONEER · ${sh ? 'SCHILD' : 'LASER'}</text>`;
+      <text class="lbl" x="6" y="16">${esc(DRONES[DRONE_SHOP[id].type].name.toUpperCase())} · ${sh ? 'SCHILD' : 'LASER'}</text>`;
+  }
+  if (kind === 'rep') {
+    // Reparaturroboter von der Seite: Rumpf, zwei Rotoren, Schweißarm mit Düse (REP-2/3: zweiter Arm)
+    const lv = REP_KEYS.indexOf(id) + 1;
+    g = `
+      <path class="cl" d="M24 54 H276"/>
+      <path class="b" d="M108 36 H188 L200 48 V66 L188 78 H108 L96 66 V48 Z"/>
+      <path class="p" d="M112 44 H184 M112 70 H184"/>
+      <path class="p" d="M88 30 H132 M164 30 H208"/><path class="b" d="M106 30 V38 M190 30 V38"/>
+      <path class="c" d="M200 60 L232 72 L246 70"/><circle class="a" cx="250" cy="70" r="4"/>
+      ${lv >= 2 ? '<path class="c" d="M96 60 L66 74 L52 72"/><circle class="a" cx="48" cy="72" r="4"/>' : ''}
+      ${callout(250, 70, 262, 94, 'SCHWEISSDÜSE')}
+      ${callout(110, 30, 70, 14, 'ROTOR ×2', 'end')}
+      ${dimH(96, 200, 98, 'L 1,1 M')}
+      <text class="lbl" x="6" y="16">${esc(REPAIR_BOTS[id].name)} · REPARATURROBOTER</text>`;
   }
   if (mini) return `<svg class="sx-mini${kind === 'laser' ? ' is-l' : ''}" viewBox="${MINI_VB[kind]}"${style} aria-hidden="true">${g.replace(/<text[^>]*>[^<]*<\/text>/g, '')}</svg>`;
   // zweite Zeile: Nebenansicht links, Klassenvergleich rechts (echte Werte aus data.js)
@@ -383,6 +414,26 @@ function itemSub(kind, id) {
       <circle class="c hatch" cx="64" cy="152" r="${(6 + Math.min(6, AMMO[id].mult) * 1.6).toFixed(1)}"/>
       ${dimH(42, 86, 188, 'Ø 0,1')}
       ${bars(150, 'SCHADENSFAKTOR', list, 6)}`;
+  }
+  if (kind === 'drone') {
+    const D = DRONE_SHOP[id], L = D.module === 'laser';
+    const list = Object.keys(DRONES).map((t) => [DRONES[t].name.slice(0, 3).toUpperCase(), L ? DRONES[t].laser[0] : DRONES[t].shield[0], t === D.type, fmt(L ? DRONES[t].laser[0] : DRONES[t].shield[0])]);
+    return `<text class="lbl" x="6" y="124">ANSICHT VORN</text>
+      <path class="cl" d="M64 122 V184 M24 152 H104"/>
+      <path class="b" d="M48 140 H80 L88 152 L80 164 H48 L40 152 Z"/>
+      <path class="p" d="M40 146 C26 146 22 158 28 166 M88 146 C102 146 106 158 100 166"/>
+      <circle class="c" cx="64" cy="152" r="5"/>
+      ${dimH(28, 100, 188, 'B 0,8 M')}
+      ${bars(150, L ? 'SCHADEN STUFE 1 JE TYP' : 'SCHILD STUFE 1 JE TYP', list, L ? 200 : 3500)}`;
+  }
+  if (kind === 'rep') {
+    const list = REP_KEYS.map((k) => [REPAIR_BOTS[k].name, REPAIR_BOTS[k].rate * 100, k === id, pct(REPAIR_BOTS[k].rate)]);
+    return `<text class="lbl" x="6" y="124">ANSICHT OBEN</text>
+      <path class="cl" d="M64 122 V184 M24 152 H104"/>
+      <path class="b" d="M44 138 H84 L90 144 V160 L84 166 H44 L38 160 V144 Z"/>
+      <circle class="p" cx="34" cy="142" r="8"/><circle class="p" cx="94" cy="142" r="8"/>
+      <path class="c" d="M64 166 V180"/><circle class="a" cx="64" cy="182" r="3"/>
+      ${bars(150, 'HÜLLE JE SEKUNDE', list, 4)}`;
   }
   const list = [['R1', ROCKETS.R1.damage, true, fmt(ROCKETS.R1.damage)]].concat(Object.keys(LASERS).map((k) => [ROMAN[LASER_TIER[k]], LASERS[k].damage, false, fmt(LASERS[k].damage)]));
   return `<text class="lbl" x="6" y="124">ANSICHT A</text>
@@ -1170,7 +1221,8 @@ export class StationUI {
     else if (kind === 'ammo') sub = fmt(d.pack) + ' Schuss · ' + d.key;
     else if (kind === 'rocket') sub = fmt(d.pack) + ' Stück · ' + String(d.key).toUpperCase();
     else if (kind === 'ship') { name = esc(shipClass(id)); sub = `${d.laserSlots}L · ${d.genSlots}G`; }
-    else if (kind === 'drone') sub = 'Stufe 1–10 · ' + (d.module === 'laser' ? 'feuert mit' : 'Schild');
+    else if (kind === 'drone') sub = 'Stufe 1–10 · ' + (d.module === 'laser' ? 'feuert mit' : 'Schild') + (d.currency === 'tritium' ? ' · Tritium' : '');
+    else if (kind === 'rep') sub = 'außerhalb des Kampfes';
     const [tn, tmax] = tierOf(kind, id);
     let ticks = '';
     for (let k = 1; k <= tmax; k++) ticks += `<b${k <= tn ? ' class="on"' : ''}></b>`;
@@ -1192,6 +1244,7 @@ export class StationUI {
     if (kind === 'ammo') return `×${d.mult}<small>${U}${d.shieldOnly ? 'SCHILD' : 'SCH'}</small>`;
     if (kind === 'rocket') return `${fmt(d.damage)}<small>${U}SCH</small>`;
     if (kind === 'drone') { const T = DRONES[d.type]; return d.module === 'laser' ? `${fmt(T.laser[0])}<small>${U}SCH</small>` : `+${fmt(T.shield[0])}<small>${U}SH</small>`; }
+    if (kind === 'rep') return `${String(Math.round(d.rate * 1000) / 10).replace('.', ',')}<small>${U}%/S</small>`;
     return `${fmt(d.hp)}<small>${U}HP</small>`;
   }
 
@@ -1220,8 +1273,13 @@ export class StationUI {
       return { text: fmt(have) + ' an Bord', cls: have ? 'is-eq' : 'is-dn' };
     }
     if (kind === 'drone') {
-      const n = (p.drones || []).length;
-      return { text: `${n}/${DRONE_RULES.max} Plätze`, cls: n < DRONE_RULES.max ? 'is-up' : 'is-eq' };
+      const n = buyable(p);
+      return { text: `${slotText(p)} Plätze`, cls: n < DRONE_RULES.max ? 'is-up' : 'is-eq' };
+    }
+    if (kind === 'rep') {
+      const cur = REPAIR_BOTS[p.repBot];
+      const v = Math.round((d.rate - (cur ? cur.rate : 0)) * 1000) / 10;
+      return { text: (v > 0 ? '+' : v < 0 ? '−' : '±') + String(Math.abs(v)).replace('.', ',') + ' %/s', cls: v > 0 ? 'is-up' : v < 0 ? 'is-dn' : 'is-eq' };
     }
     const cur = SHIPS[p.ship] || SHIPS.s1;
     if (id === p.ship) return { text: 'AKTIV', cls: 'is-eq' };
@@ -1247,9 +1305,13 @@ export class StationUI {
       const n = countOf(kind === 'laser' ? p.loadout.lasers : p.loadout.gens, id) + countOf(kind === 'laser' ? p.owned.lasers : p.owned.gens, id);
       return n ? { text: 'Besitz ' + n, cls: 'is-own', lock: false } : { text: 'Lieferbar', cls: '', lock: false };
     }
+    if (kind === 'rep') {
+      if (p.repBot === id) return { text: 'Eingebaut', cls: 'is-on', lock: false };
+      if (REP_KEYS.indexOf(p.repBot) > REP_KEYS.indexOf(id)) return { text: 'Überholt', cls: 'is-own', lock: false };
+    }
     if (kind === 'drone') {
       const D = p.drones || [];
-      if (D.length >= DRONE_RULES.max) return { text: 'Plätze voll', cls: 'is-lock', lock: false };
+      if (buyable(p) >= DRONE_RULES.max) return { text: 'Plätze voll', cls: 'is-lock', lock: false };
       const n = D.filter((x) => x.type === d.type && x.module === d.module).length;
       return n ? { text: 'Besitz ' + n, cls: 'is-own', lock: false } : { text: 'Lieferbar', cls: '', lock: false };
     }
@@ -1278,7 +1340,7 @@ export class StationUI {
       return `<div class="sx-stat">
         <span class="ls-label">${label}</span>
         <span class="sx-stat-v ls-num">${showCmp ? `<s>${opt.fmtv ? opt.fmtv(cur) : fmt(cur)}</s><em>›</em>` : ''}${opt.fmtv ? opt.fmtv(nxt) : fmt(nxt)}${unit ? `<small>${U}${unit}</small>` : ''}</span>
-        <span class="sx-cmp ${showCmp ? (diff > 0 ? 'is-up' : diff < 0 ? 'is-dn' : 'is-eq') : 'is-eq'}">${showCmp ? signed(diff) : ''}</span>
+        <span class="sx-cmp ${showCmp ? (diff > 0 ? 'is-up' : diff < 0 ? 'is-dn' : 'is-eq') : 'is-eq'}">${showCmp ? (opt.fmtv ? (diff > 0 ? '+' : diff < 0 ? '−' : '±') + opt.fmtv(Math.abs(diff)) : signed(diff)) : ''}</span>
         ${opt.noBar ? '' : `<div class="sx-stat-bars">${showCmp ? `<div class="ls-bar is-ref" style="--v:${((cur || 0) / max).toFixed(3)};--trail:0"></div>` : ''}<div class="ls-bar is-shield" style="--v:${(nxt / max).toFixed(3)};--trail:0"></div></div>`}
       </div>`;
     };
@@ -1315,8 +1377,14 @@ export class StationUI {
       const arr = L ? T.laser : T.shield;
       stats += row(L ? 'Schaden je Schuss · Stufe 1 › 10' : 'Schild · Stufe 1 › 10', arr[0], arr[arr.length - 1], L ? 'SCH' : 'SH');
       stats += row('Verkauf · Stufe 1 › 10', Math.round(T.price * DRONE_RULES.sell[0]), Math.round(T.price * DRONE_RULES.sell[DRONE_RULES.sell.length - 1]), 'CR');
-      stats += row('Drohnenplätze belegt', null, (p.drones || []).length, '/ ' + DRONE_RULES.max, { noBar: true });
-      figNote = L ? 'Feuert mit · 1 Schuss/s × Munition' : 'Zählt zum Schiffsschild';
+      stats += row('Drohnenplätze belegt', null, buyable(p), '/ ' + DRONE_RULES.max + (earnedN(p) ? ' + ' + earnedN(p) + ' erspielt' : ''), { noBar: true });
+      if (buyable(p) < DRONE_RULES.max) stats += row('Preis der nächsten', null, info.cost, info.currency === 'tritium' ? 'TRI' : 'CR', { noBar: true });
+      figNote = (L ? 'Feuert mit · 1 Schuss/s × Munition' : 'Zählt zum Schiffsschild') + (d.type === 'pioneer' ? ' · Preis steigt je Drohne' : '');
+    } else if (kind === 'rep') {
+      const cur = REPAIR_BOTS[p.repBot];
+      stats += row('Hülle je Sekunde', cur ? cur.rate * 100 : 0, d.rate * 100, '%', { fmtv: (v) => String(Math.round(v * 10) / 10).replace('.', ',') });
+      stats += row('Volle Reparatur', cur ? Math.round(1 / cur.rate) : null, Math.round(1 / d.rate), 'S', { noBar: true });
+      figNote = 'Außerhalb des Kampfes · überall · kein Platz nötig';
     } else if (kind === 'rocket') {
       const have = (p.ammo && p.ammo[id]) || 0;
       stats += row('Schaden', null, d.damage, 'SCH', { noBar: true });
@@ -1498,13 +1566,13 @@ export class StationUI {
         <span class="sx-dr-a">
           ${f.repair > 0 ? `<button class="ls-btn sx-dr-b" type="button" data-act="drepair" data-id="${x.id}" title="Reparieren">Rep ${fmt(f.repair)}</button>` : ''}
           <button class="ls-btn sx-dr-b" type="button" data-act="dmod" data-id="${x.id}" data-m="${x.module === 'laser' ? 'shield' : 'laser'}" title="Modul tauschen (kostenlos)">${x.module === 'laser' ? '→ Schild' : '→ Laser'}</button>
-          <button class="ls-btn sx-dr-b${arm ? ' is-fx' : ''}" type="button" data-act="dsell" data-id="${x.id}" title="Verkaufen">${arm ? 'Sicher? +' : '+'}${fmt(f.sell)}</button>
+          ${DRONES[x.type].earned ? '<span class="sx-dr-b ls-num" title="Erspielt, nicht verkäuflich">Erspielt</span>' : `<button class="ls-btn sx-dr-b${arm ? ' is-fx' : ''}" type="button" data-act="dsell" data-id="${x.id}" title="Verkaufen">${arm ? 'Sicher? +' : '+'}${fmt(f.sell)}</button>`}
         </span>
       </div>`;
     });
     if (!rows) rows = '<div class="sx-dr is-empty"><span class="sx-dr-n"><small>Noch keine Drohne. Pioneer kaufen: fliegt sofort mit.</small></span></div>';
     const all = total > 0 ? `<button class="ls-btn sx-dr-b" type="button" data-act="drepair" data-id="all">Alle reparieren · ${fmt(total)} CR</button>` : '';
-    return `<div class="sx-fits sx-drs"><div class="sx-spec-h"><span class="ls-label">Deine Drohnen · ${D.length}/${DRONE_RULES.max}</span><span class="sx-head-r">Balken: Erfahrung · Zustand</span></div>${rows}${all ? `<div class="sx-dr-all">${all}</div>` : ''}</div>`;
+    return `<div class="sx-fits sx-drs"><div class="sx-spec-h"><span class="ls-label">Deine Drohnen · ${slotText(p)}</span><span class="sx-head-r">Balken: Erfahrung · Zustand</span></div>${rows}${all ? `<div class="sx-dr-all">${all}</div>` : ''}</div>`;
   }
 
   // Datenblatt neu zeichnen ohne Wisch-Animation (z. B. wenn die Quittung ausläuft)
@@ -1752,7 +1820,8 @@ export class StationUI {
           this.sel = { kind, index: slot };
         } else lines.push(['Ablage', 'Lager · im Hangar einbauen']);
       } else if (kind === 'ship') lines.push(['Status', 'Aktives Schiff']);
-      else if (kind === 'drone') lines.push(['Plätze', `${(p.drones || []).length}/${DRONE_RULES.max} · fliegt ab sofort mit`]);
+      else if (kind === 'drone') lines.push(['Plätze', `${slotText(p)} · fliegt ab sofort mit`]);
+      else if (kind === 'rep') lines.push(['Status', 'Eingebaut · repariert außerhalb des Kampfes']);
       else lines.push(['Vorrat', fmt((p.ammo && p.ammo[id]) || 0)]);
     } else {
       lines.push(['Grund', (res && res.reason) || info.reason || 'Kauf nicht möglich.', 'is-warn']);
@@ -1780,12 +1849,16 @@ function tierOf(kind, id) {
   if (kind === 'laser') return [LASER_TIER[id], 4];
   if (kind === 'ammo') return [Math.min(6, AMMO[id].mult), 6];
   if (kind === 'ship') return [SHIPS[id].no, 8];
+  if (kind === 'rep') return [REP_KEYS.indexOf(id) + 1, REP_KEYS.length];
+  if (kind === 'drone') { const t = Object.keys(DRONES).indexOf(DRONE_SHOP[id].type) + 1; return [t, 2]; }
   return [1, 1];
 }
 function tierLabel(kind, id) {
   if (kind === 'laser') return 'KL ' + ROMAN[LASER_TIER[id]];
   if (kind === 'ammo') return '×' + AMMO[id].mult;
   if (kind === 'ship') return 'NR ' + SHIPS[id].no;
+  if (kind === 'rep') return 'KL ' + ROMAN[REP_KEYS.indexOf(id) + 1];
+  if (kind === 'drone') return 'KL ' + ROMAN[Object.keys(DRONES).indexOf(DRONE_SHOP[id].type) + 1];
   return 'KL I';
 }
 function ownsAny(p, kind, id) {
@@ -1793,6 +1866,7 @@ function ownsAny(p, kind, id) {
   if (kind === 'gen') return countOf(p.loadout.gens, id) + countOf(p.owned.gens, id) > 0;
   if (kind === 'ship') return ((p.owned && p.owned.ships) || []).includes(id);
   if (kind === 'drone') return (p.drones || []).some((x) => x.type === DRONE_SHOP[id].type && x.module === DRONE_SHOP[id].module);
+  if (kind === 'rep') return REP_KEYS.indexOf(p.repBot) >= REP_KEYS.indexOf(id);
   return ((p.ammo && p.ammo[id]) || 0) > 0;
 }
 function genInfo(d) {
@@ -1826,7 +1900,9 @@ function catStat(p, cat) {
   } else if (cat === 'drone') {
     const D = p.drones || [];
     const hurt = D.filter((x) => x.hp < 100).length;
-    a = `${D.length}/${DRONE_RULES.max} Drohnen`; b = hurt ? hurt + ' zur Reparatur' : '';
+    a = `${slotText(p)} Drohnen`; b = hurt ? hurt + ' zur Reparatur' : '';
+  } else if (cat === 'rep') {
+    a = p.repBot && REPAIR_BOTS[p.repBot] ? REPAIR_BOTS[p.repBot].name + ' eingebaut' : 'Kein Roboter';
   }
   return `<span class="sx-cat-s">${esc(a)}${b ? `<i>${esc(b)}</i>` : ''}</span>`;
 }

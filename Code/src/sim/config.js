@@ -20,6 +20,18 @@ export const ARRIVE_SNAP = 25;            // so nah am Ziel wird der Flugbefehl 
 // Kampf
 export const PLAYER_RANGE = 650;
 export const HIT_CHANCE = 0.85;
+// Treffer mit Können (Schritt 24, 31.10.2026): Grundchance HIT_CHANCE, abhängig von Entfernung und Querbewegung.
+// Wer quer zur Schusslinie fliegt (Kreisen, Ausweichen), wird seltener getroffen – für Spieler und Gegner gleich.
+export const HIT_RANGE_FREE = 0.4;        // bis 40 % der Reichweite: volle Chance (ganz nah bis +HIT_CLOSE_BONUS) …
+export const HIT_CLOSE_BONUS = 0.05;
+export const HIT_RANGE_LOSS = 0.15;       // … an der Reichweitengrenze −15 %
+export const HIT_CROSS_SPEED = 320;       // Quergeschwindigkeit (relativ zum Schützen), bei der der volle Abzug gilt
+export const HIT_CROSS_LOSS = 0.3;        // −30 % bei voller Querbewegung
+export const HIT_MIN = 0.3;
+export const HIT_MAX = 0.95;
+export const ENEMY_FIRE_ARC = 0.6;        // Gegner feuern nur, wenn ihr Bug höchstens ~34° neben dem Ziel liegt
+export const CRIT_CHANCE = 0.08;          // Schiffslaser: 8 % kritische Treffer …
+export const CRIT_MULT = 1.5;             // … mit 1,5-fachem Schaden
 export const DAMAGE_SPREAD = 0.1;         // Zufall 0.9 – 1.1
 export const SHIELD_ABSORB = 0.8;         // Schild fängt 80 % ab, solange vorhanden
 export const LASER_INTERVAL = 1.0;        // ein Schuss pro Sekunde und Laser

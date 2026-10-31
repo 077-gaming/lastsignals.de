@@ -10,17 +10,29 @@ import * as THREE from 'three';
 import { FACTIONS } from '../core/data.js';
 import { preloadGLB } from './models.js';
 
-const MAX = 8;
+const MAX = 10;                    // 8 kaufbare Plätze + Cassini (9) + Juno (10)
 const TAU = Math.PI * 2;
 const pad2 = (n) => String(n).padStart(2, '0');
-export function droneUrl(faction, level, module) {
+// Pioneer: je Fraktion, Stufe 1–10 und Modul ein Modell. Voyager/Cassini/Juno (vorerst): nur EUROPA-Lackierung,
+// Stufenbilder 1, 5, 10 und nur Laser-Optik – Stufe 1–4 zeigt l01, 5–9 l05, 10 l10 (sichtbarer Sprung bei 5 und 10).
+const visLevel = (type, level) => (type === 'pioneer' || !type ? level : level >= 10 ? 10 : level >= 5 ? 5 : 1);
+export function droneUrl(faction, level, module, type = 'pioneer') {
+  if (type && type !== 'pioneer') return `/models/drones/${type}-europa-l${pad2(visLevel(type, level))}-laser.glb`;
   return `/models/drones/pioneer-${FACTIONS[faction] ? faction : 'europa'}-l${pad2(level)}-${module === 'shield' ? 'shield' : 'laser'}.glb`;
+}
+// Cassini und Juno sind als Modell deutlich wuchtiger (breiter, höher) als die schlanke Pioneer: so skaliert, dass sie in
+// der Formation wie große Drohnen wirken und nicht wie ein zweites Schiff
+const TYPE_SCALE = { pioneer: 1, voyager: 1.1, cassini: 0.72, juno: 0.66 };
+// Variante = gleiches Modell: Typ, sichtbare Stufe, Modul (Nicht-Pioneer immer Laser-Optik)
+function vkey(d) {
+  const t = d.type || 'pioneer';
+  return `${t}-${visLevel(t, d.level || 1)}-${t === 'pioneer' ? d.module : 'laser'}`;
 }
 /** Drohnenmodelle eines Spielstands schon vor dem Flug laden (Startsequenz / Leerlauf). Promise, nie Fehler. */
 export function preloadDrones(faction, drones) {
   if (!Array.isArray(drones) || !drones.length) return Promise.resolve(true);
   const urls = new Set();
-  for (const d of drones) if (d && !d.broken) urls.add(droneUrl(faction, d.level || 1, d.module));
+  for (const d of drones) if (d && !d.broken) urls.add(droneUrl(faction, d.level || 1, d.module, d.type));
   return Promise.all([...urls].map((u) => preloadGLB(u).catch(() => null))).then(() => true, () => false);
 }
 
@@ -125,8 +137,8 @@ export class DroneFleet {
     this.group.name = 'drones';
     scene.add(this.group);
     this.faction = null;
-    this.variants = new Map();      // 'level-module' → { parts: [{ mesh, base }], muzzle, len, pending }
-    this.mats = null;               // geteilte Materialien der Fraktion (nach Name)
+    this.variants = new Map();      // 'typ-stufe-modul' → { parts: [{ mesh, base }], muzzle, len, pending }
+    this.mats = {};                 // geteilte Materialien je Drohnentyp (nach Name; jeder Typ hat einen eigenen Atlas)
     this.ver = -1;
     this.form = 'standard';
     this.slots = [];                // feste Liste je Drohnenplatz
@@ -144,14 +156,14 @@ export class DroneFleet {
   setup(faction, drones) {
     this.faction = faction;
     const keys = new Set();
-    if (Array.isArray(drones)) for (const d of drones) if (!d.broken) keys.add(`${d.level}-${d.module}`);
+    if (Array.isArray(drones)) for (const d of drones) if (!d.broken) keys.add(vkey(d));
     const loads = [...keys].map((k) => this._variant(k));
     this.ready = Promise.all(loads).then(() => this._compile()).catch((err) => console.warn('Drohnen', err));
     // nächste Stufe im Leerlauf vorladen (nur Datei; Aufbau erst beim Aufstieg)
     const idle = (typeof window !== 'undefined' && window.requestIdleCallback) || ((fn) => setTimeout(fn, 3000));
     if (Array.isArray(drones)) idle(() => {
       let i = 0;
-      for (const d of drones) if (d.level < 10) setTimeout(() => { if (!this._disposed) preloadGLB(droneUrl(faction, d.level + 1, d.module)).catch(() => {}); }, 1500 * i++);
+      for (const d of drones) if (d.level < 10) setTimeout(() => { if (!this._disposed) preloadGLB(droneUrl(faction, d.level + 1, d.module, d.type)).catch(() => {}); }, 1500 * i++);
     }, { timeout: 8000 });
     return this.ready;
   }
@@ -159,10 +171,10 @@ export class DroneFleet {
   _variant(key) {
     let v = this.variants.get(key);
     if (v) return v.pending;
-    const [lv, module] = key.split('-');
-    v = { parts: [], muzzle: new THREE.Vector3(0, 0, -0.6), len: 1.4, built: false, pending: null };
+    const [type, lv, module] = key.split('-');
+    v = { parts: [], muzzle: new THREE.Vector3(0, 0, -0.6), len: 1.4, built: false, pending: null, type };
     this.variants.set(key, v);
-    v.pending = preloadGLB(droneUrl(this.faction, +lv, module)).then((gltf) => { if (!this._disposed) this._build(v, gltf); }, (err) => { console.warn('Drohnenmodell fehlt', key, err); });
+    v.pending = preloadGLB(droneUrl(this.faction, +lv, module, type)).then((gltf) => { if (!this._disposed) this._build(v, gltf); }, (err) => { console.warn('Drohnenmodell fehlt', key, err); });
     return v.pending;
   }
 
@@ -170,17 +182,19 @@ export class DroneFleet {
     const root = gltf.scene;
     root.updateMatrixWorld(true);
     const flip = new THREE.Matrix4().makeRotationY(Math.PI); // glTF-Bug +z → Spiel-Bug −z
-    const S = new THREE.Matrix4().makeScale(this.scale, this.scale, this.scale);
+    const k = this.scale * (TYPE_SCALE[v.type] || 1);
+    const S = new THREE.Matrix4().makeScale(k, k, k);
     const pre = new THREE.Matrix4().multiplyMatrices(flip, S);
-    if (!this.mats) {
-      // erste Variante liefert die drei Materialien der Fraktion; alle weiteren nutzen dieselben (gleicher Atlas)
-      this.mats = {};
-      root.traverse((o) => { if (o.isMesh && o.material && !this.mats[o.material.name]) this.mats[o.material.name] = o.material; });
+    let M = this.mats[v.type];
+    if (!M) {
+      // erste Variante eines Typs liefert seine drei Materialien; alle weiteren Stufen nutzen dieselben (gleicher Atlas)
+      M = this.mats[v.type] = {};
+      root.traverse((o) => { if (o.isMesh && o.material && !M[o.material.name]) M[o.material.name] = o.material; });
     }
     let len = 0;
     root.traverse((o) => {
       if (o.isMesh) {
-        const mat = this.mats[o.material.name] || o.material;
+        const mat = M[o.material.name] || o.material;
         const mesh = new THREE.InstancedMesh(o.geometry, mat, MAX);
         mesh.count = 0;
         mesh.frustumCulled = false;   // Instanzen bewegen sich um das Schiff (Grenzkugel der Vorlage passt nicht)
@@ -197,16 +211,16 @@ export class DroneFleet {
     });
     const hp = root.getObjectByName('HP_DroneModule');
     if (hp) v.muzzle.copy(hp.getWorldPosition(new THREE.Vector3())).applyMatrix4(pre);
-    v.len = (len || 1.4) * this.scale;
+    v.len = (len || 1.4) * k;
     v.built = true;
   }
 
   // Shader parallel übersetzen und Texturen hochladen, bevor die Drohnen das erste Mal sichtbar werden
   async _compile() {
-    if (this._disposed || this._compiled || !this.mats) return;
+    if (this._disposed || this._compiled || !Object.keys(this.mats).length) return;
     const H = this.host, gl = H.gl;
-    for (const k in this.mats) {
-      const m = this.mats[k];
+    for (const ty in this.mats) for (const k in this.mats[ty]) {
+      const m = this.mats[ty][k];
       for (const p in m) { const t = m[p]; if (t && t.isTexture) { try { gl.initTexture(t); } catch { /* egal */ } } }
     }
     // für das Übersetzen je Variante eine Instanz sichtbar machen (unter dem Schiff, Bild zeigt sie noch nicht)
@@ -228,7 +242,7 @@ export class DroneFleet {
       const d = D[i];
       if (d.broken) continue;
       const s = this.slots[n++];
-      const key = `${d.level}-${d.module}`;
+      const key = vkey(d);
       if (s.id !== d.id) s.snap = true;
       s.on = true; s.id = d.id; s.key = key; s.module = d.module;
       if (!this.variants.has(key)) this._variant(key); // neue Stufe: Datei liegt meist schon (Leerlauf-Vorladen)

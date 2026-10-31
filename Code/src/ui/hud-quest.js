@@ -1,5 +1,5 @@
-// Auftragsmarker im All: zeigt, wo das aktuelle Auftragsziel liegt (nächster passender Gegner, Frachtkiste,
-// Station oder Sprungtor) – mit Entfernung, am Bildrand als Pfeil, wenn das Ziel außerhalb des Bildes liegt.
+// Auftragsmarker im All: zeigt, wo das aktuelle Auftragsziel liegt (nächster passender Gegner, Frachtkiste, Erz,
+// laufendes Ereignis, Station oder das Sprungtor Richtung Auftragsabschnitt) – mit Entfernung, am Bildrand als Pfeil, wenn das Ziel außerhalb des Bildes liegt.
 // Ziel wird alle 0,4 s neu gesucht (nicht jedes Bild), die Position jedes Bild aktualisiert.
 import './hud-quest.css';
 
@@ -32,10 +32,17 @@ export class HudQuest {
         if (d < bd) { bd = d; best = o; }
       }
     };
-    if (g.type === 'kill') near(w.enemies, (e) => e.type === g.target);
-    else if (g.type === 'crate') near(w.crates);
-    else if (g.type === 'buy') best = w.station;
-    else if (g.type === 'jump') near(w.portals);
+    const cur = (w.sector && w.sector.index) || 1;
+    const portalTo = (up) => near(w.portals, (o) => { const s = w.sectors && w.sectors[o.type]; return s && (up ? s.index > cur : s.index < cur); });
+    if (g.type === 'kill') {
+      near(w.enemies, (e) => (g.target == null || e.type === g.target) && (!g.rank || e.rank === g.rank));
+      // Ziel lebt nicht in diesem Sektor: zum Tor Richtung Auftragsabschnitt
+      if (!best && q.def.sector && q.def.sector !== cur) portalTo(q.def.sector > cur);
+    } else if (g.type === 'crate') near(w.crates);
+    else if (g.type === 'ore') near(w.ores);
+    else if (g.type === 'buy' || g.type === 'own' || g.type === 'drones') { if (w.station) best = w.station; else portalTo(false); }
+    else if (g.type === 'jump') portalTo(true);
+    else if (g.type === 'event' && w.event && w.event.type === g.target && w.event.x != null) best = w.event;
     return best;
   }
 

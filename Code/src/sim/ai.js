@@ -665,10 +665,11 @@ export function moveEnemy(w, e, dt) {
       MV.tx = tx; MV.tz = tz;
       if (d <= Math.max(def.range * 1.3, R + 120)) { MV.face = true; MV.fx = -ox; MV.fz = -oz; }
       if (!hold && d <= def.range + tgt.radius && e.fireCd <= 0 && !e.losBad) {
-        w.enemyFire(e, tgt);
-        const iv = (1 / def.fireRate) * (0.85 + w.rng.next() * 0.3); // nie im Gleichtakt
-        e.fireCd += iv;
-        if (e.fireCd < 0) e.fireCd = iv;
+        if (w.enemyFire(e, tgt) !== false) { // false = noch nicht ausgerichtet (Feuerbogen): feuert, sobald er zielt
+          const iv = (1 / def.fireRate) * (0.85 + w.rng.next() * 0.3); // nie im Gleichtakt
+          e.fireCd += iv;
+          if (e.fireCd < 0) e.fireCd = iv;
+        }
       }
       break;
     }

@@ -5,7 +5,7 @@ import { QUESTS } from '../core/data.js';
 const TEXT = {
   europa: {
     q1: 'Forschungsfrachter Kallisto-7 meldet Raider. Fünf Raider abfangen.',
-    q2: 'Eisproben treiben frei im Sektor. Drei Crates sichern.',
+    q2: 'Eisproben treiben frei im Sektor. Drei Frachtkisten sichern.',
     q3: 'Werft hält einen Ion Laser bereit. Kaufen, Montage erfolgt sofort.',
     q4: 'Larva-Schwarm an den Eisbohrungen. Acht Larva beseitigen.',
     q5: 'Kurs Io freigegeben. Sprungtor nutzen.',
@@ -14,7 +14,7 @@ const TEXT = {
   },
   saturn: {
     q1: 'Konvoi Titan-3 unter Beschuss. Fünf Raider ausschalten.',
-    q2: 'Fracht aus geplatztem Container treibt im Sektor. Drei Crates bergen.',
+    q2: 'Fracht aus geplatztem Container treibt im Sektor. Drei Frachtkisten bergen.',
     q3: 'Ion Laser liegt im Dock bereit. Kaufen und montieren, Vertrag läuft.',
     q4: 'Larva-Brut frisst sich durch die Erzfelder. Acht Larva vernichten.',
     q5: 'Route nach Mimas freigegeben. Durch das Sprungtor.',
@@ -23,7 +23,7 @@ const TEXT = {
   },
   eris: {
     q1: 'Raider plündern unsere Schmuggler. Fünf Raider erledigen.',
-    q2: 'Abwurfkisten treiben draußen. Drei Crates holen, bevor andere es tun.',
+    q2: 'Abwurfkisten treiben draußen. Drei Frachtkisten holen, bevor andere es tun.',
     q3: 'Ion Laser im Lager. Kaufen und anbauen.',
     q4: 'Larva nisten im Ring. Acht Larva ausbrennen.',
     q5: 'Tor nach Dysnomia ist offen. Springen.',

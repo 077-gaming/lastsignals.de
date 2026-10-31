@@ -1,4 +1,5 @@
-// Drohnen (Vault Nr. 17–19): bis zu 8 Pioneer, jede mit Laser (feuert mit, mehr Schaden) oder Schildgenerator
+// Drohnen (Vault Nr. 17–19): bis zu 8 kaufbare (Pioneer für Credits mit steigendem Preis, Voyager ab Stufe 10 für
+// Tritium) plus Cassini (Platz 9, Auftrag) und Juno (Platz 10, Alpha-Beute), jede mit Laser (feuert mit, mehr Schaden) oder Schildgenerator
 // (mehr Schild), eigene Stufe 1–10 durch Kämpfen, Verschleiß durch Treffer am Schiff, Reparatur in der Station,
 // kaputt = eine Stufe weniger. Werte: data.js (DRONES, DRONE_RULES). Reine Logik ohne Grafik, keine Speicher-Neuanlage
 // pro Schritt (feste Felder, Zähler); nur seltene Ereignisse (Stufe, kaputt, Kauf) legen kleine Nutzlasten an.
@@ -6,7 +7,7 @@
 // Spielstand: profile.drones = [{ id, type, module: 'laser'|'shield', level, xp, hp (Zustand 0–100), broken }].
 // Anzeige/Grafik: world.drones (= profile.drones), world.droneVer (steigt bei jeder sichtbaren Änderung),
 // world.droneFiring (Laser-Drohnen feuern gerade), Schüsse als 'shot' mit from = 'dr:<id>', drone: true, idx = Platz.
-import { DRONES, DRONE_RULES, STARTER_DRONES, DRONE_KIT_VERSION, AMMO } from '../core/data.js';
+import { DRONES, DRONE_RULES, STARTER_DRONES, DRONE_KIT_VERSION, AMMO, dronePrice } from '../core/data.js';
 import { fmt } from './combat.js';
 
 const R = DRONE_RULES;
@@ -25,7 +26,7 @@ export function normalizeDrones(pr) {
   if (!Array.isArray(pr.drones)) pr.drones = [];
   pr.droneSeq = pr.droneSeq || 0;
   const seen = new Set();
-  pr.drones = pr.drones.filter((d) => d && DRONES[d.type] && MODULES[d.module]).slice(0, R.max);
+  pr.drones = sortDrones(pr.drones.filter((d) => d && DRONES[d.type] && MODULES[d.module]));
   for (const d of pr.drones) {
     const n = /^d(\d+)$/.exec(d.id || '');
     if (!n || seen.has(d.id)) { pr.droneSeq++; d.id = 'd' + pr.droneSeq; } else pr.droneSeq = Math.max(pr.droneSeq, +n[1]);
@@ -45,8 +46,26 @@ export function normalizeDrones(pr) {
   return false;
 }
 
+/** Höchstens R.max kaufbare Drohnen (Pioneer, Voyager), dahinter je einmal Cassini (Platz 9) und Juno (Platz 10). */
+function sortDrones(list) {
+  const buy = [], earned = [];
+  for (const d of list) {
+    if (DRONES[d.type].earned) { if (!earned.some((x) => x.type === d.type)) earned.push(d); }
+    else if (buy.length < R.max) buy.push(d);
+  }
+  earned.sort((a, b) => DRONES[a.type].slot - DRONES[b.type].slot);
+  return buy.concat(earned).slice(0, R.maxEarned);
+}
+
+/** Anzahl kaufbarer Drohnen (ohne Cassini/Juno) – zählt für Plätze 1–8 und den steigenden Pioneer-Preis. */
+export function buyableCount(pr) {
+  let n = 0;
+  for (const d of pr.drones) if (!DRONES[d.type].earned) n++;
+  return n;
+}
+
 export function initDrones(w) {
-  w._droneCd = new Float64Array(R.max);
+  w._droneCd = new Float64Array(R.maxEarned);
   w._droneWasFiring = false;
   w._droneHp = w.player.hp;       // Hülle im letzten Schritt (Verschleiß)
   w.droneFiring = false;
@@ -80,7 +99,7 @@ export function updateDrones(w, dt, tgt, firing) {
     w.profile.droneKitShown = DRONE_KIT_VERSION;
     if (D.length) {
       const L = D.filter((d) => d.module === 'laser').length, S = D.length - L;
-      w._msg(`${D.length} Pioneer-Drohnen fliegen mit: ${L} mit Laser (je ${fmt(DRONES.pioneer.laser[0])} Schaden je Schuss), ${S} mit Schild (je +${fmt(DRONES.pioneer.shield[0])}). Stufe 1–10 durch Kämpfen, Formation über die Schnellleiste, neue Pioneer für ${fmt(DRONES.pioneer.price)} Credits in der Station.`, 'info');
+      w._msg(`${D.length} Pioneer-Drohnen fliegen mit: ${L} mit Laser (je ${fmt(DRONES.pioneer.laser[0])} Schaden je Schuss), ${S} mit Schild (je +${fmt(DRONES.pioneer.shield[0])}). Stufe 1–10 durch Kämpfen, Formation über die Schnellleiste, nächste Pioneer für ${fmt(dronePrice('pioneer', buyableCount(w.profile)))} Credits in der Station.`, 'info');
     }
   }
   // Verschleiß: Hülle, die seit dem letzten Schritt verloren ging (alle Quellen: Laser, Spezialangriffe, Säure, Karte)
@@ -207,8 +226,29 @@ export function addDrone(w, type, module) {
   const pr = w.profile;
   const d = makeDrone(pr, type, module);
   pr.drones.push(d);
+  pr.drones = sortDrones(pr.drones);   // Cassini/Juno bleiben hinten (Platz 9/10)
   w.droneVer++;
-  w.bus.emit('drone', { kind: 'buy', id: d.id, level: 1, module });
+  w.bus.emit('drone', { kind: 'buy', id: d.id, type, level: 1, module });
+  return d;
+}
+
+/** Erspielte Drohne (Cassini aus dem Auftrag, Juno als Alpha-Beute). Schon vorhanden → Gegenwert in Credits. */
+export function grantDrone(w, type, why) {
+  const pr = w.profile, T = DRONES[type];
+  if (!T) return null;
+  if (pr.drones.some((d) => d.type === type) || pr.drones.length >= R.maxEarned) {
+    pr.credits += T.price;
+    w._msg(`${why}: ${T.name} fliegt schon mit – dafür ${fmt(T.price)} Credits.`, 'loot');
+    w._emitProfile();
+    return null;
+  }
+  const d = addDrone(w, type, 'laser');
+  w._refreshStats();
+  w._msg(`${why}: Drohne ${T.name} (Platz ${T.slot || pr.drones.length}) fliegt ab sofort mit! ${fmt(T.laser[0])} Schaden je Schuss, Modul (Laser/Schild) in der Station tauschbar.`, 'quest');
+  w.bus.emit('drone', { kind: 'earned', id: d.id, type, level: 1, module: 'laser' });
+  if (typeof w._questSync === 'function') w._questSync();
+  w._emitProfile();
+  w.save();
   return d;
 }
 
@@ -224,6 +264,7 @@ export function sellDrone(w, ref) {
   if (!w.docked) return w._fail('Drohnen kannst du nur in der Station verkaufen.');
   const d = findDrone(w, ref);
   if (!d) return w._fail('Diese Drohne gibt es nicht.');
+  if (DRONES[d.type].earned) return w._fail(`${DRONES[d.type].name} ist erspielt und nicht verkäuflich.`);
   const credits = sellPrice(d);
   const pr = w.profile;
   pr.drones.splice(pr.drones.indexOf(d), 1);
@@ -232,6 +273,7 @@ export function sellDrone(w, ref) {
   w._refreshStats();
   w._msg(`${label(d)} verkauft: +${fmt(credits)} Credits.`, 'loot');
   w.bus.emit('drone', { kind: 'sell', id: d.id, level: d.level, module: d.module, credits });
+  if (typeof w._questSync === 'function') w._questSync();
   w._emitProfile();
   w.save();
   return { ok: true, reason: '', credits };

@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --port 5173",
     "test": "node src/sim/selftest.mjs",
-    "check": "npm test && vite build"
+    "check": "npm test && vite build",
+    "balance": "node tools/balance/fortschritt.mjs --stunden 12"
   },
   "dependencies": {
     "three": "^0.170.0"

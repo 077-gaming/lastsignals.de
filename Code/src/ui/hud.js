@@ -1041,6 +1041,7 @@ export class Hud {
         if (r.tritium) parts.push(fmt(r.tritium) + ' T');
         if (r.xp) parts.push(fmt(r.xp) + ' EP');
         if (r.honor) parts.push(fmt(r.honor) + ' EHRE');
+        if (r.drone) parts.push('DROHNE ' + String(r.drone).toUpperCase());
         this.sQReward.set(parts.join(' · '));
         this.bQuest.reset();
         requestAnimationFrame(() => this.wins.refit('quest'));
@@ -1326,7 +1327,9 @@ export class Hud {
   _onLevel(p) {
     const lvl = (p && p.level) || (this.world && this.world.profile && this.world.profile.level) || 1;
     const newRank = rankFor(lvl) !== rankFor(lvl - 1);
-    this._toast('PIL·01 · AUFSTIEG', 'STUFE ' + lvl, newRank ? 'NEUER RANG · ' + rankFor(lvl).toUpperCase() : rankFor(lvl).toUpperCase(), 3.6);
+    // Stufenbelohnung (Wirtschaft v2) mit anzeigen
+    const bonus = p && (p.credits || p.tritium) ? '   +' + fmt(p.credits || 0) + ' CR   +' + fmt(p.tritium || 0) + ' TRITIUM' : '';
+    this._toast('PIL·01 · AUFSTIEG', 'STUFE ' + lvl, (newRank ? 'NEUER RANG · ' + rankFor(lvl).toUpperCase() : rankFor(lvl).toUpperCase()) + bonus, 3.6);
   }
 
   _onQuest(p) {
@@ -1337,6 +1340,7 @@ export class Hud {
     if (r.tritium) parts.push('+' + fmt(r.tritium) + ' TRITIUM');
     if (r.xp) parts.push('+' + fmt(r.xp) + ' EP');
     if (r.honor) parts.push('+' + fmt(r.honor) + ' EHRE');
+    if (r.drone) parts.push('+ DROHNE ' + String(r.drone).toUpperCase());
     this._toast('MSN·05 · AUFTRAG ERFÜLLT', (p.quest.title || '').toUpperCase(), parts.join('   '), 3.6);
   }
 
@@ -1385,7 +1389,9 @@ export class Hud {
     const free = (p.level || 1) <= REPAIR.freeUntilLevel;
     // Lerneffekt: wer war es, und ein konkreter Tipp für das nächste Mal (wechselt je Tod)
     const TIPS = [
+      'Tipp: Im Kampf in Bewegung bleiben und das Ziel umkreisen – wer quer zur Schusslinie fliegt, wird seltener getroffen. Rote Warnmarker zeigen, wohin eine Salve zielt: Kurs ändern!',
       'Tipp: Unter 30 % Hülle H drücken – der Autopilot fliegt in die sichere Zone der Station, dort wird repariert.',
+      'Tipp: Ein Reparaturroboter (Station → Shop → Reparatur) flickt die Hülle überall, sobald du 5 s nicht kämpfst.',
       'Tipp: Gegnergruppen einzeln anlocken statt mitten hineinzufliegen. Ein Schuss auf den Rand zieht nur wenige mit.',
       'Tipp: Bessere Laser und Generatoren gibt es im Shop der Station (Taste 3 in Mission Control).',
       'Tipp: Mit SOS (Taste 9) und EMP (Taste 8) kommst du aus brenzligen Lagen – Vorrat in der Schnellleiste.',

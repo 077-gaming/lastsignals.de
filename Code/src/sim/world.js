@@ -5,11 +5,12 @@
 import {
   FACTIONS, ENEMIES, LASERS, AMMO, ROCKETS, GENERATORS, SHIPS, ORES, CRATE_TABLE, DRIFT_CRATE_TABLE, QUESTS, REPAIR,
   VARIANTS, ALPHA_PERKS, xpForLevel, MAX_LEVEL, sectorsFor, REWARD_SCALE, COMBO, SPECIALS,
-  EXTRAS, MINES, TECHS, FORMATIONS, DRONES, DRONE_SHOP, DRONE_RULES,
+  EXTRAS, MINES, TECHS, FORMATIONS, DRONES, DRONE_SHOP, DRONE_RULES, dronePrice, REPAIR_BOTS, QUEST_VERSION, levelReward,
+  JUNO_DROP,
 } from '../core/data.js';
 import {
   normalizeDrones, initDrones, updateDrones, droneShield, dronesOnKill, dronesOnDeath, addDrone, sellDrone, repairDrone,
-  setDroneModule, droneInfo,
+  setDroneModule, droneInfo, buyableCount, grantDrone,
 } from './drones.js';
 import {
   initAbilities, updateAbilities, resetAbilities, breakCloak, sosAbsorb, leech, rocketHits, useExtra, useTech, layMine,
@@ -48,7 +49,9 @@ function packCost(key, def) {
 }
 
 const CURRENCY_NAME = { credits: 'Credits', tritium: 'Tritium' };
-const SHOP_TABLE = { extra: EXTRAS, mine: MINES, tech: TECHS, formation: FORMATIONS, drone: DRONE_SHOP };
+const SHOP_TABLE = { extra: EXTRAS, mine: MINES, tech: TECHS, formation: FORMATIONS, drone: DRONE_SHOP, rep: REPAIR_BOTS };
+const REP_KEYS = Object.keys(REPAIR_BOTS);
+const CONSUMABLE = ['ammo', 'rocket', 'extra', 'mine']; // auch im Flug kaufbar (Fernhandel)
 
 function makeEntity(id, kind) {
   return {
@@ -412,9 +415,15 @@ export class World {
       p.shield += p.shieldMax * C.SHIELD_REGEN * dt;
       if (p.shield > p.shieldMax) p.shield = p.shieldMax;
     }
-    if (this.inSafeZone && !(t - this._lastCombat < C.COMBAT_TIMEOUT) && p.hp < p.hpMax) {
-      p.hp += p.hpMax * C.SAFE_HULL_REGEN * dt;
-      if (p.hp > p.hpMax) p.hp = p.hpMax;
+    // Hülle: sichere Zone 2 %/s, Reparaturroboter (REP-1…3) überall – beides nur außerhalb des Kampfes, das Bessere zählt
+    if (p.hp < p.hpMax && !(t - this._lastCombat < C.COMBAT_TIMEOUT)) {
+      let rate = this.inSafeZone ? C.SAFE_HULL_REGEN : 0;
+      const rb = REPAIR_BOTS[this.profile.repBot];
+      if (rb && rb.rate > rate) rate = rb.rate;
+      if (rate > 0) {
+        p.hp += p.hpMax * rate * dt;
+        if (p.hp > p.hpMax) p.hp = p.hpMax;
+      }
     }
 
     this._updatePending(dt);
@@ -642,7 +651,7 @@ export class World {
       if (!key) { p.attacking = false; return; }
       this.profile.ammo[key] -= 1;
       this._profileDirty = true;
-      this._fireLaser(lasers[i], tgt, key, AMMO[key].mult, key === 'SAB', false, i);
+      this._fireLaser(lasers[i], tgt, key, AMMO[key].mult, key === 'SAB', this.rng.next() < C.CRIT_CHANCE, i);
       if (!tgt.alive || !p.alive) return; // Ziel tot – oder eigenes Schiff durch Rückstrahlung zerstört
     }
   }
@@ -659,8 +668,26 @@ export class World {
       this._emitProfile();
       return 'L1';
     }
+    if (this._ammoAid()) return 'L1';
     this._msg('Keine Munition mehr! Kaufe L1 in der Station.', 'warn', 'ammoNone', 3);
     return null;
+  }
+
+  /** Werft-Notration: ohne Munition und ohne Geld für eine L1-Packung gibt es 1.000 L1 gratis (nie festgefahren).
+   *  Höchstens einmal je Minute; Gewinn lässt sich daraus nicht ziehen (Munition ist nicht verkaufbar). → true = gegeben */
+  _ammoAid() {
+    const pr = this.profile;
+    if (this.time < (this._ammoAidAt || 0)) return false;
+    let shots = 0;
+    for (const k of AMMO_KEYS) if (k !== 'SAL') shots += pr.ammo[k] || 0;
+    if (shots >= 100 || pr.credits >= packCost('L1', AMMO.L1)) return false;
+    this._ammoAidAt = this.time + 60;
+    pr.ammo.L1 = (pr.ammo.L1 || 0) + AMMO.L1.pack;
+    if (pr.selectedAmmo !== 'L1' && !(pr.ammo[pr.selectedAmmo] >= 1)) pr.selectedAmmo = 'L1';
+    this._msg(`Werft-Notration: ${fmt(AMMO.L1.pack)} L1 gratis, weil Munition und Kasse leer sind.`, 'info', 'ammoAid', 5);
+    this._profileDirty = true;
+    this._emitProfile();
+    return true;
   }
 
   /**
@@ -673,7 +700,9 @@ export class World {
     const p = this.player;
     const from = src ? src.id : 'player'; // Drohnen: 'dr:<id>' (Grafik zeichnet den Schuss an der Drohne)
     if (this.cloaked) breakCloak(this, 'Angriff');
-    let hit = this.rng.next() < (tgt.jinkT > 0 ? C.JINK_HIT : C.HIT_CHANCE);
+    let chance = this.hitChance(p, C.PLAYER_RANGE, tgt);
+    if (tgt.jinkT > 0 && chance > C.JINK_HIT) chance = C.JINK_HIT;
+    let hit = this.rng.next() < chance;
     this._lastCombat = this.time;
     let dx = tgt.x - p.x, dz = tgt.z - p.z;
     const d = Math.sqrt(dx * dx + dz * dz) || 1;
@@ -692,8 +721,28 @@ export class World {
     this.bus.emit('shot', { from, to: tgt.id, laser: laserId, ammo: ammoKey, hit, idx, x: hx, z: hz, dx, dz, drone: !!src });
     if (!hit) { this._provoke(tgt); return; }
     this._hitFrom = from;
-    this._hitEnemy(tgt, rollDamage(this.rng, src ? src.damage : L.damage, mult), shieldOnly, crit, dx, dz, hx, hz);
+    // kritischer Treffer der Schiffslaser: 1,5-facher Schaden (SAL-Salven zeigen sich weiter als kritisch, ohne Zuschlag)
+    const cm = crit && ammoKey !== 'SAL' ? C.CRIT_MULT : 1;
+    this._hitEnemy(tgt, rollDamage(this.rng, src ? src.damage : L.damage, mult * cm), shieldOnly, crit, dx, dz, hx, hz);
     this._hitFrom = null;
+  }
+
+  /**
+   * Trefferchance mit Können (Schritt 24): Grundchance, ganz nah etwas mehr, bis zur Reichweitengrenze weniger,
+   * und weniger, je schneller sich das Ziel QUER zur Schusslinie bewegt (relativ zum Schützen). Kreisen und
+   * Ausweichen zahlen sich so für beide Seiten aus. shooter/tgt: { x, z, vx, vz }.
+   */
+  hitChance(shooter, range, tgt) {
+    const dx = tgt.x - shooter.x, dz = tgt.z - shooter.z;
+    const d = Math.sqrt(dx * dx + dz * dz) || 1;
+    const k = d / (range > 1 ? range : 1);
+    let c = C.HIT_CHANCE;
+    if (k > C.HIT_RANGE_FREE) c -= C.HIT_RANGE_LOSS * Math.min(1, (k - C.HIT_RANGE_FREE) / (1 - C.HIT_RANGE_FREE));
+    else c += C.HIT_CLOSE_BONUS * (1 - k / C.HIT_RANGE_FREE);
+    const rvx = (tgt.vx || 0) - (shooter.vx || 0), rvz = (tgt.vz || 0) - (shooter.vz || 0);
+    const cross = Math.abs(rvx * dz - rvz * dx) / d;
+    c -= C.HIT_CROSS_LOSS * Math.min(1, cross / C.HIT_CROSS_SPEED);
+    return c < C.HIT_MIN ? C.HIT_MIN : c > C.HIT_MAX ? C.HIT_MAX : c;
   }
 
   /** Schaden am Gegner. dx/dz = Einschlagrichtung, hx/hz = Trefferpunkt (für 'damage'). */
@@ -796,13 +845,15 @@ export class World {
     return p.alive && !this.docked && !this.inSafeZone && this.time >= this._invulnUntil;
   }
 
-  /** Von ai.js aufgerufen: Gegner feuert einen Schuss auf den Spieler (oder einen Frachter). */
+  /** Von ai.js aufgerufen: Gegner feuert einen Schuss auf den Spieler (oder einen Frachter).
+   *  → false, wenn er nicht feuern konnte (Bug nicht im Feuerbogen: Abklingzeit bleibt, er schießt, sobald er ausgerichtet ist). */
   enemyFire(e, tgt = this.player) {
     const p = this.player;
     const toPlayer = tgt === p;
-    if (toPlayer ? !this.playerTargetable() : !tgt.alive) return;
-    const hit = this.rng.next() < C.HIT_CHANCE;
+    if (toPlayer ? !this.playerTargetable() : !tgt.alive) return true;
     let dx = tgt.x - e.x, dz = tgt.z - e.z;
+    if (Math.abs(wrapAngle(headingOf(dx, dz) - e.rot)) > C.ENEMY_FIRE_ARC) return false;
+    const hit = this.rng.next() < this.hitChance(e, e.def.range, tgt);
     const d = Math.sqrt(dx * dx + dz * dz) || 1;
     dx /= d; dz /= d;
     if (toPlayer) this._lastCombat = this.time;
@@ -874,8 +925,23 @@ export class World {
     dronesOnKill(this, xp + bx);
     this._spawnWreck(e, credits + bc, tritium);
     this._emitProfile();
-    this._questProgress('kill', e.type, 1);
+    this._questProgress('kill', e.type, 1, e);
+    if (cb.count >= 2) this._questProgress('combo', null, cb.count);
+    if (e.rank === 'alpha') this._alphaLoot(e);
     if (e.evTag) eventEnemyKilled(this, e);
+  }
+
+  /** Alpha-Abschuss: Zähler und seltene Juno-Drohne (Platz 10) ab Sektor 2, spätestens beim n-ten Alpha. */
+  _alphaLoot(e) {
+    const pr = this.profile;
+    pr.stats.alphaKills = (pr.stats.alphaKills || 0) + 1;
+    if ((this.sector.index || 1) < JUNO_DROP.sectorMin) return;
+    if (pr.drones.some((d) => d.type === 'juno')) return;
+    pr.stats.alphaSince = (pr.stats.alphaSince || 0) + 1;
+    if (pr.stats.alphaSince >= JUNO_DROP.guaranteeAt || this.rng.next() < JUNO_DROP.chance) {
+      pr.stats.alphaSince = 0;
+      grantDrone(this, 'juno', `Beute aus ${e.name}`);
+    }
   }
 
   /**
@@ -898,7 +964,9 @@ export class World {
     }
     RW.xp = xp * sec;
     RW.honor = (over > 0 ? Math.max(R.minHonor, xp) : xp) * sec;
-    RW.credits = cr * sec;
+    // Credits steigen je Sektor schwächer als Erfahrung (Wirtschaft v2: sonst Geldschwemme in Sektor 3)
+    const cs = R.creditSector ? R.creditSector[si < R.creditSector.length ? si : R.creditSector.length - 1] : sec;
+    RW.credits = cr * cs;
     RW.gray = over > 0;
     return RW;
   }
@@ -1484,9 +1552,10 @@ export class World {
   }
 
   // ───────── Schnellleiste: Extras, Minen, Techs, Formation, Konfiguration (abilities.js) → true bei Erfolg ─────────
-  useExtra(id, arg) { return useExtra(this, id, arg); }   // 'EMP'|'SOS'|'BMB'|'TRN'|'JMP' (JMP: optional Ziel-Sektor-ID)
-  layMine(id) { return layMine(this, id); }               // 'SPM'|'BRM'|'STM'
-  useTech(id) { return useTech(this, id); }               // 'VMP'|'ARC'|'LCK'|'RSV'|'FIX'
+  // Erfolgreicher Einsatz zählt für Aufträge vom Typ 'use'
+  useExtra(id, arg) { const ok = useExtra(this, id, arg); if (ok) this._questProgress('use', id, 1); return ok; } // 'EMP'|'SOS'|'BMB'|'TRN'|'JMP'
+  layMine(id) { const ok = layMine(this, id); if (ok) this._questProgress('use', id, 1); return ok; }               // 'SPM'|'BRM'|'STM'
+  useTech(id) { const ok = useTech(this, id); if (ok) this._questProgress('use', id, 1); return ok; }               // 'VMP'|'ARC'|'LCK'|'RSV'|'FIX'
   setFormation(id) { return setFormation(this, id); }     // Schlüssel aus FORMATIONS
   setConfig(n) { return setConfig(this, n); }             // 1..3
 
@@ -1545,6 +1614,7 @@ export class World {
     this._haltPlayer(); p.hasMove = false; p.attacking = false;
     this.bus.emit('docked', {});
     this._msg(`Angedockt an ${this.station.name}.`, 'info');
+    this._ammoAid();
     this.save();
   }
 
@@ -1561,7 +1631,7 @@ export class World {
     const def = REPAIR[where];
     if (!def || typeof def !== 'object') return false;
     const info = this.repairCost(where);
-    if (!info.free) {
+    if (!info.free && info.amount > 0) {
       if ((pr[info.currency] || 0) < info.amount) {
         this._msg(`Zu wenig ${CURRENCY_NAME[info.currency]} für diese Reparatur (${fmt(info.amount)} nötig).`, 'warn');
         return false;
@@ -1592,7 +1662,8 @@ export class World {
     this.entities.set('player', p);
     this._updateZones();
     this.bus.emit('respawn', {});
-    this._msg(info.free ? 'Schiff repariert (kostenlos bis Stufe 10). 5 Sekunden geschützt.' : `Schiff repariert für ${fmt(info.amount)} ${CURRENCY_NAME[info.currency]}. 5 Sekunden geschützt.`, 'info');
+    this._msg(info.free ? 'Schiff repariert (kostenlos bis Stufe 10). 5 Sekunden geschützt.' : `Schiff repariert für ${fmt(info.amount)} ${CURRENCY_NAME[info.currency]}${info.capped ? ' (Notreparatur: mehr war nicht in der Kasse)' : ''}. 5 Sekunden geschützt.`, 'info');
+    this._ammoAid();
     this._emitProfile();
     this.save();
     return true;
@@ -1603,8 +1674,11 @@ export class World {
     const pr = this.profile;
     const def = REPAIR[where] || {};
     const currency = def.credits != null ? 'credits' : 'tritium';
-    const amount = (def[currency] || 0) * (SHIPS[pr.ship]?.no || 1);
-    return { amount, currency, free: pr.level <= REPAIR.freeUntilLevel };
+    let amount = (def[currency] || 0) * (SHIPS[pr.ship]?.no || 1);
+    // Station: nie gesperrt – wer pleite ist, zahlt, was da ist (sonst säße man nach dem Abschuss fest)
+    const capped = where === 'station' && (pr.credits || 0) < amount;
+    if (capped) amount = Math.max(0, Math.floor(pr.credits || 0));
+    return { amount, currency, free: pr.level <= REPAIR.freeUntilLevel, capped };
   }
 
   _playerDie() {
@@ -1643,7 +1717,12 @@ export class World {
       case 'ammo': { const d = AMMO[id]; return d ? { cost: packCost(id, d), currency: d.currency, pack: d.pack } : null; }
       case 'rocket': { const d = ROCKETS[id]; return d ? { cost: packCost(id, d), currency: d.currency, pack: d.pack } : null; }
       case 'ship': { const d = SHIPS[id]; return d ? { cost: d.price, currency: d.currency, pack: 1 } : null; }
-      case 'extra': case 'mine': case 'tech': case 'formation': case 'drone': {
+      case 'drone': {
+        // Pioneer: Preis steigt mit jeder Drohne (PIONEER_PRICES); hier der Preis der NÄCHSTEN Drohne
+        const d = DRONE_SHOP[id];
+        return d ? { cost: dronePrice(d.type, buyableCount(this.profile)), currency: d.currency, pack: 1 } : null;
+      }
+      case 'extra': case 'mine': case 'tech': case 'formation': case 'rep': {
         const d = SHOP_TABLE[kind][id];
         return d ? { cost: d.price || 0, currency: d.currency, pack: 1 } : null;
       }
@@ -1671,21 +1750,30 @@ export class World {
     else if (kind === 'extra' || kind === 'mine') owned = pr.extras[id] || 0;
     else if (kind === 'tech') owned = pr.techs[id] || 0;
     else if (kind === 'formation') { owned = id === 'standard' || pr.owned.formations.includes(id) ? 1 : 0; equipped = this.formation === id ? 1 : 0; }
-    else if (kind === 'drone') { for (const d of pr.drones) if (d.type === def.type && d.module === def.module) owned++; equipped = pr.drones.length; }
+    else if (kind === 'drone') { for (const d of pr.drones) if (d.type === def.type && d.module === def.module) owned++; equipped = buyableCount(pr); }
+    else if (kind === 'rep') { owned = REP_KEYS.indexOf(pr.repBot) >= REP_KEYS.indexOf(id) ? 1 : 0; equipped = pr.repBot === id ? 1 : 0; }
     const info = { kind, id, name: def.name, cost: price.cost * n, currency: price.currency, pack: price.pack, level, ok: false, reason: '', owned, equipped };
+    if (kind === 'drone') { // n Drohnen: Summe der nächsten n Preise (steigend)
+      const b = buyableCount(pr);
+      let c = 0;
+      for (let i = 0; i < n; i++) c += dronePrice(def.type, b + i);
+      info.cost = c;
+    }
 
     if (def.dropOnly) info.reason = 'Nur als seltene Beute zu finden, nicht kaufbar.';
     else if (def.locked) info.reason = `Kommt später (ab Stufe ${level}).`;
     else if (kind === 'ship' && equipped) info.reason = 'Das fliegst du gerade.';
     else if (kind === 'formation' && def.eventOnly) info.reason = 'Nur aus Events und Toren.';
     else if (kind === 'formation' && owned) info.reason = 'Schon im Besitz.';
-    else if (kind === 'drone' && pr.drones.length + n > DRONE_RULES.max) info.reason = `Höchstens ${DRONE_RULES.max} Drohnen: ${pr.drones.length} von ${DRONE_RULES.max} Plätzen belegt.`;
+    else if (kind === 'drone' && buyableCount(pr) + n > DRONE_RULES.max) info.reason = `Höchstens ${DRONE_RULES.max} kaufbare Drohnen: ${buyableCount(pr)} von ${DRONE_RULES.max} Plätzen belegt. Für eine andere Drohne erst eine verkaufen.`;
+    else if (kind === 'rep' && equipped) info.reason = 'Schon eingebaut.';
+    else if (kind === 'rep' && owned) info.reason = `Du hast schon ${REPAIR_BOTS[pr.repBot].name} (besser).`;
     else if (kind === 'ship' && owned) { info.ok = true; info.cost = 0; info.reason = 'Schon gekauft: kostenlos wechseln.'; }
     else if (pr.level < level) info.reason = `Stufe ${level} nötig (du hast Stufe ${pr.level}).`;
     else if (price.currency && (pr[price.currency] || 0) < info.cost) info.reason = `Zu wenig ${CURRENCY_NAME[price.currency]}: ${fmt(info.cost)} nötig, du hast ${fmt(pr[price.currency] || 0)}.`;
     else info.ok = true;
     // Im Flug (Fernhandel): nur Verbrauchsgüter – der Shop zeigt den Grund schon vor dem Klick
-    if (info.ok && !this.docked && !['ammo', 'rocket', 'extra', 'mine'].includes(kind)) { info.ok = false; info.reason = 'Nur angedockt an einer Station kaufbar.'; }
+    if (info.ok && !this.docked && !CONSUMABLE.includes(kind)) { info.ok = false; info.reason = 'Nur angedockt an einer Station kaufbar.'; }
     // Warnung vor Fehlkäufen: Teil brächte nichts, weil alle Plätze belegt sind (es käme nur ins Lager)
     if (info.ok && (kind === 'laser' || kind === 'gen')) {
       const ship = SHIPS[pr.ship];
@@ -1703,7 +1791,7 @@ export class World {
     const pr = this.profile;
     if (!this.player.alive) return this._fail('Erst reparieren, dann einkaufen.');
     // Schiffe, Bauteile, Drohnen, Technik nur an der Station (sonst Vollheilung/Umbau mitten im Gefecht). Verbrauchsgüter bleiben unterwegs kaufbar.
-    if (!this.docked && !['ammo', 'rocket', 'extra', 'mine'].includes(kind)) return this._fail('Nur angedockt an einer Station möglich.');
+    if (!this.docked && !CONSUMABLE.includes(kind)) return this._fail('Nur angedockt an einer Station möglich.');
     const n = Math.max(1, Math.floor(amount) || 1);
     const info = this.shopInfo(kind, id, n);
     if (!info.ok) return this._fail(info.reason);
@@ -1746,7 +1834,14 @@ export class World {
       case 'drone': {
         const D = DRONE_SHOP[id];
         for (let i = 0; i < n; i++) addDrone(this, D.type, D.module);
-        text = `${n > 1 ? n + '× ' : ''}${D.name} gekauft (${pr.drones.length} von ${DRONE_RULES.max} Drohnenplätzen).`;
+        const next = buyableCount(pr) < DRONE_RULES.max ? ` Nächste: ${fmt(dronePrice(D.type, buyableCount(pr)))} ${CURRENCY_NAME[D.currency]}.` : ' Alle Plätze belegt.';
+        text = `${n > 1 ? n + '× ' : ''}${D.name} gekauft (${buyableCount(pr)} von ${DRONE_RULES.max} Drohnenplätzen).${next}`;
+        break;
+      }
+      case 'rep': {
+        pr.repBot = id;
+        const R = REPAIR_BOTS[id];
+        text = `Reparaturroboter ${R.name} eingebaut: repariert ${String(Math.round(R.rate * 1000) / 10).replace('.', ',')} % Hülle je Sekunde, sobald du ${C.COMBAT_TIMEOUT} s nicht kämpfst – überall.`;
         break;
       }
       case 'ship': {
@@ -1760,6 +1855,7 @@ export class World {
     }
     this._msg(text + (info.cost > 0 ? ` (−${fmt(info.cost)} ${CURRENCY_NAME[info.currency]})` : ''), 'info');
     this._refreshStats();
+    this._questSync();
     this._emitProfile();
     this.save();
     return { ok: true, reason: '' };
@@ -1918,10 +2014,13 @@ export class World {
     while (pr.level < MAX_LEVEL && pr.xp >= xpForLevel(pr.level + 1)) {
       pr.level += 1;
       up = true;
-      this.bus.emit('levelup', { level: pr.level });
-      this._msg(`Stufe ${pr.level} erreicht!`, 'info');
+      const lr = levelReward(pr.level);
+      pr.credits += lr.credits; pr.tritium += lr.tritium;
+      this.bus.emit('levelup', { level: pr.level, credits: lr.credits, tritium: lr.tritium });
+      this.bus.emit('loot', { credits: lr.credits, tritium: lr.tritium, xp: 0, honor: 0, ammo: null, ore: null, x: this.player.x, z: this.player.z });
+      this._msg(`Stufe ${pr.level} erreicht! Belohnung: ${fmt(lr.credits)} Credits, ${fmt(lr.tritium)} Tritium.`, 'info');
     }
-    if (up) this.save();
+    if (up) { this._questSync(); this._emitProfile(); this.save(); }
   }
 
   _startQuest() {
@@ -1935,16 +2034,59 @@ export class World {
     const voice = FACTIONS[pr.faction].stationVoice;
     this.bus.emit('message', { text: `${voice}: ${def.text}`, kind: 'radio', from: voice, title: def.title });
     this.bus.emit('quest', { quest: def, progress: q.progress, done: false });
+    this._questSync(); // Zustandsziele (Drohnen, Stufe, Besitz) können schon erfüllt sein
   }
 
-  _questProgress(type, target, amount) {
+  /** Stand eines Zustandsziels (Drohnen, Stufe, Besitz) – null = Ereignisziel (zählt über _questProgress). */
+  _questState(g) {
+    const pr = this.profile;
+    switch (g.type) {
+      case 'drones': return pr.drones.length;
+      case 'level': return pr.level;
+      case 'own': {
+        const t = g.target;
+        if (SHIPS[t]) return pr.owned.ships.includes(t) ? 1 : 0;
+        if (REPAIR_BOTS[t]) return REP_KEYS.indexOf(pr.repBot) >= REP_KEYS.indexOf(t) ? 1 : 0;
+        if (LASERS[t]) return countOf(pr.loadout.lasers, t) + countOf(pr.owned.lasers, t);
+        if (GENERATORS[t]) return countOf(pr.loadout.gens, t) + countOf(pr.owned.gens, t);
+        return 0;
+      }
+    }
+    return null;
+  }
+
+  /** Zustandsziele neu bewerten (nach Kauf, Verkauf, Aufstieg, neuer Drohne). */
+  _questSync() {
+    const q = this.quest;
+    if (!q) return;
+    const g = q.def.goal;
+    const v = this._questState(g);
+    if (v == null) return;
+    const prog = Math.max(0, Math.min(g.count, v));
+    if (prog === q.progress) { if (prog < g.count) return; }
+    q.progress = prog;
+    this.profile.quest.progress = prog;
+    const done = prog >= g.count;
+    this.bus.emit('quest', { quest: q.def, progress: prog, done });
+    if (done) this._completeQuest();
+  }
+
+  /** Ereignisziele: type 'kill'|'crate'|'ore'|'buy'|'jump'|'use'|'event'|'combo'. extra = Gegner (für rank). */
+  _questProgress(type, target, amount, extra = null) {
     const q = this.quest;
     if (!q) return;
     const g = q.def.goal;
     if (g.type !== type) return;
     if (type === 'jump') { if (target < g.target) return; }
     else if (g.target != null && g.target !== target) return;
-    q.progress = Math.min(g.count, q.progress + amount);
+    if (type === 'kill') {
+      if (g.rank && (!extra || extra.rank !== g.rank)) return;
+      if (g.sectorMin && (this.sector.index || 1) < g.sectorMin) return;
+    }
+    // Combo: höchste erreichte Kette zählt (nicht die Summe)
+    const prog = type === 'combo' ? Math.max(q.progress, Math.min(g.count, amount)) : Math.min(g.count, q.progress + amount);
+    if (prog === q.progress) return;
+    q.progress = prog;
     this.profile.quest.progress = q.progress;
     const done = q.progress >= g.count;
     this.bus.emit('quest', { quest: q.def, progress: q.progress, done });
@@ -1960,10 +2102,12 @@ export class World {
     if (r.tritium) { pr.tritium += r.tritium; parts.push(`${fmt(r.tritium)} Tritium`); }
     if (r.honor) { pr.honor += r.honor; parts.push(`${fmt(r.honor)} Ehre`); }
     if (r.xp) parts.push(`${fmt(r.xp)} Erfahrung`);
+    if (r.drone && DRONES[r.drone]) parts.push(`Drohne ${DRONES[r.drone].name}`);
     this.bus.emit('loot', { credits: r.credits || 0, tritium: r.tritium || 0, xp: r.xp || 0, honor: r.honor || 0, ammo: null, ore: null, x: this.player.x, z: this.player.z });
     this._msg(`Auftrag erledigt: ${def.title}. Belohnung: ${parts.join(', ')}.`, 'quest');
-    pr.quest = { index: pr.quest.index + 1, progress: 0 };
+    pr.quest = { index: pr.quest.index + 1, progress: 0, v: QUEST_VERSION };
     this.quest = null;
+    if (r.drone) grantDrone(this, r.drone, `Auftrag „${def.title}“`);
     if (r.xp) this._addXp(r.xp);
     if (pr.quest.index < QUESTS.length) this._questNextAt = this.time + 3;
     else this._msg('Alle Aufträge erledigt. Gut gemacht, Pilot!', 'quest');
@@ -2300,7 +2444,19 @@ function normalizeProfile(pr) {
   if (!AMMO[pr.selectedAmmo] || pr.selectedAmmo === 'SAL') pr.selectedAmmo = 'L1';
   pr.cargo = pr.cargo || {};
   for (const k in ORES) if (typeof pr.cargo[k] !== 'number') pr.cargo[k] = 0;
-  pr.quest = pr.quest || { index: 0, progress: 0 };
+  pr.quest = pr.quest || { index: 0, progress: 0, v: QUEST_VERSION };
+  if ((pr.quest.v || 1) < QUEST_VERSION) {
+    // alte Kette (q1–q7): erledigte Aufträge überspringen; wer schon im 2. Sektor war, setzt dort ein.
+    // Zustandsziele (Drohnen, Stufe, Schiff 2) erledigen sich beim Start von selbst.
+    const OLD = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
+    const done = new Set(OLD.slice(0, Math.max(0, Math.min(OLD.length, Math.floor(pr.quest.index) || 0))));
+    const skipTo = done.has('q5') ? Math.max(0, QUESTS.findIndex((q) => q.sector === 2)) : 0;
+    let i = 0;
+    while (i < QUESTS.length && (i < skipTo || done.has(QUESTS[i].id))) i++;
+    pr.quest = { index: i, progress: 0, v: QUEST_VERSION };
+  }
+  pr.quest.index = Math.max(0, Math.min(QUESTS.length, Math.floor(pr.quest.index) || 0));
+  if (!REPAIR_BOTS[pr.repBot]) pr.repBot = null;
   pr.stats = pr.stats || {};
   pr.stats.kills = pr.stats.kills || {};
   pr.stats.crates = pr.stats.crates || 0;

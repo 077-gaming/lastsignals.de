@@ -95,13 +95,17 @@ function questBlock(P, compact = false) {
 }
 function rewardText(q) {
   const r = q.reward || {};
-  return [r.credits ? `${fmt(r.credits)} CR` : '', r.xp ? `${fmt(r.xp)} EP` : '', r.tritium ? `${fmt(r.tritium)} TR` : '', r.honor ? `${fmt(r.honor)} EHRE` : ''].filter(Boolean).join(' · ');
+  return [r.credits ? `${fmt(r.credits)} CR` : '', r.xp ? `${fmt(r.xp)} EP` : '', r.tritium ? `${fmt(r.tritium)} TR` : '', r.honor ? `${fmt(r.honor)} EHRE` : '', r.drone ? `DROHNE ${String(r.drone).toUpperCase()}` : ''].filter(Boolean).join(' · ');
 }
+// Abschnitte der Auftragskette (QUESTS[].sector): Überschrift, wenn ein neuer Abschnitt beginnt
+const QUEST_PART = { 1: 'ABSCHNITT 1 · HEIMATSEKTOR · STUFE 1–3', 2: 'ABSCHNITT 2 · ZWEITER SEKTOR · STUFE 3–6', 3: 'ABSCHNITT 3 · DRITTER SEKTOR · STUFE 6–10' };
 function questList(P) {
   const qi = P.quest?.index || 0;
+  let part = 0;
   return `<div class="hb-list">${QUESTS.map((q, i) => {
     const st = i < qi ? 'ERLEDIGT' : i === qi ? 'AKTIV' : 'FOLGT';
-    return `<div class="hb-row${i === qi ? ' is-on' : i < qi ? ' is-done' : ' is-dim'}"><span class="ls-num">${pad2(i + 1)}</span><b>${esc(q.title.toUpperCase())}</b><span class="hb-row-d">${i === qi ? esc(q.text) : rewardText(q)}</span><span class="hb-chip">${st}</span></div>`;
+    const head = q.sector && q.sector !== part ? `<div class="hb-list-h ls-label">${QUEST_PART[(part = q.sector)] || 'ABSCHNITT ' + q.sector}</div>` : '';
+    return `${head}<div class="hb-row${i === qi ? ' is-on' : i < qi ? ' is-done' : ' is-dim'}"><span class="ls-num">${pad2(i + 1)}</span><b>${esc(q.title.toUpperCase())}</b><span class="hb-row-d">${i === qi ? esc(q.text) : rewardText(q)}</span><span class="hb-chip">${st}</span></div>`;
   }).join('')}</div>`;
 }
 

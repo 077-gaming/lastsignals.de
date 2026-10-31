@@ -10,7 +10,8 @@ globalThis.localStorage = {
 };
 
 const { World } = await import('./world.js');
-const { newProfile, QUESTS, ENEMIES, SECTOR_EVENTS, VARIANTS, ALPHA_PERKS, sectorsFor } = await import('../core/data.js');
+const { newProfile, QUESTS, ENEMIES, SECTOR_EVENTS, VARIANTS, ALPHA_PERKS, sectorsFor, levelReward } = await import('../core/data.js');
+const { headingOf } = await import('./combat.js');
 const { store } = await import('../core/store.js');
 const C = await import('./config.js');
 const { scaledReward } = await import('./events.js');
@@ -140,7 +141,12 @@ const lastQ1 = q1.length ? q1[q1.length - 1][1] : null;
 check('Quest 1 schreitet fort', !!lastQ1 && lastQ1.progress >= 1, lastQ1 ? `${lastQ1.progress}/${QUESTS[0].goal.count}${lastQ1.done ? ' erledigt' : ''}` : '');
 check('Schüsse mit Treffern und Fehlschüssen', bus.log.some(([t, s]) => t === 'shot' && s.hit) && bus.log.some(([t, s]) => t === 'shot' && !s.hit));
 check('Erfahrung gestiegen', profile.xp > 0, `${profile.xp} XP, Stufe ${profile.level}`);
-check('Munition verbraucht', profile.ammo.L1 < 5000, `L1 ${profile.ammo.L1}, SAL ${profile.ammo.SAL}, R1 ${profile.ammo.R1}`);
+{
+  // genaue Buchführung: Start 5.000 L1 + aus Kisten − je Schuss (Schiff und Drohnen) eins
+  const shotsL1 = bus.log.filter(([t, s]) => t === 'shot' && (s.from === 'player' || s.drone) && s.ammo === 'L1').length;
+  const gotL1 = bus.log.filter(([t, l]) => t === 'loot' && l.ammo && l.ammo.type === 'L1').reduce((a, [, l]) => a + l.ammo.amount, 0);
+  check('Munition verbraucht (je Schuss eine, Kisten-Munition dazu)', shotsL1 > 0 && profile.ammo.L1 === 5000 + gotL1 - shotsL1, `L1 ${profile.ammo.L1} = 5000 + ${gotL1} − ${shotsL1} Schüsse`);
+}
 check('Spielstand gespeichert', !!store.get('Testpilot'));
 check('px/pz gesetzt', Number.isFinite(world.player.px) && Number.isFinite(world.player.pz));
 check('Rechenzeit', A.totalMs < 2000, `${A.totalMs.toFixed(0)} ms für 7.200 Schritte, längster Schritt ${A.maxStepMs.toFixed(2)} ms`);
@@ -190,8 +196,8 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Shop: Ion Laser kaufen und einbauen', r.ok && pr.loadout.lasers.includes('ion'), `${lasersBefore} → ${pr.loadout.lasers.join(',')} · Lager: ${pr.owned.lasers.join(',')}`);
   const credits = pr.credits;
   w.buy('ammo', 'L1', 2);
-  check('Shop: L1 je 1.000 für 10 Credits', credits - pr.credits === 20);
-  pr.level = 5; pr.credits += 60000;
+  check('Shop: L1 je 1.000 für 500 Credits (Wirtschaft v2)', credits - pr.credits === 1000, `${credits - pr.credits} Credits für 2 Packungen`);
+  pr.level = 5; pr.credits += 1000000;
   const rs = w.buy('ship', 's2');
   check('Shop: Schiff 2 ab Stufe 5, Laserplätze aufgefüllt', rs.ok && pr.loadout.lasers.length === 4 && w.player.hpMax === 16000, pr.loadout.lasers.join(','));
   check('Schiffswechsel heilt nicht kostenlos (Anteil bleibt)', w.player.hp <= w.player.hpMax && w.player.hp > 0);
@@ -421,11 +427,15 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
     for (let i = 0; i < 60 * 12; i++) w.update(1 / 60);
     check('Konvoi: Piraten greifen den Frachter an', f.hp + f.shield < f.hpMax + f.shieldMax && bus.log.some(([t, d]) => t === 'damage' && d.id === f.id), `${Math.round(f.hp)}/${f.hpMax} Hülle, ${Math.round(f.shield)} Schild`);
     const want = scaledReward(w, SECTOR_EVENTS.convoy.reward);
-    const c0 = pr.credits, n0 = bus.log.length;
+    const c0 = pr.credits, n0 = bus.log.length, lv0 = pr.level, q0 = pr.quest.index;
     for (const e of att) if (e.alive) w._hitEnemy(e, 1e6, false, false, 1, 0, e.x, e.z);
     w.update(1 / 60);
+    // Stufenbelohnungen und erledigte Aufträge (Wirtschaft v2) herausrechnen
+    let extra = 0;
+    for (let l = lv0 + 1; l <= pr.level; l++) extra += levelReward(l).credits;
+    for (let i = q0; i < pr.quest.index; i++) extra += QUESTS[i].reward.credits || 0;
     const rew = bus.log.slice(n0).find(([t, l]) => t === 'loot' && l.credits === want.credits && l.tritium === want.tritium && l.xp === want.xp);
-    check('Konvoi gerettet: Belohnung genau wie angekündigt', !!rew && pr.credits - c0 === want.credits && bus.log.some(([t, m]) => t === 'message' && m.kind === 'radio' && m.text.includes(`${fmt(want.credits)} Credits`)), `${want.credits} Credits, ${want.tritium} Tritium, ${want.xp} XP, ${want.honor} Ehre`);
+    check('Konvoi gerettet: Belohnung genau wie angekündigt', !!rew && pr.credits - c0 - extra === want.credits && bus.log.some(([t, m]) => t === 'message' && m.kind === 'radio' && m.text.includes(`${fmt(want.credits)} Credits`)), `${want.credits} Credits, ${want.tritium} Tritium, ${want.xp} XP, ${want.honor} Ehre`);
     for (let i = 0; i < 60 * 22; i++) w.update(1 / 60);
     check('Konvoi: Frachter fliegt weg, Ereignis vorbei', !w.event && !w.entities.has(f.id));
   }
@@ -896,19 +906,19 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
     const shield0 = p.shieldMax;
     p.hp -= p.hpMax * 0.5; run(w, 1 / 60);
     const hpAfter = pr.drones[1].hp;
-    for (let i = 0; i < 4 && !pr.drones[1].broken; i++) { p.hp = p.hpMax; w._droneHp = p.hpMax; p.hp -= p.hpMax * 0.9; run(w, 1 / 60); }
+    for (let i = 0; i < 12 && !pr.drones[1].broken; i++) { p.hp = p.hpMax; w._droneHp = p.hpMax; p.hp -= p.hpMax * 0.9; run(w, 1 / 60); }
     const broke = pr.drones[1].broken && pr.drones[1].level === 1 && p.shieldMax === shield0 - DRONES.pioneer.shield[1];
-    check('Drohnen: Treffer am Schiff verschleißen sie, kaputt = Stufe −1 und kein Schild', Math.abs(hpAfter - 80) < 0.5 && broke, `Zustand nach 50 % Hülle ${hpAfter.toFixed(1)} %, Schild ${shield0} → ${p.shieldMax}`);
+    check('Drohnen: Treffer am Schiff verschleißen sie, kaputt = Stufe −1 und kein Schild', Math.abs(hpAfter - (100 - 0.5 * DRONE_RULES.wear)) < 0.5 && broke, `Zustand nach 50 % Hülle ${hpAfter.toFixed(1)} %, Schild ${shield0} → ${p.shieldMax}`);
     const cost = w.droneInfo(pr.drones[1]).repair;
     const r0 = w.repairDrone(1);
     w.docked = true; pr.credits = 50000;
     const r1 = w.repairDrone('all');
-    check('Drohnen: Reparatur nur in der Station, kostet Credits, wieder einsatzbereit', !r0.ok && r1.ok && !pr.drones[1].broken && pr.drones[1].hp === 100 && pr.credits < 50000 && cost === 4800,
+    check('Drohnen: Reparatur nur in der Station, kostet Credits, wieder einsatzbereit', !r0.ok && r1.ok && !pr.drones[1].broken && pr.drones[1].hp === 100 && pr.credits < 50000 && cost === Math.ceil(100 * DRONES.pioneer.price * DRONE_RULES.repair),
       `Kosten ${r1.credits} Credits (kaputte Stufe-1-Drohne ${cost})`);
   }
   {
     const { pr, w } = mk('DrohnenShop', 44);
-    pr.credits = 200000;
+    pr.credits = 1000000;
     w.docked = true;
     const b = w.buy('drone', 'pioneer-laser', 6);
     const full = w.buy('drone', 'pioneer-shield', 1);
@@ -967,6 +977,180 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   w.player.hp -= 50; w.update(1 / 60);
   const after = w.jump ? w.jump.t : -1;
   check('Sprung: Hüllentreffer wirft das Aufladen zurück', before > 0.5 && after < before, `vorher ${before.toFixed(2)} s, nachher ${after.toFixed(2)} s`);
+}
+
+
+// ───────────── Kampf mit Können (Schritt 24): Entfernung, Querbewegung, Feuerbogen, kritische Treffer ─────────────
+{
+  const C = await import('./config.js');
+  const pr = newProfile('Schuetze', 'europa');
+  const bus = makeBus();
+  const w = new World(pr, bus, { seed: 91 });
+  w.update(1 / 60);
+  const S = { x: 0, z: 0, vx: 0, vz: 0 };
+  const T = (x, z, vx = 0, vz = 0) => ({ x, z, vx, vz });
+  const near = w.hitChance(S, 650, T(30, 0)), mid = w.hitChance(S, 650, T(260, 0)), far = w.hitChance(S, 650, T(650, 0));
+  const cross = w.hitChance(S, 650, T(260, 0, 0, 320)), along = w.hitChance(S, 650, T(260, 0, 320, 0));
+  const together = w.hitChance({ x: 0, z: 0, vx: 0, vz: 300 }, 650, T(260, 0, 0, 300)); // fliegen gemeinsam: keine Querbewegung
+  check('Können: Trefferchance sinkt mit Entfernung und Querbewegung (nicht beim Mitfliegen)',
+    near > mid && Math.abs(mid - C.HIT_CHANCE) < 1e-9 && Math.abs(far - (C.HIT_CHANCE - C.HIT_RANGE_LOSS)) < 1e-9 && Math.abs(cross - (C.HIT_CHANCE - C.HIT_CROSS_LOSS)) < 1e-9 && Math.abs(along - C.HIT_CHANCE) < 1e-9 && Math.abs(together - C.HIT_CHANCE) < 1e-9,
+    `nah ${near.toFixed(2)} · Mitte ${mid.toFixed(2)} · Grenze ${far.toFixed(2)} · quer ${cross.toFixed(2)} · mitfliegend ${together.toFixed(2)}`);
+  // Feuerbogen: Gegner mit dem Heck zum Spieler schießt nicht und behält seine Abklingzeit
+  const e = w.enemies.find((x) => x.alive);
+  const p = w.player;
+  p.x = 0; p.z = 0; e.x = 300; e.z = 0; w._invulnUntil = 0; w._updateZones();
+  const shots0 = bus.log.filter(([t, s2]) => t === 'shot' && s2.from === e.id).length;
+  e.rot = headingOf(1, 0);           // schaut vom Spieler weg
+  const away = w.enemyFire(e, p);
+  e.rot = headingOf(-1, 0);          // schaut zum Spieler
+  const facing = w.enemyFire(e, p);
+  const shots1 = bus.log.filter(([t, s2]) => t === 'shot' && s2.from === e.id).length;
+  check('Können: Gegner feuern nur im Feuerbogen (Bug zum Ziel)', away === false && facing !== false && shots1 === shots0 + 1, `weggedreht ${away}, zugewandt ${facing}`);
+  // kritische Treffer der Schiffslaser: um 8 %, 1,5-facher Schaden
+  let crits = 0, n = 0;
+  const off = bus.on('damage', (d) => { if (d.id === 'probe') { n++; if (d.crit) crits++; } });
+  const dummy = { id: 'probe', kind: 'enemy', alive: true, x: 200, z: 0, vx: 0, vz: 0, radius: 20, hp: 1e9, hpMax: 1e9, shield: 0, shieldMax: 0, def: ENEMIES.raider, type: 'raider', rank: 'normal', lootMult: 1, jinkT: 0 };
+  w.entities.set('probe', dummy);
+  for (let i = 0; i < 4000; i++) { p.x = 0; p.z = 0; w._fireLaser('pulse', dummy, 'L1', 1, false, w.rng.next() < C.CRIT_CHANCE, 0); }
+  off(); w.entities.delete('probe');
+  const share = crits / Math.max(1, n);
+  check('Können: kritische Treffer um 8 % (1,5-facher Schaden)', share > 0.05 && share < 0.11 && C.CRIT_MULT === 1.5, `${(share * 100).toFixed(1)} % von ${n} Treffern`);
+}
+
+// ───────────── Wirtschaft v2 (31.10.2026): Drohnenpreise, Cassini/Juno, Voyager, REP, Aufträge, Notration ─────────────
+{
+  const D = await import('../core/data.js');
+  const mk = (name, seed) => { const pr = newProfile(name, 'europa'); const w = new World(pr, makeBus(), { seed }); w.update(1 / 60); return { pr, w }; };
+  {
+    const { pr, w } = mk('Staffel', 81);
+    w.docked = true; pr.credits = 1000000;
+    const prices = [];
+    for (let i = 0; i < 6; i++) { prices.push(w.priceOf('drone', 'pioneer-laser').cost); w.buy('drone', 'pioneer-laser', 1); }
+    const ninth = w.buy('drone', 'pioneer-laser', 1);
+    const spent = 1000000 - pr.credits;
+    const want = D.PIONEER_PRICES.slice(2);
+    check(`Drohnen: Pioneer-Preis steigt je Drohne (3.–8. zusammen ${fmt(want.reduce((a, b) => a + b, 0))}), 9. kaufbare abgelehnt`,
+      prices.join(',') === want.join(',') && spent === want.reduce((a, b) => a + b, 0) && want.every((v, i) => i === 0 || v >= want[i - 1]) && !ninth.ok && pr.drones.length === 8, `${prices.join(' / ')} · ${fmt(spent)} Credits`);
+  }
+  {
+    const { pr, w } = mk('Doppelkauf', 82);
+    w.docked = true; pr.credits = 1000000;
+    const info = w.shopInfo('drone', 'pioneer-laser', 2);
+    check('Drohnen: zwei auf einmal kosten die Summe der nächsten zwei Preise', info.cost === D.PIONEER_PRICES[2] + D.PIONEER_PRICES[3], fmt(info.cost));
+  }
+  {
+    const { pr, w } = mk('Cassini', 83);
+    w.docked = true; pr.credits = 1000000;
+    w.buy('drone', 'pioneer-laser', 6);
+    const { grantDrone } = await import('./drones.js');
+    const c = grantDrone(w, 'cassini', 'Test');
+    const j = grantDrone(w, 'juno', 'Test');
+    const again = grantDrone(w, 'cassini', 'Test');
+    const sell = w.sellDrone(pr.drones.findIndex((d) => d.type === 'cassini'));
+    const buy9 = w.buy('drone', 'pioneer-laser', 1);
+    check('Drohnen: Cassini (Platz 9) und Juno (Platz 10) zusätzlich zu 8, nicht verkäuflich, doppelt = Credits',
+      c && j && !again && pr.drones.length === 10 && pr.drones[8].type === 'cassini' && pr.drones[9].type === 'juno' && !sell.ok && !buy9.ok && w._droneCd.length >= 10,
+      `${pr.drones.length} Drohnen: ${pr.drones.map((d) => d.type[0]).join('')}`);
+    for (let i = 0; i < 60; i++) w.update(1 / 60);
+    check('Drohnen: 10 Drohnen laufen ohne Fehler in der Simulation', pr.drones.length === 10);
+  }
+  {
+    const { pr, w } = mk('Voyager', 84);
+    w.docked = true; pr.tritium = 5000;
+    const lock = w.shopInfo('drone', 'voyager-laser');
+    pr.level = 10;
+    const ok = w.shopInfo('drone', 'voyager-laser');
+    check('Drohnen: Voyager ab Stufe 10 für 1.500 Tritium', !lock.ok && /Stufe 10/.test(lock.reason) && ok.ok && ok.cost === 1500 && ok.currency === 'tritium', lock.reason);
+  }
+  {
+    const { pr, w } = mk('Roboter', 85);
+    w.docked = true; pr.credits = 200000;
+    const b1 = w.buy('rep', 'rep1');                 // REP-1 ab Stufe 1
+    const early = w.buy('rep', 'rep2');              // REP-2 erst ab Stufe 6
+    pr.level = D.REPAIR_BOTS.rep2.level;
+    const b2 = w.buy('rep', 'rep2');
+    const back = w.shopInfo('rep', 'rep1');
+    w.docked = false;
+    // weit weg von der Station, nicht im Kampf, keine Gegner: REP-2 repariert überall
+    for (const e of w.enemies) { e.alive = false; e.respawnAt = 1e9; w.entities.delete(e.id); }
+    w.player.x = 1500; w.player.z = 1500; w._lastCombat = -999; w.update(1 / 60);
+    const p = w.player; p.hp = p.hpMax * 0.5;
+    const h0 = p.hp;
+    for (let i = 0; i < 60 * 5; i++) { w.update(1 / 60); if (!w.inSafeZone) w._lastCombat = -999; }
+    const gain = (p.hp - h0) / p.hpMax;
+    w._lastCombat = w.time; const h1 = p.hp;
+    for (let i = 0; i < 60; i++) w.update(1 / 60);
+    const want = 5 * D.REPAIR_BOTS.rep2.rate;
+    check('REP: Reparaturroboter ab Stufe, besserer ersetzt, repariert überall außerhalb des Kampfes',
+      b1.ok && !early.ok && b2.ok && pr.repBot === 'rep2' && !back.ok && Math.abs(gain - want) < 0.01 && p.hp - h1 < 1, `REP-2: +${(gain * 100).toFixed(1)} % in 5 s, im Kampf +${(p.hp - h1).toFixed(1)}`);
+  }
+  {
+    // Aufträge: Zustandsziele erledigen sich beim Start, Ereignisziele zählen
+    const { pr, w } = mk('Auftrag', 86);
+    const iDr = QUESTS.findIndex((q) => q.goal.type === 'drones' && q.goal.count === 3);
+    pr.quest = { index: iDr, progress: 0, v: D.QUEST_VERSION };
+    w.docked = true; pr.credits = 100000;
+    w.buy('drone', 'pioneer-laser', 1);   // jetzt 3 Drohnen
+    w.docked = false;
+    w._startQuest();
+    const doneDr = pr.quest.index === iDr + 1;
+    const iCombo = QUESTS.findIndex((q) => q.goal.type === 'combo');
+    pr.quest = { index: iCombo, progress: 0, v: D.QUEST_VERSION }; w._startQuest();
+    w._questProgress('combo', null, 2); const c2 = w.quest && w.quest.progress;
+    w._questProgress('combo', null, 2); const c2b = w.quest && w.quest.progress;
+    w._questProgress('combo', null, 3);
+    const doneCombo = pr.quest.index === iCombo + 1;
+    const iEv = QUESTS.findIndex((q) => q.goal.type === 'event');
+    pr.quest = { index: iEv, progress: 0, v: D.QUEST_VERSION }; w._startQuest();
+    w._questProgress('event', 'nest', 1); const wrong = pr.quest.index === iEv;
+    w._questProgress('event', QUESTS[iEv].goal.target, 1);
+    const doneEv = pr.quest.index === iEv + 1;
+    const iUse = QUESTS.findIndex((q) => q.goal.type === 'use');
+    pr.quest = { index: iUse, progress: 0, v: D.QUEST_VERSION }; w._startQuest();
+    w.player.x = 2000; w.player.z = 2000; w.update(1 / 60);
+    const used = w.useExtra('EMP');
+    check('Aufträge: Drohnen-Ziel erledigt sich, Combo zählt die höchste Kette, Ereignis und Extra-Einsatz zählen',
+      doneDr && c2 === 2 && c2b === 2 && doneCombo && wrong && doneEv && used && pr.quest.index === iUse + 1,
+      `Combo ${c2}/${c2b}, EMP ${used}`);
+    const iAl = QUESTS.findIndex((q) => q.goal.rank === 'alpha');
+    pr.quest = { index: iAl, progress: 0, v: D.QUEST_VERSION }; w._startQuest();
+    w._questProgress('kill', 'jackal', 1, { rank: 'alpha' }); const sec1 = pr.quest.index === iAl; // Sektor 1 zählt nicht
+    w.sector.index = 3;
+    w._questProgress('kill', 'vulture', 1, { rank: 'elite' }); const elite = pr.quest.index === iAl;
+    const n0 = pr.drones.length;
+    w._questProgress('kill', 'vulture', 1, { rank: 'alpha' });
+    check('Aufträge: Alpha in Sektor 3 → Cassini-Drohne als Belohnung', sec1 && elite && pr.quest.index === iAl + 1 && pr.drones.length === n0 + 1 && pr.drones.some((d) => d.type === 'cassini'), `${pr.drones.length} Drohnen`);
+  }
+  {
+    // alte Spielstände: alte Kette mit 7 Aufträgen
+    const a = newProfile('Alt1', 'europa'); a.quest = { index: 3, progress: 2 };
+    const b = newProfile('Alt2', 'europa'); b.quest = { index: 7, progress: 0 };
+    new World(a, makeBus(), { seed: 1 }); new World(b, makeBus(), { seed: 2 });
+    const iQ4 = QUESTS.findIndex((q) => q.id === 'q4'), iQ16 = QUESTS.findIndex((q) => q.sector === 2 && q.id !== 'q6');
+    check('Aufträge: alte Spielstände setzen an der richtigen Stelle der neuen Kette ein', a.quest.index === iQ4 && b.quest.index === iQ16 && a.quest.v === D.QUEST_VERSION,
+      `alt 3 → ${QUESTS[a.quest.index].id}, alt 7 → ${QUESTS[b.quest.index].id}`);
+    const sum = QUESTS.reduce((t, q) => t + (q.reward.xp || 0), 0);
+    check('Aufträge: Kette mit über 30 Aufträgen, eindeutige IDs, gültige Ziele', QUESTS.length >= 30 && new Set(QUESTS.map((q) => q.id)).size === QUESTS.length &&
+      QUESTS.every((q) => ['kill', 'crate', 'ore', 'buy', 'jump', 'use', 'event', 'combo', 'drones', 'level', 'own'].includes(q.goal.type) && q.goal.count > 0), `${QUESTS.length} Aufträge, ${fmt(sum)} EP`);
+  }
+  {
+    const { pr, w } = mk('Aufstieg', 87);
+    const c0 = pr.credits, t0 = pr.tritium;
+    w._addXp(D.xpForLevel(3) - pr.xp);
+    check('Stufenbelohnung: Credits und Tritium je Aufstieg', pr.level === 3 && pr.credits - c0 === levelReward(2).credits + levelReward(3).credits && pr.tritium - t0 === levelReward(2).tritium + levelReward(3).tritium,
+      `+${fmt(pr.credits - c0)} Credits, +${fmt(pr.tritium - t0)} Tritium`);
+  }
+  {
+    const { pr, w } = mk('Pleite', 88);
+    pr.credits = 0; for (const k in pr.ammo) pr.ammo[k] = 0;
+    const key = w._ammoForShot();
+    const again = (pr.ammo.L1 = 0, w._ammoForShot());
+    check('Notration: ohne Munition und Geld 1.000 L1 gratis, höchstens einmal je Minute', key === 'L1' && again === null, `L1 ${pr.ammo.L1}`);
+    pr.level = 12; pr.credits = 300;
+    w._playerDie();
+    const ok = w.repair('station');
+    check('Notreparatur: Station nimmt, was in der Kasse ist (nie festgefahren)', ok && pr.credits === 0 && w.player.alive);
+  }
 }
 
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');

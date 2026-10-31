@@ -140,17 +140,17 @@ export const SECTOR_EVENTS = {
   convoy: {
     title: 'Konvoi unter Beschuss', weight: 1, duration: 240, attackers: [4, 6],
     freighter: { name: 'Frachter Kestrel', hp: 12000, shield: 4000, radius: 60, speed: 18, leaveSpeed: 140 },
-    reward: { credits: 8000, tritium: 30, xp: 4000, honor: 25 },
+    reward: { credits: 4000, tritium: 30, xp: 4000, honor: 25 },
   },
   drift: {
     title: 'Treibgut-Feld', weight: 1, duration: 150, crates: [8, 12],
-    reward: { credits: 3000, tritium: 10, xp: 1500, honor: 5 }, // Bonus, wenn alle Crates eingesammelt sind
+    reward: { credits: 1500, tritium: 10, xp: 1500, honor: 5 }, // Bonus, wenn alle Frachtkisten eingesammelt sind
   },
   nest: {
     title: 'Schwarm-Nest', weight: 1, duration: 420, interval: 8, maxLarvae: 6, startLarvae: 3,
     // je Sektorindex 1, 2, 3+: Leben/Schild des Nests × Faktor, höchstens so viele Larven gleichzeitig
     hpScale: [0.4, 0.7, 1], larvaeBySector: [4, 5, 6],
-    reward: { credits: 4000, tritium: 20, xp: 3000, honor: 20 }, // zusätzlich zur Beute des Nests
+    reward: { credits: 2000, tritium: 20, xp: 3000, honor: 20 }, // zusätzlich zur Beute des Nests
   },
 };
 export const EVENT_FIRST = [60, 90];       // erstes Ereignis nach so vielen Sekunden im Sektor
@@ -158,7 +158,7 @@ export const EVENT_INTERVAL = [150, 240];  // Pause zwischen zwei Ereignissen
 
 // Treibgut-Crates (Ereignis): keine Fallen, bessere Ausbeute.
 export const DRIFT_CRATE_TABLE = [
-  { chance: 0.5, credits: [800, 2500] },
+  { chance: 0.5, credits: [400, 1200] },
   { chance: 0.25, tritium: [5, 15] },
   { chance: 0.15, ammo: ['L2', 100, 300] },
   { chance: 0.1, ammo: ['L3', 50, 150] },
@@ -182,35 +182,35 @@ export const ENEMIES = {
   raider: {
     name: 'Raider', group: 'pirate', behavior: 'aggressive', pack: true, level: 1,
     hp: 1100, shield: 550, speed: 210, damage: 38, range: 420, fireRate: 1.0, aggroRange: 600, radius: 18,
-    loot: { credits: 400, tritium: 1, xp: 400, honor: 2 }, color: 0x7a7f88, accent: 0xff5a3a,
+    loot: { credits: 200, tritium: 1, xp: 400, honor: 2 }, color: 0x7a7f88, accent: 0xff5a3a,
     habitat: { route: 0.55, debris: 0.15, open: 0.3 }, explode: 1.2,
     ai: { style: 'pack', orbit: 0.75, special: 'volley', specialCd: [7, 11], retreatHp: 0.25, cover: false, call: true, guard: false, dodge: 0.5 },
   },
   larva: {
     name: 'Larva', group: 'swarm', behavior: 'territorial', pack: true, level: 1,
     hp: 450, shield: 0, speed: 170, damage: 18, range: 140, fireRate: 1.0, aggroRange: 300, radius: 12,
-    loot: { credits: 300, tritium: 1, xp: 300, honor: 1 }, color: 0x6fae4a, accent: 0xc8ff6a,
+    loot: { credits: 150, tritium: 1, xp: 300, honor: 1 }, color: 0x6fae4a, accent: 0xc8ff6a,
     habitat: { asteroids: 0.7, open: 0.3 }, explode: 0.9,
     ai: { style: 'swarm', orbit: 0.8, special: 'leap', specialCd: [6, 10], retreatHp: 0, cover: false, call: true, guard: false, dodge: 0.25 },
   },
   jackal: {
     name: 'Jackal', group: 'pirate', behavior: 'opportunist', pack: true, level: 4,
     hp: 2600, shield: 1300, speed: 240, damage: 72, range: 450, fireRate: 1.0, aggroRange: 650, radius: 22,
-    loot: { credits: 800, tritium: 2, xp: 800, honor: 4 }, color: 0x5a5148, accent: 0xffa23a,
+    loot: { credits: 400, tritium: 2, xp: 800, honor: 4 }, color: 0x5a5148, accent: 0xffa23a,
     habitat: { route: 0.55, debris: 0.15, open: 0.3 }, explode: 1.8,
     ai: { style: 'ambush', orbit: 0.7, special: 'ram', specialCd: [6, 9], retreatHp: 0.3, cover: false, call: true, guard: false, dodge: 0.7 },
   },
   spiker: {
     name: 'Spiker', group: 'swarm', behavior: 'aggressive', pack: false, level: 7,
     hp: 3600, shield: 1800, speed: 150, damage: 95, range: 650, fireRate: 0.8, aggroRange: 750, radius: 26,
-    loot: { credits: 1200, tritium: 3, xp: 1200, honor: 6 }, color: 0x4f7d3a, accent: 0xe6ff7a,
+    loot: { credits: 600, tritium: 3, xp: 1200, honor: 6 }, color: 0x4f7d3a, accent: 0xe6ff7a,
     habitat: { asteroids: 0.65, open: 0.35 }, explode: 2.2,
     ai: { style: 'kite', orbit: 0.85, special: 'acid', specialCd: [8, 12], retreatHp: 0.4, cover: true, call: false, guard: false, dodge: 0.3 },
   },
   vulture: {
     name: 'Vulture', group: 'pirate', behavior: 'thief', pack: false, level: 8,
     hp: 4400, shield: 2200, speed: 260, damage: 80, range: 420, fireRate: 1.0, aggroRange: 500, radius: 24,
-    loot: { credits: 1600, tritium: 4, xp: 1600, honor: 8 }, color: 0x3e3a3a, accent: 0xff3a6a,
+    loot: { credits: 800, tritium: 4, xp: 1600, honor: 8 }, color: 0x3e3a3a, accent: 0xff3a6a,
     habitat: { route: 0.4, debris: 0.3, open: 0.3 }, explode: 2.4,
     ai: { style: 'thief', orbit: 0.75, special: 'volley', specialCd: [8, 12], retreatHp: 0.35, cover: true, call: false, guard: true, dodge: 0.4 },
   },
@@ -218,7 +218,7 @@ export const ENEMIES = {
   nest: {
     name: 'Swarm Nest', group: 'swarm', behavior: 'nest', pack: false, eventOnly: true, level: 3,
     hp: 12000, shield: 6000, speed: 0, damage: 0, range: 0, fireRate: 0, aggroRange: 0, radius: 55,
-    loot: { credits: 5000, tritium: 25, xp: 5000, honor: 25 }, color: 0x3f6a2c, accent: 0xd8ff5a,
+    loot: { credits: 2500, tritium: 25, xp: 5000, honor: 25 }, color: 0x3f6a2c, accent: 0xd8ff5a,
     habitat: { asteroids: 1 }, explode: 4,
     ai: { style: 'nest', orbit: 0, special: 'acid', specialCd: [9, 13], retreatHp: 0, cover: false, call: false, guard: false, dodge: 0, spDamage: 45, spRange: 900 },
   },
@@ -247,6 +247,7 @@ export const SPECIALS = {
 // Ehre und Credits dieses Abschusses (Credits-Bonus liegt im Wrack).
 export const REWARD_SCALE = {
   sector: [1, 1.25, 1.55],
+  creditSector: [1, 1.15, 1.25],   // Credits je Sektor (Wirtschaft v2), Erfahrung und Ehre nach sector
   freeLevels: 1, perLevel: 0.22, minXp: 0.1, minHonor: 0.1, minCredits: 0.4, creditsPerLevel: 0.1,
   bonusPerLevel: 0.08, bonusMax: 0.4,
   rankLevel: { normal: 0, elite: 2, alpha: 5 },
@@ -257,20 +258,21 @@ export const COMBO = { window: 6, step: 0.15, max: 0.6 };
 export const LASERS = {
   pulse: { name: 'Pulse Laser', damage: 70, price: 2500, currency: 'credits', color: 0xff4a4a },
   ion: { name: 'Ion Laser', damage: 100, price: 15000, currency: 'credits', color: 0x4ab8ff },
-  plasma: { name: 'Plasma Laser', damage: 150, price: 10000, currency: 'tritium', color: 0x7aff8a },
+  plasma: { name: 'Plasma Laser', damage: 150, price: 2500, currency: 'tritium', color: 0x7aff8a },
   gamma: { name: 'Gamma Laser', damage: 200, price: null, currency: null, color: 0xff3aff, dropOnly: true },
 };
 
 // Munition: mult = Schadensfaktor. SAB saugt Schild ab. SAL hat eine eigene Nachladezeit.
 export const AMMO = {
-  L1: { name: 'L1', mult: 1, price: 10, currency: 'credits', pack: 1000, key: '1' },
-  L2: { name: 'L2', mult: 2, price: 1, currency: 'credits', pack: 1000, key: '2', priceNote: '1.000 Credits je 1.000' },
+  L1: { name: 'L1', mult: 1, price: 500, currency: 'credits', pack: 1000, key: '1' },
+  L2: { name: 'L2', mult: 2, price: 3, currency: 'credits', pack: 1000, key: '2', priceNote: '3.000 Credits je 1.000' },
   L3: { name: 'L3', mult: 3, price: 0.5, currency: 'tritium', pack: 500, key: '3' },
   L4: { name: 'L4', mult: 4, price: 2, currency: 'tritium', pack: 250, key: '4' },
   SAB: { name: 'SAB', mult: 2, shieldOnly: true, drainReturn: 0.5, price: 1, currency: 'tritium', pack: 500, key: '5' },
   SAL: { name: 'SAL', mult: 6, ownCooldown: 4.0, price: 2, currency: 'tritium', pack: 100, key: '6' },
 };
-// L1 kostet 10 Credits pro 1.000 Schuss: billigste Munition, praktisch immer da.
+// Wirtschaft v2 (31.10.2026, Vorbild DarkOrbit 2015): Munition ist die laufende Geldsenke. L1 0,5 Credits je Schuss
+// (vorher praktisch gratis), L2 3 Credits. Tritium-Munition unverändert.
 
 // Raketen (Vault Nr. 11): R1 und R2 für Credits, R3 für Tritium. Ein gemeinsamer Werfer: nach dem Abschuss lädt er
 // cooldown s (je Sorte), Taste R feuert die zuletzt gewählte Sorte. price = je Stück.
@@ -366,14 +368,42 @@ export const KIT_VERSION = 1;
 //   laser[n]  Schaden je Schuss auf Stufe n (ein Schuss je Sekunde, × Faktor der gewählten Munition, verbraucht 1 Schuss)
 //   shield[n] Schild auf Stufe n (zählt zum Schiffsschild)
 export const DRONES = {
+  // Pioneer: Credits, Preis steigt je Drohne (DarkOrbit-Prinzip, siehe PIONEER_PRICES) – die 8. ist ein Langzeitziel
   pioneer: {
     name: 'Pioneer', price: 12000, currency: 'credits', level: 1,
     laser: [45, 50, 55, 60, 66, 72, 78, 85, 92, 100],
     shield: [800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700],
   },
+  // Voyager: Tritium, ab Stufe 10, stärker – ersetzt nach und nach die Pioneer (Ziel nach Stufe 10)
+  voyager: {
+    name: 'Voyager', price: 1500, currency: 'tritium', level: 10,
+    laser: [70, 78, 86, 94, 103, 112, 122, 132, 143, 155],
+    shield: [1200, 1350, 1500, 1650, 1800, 1950, 2100, 2300, 2450, 2600],
+  },
+  // Cassini (Platz 9) und Juno (Platz 10): nicht kaufbar, nur erspielbar (Auftrag „Signal am Tor“ bzw. seltene Alpha-Beute)
+  cassini: {
+    name: 'Cassini', price: 30000, currency: 'credits', level: 10, earned: true, slot: 9,
+    laser: [90, 100, 110, 121, 132, 144, 156, 169, 183, 198],
+    shield: [1400, 1550, 1700, 1850, 2000, 2200, 2400, 2600, 2800, 3000],
+  },
+  juno: {
+    name: 'Juno', price: 30000, currency: 'credits', level: 10, earned: true, slot: 10,
+    laser: [80, 88, 97, 106, 116, 126, 137, 148, 160, 172],
+    shield: [1600, 1780, 1960, 2150, 2350, 2550, 2750, 2980, 3200, 3450],
+  },
 };
+// Preis der n-ten Pioneer-Drohne (Index = Anzahl Drohnen, die man schon hat). Die ersten zwei gibt es zum Start.
+// 3.–8. Drohne zusammen 335.000 Credits: die ersten günstig (Einstieg), die letzten sind Ziele bis Stufe 9–10.
+export const PIONEER_PRICES = [8000, 8000, 8000, 12000, 20000, 45000, 90000, 160000];
+export function dronePrice(type, owned) {
+  const d = DRONES[type];
+  if (!d) return 0;
+  if (type === 'pioneer') return PIONEER_PRICES[Math.min(PIONEER_PRICES.length - 1, Math.max(0, owned))];
+  return d.price;
+}
 export const DRONE_RULES = {
-  max: 8,                 // normale Drohnenplätze (Cassini/Juno später Platz 9/10)
+  max: 8,                 // normale Drohnenplätze (kaufbar)
+  maxEarned: 10,          // mit Cassini (Platz 9) und Juno (Platz 10), beide nur erspielbar
   maxLevel: 10,
   // Drohnen-Erfahrung insgesamt für Stufe 1 … 10 (jede Drohne einzeln)
   xp: [0, 600, 1500, 3000, 5000, 8000, 12000, 17000, 24000, 33000],
@@ -381,11 +411,12 @@ export const DRONE_RULES = {
   // Verkauf: Anteil am Kaufpreis je Stufe 1 … 10 (ab Stufe 4 Gewinn); kaputte Drohnen minus Reparaturkosten
   sell: [0.5, 0.75, 1.0, 1.25, 1.5, 1.8, 2.1, 2.4, 2.7, 3.0],
   // Verschleiß: Zustand 0–100 %. Hüllenschaden am Schiff kostet jede Drohne wear × Anteil der Hülle (100 % Hülle
-  // verloren = −40 %), ein Abschuss des Schiffs zusätzlich −30 %. Bei 0 % ist die Drohne kaputt: fliegt nicht mehr
+  // verloren = −15 %; vorher −40 %, das fraß im Bot-Test mehr Credits als die Abschüsse brachten), ein Abschuss des
+  // Schiffs zusätzlich −30 %. Bei 0 % ist die Drohne kaputt: fliegt nicht mehr
   // mit, verliert eine Stufe (Erfahrung auf den Anfang der neuen Stufe), bis sie in der Station repariert ist.
-  wear: 40, wearOnDeath: 30, warnAt: 30,
+  wear: 15, wearOnDeath: 30, warnAt: 30,
   // Reparatur in der Station: Credits je fehlendem Prozent = Kaufpreis × repair × (1 + 0,15 × (Stufe − 1))
-  repair: 0.004, repairLevel: 0.15,
+  repair: 0.0015, repairLevel: 0.15,
   fireJitter: 0.08,       // Drohnenlaser feuern leicht versetzt zueinander
 };
 // Startprofil (Toni 30.10.2026): 2 Pioneer, eine mit Laser, eine mit Schild. Bestehende Spielstände bekommen sie
@@ -396,6 +427,7 @@ export const DRONE_KIT_VERSION = 1;
 export const DRONE_SHOP = {};
 for (const t in DRONES) for (const m of ['laser', 'shield']) {
   const d = DRONES[t];
+  if (d.earned) continue; // Cassini/Juno nicht im Shop
   DRONE_SHOP[`${t}-${m}`] = { name: `${d.name} · ${m === 'laser' ? 'Laser' : 'Schild'}`, type: t, module: m, price: d.price, currency: d.currency, level: d.level };
 }
 
@@ -408,7 +440,7 @@ export const GENERATORS = {
 // cls = Klassenname für alle Anzeigen (Hub, Station, Meldungen) – eine Quelle statt zwei abweichender Listen
 export const SHIPS = {
   s1: { cls: 'Starter', no: 1, name: 'Starter', hp: 6000, speed: 320, laserSlots: 2, genSlots: 2, cargo: 100, level: 1, price: 0, currency: null },
-  s2: { cls: 'Courier', no: 2, name: 'Schiff 2', hp: 16000, speed: 300, laserSlots: 4, genSlots: 3, cargo: 300, level: 5, price: 60000, currency: 'credits' },
+  s2: { cls: 'Courier', no: 2, name: 'Schiff 2', hp: 16000, speed: 300, laserSlots: 4, genSlots: 3, cargo: 300, level: 5, price: 120000, currency: 'credits' },
   s3: { cls: 'Warden', no: 3, name: 'Schiff 3', hp: 32000, speed: 290, laserSlots: 5, genSlots: 5, cargo: 500, level: 10, price: 250000, currency: 'credits', locked: true },
   s5: { cls: 'Bastion', no: 5, name: 'Schiff 5', hp: 90000, speed: 300, laserSlots: 8, genSlots: 8, cargo: 1000, level: 20, price: 40000, currency: 'tritium', locked: true },
   s8: { cls: 'Leviathan', no: 8, name: 'Top-Kampfschiff', hp: 250000, speed: 320, laserSlots: 13, genSlots: 13, cargo: 3000, level: 45, price: 250000, currency: 'tritium', locked: true },
@@ -422,7 +454,7 @@ export const ORES = {
 
 // Crates: zufälliger Inhalt, wer zuerst drüberfliegt.
 export const CRATE_TABLE = [
-  { chance: 0.55, credits: [500, 2000] },
+  { chance: 0.55, credits: [400, 1500] },
   { chance: 0.25, ammo: ['L1', 200, 600] },
   { chance: 0.12, tritium: [5, 20] },
   { chance: 0.06, ammo: ['L2', 100, 300] },
@@ -436,22 +468,78 @@ export const RANKS = [
 ];
 
 // Erfahrung, die man insgesamt für Stufe n braucht (Stufe 1 = 0).
+// Wirtschaft v2 (31.10.2026): steilere Kurve, damit Stufe 10 nach ≈ 10–12 h kommt (Bot-Messung tools/balance):
+// Stufe 2 ≈ 2.200, 3 ≈ 15.900, 5 ≈ 114.000, 7 ≈ 366.000, 10 ≈ 1.150.000 EP.
 export function xpForLevel(n) {
   if (n <= 1) return 0;
-  return Math.round(4000 * Math.pow(n - 1, 2.2));
+  return Math.round(2200 * Math.pow(n - 1, 2.85));
 }
 export const MAX_LEVEL = 50;
 
-// Erste Quests (Funkspruch der Station). Typen: kill, crate, buy, jump, ore.
+// Auftragskette (Wirtschaft v2, 31.10.2026): 31 Aufträge führen in ≈ 10–12 Stunden (mit etwas Grinden) zu Stufe 10,
+// 8 Pioneer-Drohnen und Schiff 2 – Schritt für Schritt statt alles auf einmal. Am Ende wartet die Cassini-Drohne.
+// sector = Abschnitt (Anzeige, Umzug alter Spielstände). Zieltypen (goal.type):
+//   kill   target = Gegnertyp oder null (jeder), rank = 'alpha'|'elite' (optional), sectorMin (optional)
+//   crate  Frachtkisten einsammeln            ore    Erz abbauen (target = Erzsorte oder null)
+//   buy    target kaufen (Laser, Generator, Munition, Schiff) – Schiffe zählen auch, wenn schon gekauft
+//   jump   Sektor target erreichen            use    Extra/Tech target einsetzen (EMP, FIX, …)
+//   event  Sektor-Ereignis target schaffen ('convoy' | 'drift' | 'nest')
+//   combo  eine Combo mit count Abschüssen    drones Anzahl Drohnen besitzen (Zustand)
+//   level  Stufe count erreichen (Zustand)    own    target besitzen (Zustand: Laser-Anzahl, Schiff, Reparaturroboter)
+// reward: credits, tritium, xp, honor, drone ('cassini' = Drohne für Platz 9)
 export const QUESTS = [
-  { id: 'q1', title: 'Erster Kontakt', text: 'Raider greifen unsere Frachter an. Zerstöre 5 Raider.', goal: { type: 'kill', target: 'raider', count: 5 }, reward: { credits: 5000, xp: 2000, honor: 20 } },
-  { id: 'q2', title: 'Treibgut', text: 'Im Sektor schweben Frachtkisten. Flieg über 3 davon, um sie einzusammeln.', goal: { type: 'crate', count: 3 }, reward: { credits: 3000, xp: 1500, tritium: 20 } },
-  { id: 'q3', title: 'Aufrüsten', text: 'Fliege zur Station und kaufe einen Ion Laser. Du siehst ihn sofort am Schiff.', goal: { type: 'buy', target: 'ion', count: 1 }, reward: { credits: 2000, xp: 2000 } },
-  { id: 'q4', title: 'Die Brut', text: 'Larven vermehren sich im Sektor. Zerstöre 8 Larva.', goal: { type: 'kill', target: 'larva', count: 8 }, reward: { credits: 6000, xp: 4000, tritium: 30 } },
-  { id: 'q5', title: 'Hinaus', text: 'Spring durch das Sprungtor in den nächsten Sektor.', goal: { type: 'jump', target: 2, count: 1 }, reward: { credits: 4000, xp: 3000 } },
-  { id: 'q6', title: 'Schakale', text: 'Jackals lauern auf angeschlagene Piloten. Zerstöre 6 Jackal.', goal: { type: 'kill', target: 'jackal', count: 6 }, reward: { credits: 15000, xp: 10000, tritium: 80, honor: 60 } },
-  { id: 'q7', title: 'Tiefer', text: 'Erreiche Sektor 3 und zerstöre 4 Spiker.', goal: { type: 'kill', target: 'spiker', count: 4 }, reward: { credits: 30000, xp: 25000, tritium: 200, honor: 120 } },
+  // ── Abschnitt 1: Heimatsektor (Stufe 1–3) ──
+  { id: 'q1', sector: 1, title: 'Erster Kontakt', text: 'Raider greifen unsere Frachter an. Zerstöre 5 Raider.', goal: { type: 'kill', target: 'raider', count: 5 }, reward: { credits: 2000, xp: 2000, honor: 20 } },
+  { id: 'q2', sector: 1, title: 'Treibgut', text: 'Im Sektor schweben Frachtkisten. Flieg über 3 davon, um sie einzusammeln.', goal: { type: 'crate', count: 3 }, reward: { credits: 1500, xp: 2000, tritium: 20 } },
+  { id: 'q3', sector: 1, title: 'Aufrüsten', text: 'Fliege zur Station und kaufe einen Ion Laser. Du siehst ihn sofort am Schiff.', goal: { type: 'buy', target: 'ion', count: 1 }, reward: { credits: 1500, xp: 2000 } },
+  { id: 'q4', sector: 1, title: 'Die Brut', text: 'Larven vermehren sich im Sektor. Zerstöre 8 Larva.', goal: { type: 'kill', target: 'larva', count: 8 }, reward: { credits: 3000, xp: 4000, tritium: 30 } },
+  { id: 'q16', sector: 1, title: 'Feldreparatur', text: 'Kaufe in der Station einen Reparaturroboter REP-1 (Reparatur, 6.000 Credits): Er repariert die Hülle überall, sobald du 5 s nicht kämpfst.', goal: { type: 'own', target: 'rep1', count: 1 }, reward: { credits: 2000, xp: 3000 } },
+  { id: 'q8', sector: 1, title: 'Verstärkung', text: 'Eine dritte Drohne macht dich spürbar stärker. Kaufe in der Station eine Pioneer (Drohnen, 8.000 Credits).', goal: { type: 'drones', count: 3 }, reward: { credits: 1500, xp: 3000 } },
+  { id: 'q9', sector: 1, title: 'Kettenreaktion', text: 'Schnell sein zahlt sich aus: Zerstöre 3 Gegner kurz hintereinander (Combo ×3) – am leichtesten in einem Larva-Schwarm.', goal: { type: 'combo', count: 3 }, reward: { credits: 2000, xp: 4000, honor: 20 } },
+  { id: 'q10', sector: 1, title: 'Säuberung', text: 'Die Raider-Banden werden frech. Zerstöre 20 Raider.', goal: { type: 'kill', target: 'raider', count: 20 }, reward: { credits: 4500, xp: 8000, honor: 40 } },
+  { id: 'q11', sector: 1, title: 'Erzprobe', text: 'Die Werft braucht Rohstoffe. Baue 20 Einheiten Erz ab (über Erzbrocken fliegen) und verkaufe sie in der Station.', goal: { type: 'ore', count: 20 }, reward: { credits: 3000, xp: 4000 } },
+  { id: 'q12', sector: 1, title: 'Störsender', text: 'Lerne deine Extras kennen: Setze im Kampf einen EMP ein (Schnellleiste, Extras).', goal: { type: 'use', target: 'EMP', count: 1 }, reward: { xp: 2000, tritium: 20 } },
+  { id: 'q13', sector: 1, title: 'Treibgut-Feld', text: 'Wenn die Station ein Treibgut-Feld meldet: Sammle alle Frachtkisten ein, bevor sie verglühen.', goal: { type: 'event', target: 'drift', count: 1 }, reward: { credits: 3000, xp: 6000, tritium: 30 } },
+  { id: 'q14', sector: 1, title: 'Vierter Flügel', text: 'Baue deine Staffel aus: Besitze 4 Drohnen. Jede weitere Pioneer kostet etwas mehr.', goal: { type: 'drones', count: 4 }, reward: { credits: 2000, xp: 5000 } },
+  { id: 'q15', sector: 1, title: 'Das Nest', text: 'Die Larven-Plage muss enden. Zerstöre 25 Larva.', goal: { type: 'kill', target: 'larva', count: 25 }, reward: { credits: 4500, xp: 8000, honor: 40 } },
+  { id: 'q5', sector: 1, title: 'Hinaus', text: 'Spring durch das Sprungtor in den nächsten Sektor.', goal: { type: 'jump', target: 2, count: 1 }, reward: { credits: 3000, xp: 5000 } },
+  // ── Abschnitt 2: zweiter Sektor (Stufe 3–6) ──
+  { id: 'q6', sector: 2, title: 'Schakale', text: 'Jackals lauern auf angeschlagene Piloten. Zerstöre 6 Jackal.', goal: { type: 'kill', target: 'jackal', count: 6 }, reward: { credits: 6000, xp: 10000, tritium: 50, honor: 60 } },
+  { id: 'q17', sector: 2, title: 'Geleitschutz', text: 'Wenn ein Konvoi angegriffen wird: Beschütze den Frachter, bis er sicher abspringt.', goal: { type: 'event', target: 'convoy', count: 1 }, reward: { credits: 7500, xp: 12000, tritium: 60 } },
+  { id: 'q18', sector: 2, title: 'Fünf Begleiter', text: 'Besitze 5 Drohnen.', goal: { type: 'drones', count: 5 }, reward: { credits: 4000, xp: 8000 } },
+  { id: 'q19', sector: 2, title: 'Bewährung', text: 'Sammle Erfahrung im Kampf: Erreiche Stufe 5. Ab dann verkauft dir die Werft Schiff 2.', goal: { type: 'level', count: 5 }, reward: { credits: 11000, tritium: 100 } },
+  { id: 'q20', sector: 2, title: 'Ein größeres Schiff', text: 'Kaufe Schiff 2 (Courier): 4 Laserplätze, 3 Generatorplätze, dreifacher Laderaum.', goal: { type: 'own', target: 's2', count: 1 }, reward: { credits: 7500, xp: 20000, honor: 80 } },
+  { id: 'q21', sector: 2, title: 'Feuerkraft', text: 'Rüste auf: Besitze mindestens 3 Ion Laser.', goal: { type: 'own', target: 'ion', count: 3 }, reward: { credits: 6000, xp: 10000 } },
+  { id: 'q22', sector: 2, title: 'Jagdsaison', text: 'Die Jackal-Rudel müssen dezimiert werden. Zerstöre 30 Jackal.', goal: { type: 'kill', target: 'jackal', count: 30 }, reward: { credits: 11000, xp: 20000, honor: 100 } },
+  { id: 'q23', sector: 2, title: 'Sechs Begleiter', text: 'Besitze 6 Drohnen.', goal: { type: 'drones', count: 6 }, reward: { credits: 4500, xp: 10000 } },
+  { id: 'q24', sector: 2, title: 'Brutstätte', text: 'Wenn ein Schwarm-Nest auftaucht: Zerstöre es, bevor es den Sektor überrennt.', goal: { type: 'event', target: 'nest', count: 1 }, reward: { credits: 7500, xp: 15000, tritium: 80 } },
+  { id: 'q25', sector: 2, title: 'Sturmlauf', text: 'Zeig, was deine Staffel kann: Combo ×6.', goal: { type: 'combo', count: 6 }, reward: { credits: 4500, xp: 10000, honor: 50 } },
+  // ── Abschnitt 3: dritter Sektor (Stufe 6–10) ──
+  { id: 'q7', sector: 3, title: 'Tiefer', text: 'Erreiche Sektor 3 und zerstöre 4 Spiker.', goal: { type: 'kill', target: 'spiker', count: 4 }, reward: { credits: 7500, xp: 15000, tritium: 100, honor: 120 } },
+  { id: 'q26', sector: 3, title: 'Aasgeier', text: 'Vultures stehlen unsere Beute. Zerstöre 10 Vulture.', goal: { type: 'kill', target: 'vulture', count: 10 }, reward: { credits: 11000, xp: 20000, honor: 100 } },
+  { id: 'q27', sector: 3, title: 'Sieben Begleiter', text: 'Besitze 7 Drohnen.', goal: { type: 'drones', count: 7 }, reward: { credits: 6000, xp: 12000 } },
+  { id: 'q28', sector: 3, title: 'Schnellreparatur', text: 'Rüste auf den Reparaturroboter REP-2 auf: doppelt so schnell.', goal: { type: 'own', target: 'rep2', count: 1 }, reward: { credits: 6000, xp: 12000 } },
+  { id: 'q29', sector: 3, title: 'Spikerplage', text: 'Die Spiker-Schwärme wachsen. Zerstöre 40 Spiker.', goal: { type: 'kill', target: 'spiker', count: 40 }, reward: { credits: 15000, xp: 25000, honor: 150 } },
+  { id: 'q30', sector: 3, title: 'Volle Staffel', text: 'Besitze 8 Drohnen: alle normalen Drohnenplätze belegt.', goal: { type: 'drones', count: 8 }, reward: { credits: 7500, xp: 15000, tritium: 200 } },
+  { id: 'q31', sector: 3, title: 'Kommandant', text: 'Erreiche Stufe 10. Danach verkauft dir die Werft Voyager-Drohnen (Tritium).', goal: { type: 'level', count: 10 }, reward: { credits: 22500, tritium: 500, honor: 300 } },
+  { id: 'q32', sector: 3, title: 'Signal am Tor', text: 'Ein Alpha-Gegner beherrscht Sektor 3. Zerstöre einen Alpha in Sektor 3 – die Werft zahlt mit einer Cassini-Drohne (Platz 9).', goal: { type: 'kill', target: null, rank: 'alpha', sectorMin: 3, count: 1 }, reward: { xp: 30000, honor: 500, drone: 'cassini' } },
 ];
+// Alte Spielstände (Kette mit 7 Aufträgen): erledigte alte Aufträge → Platz in der neuen Kette
+export const QUEST_VERSION = 2;
+
+// Belohnung je erreichter Stufe (Wirtschaft v2): Credits und Tritium, damit jeder Aufstieg etwas bringt.
+export function levelReward(level) { return { credits: 1000 * level, tritium: 20 * level }; }
+
+// Reparaturroboter (Vorbild DarkOrbit): repariert die Hülle überall, sobald du COMBAT_TIMEOUT s nicht kämpfst.
+// Einer ist eingebaut (der beste), kein Platz nötig. rate = Anteil der Hülle je Sekunde.
+export const REPAIR_BOTS = {
+  rep1: { name: 'REP-1', rate: 0.015, price: 6000, currency: 'credits', level: 1 },
+  rep2: { name: 'REP-2', rate: 0.025, price: 80000, currency: 'credits', level: 6 },
+  rep3: { name: 'REP-3', rate: 0.04, price: 2000, currency: 'tritium', level: 10 },
+};
+
+// Juno (Drohnenplatz 10): seltene Beute von Alpha-Gegnern ab Sektor 2; spätestens beim guaranteeAt-ten Alpha-Abschuss.
+export const JUNO_DROP = { chance: 0.05, sectorMin: 2, guaranteeAt: 15 };
 
 // Reparatur nach dem Abschuss (Kosten × Schiffsnummer). Bis Stufe 10 kostenlos.
 export const REPAIR = {
@@ -491,7 +579,8 @@ export function newProfile(callsign, factionId) {
     droneKit: DRONE_KIT_VERSION,
     cargo: { nickel: 0, cobalt: 0, platinum: 0 },
     sector: `${FACTIONS[factionId].prefix}-1`,
-    quest: { index: 0, progress: 0 },
+    quest: { index: 0, progress: 0, v: QUEST_VERSION },
+    repBot: null,
     stats: { kills: {}, crates: 0, deaths: 0, playSeconds: 0 },
   };
 }

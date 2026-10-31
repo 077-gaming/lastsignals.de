@@ -93,6 +93,9 @@ function display(w, ev, type, title, x, z, total) {
 export function startEvent(w, type) {
   if (w._ev || !w.player.alive) return false;
   if (!type) {
+    // Auftrag verlangt ein bestimmtes Ereignis: meistens (75 %) genau dieses, damit niemand stundenlang darauf wartet
+    const g = w.quest && w.quest.def && w.quest.def.goal;
+    if (g && g.type === 'event' && SECTOR_EVENTS[g.target] && w.rng.next() < 0.75) return startEvent(w, g.target);
     let tot = 0;
     for (const k of TYPES) tot += SECTOR_EVENTS[k].weight || 1;
     let r = w.rng.next() * tot;
@@ -171,6 +174,7 @@ function updateConvoy(w, ev, dt) {
       ev.phase = 'leaving';
       ev.leaveAt = w.time + 20;
       w.grantReward(ev.reward, f.x, f.z, `Konvoi gerettet! Belohnung: ${rewardText(ev.reward)}.`);
+      w._questProgress('event', 'convoy', 1);
       radio(w, ev.def.title, 'Danke, Pilot, du hast uns den Hals gerettet. Wir springen jetzt raus.', f.name);
       w.event.progress = ev.total;
     } else if (w.time >= ev.endsAt) {
@@ -234,7 +238,7 @@ function startDrift(w, def) {
   }
   w._ev = ev;
   display(w, ev, 'drift', def.title, x, z, n);
-  radio(w, def.title, `Treibgut-Feld entdeckt: ${n} Crates ${whereText(w, x, z)}. Sammle sie ein, bevor sie in ${minutes(def.duration)} verglühen. Bonus für alle: ${rewardText(ev.reward)}.`);
+  radio(w, def.title, `Treibgut-Feld entdeckt: ${n} Frachtkisten ${whereText(w, x, z)}. Sammle sie ein, bevor sie in ${minutes(def.duration)} verglühen. Bonus für alle: ${rewardText(ev.reward)}.`);
   return true;
 }
 
@@ -263,7 +267,8 @@ export function eventCrateOpened(w, c) {
   ev.got++;
   if (w.event) w.event.progress = ev.got;
   if (ev.got >= ev.total) {
-    w.grantReward(ev.reward, c.x, c.z, `Treibgut-Feld geborgen: alle ${ev.total} Crates! Bonus: ${rewardText(ev.reward)}.`);
+    w.grantReward(ev.reward, c.x, c.z, `Treibgut-Feld geborgen: alle ${ev.total} Frachtkisten! Bonus: ${rewardText(ev.reward)}.`);
+    w._questProgress('event', 'drift', 1);
     endEvent(w);
   }
 }
@@ -351,6 +356,7 @@ export function eventEnemyKilled(w, e) {
     if (w.event) w.event.progress = ev.total - ev.alive;
   } else if (ev.type === 'nest' && e === ev.nest) {
     w.grantReward(ev.reward, e.x, e.z, `Schwarm-Nest zerstört! Bonus: ${rewardText(ev.reward)}.`);
+    w._questProgress('event', 'nest', 1);
     for (const m of ev.group.members) m.expire = true;
     if (w.event) w.event.progress = 1;
     endEvent(w);

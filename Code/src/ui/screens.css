@@ -1226,6 +1226,8 @@ body.in-game .sc-stage { display: none; }
 .hb-row.is-dim > :not(.hb-chip) { opacity: .5; }
 .hb-row.is-dim .hb-chip { color: var(--ls-tx-3); border-color: var(--ls-line); }
 .hb-v-akte .hb-list .hb-row.is-done > b { color: var(--ls-tx-2); }
+.hb-list-h { padding: 14px 2px 2px; color: var(--ls-tx-3); letter-spacing: .18em; border-bottom: 1px solid var(--ls-line); }
+.hb-list-h:first-child { padding-top: 0; }
 
 /* Details der Bereiche */
 .hb-slots { gap: 8px; }
