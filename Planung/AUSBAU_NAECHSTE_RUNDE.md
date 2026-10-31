@@ -1,0 +1,9 @@
+# Ausbau nach dem laufenden Durchgang (Toni, 30.10.2026)
+
+Maßstab Toni: „alles so krass fertig, dass ich später denke: geil“. Neue Spieler (außer Toni hat es noch niemand gespielt) müssen angeleitet werden.
+
+1. **Alle geplanten Gegner bauen** (Vault, System 24, von Toni abgesegnet). Bisher im Spiel: Raider, Larva, Jackal, Spiker, Vulture, Nest. Fehlen: Spitter, Merc, Breeder, Stalker, Jammer, Symbiont, Boarder, Minelayer, Colossus, Corsair, Queen mit Tenders, Hunter (FRONT). Verteilung: -1 Raider, Larva · -2 Raider, Jackal, Larva · -3 Jackal, Spiker, Vulture · -4 Vulture, Spitter, Merc · -5 Merc, Breeder, Stalker · -6 Jammer, Stalker, Symbiont · -7 Boarder, Minelayer, Colossus · -8 Corsair, Colossus, Queen mit Tenders. Jeder mit eigenem Verhalten, Modell, Tod-Effekt, Belohnung.
+2. **Varianten wie entschieden** (System 25): Elite (weiter draußen, mehr Leben/Schaden/Beute, leuchtet leicht rot), Alpha (selten, viel stärker, zufälliges Extra: Schaden zurückspiegeln, Selbstheilung, Verstärkung rufen; fette Beute; Meldung an den ganzen Sektor). Prüfen, ob die Extras schon umgesetzt sind.
+3. **Bosse** (System 26): Schwarze Werft (obere Heimatsektoren, Reparatur-Schlepper zuerst), Sternenwal-Ältester (Route durch die oberen Sektoren), Dreadnought in KUIPER. Letzter Treffer bekommt die Beute.
+4. **Alle Schiffe 1–8 fliegbar:** In data.js fehlen s4, s6, s7. Werte aus der Schiffstabelle (Laser/Generatoren: Nr.4 7/6, Nr.6 10/9, Nr.7 11/11; Preise/Stufen laut Vault), im Shop kaufbar, Modelle 3–8 eingebunden.
+5. **Langzeit-Quests wie beim Vorbild:** Questreihen, an denen man Wochen bis Monate arbeitet (z. B. Tausende Abschüsse eines Gegnertyps, Sammelketten, Sektor-Säuberungen), mit unseren eigenen Gegnern und großen Belohnungen; dazu Tages- und Wochenaufträge. Neben der SYSTEM-Reihe (QUESTS_SYSTEM.md) und der Cassini-Mission (QUESTS_CASSINI.md).
