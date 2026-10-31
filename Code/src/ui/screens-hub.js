@@ -3,6 +3,7 @@
 // Start = 3D-Szene (Heimatstation, eigenes Schiff) mit großem START-Knopf und drei Kurzinfos. Jeder andere Bereich:
 // klare Überschrift, wenige große Kacheln, Details erst auf Klick. Bildsprache: Planung/UI_STIL.md.
 import { wireInstall } from './install.js';
+import { newCode, waitForHost } from '../net/coop.js';
 import {
   FACTIONS, SHIPS, LASERS, GENERATORS, AMMO, ROCKETS, ENEMIES, QUESTS, RANKS, ORES, REPAIR, DRONES,
   BACKDROPS, xpForLevel, MAX_LEVEL, sectorsFor, newProfile,
@@ -406,6 +407,31 @@ function hangarView(P, ctx) {
 function kfmt(v) { v = v || 0; return v >= 10000 ? Math.round(v / 1000) + 'k' : v >= 1000 ? (Math.floor(v / 100) / 10).toFixed(1).replace('.', ',') + 'k' : fmt(v); }
 // Schild der einsatzbereiten Schild-Drohnen (wie im Flug), damit Hangar und Cockpit dieselbe Zahl zeigen
 function droneShieldOf(P) { let s = 0; for (const d of P.drones || []) if (!d.broken && d.module === 'shield' && DRONES[d.type]) s += DRONES[d.type].shield[(d.level || 1) - 1] || 0; return s; }
+
+// Koop-Dialog: Raum eröffnen (Code anzeigen) oder mit Code beitreten (wartet auf den Gastgeber)
+function coopDialog(go) {
+  const d = document.createElement('div');
+  d.className = 'hb-install'; d.setAttribute('role', 'dialog');
+  const code = newCode();
+  d.innerHTML = `<div class="ls-panel"><b>KOOP · ZU ZWEIT FLIEGEN</b>
+    <p>Einer eröffnet den Raum und nennt den Code, der andere tritt bei. Ihr fliegt im Sektor des Gastgebers, kämpft gemeinsam, und jeder bekommt Erfahrung, Credits und Auftragsfortschritt im eigenen Spielstand.</p>
+    <button type="button" class="ls-btn is-fx" data-host>RAUM ERÖFFNEN · CODE ${code}</button>
+    <div style="display:flex;gap:8px"><input class="ls-input" data-code inputmode="numeric" maxlength="4" placeholder="CODE" style="flex:1;min-width:0;padding:10px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.3);font:16px var(--ls-mono,monospace);letter-spacing:.3em"><button type="button" class="ls-btn" data-join>BEITRETEN</button></div>
+    <p data-st style="min-height:1.4em;color:var(--fx)"></p>
+    <button type="button" class="ls-btn" data-x>ABBRECHEN</button></div>`;
+  const st = d.querySelector('[data-st]');
+  d.querySelector('[data-x]').onclick = () => d.remove();
+  d.querySelector('[data-host]').onclick = () => { d.remove(); go({ role: 'host', code }); };
+  d.querySelector('[data-join]').onclick = async () => {
+    const c = d.querySelector('[data-code]').value.trim();
+    if (!/^\d{4}$/.test(c)) { st.textContent = 'Bitte den 4-stelligen Code eingeben.'; return; }
+    st.textContent = 'Suche Gastgeber … (er muss schon fliegen)';
+    const h = await waitForHost(c);
+    if (!h) { st.textContent = 'Kein Gastgeber gefunden. Code prüfen, Gastgeber muss im Flug sein.'; return; }
+    d.remove(); go({ role: 'guest', code: c, sector: h.sector, faction: h.faction });
+  };
+  document.body.appendChild(d);
+}
 
 // ---------------------------------------------------------------- Pilotenakte
 
@@ -1034,6 +1060,7 @@ export async function hubScreen(root, profile, store) {
               <span class="hb-go-t"><b>START</b><span class="hb-go-s${miss.length ? ' is-warn' : ''}">${miss.length ? esc(miss.join(' · ')) : `INS ALL · ${esc(P.sector || '')} ${esc(secName)}`}</span></span>
               <span class="ls-key">ENTER</span>
             </button>
+            <button type="button" class="ls-btn hb-coop" data-coop>KOOP · MIT FREUND FLIEGEN</button>
             <div class="hb-brief">
               <button type="button" class="hb-bf" data-goto="akte:auftrag">
                 <span class="ls-label">AUFTRAG${q ? ` ${pad2((P.quest?.index || 0) + 1)}` : ''}</span>
@@ -1487,7 +1514,8 @@ export async function hubScreen(root, profile, store) {
         flashSaved('ZURÜCKGESETZT');
       }
     });
-    s.on(launchBtn, 'click', () => finish('launch'));
+    s.on(launchBtn, 'click', () => { sessionStorage.removeItem('ls.coop'); finish('launch'); });
+    s.on($('[data-coop]'), 'click', () => coopDialog((cfg) => { sessionStorage.setItem('ls.coop', JSON.stringify(cfg)); finish('launch'); }));
     s.on($('[data-logout]'), 'click', () => finish('logout'));
     wireInstall($('[data-install]'), (t) => { const d = document.createElement('div'); d.className = 'hb-install'; d.setAttribute('role', 'dialog'); d.innerHTML = `<div class="ls-panel"><b>ALS APP INSTALLIEREN</b><p>${esc(t)}</p><button type="button" class="ls-btn is-fx">VERSTANDEN</button></div>`; d.querySelector('button').onclick = () => d.remove(); document.body.appendChild(d); });
     s.on(window, 'keydown', (e) => {

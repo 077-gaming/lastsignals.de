@@ -7,6 +7,7 @@ import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { StationUI } from './ui/station.js';
 import { HudTouch } from './ui/hud-touch.js';
+import { Coop } from './net/coop.js';
 import { Input } from './input.js';
 import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
 import { PerfHud } from './perf/perfhud.js';
@@ -41,7 +42,11 @@ function playSession(profile, opts = {}) {
   return new Promise((resolve) => {
     document.body.dataset.faction = profile.faction;
     const bus = new Bus();
-    const world = new World(profile, bus);
+    // Koop (Hub hat Raum gewählt): Gast spielt in den Sektoren des Gastgebers
+    let coopCfg = null;
+    try { coopCfg = JSON.parse(sessionStorage.getItem('ls.coop') || 'null'); } catch { coopCfg = null; }
+    const world = new World(profile, bus, coopCfg && coopCfg.role === 'guest' ? { coopFaction: coopCfg.faction, coopSector: coopCfg.sector } : {});
+    const coop = coopCfg ? new Coop(world, bus, coopCfg) : null;
     if (opts.dock && world.sector.station) {
       world.player.x = world.sector.station.x + 120;
       world.player.z = world.sector.station.z + 120;
@@ -164,6 +169,7 @@ function playSession(profile, opts = {}) {
       // Vorher rechnete main.js zusätzlich mit eigenem Akkumulator: bis zu 15 Schritte je Bild auf schwachen Geräten.
       // Hit-Stop: nach einem Abschuss steht die Simulation kurz still (Bild läuft weiter) – gibt Kills Gewicht
       if (hitStop > 0) { hitStop -= dt; world.update(0); } else world.update(dt);
+      if (coop) coop.update(dt);
       acc = world._acc;
       const t0 = performance.now();
       if (DEV_LAG) { const e = t0 + DEV_LAG; while (performance.now() < e) { /* künstliche Last */ } }
@@ -196,7 +202,7 @@ function playSession(profile, opts = {}) {
       window.removeEventListener('beforeunload', saveOnLeave);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('ls:store', onStore);
-      input.dispose(); touch.dispose();
+      input.dispose(); touch.dispose(); if (coop) coop.stop();
       audio.dispose();
       hud.dispose();
       hudRoot.innerHTML = '';

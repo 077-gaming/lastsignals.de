@@ -1671,3 +1671,4 @@ body.in-game .sc-stage { display: none; }
 .hb-install > div { max-width: 460px; padding: 26px 28px; background: #0b0d11; display: grid; gap: 14px; }
 .hb-install b { font-family: var(--ls-display); letter-spacing: .16em; }
 .hb-install p { margin: 0; line-height: 1.5; color: var(--ls-tx-2); }
+.hb-coop { width: 100%; margin-top: 8px; }

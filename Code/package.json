@@ -12,6 +12,7 @@
     "balance": "node tools/balance/fortschritt.mjs --stunden 12"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "three": "^0.170.0"
   },
   "devDependencies": {

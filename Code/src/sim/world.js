@@ -249,8 +249,12 @@ export class World {
     p.shield = p.shieldMax;
     initDrones(this);
 
-    this.sectors = sectorsFor(profile.faction);
-    if (!this.sectors[profile.sector]) profile.sector = homeSectorId(profile.faction);
+    // Koop-Gast: Sektoren des Gastgebers (auch andere Fraktion), Start im Sektor des Gastgebers
+    const secFac = opts.coopFaction && FACTIONS[opts.coopFaction] ? opts.coopFaction : profile.faction;
+    this._homeFac = secFac;
+    this.sectors = sectorsFor(secFac);
+    if (opts.coopSector && this.sectors[opts.coopSector]) profile.sector = opts.coopSector;
+    if (!this.sectors[profile.sector]) profile.sector = homeSectorId(secFac);
     this._buildSector(profile.sector);
     this._placeAtSpawn();
     this._updateZones();
@@ -747,6 +751,12 @@ export class World {
 
   /** Schaden am Gegner. dx/dz = Einschlagrichtung, hx/hz = Trefferpunkt (für 'damage'). */
   _hitEnemy(e, dmg, shieldOnly, crit, dx = 0, dz = 0, hx = e.x, hz = e.z, rocket = false) {
+    // Koop-Gast: Schaden rechnet der Gastgeber (eine Wahrheit für beide), hier nur melden und anzeigen
+    if (this.coop && this.coop.guest && !this.coop.applying) {
+      this.coop.hit(e, dmg, shieldOnly);
+      this.bus.emit('damage', { id: e.id, hull: Math.round(dmg), shield: 0, x: e.x, z: e.z, crit, dx, dz, hx, hz, from: this._hitFrom || 'player' });
+      return;
+    }
     const p = this.player;
     if (e.guardT > 0) dmg = Math.round(dmg * (1 - SPECIALS.guard.reduce)); // Schildwall
     applyDamage(e, dmg, shieldOnly, HIT);
@@ -1640,7 +1650,7 @@ export class World {
     }
 
     if (where === 'station') {
-      const home = homeSectorId(pr.faction);
+      const home = homeSectorId(this._homeFac || pr.faction);
       if (this.sector.id !== home) this._changeSector(home, null);
       this._placeAtSpawn();
     } else if (where === 'portal') {

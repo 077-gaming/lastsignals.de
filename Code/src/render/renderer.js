@@ -774,8 +774,8 @@ export class Renderer {
   // ---------- jedes Bild: Entity-Abgleich ----------
   _sync(e) {
     let v = this.views.get(e.id);
-    if (e.kind === 'player' && this._playerDirty && this._loadGLB) this._ensureMine(e);
-    if (v && ((v.gk && v.ver !== this.factory.keyVer(v.gk[0], v.gk[1])) || (e.kind === 'player' && this._playerDirty && this._sig(e) !== v.sig))) {
+    if (e.id === 'player' && this._playerDirty && this._loadGLB) this._ensureMine(e);
+    if (v && ((v.gk && v.ver !== this.factory.keyVer(v.gk[0], v.gk[1])) || (e.id === 'player' && this._playerDirty && this._sig(e) !== v.sig))) {
       this._removeView(e.id); v = null;
     }
     if (!v) {
