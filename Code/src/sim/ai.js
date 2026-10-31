@@ -597,6 +597,15 @@ export function moveEnemy(w, e, dt) {
   if (e.guardT > 0) { e.guardT -= dt; if (e.guardT <= 0) { e.guardT = 0; e.guard = 0; } }
   if (e.dmgWin > 0) { e.dmgWin -= e.dmgWin * 0.5 * dt; if (e.dmgWin < 1) e.dmgWin = 0; }
   if (e.token) e.tokenT += dt;
+  // Erholung außer Kampf: Wer 8 s nicht mehr kämpft (Patrouille, keine Provokation), heilt Schild und Hülle
+  // in ~10 s vollständig auf. Verhindert, dass Elite-Gegner risikolos über mehrere Anflüge abgetragen werden.
+  if (e.state === 'wander' && !e.provoked && !e.attacking) {
+    e.calmT = (e.calmT || 0) + dt;
+    if (e.calmT > 8 && (e.hp < e.hpMax || e.shield < e.shieldMax)) {
+      e.shield = Math.min(e.shieldMax, e.shield + e.shieldMax * 0.1 * dt);
+      e.hp = Math.min(e.hpMax, e.hp + e.hpMax * 0.1 * dt);
+    }
+  } else e.calmT = 0;
   // Tarnung (Jackal beim Lauern): weich ein- und ausblenden
   const cl = e.stalk && e.state === 'wander' && !e.spPhase ? 1 : 0;
   if (cl !== e.cloak) {

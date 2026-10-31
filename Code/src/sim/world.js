@@ -1653,6 +1653,8 @@ export class World {
   buy(kind, id, amount = 1) {
     const pr = this.profile;
     if (!this.player.alive) return this._fail('Erst reparieren, dann einkaufen.');
+    // Schiffe, Bauteile, Drohnen, Technik nur an der Station (sonst Vollheilung/Umbau mitten im Gefecht). Verbrauchsgüter bleiben unterwegs kaufbar.
+    if (!this.docked && !['ammo', 'rocket', 'extra', 'mine'].includes(kind)) return this._fail('Nur angedockt an einer Station möglich.');
     const n = Math.max(1, Math.floor(amount) || 1);
     const info = this.shopInfo(kind, id, n);
     if (!info.ok) return this._fail(info.reason);
@@ -1769,9 +1771,12 @@ export class World {
     while (L.length < ship.laserSlots) L.push('pulse');
     while (G.length < ship.genSlots && pr.owned.gens.length) G.push(pr.owned.gens.shift());
     resetConfigsForShip(this);
+    // Zustand anteilig übernehmen (Schiffswechsel ist keine kostenlose Reparatur)
+    const hpK = this.player.hpMax > 0 ? this.player.hp / this.player.hpMax : 1;
+    const shK = this.player.shieldMax > 0 ? this.player.shield / this.player.shieldMax : 1;
     this._refreshStats();
-    this.player.hp = this.player.hpMax;
-    this.player.shield = this.player.shieldMax;
+    this.player.hp = Math.max(1, Math.round(this.player.hpMax * Math.min(1, hpK)));
+    this.player.shield = Math.round(this.player.shieldMax * Math.min(1, shK));
   }
 
   /** Teil aus dem Inventar in Platz `index` einbauen (Tausch). itemId null = ausbauen. */

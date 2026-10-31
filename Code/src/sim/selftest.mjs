@@ -183,6 +183,9 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Shop: Schiff 2 zeigt Bedingung', pr.level >= 5 ? true : (!s2.ok && /Stufe 5/.test(s2.reason)), s2.reason || 'kaufbar');
   pr.credits = Math.max(pr.credits, 20000);
   const lasersBefore = pr.loadout.lasers.join(',');
+  const space = w.buy('laser', 'ion');
+  check('Shop: Ausrüstung nur angedockt kaufbar', !space.ok && /angedockt/.test(space.reason || ''), space.reason || 'gekauft');
+  w.docked = true; // ab hier wie an der Station
   const r = w.buy('laser', 'ion');
   check('Shop: Ion Laser kaufen und einbauen', r.ok && pr.loadout.lasers.includes('ion'), `${lasersBefore} → ${pr.loadout.lasers.join(',')} · Lager: ${pr.owned.lasers.join(',')}`);
   const credits = pr.credits;
@@ -191,6 +194,8 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   pr.level = 5; pr.credits += 60000;
   const rs = w.buy('ship', 's2');
   check('Shop: Schiff 2 ab Stufe 5, Laserplätze aufgefüllt', rs.ok && pr.loadout.lasers.length === 4 && w.player.hpMax === 16000, pr.loadout.lasers.join(','));
+  check('Schiffswechsel heilt nicht kostenlos (Anteil bleibt)', w.player.hp <= w.player.hpMax && w.player.hp > 0);
+  w.docked = false;
   const sell = w.sellOre();
   check('Erz verkaufen nur angedockt', sell === 0);
 }
@@ -895,9 +900,9 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   {
     const { pr, w } = mk('DrohnenShop', 44);
     pr.credits = 200000;
+    w.docked = true;
     const b = w.buy('drone', 'pioneer-laser', 6);
     const full = w.buy('drone', 'pioneer-shield', 1);
-    w.docked = true;
     const c0 = pr.credits;
     const s = w.sellDrone(7);
     const m = w.setDroneModule(0, 'shield');

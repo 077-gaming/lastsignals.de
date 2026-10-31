@@ -2,6 +2,7 @@
 // Bildsprache: Planung/UI_STIL.md. Bausteine: theme.css (.ls-*) und screens-kit.js.
 // Hinter den Panels liegt die 3D-Bühne (screens-stage.js): Heimatplanet, Schiff, Station.
 import './screens.css';
+import { callsignForbidden } from '../core/store.js';
 import { FACTIONS, SHIPS, BACKDROPS, QUESTS, sectorsFor } from '../core/data.js';
 import {
   fmt, esc, pad2, wait, met, VERSION, accentOf as fxOf, rankOf as rankName, reduced, sky, mount, clockInto,
@@ -274,6 +275,7 @@ export async function loginScreen(root, store) {
     if (!/^[\p{L}\p{N}_-]*$/u.test(v)) return { ok: false, err: true, msg: 'UNGÜLTIGE ZEICHEN · NUR A-Z 0-9 - _' };
     if (len < 3) return { ok: false, err: false, msg: `MINDESTENS 3 ZEICHEN · NOCH ${3 - len}` };
     if (len > 16) return { ok: false, err: true, msg: 'HÖCHSTENS 16 ZEICHEN' };
+    if (callsignForbidden(v)) return { ok: false, err: true, msg: 'RUFNAME NICHT ERLAUBT' };
     // Geschlossene Testphase: online nur Tonis Rufname (VITE_ALLOWED_CALLSIGNS, kommagetrennt)
     const allowed = (import.meta.env.VITE_ALLOWED_CALLSIGNS || '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
     if (allowed.length && !allowed.includes(v.toLowerCase())) return { ok: false, err: true, msg: 'GESCHLOSSENE TESTPHASE · ZUGANG NUR FÜR FREIGEGEBENE PILOTEN' };

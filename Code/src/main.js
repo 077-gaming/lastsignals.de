@@ -52,6 +52,15 @@ function playSession(profile, opts = {}) {
     canvas.replaceWith(fresh);
     canvas = fresh;
     renderer = new Renderer(canvas, bus);
+    // Grafikkarte zurückgesetzt (Treiber, App-Wechsel am Handy, zu wenig GPU-Speicher): kein schwarzes Bild ohne Hinweis.
+    // Spielstand sichern und geordnet zur Station zurückkehren; beim nächsten Abflug entsteht eine frische Grafik-Engine.
+    const onCtxLost = (e) => {
+      e.preventDefault();
+      try { world.save(); } catch { /* egal */ }
+      bus.emit('message', { kind: 'warn', title: 'GRAFIK', text: 'Grafikkarte wurde zurückgesetzt – Spielstand gesichert, Rückkehr zur Station.' });
+      setTimeout(() => bus.emit('toHub'), 400);
+    };
+    canvas.addEventListener('webglcontextlost', onCtxLost, { once: true });
     if (sessionCap < 3) renderer.setQualityCap(sessionCap);
     renderer.setWorld(world);
     // Flug erst zeigen, wenn das eigene Schiffsmodell da ist (höchstens 5 s), sonst sähe man den Platzhalter-Wechsel
@@ -91,6 +100,14 @@ function playSession(profile, opts = {}) {
       renderer.setQualityCap(sessionCap);
       bus.emit('message', { kind: 'info', title: 'GRAFIK', text: `Grafikkarte hat Reserve – Grafikqualität automatisch auf ${Q_LABEL[to]} erhöht.` });
     }, sessionCap === 3 ? raiseCap() : -1);
+    const onStore = (e) => {
+      const k = e.detail && e.detail.kind;
+      const text = k === 'quota' ? 'Spielstand konnte nicht gespeichert werden (Browser-Speicher voll oder gesperrt).'
+        : k === 'restored' ? 'Spielstand war beschädigt – letzte Sicherung wurde geladen.'
+          : k === 'corrupt' || k === 'readonly' ? 'Spielstand beschädigt – Speichern gesperrt, Rohdaten sind gesichert.' : '';
+      if (text) bus.emit('message', { kind: 'warn', title: 'SPEICHER', text });
+    };
+    window.addEventListener('ls:store', onStore);
     const offSector = bus.on('sector', () => {
       guard.hold(6);
       renderer.setWorld(world);
@@ -107,8 +124,29 @@ function playSession(profile, opts = {}) {
     let running = true;
     let frameId = 0;
 
+    // Absicherung: Ein Fehler in einem Bild darf das Spiel nicht stumm einfrieren. Einzelne Fehler werden
+    // protokolliert und übersprungen; häufen sie sich, wird gespeichert und sauber zum Hub zurückgekehrt.
+    let errCount = 0, errWindow = 0;
+    const onFrameError = (err) => {
+      console.error('Fehler im Spielbild', err);
+      const t = performance.now();
+      if (t - errWindow > 10000) { errWindow = t; errCount = 0; }
+      if (++errCount === 1) bus.emit('message', { kind: 'warn', title: 'SYSTEM', text: 'Ein Fehler ist aufgetreten – das Spiel läuft weiter.' });
+      if (errCount >= 5) {
+        try { world.save(); } catch { /* egal */ }
+        bus.emit('message', { kind: 'warn', title: 'SYSTEM', text: 'Wiederholte Fehler – Spielstand gesichert, Rückkehr zur Station.' });
+        setTimeout(() => bus.emit('toHub'), 600);
+        return true;
+      }
+      return false;
+    };
+
     const frame = (now) => {
       if (!running) return;
+      try { frameBody(now); } catch (err) { if (onFrameError(err)) return; }
+      if (running) frameId = requestAnimationFrame(frame);
+    };
+    const frameBody = (now) => {
       let dt = (now - last) / 1000;
       last = now;
       if (dt > MAX_FRAME) dt = MAX_FRAME;
@@ -129,7 +167,6 @@ function playSession(profile, opts = {}) {
       audio.update();
       guard.frame(dt, performance.now() - t0, renderer, world);
       renderer.noteWork(performance.now() - tf);
-      frameId = requestAnimationFrame(frame);
     };
     frameId = requestAnimationFrame(frame);
 
@@ -149,6 +186,7 @@ function playSession(profile, opts = {}) {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('beforeunload', saveOnLeave);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('ls:store', onStore);
       input.dispose();
       audio.dispose();
       hud.dispose();
@@ -210,5 +248,9 @@ async function main() {
     }
   }
 }
+
+// Unbehandelte Fehler außerhalb der Spielschleife sichtbar protokollieren (nicht still verschlucken)
+window.addEventListener('error', (e) => console.error('Unbehandelter Fehler:', e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => console.error('Unbehandelte Promise-Ablehnung:', e.reason));
 
 main().catch(showError);
