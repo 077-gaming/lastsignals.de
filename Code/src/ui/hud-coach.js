@@ -12,9 +12,9 @@ const STEPS = [
 ];
 // Touch (iPad): gleiche Schritte, Texte für Finger und Knöpfe
 const TOUCH = {
-  fly: 'Finger auf die Spielfläche legen = in diese Richtung fliegen · zwei Finger = Zoom',
+  fly: '<b>Joystick</b> links ziehen = fliegen · oder Finger auf die Spielfläche · zwei Finger = Zoom · <b>ANSICHT</b> wechselt die Kamera',
   target: 'Gegner antippen = Ziel · oder Knopf <b>ZIEL</b>',
-  attack: 'Gegner <b>zweimal antippen</b> oder Knopf <b>ANGRIFF</b> · <b>RAKETE</b> feuert · in der sicheren Zone sind Waffen gesperrt',
+  attack: 'Gegner <b>zweimal antippen</b> oder Knopf <b>LASER</b> · <b>RAKETE</b> feuert · in der sicheren Zone sind Waffen gesperrt',
   loot: 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · drüberfliegen · Knopf <b>HEIM</b> = Autopilot zur Station',
 };
 if (typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1)) for (const s of STEPS) if (TOUCH[s.key]) s.text = TOUCH[s.key];

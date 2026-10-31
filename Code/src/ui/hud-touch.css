@@ -1,9 +1,23 @@
 /* Touch-Knöpfe rechts unten über der Karte, groß genug für Daumen (≥ 56 px), halbtransparent */
-.ht-pad { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(340px + env(safe-area-inset-bottom)); z-index: 60; display: grid; grid-template-columns: repeat(2, 72px); gap: 10px; touch-action: none; }
+.ht-pad { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(340px + env(safe-area-inset-bottom)); z-index: 60; display: grid; grid-template-columns: repeat(3, 72px); gap: 8px; touch-action: none; }
 .ht-b { height: 60px; border: 1px solid rgba(255,255,255,.28); background: rgba(8,10,14,.55); color: #fff; font: 600 12px/1 var(--ls-display, sans-serif); letter-spacing: .14em; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
-.ht-b.ht-big { grid-column: span 2; height: 72px; background: color-mix(in srgb, var(--fx, #e0782a) 70%, transparent); color: #000; font-size: 15px; }
+.ht-b.ht-mid { height: 68px; font-size: 13px; }
+.ht-b.ht-big { grid-column: span 3; height: 84px; background: color-mix(in srgb, var(--fx, #e0782a) 70%, transparent); color: #000; font-size: 15px; }
 .ht-b.is-hit { background: rgba(255,255,255,.35); }
 /* Ganze Seite: keine Browser-Gesten (Zoomen, Ziehen, Text markieren, Lupe) im Spiel */
 body.is-touch, body.is-touch canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
 @media (orientation: portrait) and (pointer: coarse) { .ht-pad { bottom: calc(360px + env(safe-area-inset-bottom)); } }
 html[data-vpfit] .ht-pad { zoom: 1.45; } /* Handy: Knöpfe trotz verkleinertem Layout daumengroß */
+
+/* Joystick links unten */
+.ht-stick { position: fixed; left: max(28px, env(safe-area-inset-left)); bottom: calc(250px + env(safe-area-inset-bottom)); z-index: 60; width: 180px; height: 180px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); background: radial-gradient(circle, rgba(255,255,255,.06), rgba(8,10,14,.35)); touch-action: none; }
+.ht-stick i { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%; background: rgba(255,255,255,.22); border: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 20px rgba(0,0,0,.5); }
+html[data-vpfit] .ht-stick { zoom: 1.45; }
+/* Zielanzeige */
+.ht-tgt { position: fixed; left: 0; top: 0; z-index: 55; pointer-events: none; display: none; }
+.ht-tgt.on { display: block; }
+.ht-tgt b { position: absolute; left: -38px; top: -38px; width: 76px; height: 76px; border: 2px solid #ff4a3a; clip-path: polygon(0 0,30% 0,30% 3px,3px 3px,3px 30%,0 30%,0 70%,3px 70%,3px calc(100% - 3px),30% calc(100% - 3px),30% 100%,0 100%,0 0,100% 0,100% 30%,calc(100% - 3px) 30%,calc(100% - 3px) 3px,70% 3px,70% 0,100% 0,100% 100%,70% 100%,70% calc(100% - 3px),calc(100% - 3px) calc(100% - 3px),calc(100% - 3px) 70%,100% 70%); }
+.ht-tgt.fire b { border-color: #ffd23a; }
+.ht-tgt em { position: absolute; left: 44px; top: -10px; font: 600 13px var(--ls-mono, monospace); color: #ff8a7a; white-space: nowrap; font-style: normal; text-shadow: 0 1px 4px #000; }
+.ht-tgt.edge b { left: -18px; top: -18px; width: 36px; height: 36px; border: 0; background: #ff4a3a; clip-path: polygon(100% 50%, 0 0, 25% 50%, 0 100%); transform: rotate(var(--a)); }
+
