@@ -123,6 +123,7 @@ function wantSector() {
     if (g.type === 'jump') return Math.max(g.target, Math.min(farm, 3));
     if (g.type === 'kill' && g.target) {
       const ss = typeSectors(g.target);
+      if (ss.includes(curIdx())) return curIdx(); // Ziel lebt hier: bleiben (wie ein Spieler)
       if (ss.includes(farm)) return farm;
       const ok = ss.filter((i) => sectorsByIdx[i].levelMin <= pr.level + 1);
       return ok.length ? Math.max(...ok) : Math.min(...ss);

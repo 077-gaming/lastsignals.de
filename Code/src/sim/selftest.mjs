@@ -1134,6 +1134,16 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
       QUESTS.every((q) => ['kill', 'crate', 'ore', 'buy', 'jump', 'use', 'event', 'combo', 'drones', 'level', 'own'].includes(q.goal.type) && q.goal.count > 0), `${QUESTS.length} Aufträge, ${fmt(sum)} EP`);
   }
   {
+    // alter Spielstand (alte Kurve): Stufe 8 mit 300.000 EP → Erfahrung auf den Anfang von Stufe 8 in der neuen Kurve
+    const old = newProfile('Veteran', 'saturn'); old.level = 8; old.xp = 300000; delete old.xpv; old.quest = { index: 7, progress: 0 };
+    const w8 = new World(old, makeBus(), { seed: 5 });
+    const lo = D.xpForLevel(8), hi = D.xpForLevel(9);
+    const k0 = (old.xp - lo) / (hi - lo);
+    w8._addXp(hi - old.xp);
+    check('Alter Spielstand: Stufe bleibt, Erfahrungsbalken nie negativ, nächster Aufstieg erreichbar', k0 >= 0 && old.level === 9 && old.xpv === D.XP_CURVE_VERSION,
+      `Stufe 8: ${fmt(lo)} EP (vorher 300.000), Balken ${(k0 * 100).toFixed(0)} %, danach Stufe ${old.level}`);
+  }
+  {
     const { pr, w } = mk('Aufstieg', 87);
     const c0 = pr.credits, t0 = pr.tritium;
     w._addXp(D.xpForLevel(3) - pr.xp);

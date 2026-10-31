@@ -474,6 +474,18 @@ export function xpForLevel(n) {
   if (n <= 1) return 0;
   return Math.round(2200 * Math.pow(n - 1, 2.85));
 }
+// Version der Stufenkurve: alte Spielstände (Kurve 1) behalten ihre Stufe, ihre Erfahrung wird auf den Anfang dieser
+// Stufe in der neuen Kurve angehoben (sonst stünde der Balken im Minus und der nächste Aufstieg läge Stunden entfernt)
+export const XP_CURVE_VERSION = 2;
+/** Spielstand an die aktuelle Stufenkurve anpassen (ändert nur alte Stände; idempotent). → profile */
+export function migrateXp(pr) {
+  if (pr && (pr.xpv || 1) < XP_CURVE_VERSION) {
+    const lvl = Math.max(1, Math.floor(pr.level) || 1);
+    pr.xp = Math.max(+pr.xp || 0, xpForLevel(lvl));
+    pr.xpv = XP_CURVE_VERSION;
+  }
+  return pr;
+}
 export const MAX_LEVEL = 50;
 
 // Auftragskette (Wirtschaft v2, 31.10.2026): 31 Aufträge führen in ≈ 10–12 Stunden (mit etwas Grinden) zu Stufe 10,
@@ -556,7 +568,7 @@ export function newProfile(callsign, factionId) {
     callsign,
     faction: factionId,
     created: new Date().toISOString(),
-    level: 1, xp: 0, honor: 0, rankPoints: 0,
+    level: 1, xp: 0, xpv: XP_CURVE_VERSION, honor: 0, rankPoints: 0,
     credits: 20000, tritium: 50,
     ship: 's1',
     loadout: { lasers: ['pulse', 'pulse'], gens: ['sh1', 'dr1'] },

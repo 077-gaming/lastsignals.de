@@ -808,7 +808,7 @@ export class Hud {
     else {
       this.sXpMax.set(false);
       const a = xpForLevel(lvl), b = xpForLevel(lvl + 1);
-      this.gXp.set(xp - a, b - a, dt);
+      this.gXp.set(Math.max(0, xp - a), b - a, dt); // nie negativ (Schutz, falls Kurve und Spielstand auseinanderlaufen)
     }
     this.cCredits.set(p.credits, dt);
     this.cTritium.set(p.tritium, dt);
@@ -1387,10 +1387,11 @@ export class Hud {
     const p = w && w.profile;
     if (!p) return;
     const free = (p.level || 1) <= REPAIR.freeUntilLevel;
-    // Lerneffekt: wer war es, und ein konkreter Tipp für das nächste Mal (wechselt je Tod)
+    // Lerneffekt: wer war es, und ein konkreter Tipp für das nächste Mal (wechselt je Tod; beim ersten Abschuss,
+    // stats.deaths = 1, kommt der Kreisen-Tipp)
     const TIPS = [
-      'Tipp: Im Kampf in Bewegung bleiben und das Ziel umkreisen – wer quer zur Schusslinie fliegt, wird seltener getroffen. Rote Warnmarker zeigen, wohin eine Salve zielt: Kurs ändern!',
       'Tipp: Unter 30 % Hülle H drücken – der Autopilot fliegt in die sichere Zone der Station, dort wird repariert.',
+      'Tipp: Im Kampf in Bewegung bleiben und das Ziel umkreisen – wer quer zur Schusslinie fliegt, wird seltener getroffen. Rote Warnmarker zeigen, wohin eine Salve zielt: Kurs ändern!',
       'Tipp: Ein Reparaturroboter (Station → Shop → Reparatur) flickt die Hülle überall, sobald du 5 s nicht kämpfst.',
       'Tipp: Gegnergruppen einzeln anlocken statt mitten hineinzufliegen. Ein Schuss auf den Rand zieht nur wenige mit.',
       'Tipp: Bessere Laser und Generatoren gibt es im Shop der Station (Taste 3 in Mission Control).',

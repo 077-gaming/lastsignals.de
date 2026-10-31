@@ -29,4 +29,8 @@ Messung Wirtschaft v2 (31.10.2026), Ziel „Stufe 10 nach 10–12 h mit 8 Pionee
 | kreisend, Seed 3 | 0,8 h | 1,6 h (St. 6) | 2,9 h | 5,1 h (St. 9) | 6,9 h | 112.000 |
 | kreisend, Seed 7 | 0,6 h | 1,9 h (St. 6) | 3,2 h | 5,9 h (St. 9) | 6,9 h | 104.000 |
 | kreisend, Seed 11 | 0,8 h | 1,7 h (St. 6) | 3,5 h | 6,2 h (St. 9) | 7,0 h | 125.000 |
-| stehend, Seed 7 | 1,3 h | 3,5 h (St. 6) | 5,9 h | 8,4 h (St. 9) | 10,3 h | 137.000 |
+| stehend, Seed 7 | 0,8 h | 4,0 h (St. 6) | 5,7 h | 9,2 h (St. 9) | 11,2 h | 105.000 |
+| stehend, Seed 11 | 0,7 h | 1,9 h (St. 6) | 4,1 h | 6,9 h (St. 9) | 7,8 h | 107.000 |
+
+(Stehend-Läufe nach der Korrektur des Bots: Er verließ einen Sektor, obwohl das Auftragsziel dort lebte, und hing so
+in einem früheren Lauf 6 Stunden bei „25 Larva“. Ein Spieler würde dort bleiben – der Bot jetzt auch.)

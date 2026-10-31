@@ -1,7 +1,7 @@
 // Spielstand im Browser (localStorage). Nur lokal, keine echten Konten im Test.
 // Robust gegen kaputte Daten: Ein Lesefehler löscht nie etwas. Vor jedem Schreiben bleibt der letzte gültige
 // Stand als Sicherung (KEY.bak) erhalten; unlesbare Rohdaten werden unter KEY.corrupt.<zeit> aufgehoben.
-import { newProfile } from './data.js';
+import { newProfile, migrateXp } from './data.js';
 
 const KEY = 'weltraumspiel.profiles.v1';
 const BAK = KEY + '.bak';
@@ -63,8 +63,9 @@ function writeAll(all) {
 const keyOf = (callsign) => String(callsign || '').trim().toLowerCase();
 
 export const store = {
-  list() { return Object.values(readAll()); },
-  get(callsign) { const k = keyOf(callsign); if (!k || FORBIDDEN.has(k)) return null; return readAll()[k] || null; },
+  // alte Spielstände sofort an die aktuelle Stufenkurve anpassen (auch für Hub und Ruhmeshalle, nicht erst im Flug)
+  list() { return Object.values(readAll()).map(migrateXp); },
+  get(callsign) { const k = keyOf(callsign); if (!k || FORBIDDEN.has(k)) return null; const p = readAll()[k]; return p ? migrateXp(p) : null; },
   create(callsign, factionId) {
     if (callsignForbidden(callsign)) throw new Error('Rufname nicht erlaubt');
     const p = newProfile(callsign, factionId);

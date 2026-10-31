@@ -6,7 +6,7 @@ import {
   FACTIONS, ENEMIES, LASERS, AMMO, ROCKETS, GENERATORS, SHIPS, ORES, CRATE_TABLE, DRIFT_CRATE_TABLE, QUESTS, REPAIR,
   VARIANTS, ALPHA_PERKS, xpForLevel, MAX_LEVEL, sectorsFor, REWARD_SCALE, COMBO, SPECIALS,
   EXTRAS, MINES, TECHS, FORMATIONS, DRONES, DRONE_SHOP, DRONE_RULES, dronePrice, REPAIR_BOTS, QUEST_VERSION, levelReward,
-  JUNO_DROP,
+  JUNO_DROP, migrateXp,
 } from '../core/data.js';
 import {
   normalizeDrones, initDrones, updateDrones, droneShield, dronesOnKill, dronesOnDeath, addDrone, sellDrone, repairDrone,
@@ -2424,8 +2424,9 @@ function removeOne(arr, id) {
 
 /** Ältere oder unvollständige Spielstände ergänzen (ändert nur fehlende Felder). */
 function normalizeProfile(pr) {
-  pr.level = pr.level || 1;
+  pr.level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(pr.level) || 1));
   pr.xp = pr.xp || 0;
+  migrateXp(pr); // neue Stufenkurve (Wirtschaft v2): Stufe bleibt, Erfahrung mindestens auf den Anfang dieser Stufe
   pr.honor = pr.honor || 0;
   pr.credits = pr.credits || 0;
   pr.tritium = pr.tritium || 0;
