@@ -76,6 +76,7 @@ const OPTIONAL_MODELS = [
   ['station:europa', '/models/station-europa.glb'],
   ['station:saturn', '/models/station-saturn.glb'],
   ['station:eris', '/models/station-eris.glb'],
+  ['enemy:raider', '/models/enemy-raider.glb'], // Meshy-Modell (31.10.2026)
 ];
 
 const PITCH = 55 * Math.PI / 180;
