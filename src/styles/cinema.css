@@ -106,7 +106,7 @@ body[data-faction] .sec-code .ls-num, body[data-faction] .reason-n { color: var(
 .rail a:hover .rail-l, .rail a:focus-visible .rail-l { opacity: 1; transform: none; }
 .rail a:hover, .rail a.is-on { color: #fff; }
 .rail a.is-on i { width: 30px; background: var(--fx); }
-body[data-ch="0"] .rail { opacity: .55; }
+body[data-ch="0"] .rail { opacity: .3; } /* im Hero zurückhaltend: überlagert sonst die Markierungen Erde/Kontakte */
 
 /* ---------- Positionsanzeige ---------- */
 .hud { position: fixed; left: var(--g); bottom: 18px; z-index: 40; display: grid; gap: 4px; min-width: 230px; padding: 10px 12px 10px; background: rgba(2, 3, 6, .72); opacity: 0; transform: translateY(6px); transition: opacity .4s, transform .4s var(--ls-ease); pointer-events: none; font-family: var(--ls-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ls-tx-3); }
@@ -140,13 +140,13 @@ body:not([data-faction]) .wm .wm-sig { color: #fff; }
 .hero-marks { position: absolute; inset: 0; pointer-events: none; z-index: -1; opacity: 0; transition: opacity 1.2s 1s; }
 .is-3d .hero-marks { opacity: 1; }
 body:not([data-ch="0"]) .hero-marks { opacity: 0; transition-delay: 0s; }
-.mk { position: absolute; left: 0; top: 0; display: block; font-family: var(--ls-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ls-tx-2); will-change: transform; white-space: nowrap; }
+.mk { position: absolute; left: 0; top: 0; display: block; font-family: var(--ls-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ls-tx-2); will-change: transform; white-space: nowrap; }
 .mk i { position: absolute; left: -13px; top: -13px; width: 26px; height: 26px; border: 1px solid rgba(255, 255, 255, .55); clip-path: polygon(0 0, 30% 0, 30% 1px, 70% 1px, 70% 0, 100% 0, 100% 30%, calc(100% - 1px) 30%, calc(100% - 1px) 70%, 100% 70%, 100% 100%, 70% 100%, 70% calc(100% - 1px), 30% calc(100% - 1px), 30% 100%, 0 100%, 0 70%, 1px 70%, 1px 30%, 0 30%); }
 .mk b, .mk em { position: absolute; left: 22px; font-weight: 400; }
 .mk b { top: -16px; color: #fff; }
 .mk em { top: -2px; font-style: normal; color: var(--ls-tx-3); }
 .mk::before { content: ""; position: absolute; left: 13px; top: -9px; width: 7px; height: 1px; background: rgba(255, 255, 255, .5); }
-.mk-earth em { color: #ff6a60; animation: blink 2.4s steps(1) infinite; }
+.mk-earth em { color: #ff6a60; } /* kein Dauerblinken mehr (ruhiger) */
 .mk-swarm i { border-color: rgba(255, 106, 96, .7); }
 .mk-swarm em { color: var(--amber); }
 .mk-sun i { border-color: rgba(255, 255, 255, .25); width: 40px; height: 40px; margin: -20px 0 0 -20px; }
@@ -935,3 +935,10 @@ body.is-flying:not([data-ch="0"]) .hud, body:not([data-ch="0"]) .hud { opacity: 
   .hero-wm { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; }
   .hero-trust { font-size: 11px; letter-spacing: .08em; }
 }
+
+/* Bewegung reduzieren: alle Einblend- und Dauer-Animationen der Startseite aus (System-Einstellung respektieren) */
+@media (prefers-reduced-motion: reduce) {
+  .hero-kicker, .wm-hero, .hero-head, .hero-sub, .hero-lead, .hero-cta, .wm .wm-sig { animation: none !important; }
+}
+/* Fokus sichtbar für Tastatur-Nutzer überall */
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px solid #e9c46a; outline-offset: 3px; }
