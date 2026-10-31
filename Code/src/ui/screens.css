@@ -1549,10 +1549,10 @@ body.in-game .sc-stage { display: none; }
   clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
 }
 .hg-foot::before { content: ""; position: absolute; left: 20px; top: 0; width: 32px; height: 2px; background: var(--fx); }
-.hg-ros { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
-.hg-ros .hb-ro { padding: 2px 12px; border-left: 1px solid rgba(255, 255, 255, .08); gap: 7px; }
+.hg-ros { display: grid; grid-auto-flow: column; grid-auto-columns: auto; gap: 0 4px; }
+.hg-ros .hb-ro { padding: 2px 14px; border-left: 1px solid rgba(255, 255, 255, .08); gap: 7px; }
 .hg-ros .hb-ro:first-child { border-left: 0; padding-left: 0; }
-.hg-ros .hb-ro b { font-size: 22px; }
+.hg-ros .hb-ro b { font-size: 21px; white-space: nowrap; }
 .hg-ammo { display: grid; gap: 7px; padding-left: 20px; border-left: 1px solid var(--ls-line); min-width: 0; }
 .hg-ammo-h { font-size: 10px; }
 .hg-ammo > div { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }

@@ -3,7 +3,7 @@
 // Start = 3D-Szene (Heimatstation, eigenes Schiff) mit großem START-Knopf und drei Kurzinfos. Jeder andere Bereich:
 // klare Überschrift, wenige große Kacheln, Details erst auf Klick. Bildsprache: Planung/UI_STIL.md.
 import {
-  FACTIONS, SHIPS, LASERS, GENERATORS, AMMO, ROCKETS, ENEMIES, QUESTS, RANKS, ORES, REPAIR,
+  FACTIONS, SHIPS, LASERS, GENERATORS, AMMO, ROCKETS, ENEMIES, QUESTS, RANKS, ORES, REPAIR, DRONES,
   BACKDROPS, xpForLevel, MAX_LEVEL, sectorsFor, newProfile,
 } from '../core/data.js';
 import {
@@ -372,7 +372,7 @@ function hangarView(P, ctx) {
   let L = '', G = '';
   for (let i = 0; i < ship.laserSlots; i++) L += hpCard(P, 'laser', i, (lo.lasers || [])[i], ctx);
   for (let i = 0; i < ship.genSlots; i++) G += hpCard(P, 'gen', i, (lo.gens || [])[i], ctx);
-  const am = [...Object.keys(AMMO), ...Object.keys(ROCKETS)].map((k) => `<span class="hg-am${k === sel ? ' sel' : ''}${(ammo[k] || 0) > 0 ? '' : ' is-zero'}"><span class="ls-label">${k}</span><b class="ls-num">${fmt(ammo[k])}</b></span>`).join('');
+  const am = [...Object.keys(AMMO), ...Object.keys(ROCKETS)].map((k) => `<span class="hg-am${k === sel ? ' sel' : ''}${(ammo[k] || 0) > 0 ? '' : ' is-zero'}"><span class="ls-label">${k}</span><b class="ls-num" title="${fmt(ammo[k])}">${kfmt(ammo[k])}</b></span>`).join('');
   const msg = ctx.msg ? `<div class="sh-msg hg-msg ${ctx.msg.ok ? 'is-ok' : 'is-warn'}" role="status"><span class="ls-label">${ctx.msg.ok ? 'UMBAU' : 'HINWEIS'}</span><span>${esc(ctx.msg.text)}</span></div>` : '';
   return `<div class="hg" data-hg>
     <svg class="hg-lines" data-lines aria-hidden="true"></svg>
@@ -391,7 +391,7 @@ function hangarView(P, ctx) {
       <div class="hg-slots">${G}</div>
     </div>
     <div class="hg-foot">
-      <div class="hg-ros">${ro('HÜLLE', fmt(ship.hp))}${ro('SCHILD', fmt(shield))}${ro('SCHADEN', fmt(dmg))}${ro('TEMPO', fmt(speedOf(P)))}</div>
+      <div class="hg-ros">${ro('HÜLLE', fmt(ship.hp))}${ro('SCHILD', fmt(shield + droneShieldOf(P)))}${ro('SCHADEN', fmt(dmg))}${ro('TEMPO', fmt(speedOf(P)))}${ro('DROHNEN', String((P.drones || []).length))}</div>
       <div class="hg-ammo"><span class="ls-label hg-ammo-h">MUNITION AN BORD</span><div>${am}</div></div>
       <div class="hg-acts">
         <button type="button" class="ls-btn" data-goto="shop:ships">WERFT</button>
@@ -400,6 +400,11 @@ function hangarView(P, ctx) {
     </div>
   </div>`;
 }
+
+// Munition kompakt (5.000 → 5,0k), damit die Zellen nicht abschneiden; voller Wert im Tooltip
+function kfmt(v) { v = v || 0; return v >= 10000 ? Math.round(v / 1000) + 'k' : v >= 1000 ? (Math.floor(v / 100) / 10).toFixed(1).replace('.', ',') + 'k' : fmt(v); }
+// Schild der einsatzbereiten Schild-Drohnen (wie im Flug), damit Hangar und Cockpit dieselbe Zahl zeigen
+function droneShieldOf(P) { let s = 0; for (const d of P.drones || []) if (!d.broken && d.module === 'shield' && DRONES[d.type]) s += DRONES[d.type].shield[(d.level || 1) - 1] || 0; return s; }
 
 // ---------------------------------------------------------------- Pilotenakte
 
