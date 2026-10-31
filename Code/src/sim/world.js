@@ -1647,6 +1647,15 @@ export class World {
     else if (pr.level < level) info.reason = `Stufe ${level} nötig (du hast Stufe ${pr.level}).`;
     else if (price.currency && (pr[price.currency] || 0) < info.cost) info.reason = `Zu wenig ${CURRENCY_NAME[price.currency]}: ${fmt(info.cost)} nötig, du hast ${fmt(pr[price.currency] || 0)}.`;
     else info.ok = true;
+    // Warnung vor Fehlkäufen: Teil brächte nichts, weil alle Plätze belegt sind (es käme nur ins Lager)
+    if (info.ok && (kind === 'laser' || kind === 'gen')) {
+      const ship = SHIPS[pr.ship];
+      if (kind === 'laser') {
+        const L = pr.loadout.lasers;
+        const weakest = L.length ? Math.min(...L.map((l) => LASERS[l]?.damage ?? 0)) : 0;
+        if (L.length >= ship.laserSlots && (LASERS[id]?.damage ?? 0) <= weakest) info.warn = `Alle ${ship.laserSlots} Laserplätze belegt und nicht stärker als dein schwächster Laser – käme nur ins Lager.`;
+      } else if (pr.loadout.gens.length >= ship.genSlots) info.warn = `Alle ${ship.genSlots} Generatorplätze belegt – kommt ins Lager, im Hangar tauschbar.`;
+    }
     return info;
   }
 

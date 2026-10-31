@@ -7,7 +7,7 @@ import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { StationUI } from './ui/station.js';
 import { Input } from './input.js';
-import { AudioSystem } from './audio/audio.js';
+import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
 import { PerfHud } from './perf/perfhud.js';
 import { autoQuality, isAutoQuality, storeAutoQuality, raiseCap, QualityGuard, Q_NAMES, Q_LABEL } from './perf/quality.js';
 import { setSetting, settings } from './ui/screens-kit.js';
@@ -246,7 +246,9 @@ async function main() {
     for (;;) {
       profile = store.get(callsign) || profile;
       document.body.dataset.faction = profile.faction;
+      hubMusic(true);
       const choice = await hubScreen(screensRoot, profile, store);
+      hubMusic(false);
       if (choice === 'logout') break;
       await launchSequence(screensRoot, profile);
       await playSession(profile);
@@ -257,5 +259,8 @@ async function main() {
 // Unbehandelte Fehler außerhalb der Spielschleife sichtbar protokollieren (nicht still verschlucken)
 window.addEventListener('error', (e) => console.error('Unbehandelter Fehler:', e.error || e.message));
 window.addEventListener('unhandledrejection', (e) => console.error('Unbehandelte Promise-Ablehnung:', e.reason));
+
+// Menü-Klicks: kurzer leiser Ton für Knöpfe in Hub und Bildschirmen (nicht im Flug-HUD, das hat eigene Töne)
+screensRoot.addEventListener('click', (e) => { if (e.target.closest('button, [role="button"], [data-nav], a')) uiSound('click'); }, true);
 
 main().catch(showError);

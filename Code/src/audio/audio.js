@@ -8,7 +8,7 @@ const SFX = [
   'hit_shield', 'hit_hull', 'explosion_small', 'explosion_big', 'engine_loop', 'boost', 'jump_charge', 'jump_warp',
   'dock', 'loot', 'levelup', 'alarm', 'ui_click', 'ui_open', 'radio', 'alien_death',
 ];
-const MUSIC = { calm: 'home_calm', combat: 'combat', silence: 'silence' };
+const MUSIC = { calm: 'home_calm', combat: 'combat', silence: 'silence', hub: 'hub' };
 const LASER_SOUND = { pulse: 'laser_pulse', ion: 'laser_ion', plasma: 'laser_plasma', gamma: 'laser_gamma' };
 
 // Grundlautstärke je Effekt, damit das Gesamtbild stimmt (Laser leiser als Explosionen).
@@ -22,6 +22,47 @@ const LEVEL = {
 function settings() {
   try { return { master: 0.8, sfx: 0.9, music: 0.5, ...JSON.parse(localStorage.getItem('ls.settings') || '{}') }; }
   catch { return { master: 0.8, sfx: 0.9, music: 0.5 }; }
+}
+
+// ───────────── Hub/Menü: Musik und Klicks (ohne Flug-AudioSystem) ─────────────
+// Mission Control hatte bisher keinen Ton. Musik (hub.mp3) blendet weich ein, beim Abflug weich aus;
+// Knöpfe im Menü geben einen kurzen, leisen Klick. Startet erst nach der ersten Eingabe (Autoplay-Regeln).
+function applyGains(E) {
+  const st = settings();
+  E.master.gain.value = st.master; E.sfxGain.gain.value = st.sfx; E.musicGain.gain.value = st.music;
+}
+export function hubMusic(on) {
+  const E = engine();
+  if (!E) return;
+  applyGains(E);
+  const tr = musicTrack(E, 'hub');
+  if (!tr || !tr.ok) return;
+  const now = E.ctx.currentTime;
+  clearTimeout(tr.stopT);
+  tr.gain.gain.cancelScheduledValues(now);
+  if (on) {
+    tr.gain.gain.setTargetAtTime(0.5, now, 1.2);
+    const go = () => { if (tr.el.paused) tr.el.play().catch(() => { }); };
+    go();
+    if (!E._hubKick) { E._hubKick = true; const kick = () => { if (E._hubOn) { go(); E.ctx.resume().catch(() => { }); } }; window.addEventListener('pointerdown', kick); window.addEventListener('keydown', kick); }
+  } else {
+    tr.gain.gain.setTargetAtTime(0, now, 0.5);
+    tr.stopT = setTimeout(() => tr.el.pause(), 2500);
+  }
+  E._hubOn = !!on;
+}
+export function uiSound(kind = 'click') {
+  const E = S; // nur, wenn die Engine schon läuft (kein Context nur für einen Klick)
+  if (!E || E.ctx.state !== 'running') return;
+  const now = E.ctx.currentTime;
+  if (now - (E._uiLast || 0) < 0.03) return;
+  E._uiLast = now;
+  const o = E.ctx.createOscillator(), g = E.ctx.createGain();
+  o.type = 'triangle';
+  const f = kind === 'open' ? 660 : 1250;
+  o.frequency.setValueAtTime(f, now); o.frequency.exponentialRampToValueAtTime(f * 0.7, now + 0.05);
+  g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(kind === 'open' ? 0.05 : 0.035, now + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+  o.connect(g).connect(E.sfxGain); o.start(now); o.stop(now + 0.08);
 }
 
 // ───────────── Gemeinsame Audio-Engine (einmal pro Seite) ─────────────

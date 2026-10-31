@@ -281,7 +281,7 @@ function inspector(P, ctx) {
     </div>`;
   } else {
     act = `<button type="button" class="ls-btn is-fx sh-buy" data-buy ${info.ok ? '' : 'disabled'}>${info.ok ? label : st}</button>
-      ${info.ok ? '' : `<p class="sh-why">${esc(info.reason)}</p>`}`;
+      ${info.ok ? (info.warn ? `<p class="sh-why sh-warn">${esc(info.warn)}</p>` : '') : `<p class="sh-why">${esc(info.reason)}</p>`}`;
   }
   const qty = multi ? `<div class="sh-qty"><span class="ls-label">PACKUNGEN</span>${[1, 5, 10, 25].map((q) => `<button type="button" class="mc-seg-b${q === n ? ' on' : ''}" data-qty="${q}" aria-pressed="${q === n}">${q}×</button>`).join('')}</div>` : '';
   const own = kind === 'laser' || kind === 'gen' ? `<span><span class="ls-label">EINGEBAUT</span><b class="ls-num">${info.equipped}</b></span><span><span class="ls-label">IM LAGER</span><b class="ls-num">${info.owned}</b></span>`

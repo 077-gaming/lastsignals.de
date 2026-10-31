@@ -118,7 +118,7 @@ const LANES_X = [0, 30, -30, 12, -12, 42, -42];
 const LANES_Y = [0, -14, -14, -30, -30, -46, -46];
 const TIER2 = 0.06, TIER3 = 0.15;
 const FEED_MAX_H = 196;  // px, wie .hm-list max-height
-const HIT_MERGE = 0.22;  // s: Treffer derselben Salve (Laser feuern ca. 133 ms versetzt) aufs selbe Ziel werden eine Zahl
+const HIT_MERGE = 0.4;   // s: Treffer kurz hintereinander aufs selbe Ziel werden eine Zahl (vorher 0,22 s: Zahlen verklumpten)
 const MAP_HZ = 15;
 const EDGE_WARN = 320;   // Meter vor dem Kartenrand
 
@@ -916,11 +916,13 @@ export class Hud {
       for (const [id, n] of count) parts.push(n + '× ' + ((LASERS[id] && LASERS[id].name) || id).replace(' Laser', '').toUpperCase());
       this.sWLas.set(parts.length ? parts.join(' · ') : 'KEIN LASER');
     }
-    const firing = !!(pl && pl.attacking && pl.alive !== false);
-    const locked = !firing && !!w.inSafeZone;
+    // In der sicheren Zone feuern die Waffen nicht – auch nicht bei eingeschaltetem Angriff (vorher stand dort „FEUER“)
+    const safe = !!w.inSafeZone;
+    const firing = !!(pl && pl.attacking && pl.alive !== false) && !safe;
+    const locked = safe;
     this.sWFire.set(firing);
     this.sWFireLock.set(locked);
-    this.sWFireText.set(firing ? 'FEUER' : locked ? 'GESPERRT' : 'BEREIT');
+    this.sWFireText.set(firing ? 'FEUER' : locked ? 'SICHERE ZONE' : 'BEREIT');
   }
 
   // Hinweise und Beutezeile sitzen über der Konsole (Schiff + Schnellleiste), Serie unter der Sektor-Anzeige.

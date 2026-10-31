@@ -1637,3 +1637,6 @@ body.in-game .sc-stage { display: none; }
   .sh-pv.is-big { flex-basis: 140px; min-height: 120px; }
   .sh-row { min-height: 76px; }
 }
+
+/* Shop: Warnung vor Fehlkauf (Teil käme nur ins Lager) */
+.sh-why.sh-warn { color: var(--ls-warn); }
