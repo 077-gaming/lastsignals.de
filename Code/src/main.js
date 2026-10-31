@@ -10,7 +10,7 @@ import { Input } from './input.js';
 import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
 import { PerfHud } from './perf/perfhud.js';
 import { autoQuality, isAutoQuality, storeAutoQuality, raiseCap, QualityGuard, Q_NAMES, Q_LABEL } from './perf/quality.js';
-import { setSetting, settings } from './ui/screens-kit.js';
+import { setSetting, settings, reduced } from './ui/screens-kit.js';
 import './ui/theme.css';
 
 const STEP = 1 / 60;          // feste Simulationsschrittweite
@@ -123,7 +123,7 @@ function playSession(profile, opts = {}) {
     let acc = 0;
     let hitStop = 0;
     const offKill = bus.on('explode', (p) => {
-      if (!p || p.kind !== 'enemy' || settings().reducedMotion) return;
+      if (!p || p.kind !== 'enemy' || reduced()) return; // Spieleinstellung ODER Systemeinstellung „Bewegung reduzieren“
       hitStop = Math.max(hitStop, p.size >= 2 || p.rank === 'alpha' ? 0.11 : 0.045);
     });
     let running = true;
