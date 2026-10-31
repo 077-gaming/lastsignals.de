@@ -329,6 +329,7 @@ function shopView(P, ctx) {
 
 // Hangar: Schiff groß in der Mitte, Steckplätze als Hardpoint-Leisten links (Laser) und rechts (Generatoren)
 // Gespeicherte Lautstärke auf die nächste Stufe der Auswahl (0/25/50/75/100 %) runden, damit eine Stufe markiert ist
+const quickbuyAsk = () => { try { return localStorage.getItem('ls.quickbuy.ok') !== '1'; } catch { return true; } };
 const nearestVol = (v) => [0, 0.25, 0.5, 0.75, 1].reduce((a, b) => (Math.abs(b - (Number(v) || 0)) < Math.abs(a - (Number(v) || 0)) ? b : a), 0);
 
 function hpCard(P, kind, i, id, ctx) {
@@ -816,6 +817,7 @@ function einstView() {
         ${sub('HD', 'HUD IM FLUG', '<span class="ls-label">SOFORT</span>')}
         <div class="mc-set st-set">
           ${setRow('HUD-GRÖSSE', 'Skaliert alle Fenster im Flug.', seg('hudScale', [[0.85, '85 %'], [1, '100 %'], [1.15, '115 %'], [1.3, '130 %']], s.hudScale))}
+          ${setRow('SCHNELLKAUF-RÜCKFRAGE', 'Leiste 5 kauft mit einem Klick. Vorher nachfragen?', seg('quickbuyAsk', [[true, 'AN'], [false, 'AUS']], quickbuyAsk()))}
           ${setRow('ANZEIGE STANDARD', 'Schiff, Ziel, Pilot, Auftrag, Waffen. Je Fenster weiter umschaltbar.', seg('hudMode', [['bar', 'BALKEN'], ['num', 'WERTE']], h.mode))}
           ${setRow('LAYOUT SPERREN', 'Fenster bleiben an ihrem Platz.', seg('hudLock', [[false, 'AUS'], [true, 'AN']], h.locked))}
           ${setRow('LAYOUT ZURÜCKSETZEN', 'Positionen, Zuklappen und Anzeige auf Werkseinstellung.', '<button type="button" class="ls-btn mc-reset" data-hudreset>ZURÜCKSETZEN</button>')}
@@ -848,6 +850,7 @@ const KEYS = [
     [['6'], 'SAL, starker Einzelschuss'],
     [['LEER'], 'Rakete auf das Ziel (auch R)'],
     [['H'], 'Autopilot zur Station: in der sicheren Zone wird repariert'],
+    [['B'], 'Hub-Shop im Flug: Munition, Raketen, Extras sofort kaufen'],
   ]],
   ['mc', 'MISSION CONTROL', [
     [['ENTER'], 'Ins All starten'],
@@ -860,7 +863,7 @@ const KB = [
   [['ESC', 'MENÜ', 1.5], ['1', 'L1'], ['2', 'L2'], ['3', 'L3'], ['4', 'L4'], ['5', 'SAB'], ['6', 'SAL'], ['7'], ['8'], ['9'], ['0']],
   [['TAB', 'ZIEL', 1.5], ['Q'], ['W', 'VOR'], ['E', 'DOCK'], ['R', 'R1'], ['T'], ['Z'], ['U'], ['I'], ['O'], ['P']],
   [['⇪', '', 1.75], ['A', 'LINKS'], ['S', 'ZURÜCK'], ['D', 'RECHTS'], ['F'], ['G'], ['H', 'HEIM'], ['J', 'SPRUNG'], ['K'], ['L'], ['Ö', '', 0.75]],
-  [['⇧', '', 2.25], ['Y'], ['X'], ['C'], ['V'], ['B'], ['N'], ['M'], ['⇧', '', 2.25]],
+  [['⇧', '', 2.25], ['Y'], ['X'], ['C'], ['V'], ['B', 'SHOP'], ['N'], ['M'], ['⇧', '', 2.25]],
   [['STRG', 'ANGRIFF', 1.5], ['⌥', '', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'RAKETE', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
 ];
 function keyboard() {
@@ -1319,6 +1322,7 @@ export async function hubScreen(root, profile, store) {
     let val = b.dataset.val;
     if (key === 'hudMode') { hudSet((v) => { for (const id of HUD_TOGGLE) v.win[id] = { ...(v.win[id] || { collapsed: false }), mode: val }; }); }
     else if (key === 'hudLock') { val = val === 'true'; hudSet((v) => { v.locked = val; }); }
+    else if (key === 'quickbuyAsk') { val = val === 'true'; try { if (val) localStorage.removeItem('ls.quickbuy.ok'); else localStorage.setItem('ls.quickbuy.ok', '1'); } catch { /* privat */ } }
     else {
       if (key === 'hudScale' || key === 'master' || key === 'sfx' || key === 'music') val = Number(val);
       else if (key === 'reducedMotion') val = val === 'true';

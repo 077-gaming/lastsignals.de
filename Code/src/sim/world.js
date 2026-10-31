@@ -1684,6 +1684,8 @@ export class World {
     else if (pr.level < level) info.reason = `Stufe ${level} nötig (du hast Stufe ${pr.level}).`;
     else if (price.currency && (pr[price.currency] || 0) < info.cost) info.reason = `Zu wenig ${CURRENCY_NAME[price.currency]}: ${fmt(info.cost)} nötig, du hast ${fmt(pr[price.currency] || 0)}.`;
     else info.ok = true;
+    // Im Flug (Fernhandel): nur Verbrauchsgüter – der Shop zeigt den Grund schon vor dem Klick
+    if (info.ok && !this.docked && !['ammo', 'rocket', 'extra', 'mine'].includes(kind)) { info.ok = false; info.reason = 'Nur angedockt an einer Station kaufbar.'; }
     // Warnung vor Fehlkäufen: Teil brächte nichts, weil alle Plätze belegt sind (es käme nur ins Lager)
     if (info.ok && (kind === 'laser' || kind === 'gen')) {
       const ship = SHIPS[pr.ship];

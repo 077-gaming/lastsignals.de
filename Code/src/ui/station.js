@@ -502,8 +502,10 @@ export class StationUI {
     };
 
     this._offs = [
-      bus.on('docked', () => this.open()),
+      bus.on('docked', () => { if (this.remote) { this.remote = false; this.el.classList.remove('is-remote'); document.body.classList.remove('is-remote-shop'); this.isOpen = false; } this.open(); }),
       bus.on('undocked', () => this.close()),
+      bus.on('playerDead', () => this.closeRemote()),
+      bus.on('remoteShop', () => this.toggleRemote()),
       bus.on('profile', () => { if (this.isOpen) this.render(); }),
       bus.on('message', (m) => { if (this.isOpen && m && m.text) this.log(m.text, m.kind); }),
       bus.on('playerDead', () => this.close()),
@@ -525,12 +527,34 @@ export class StationUI {
     else this.close();
   }
 
+  /** Fernhandel im Flug (Taste B oder „HUB“ im Bordmenü): dieselbe Oberfläche wie angedockt, aber über dem Flug.
+   *  Munition, Raketen, Extras sofort kaufbar; Schiffe/Ausrüstung/Erz nur angedockt (die Sim lehnt mit Grund ab). */
+  openRemote() {
+    if (!this.world || this.world.docked || this.world.playerDead) return;
+    this.remote = true;
+    this.el.classList.add('is-remote');
+    this.tab = 'shop';
+    this.open();
+    this.codeEl.textContent = 'FERNHANDEL · FUNKVERBINDUNG ' + (this.world.sector ? this.world.sector.id : '--');
+    this.subEl.textContent = 'Munition · Raketen · Extras sofort';
+    this.log('Fernhandel verbunden. Lieferung per Kurierdrohne an dein Schiff.');
+    const ub = this.el.querySelector('.sx-undock'); if (ub) ub.innerHTML = '<span class="ls-key">B</span>Schließen';
+  }
+  closeRemote() {
+    if (!this.remote) return;
+    this.remote = false;
+    this.el.classList.remove('is-remote');
+    const ub = this.el.querySelector('.sx-undock'); if (ub) ub.innerHTML = '<span class="ls-key">E</span>Abdocken';
+    this.close();
+  }
+  toggleRemote() { if (this.remote) this.closeRemote(); else this.openRemote(); }
+
   open() {
     if (!this.world) return;
     const first = !this.isOpen;
     this.isOpen = true;
     this.el.classList.add('open');
-    document.body.classList.add('is-docked');
+    document.body.classList.add(this.remote ? 'is-remote-shop' : 'is-docked');
     if (first) {
       const s = this.world.sector;
       const p = this.world.profile;
@@ -567,7 +591,7 @@ export class StationUI {
     if (!this.isOpen) return;
     this.isOpen = false;
     this.el.classList.remove('open');
-    document.body.classList.remove('is-docked');
+    document.body.classList.remove('is-docked', 'is-remote-shop');
     clearInterval(this._timer);
     this._timer = 0;
     clearTimeout(this._rcTimer);
@@ -611,7 +635,14 @@ export class StationUI {
 
   // ---------- Tastatur ----------
   _key(e) {
-    if (!this.isOpen || !this.world || !this.world.docked) return;
+    if (!this.isOpen || !this.world) return;
+    if (this.remote) {
+      // Fernhandel: Esc/B schließt; Tasten bedienen den Shop, Kampftasten bleiben fürs Fliegen frei
+      if (e.code === 'Escape' || e.code === 'KeyB') { if (!e.repeat) this.closeRemote(); e.preventDefault(); e.stopPropagation(); return; }
+      if (e.code === 'ArrowDown' || e.code === 'ArrowUp') { this._stepPick(e.code === 'ArrowDown' ? 1 : -1); e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
+    if (!this.world.docked) return;
     const tag = e.target && e.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     let handled = true;
@@ -1616,7 +1647,7 @@ export class StationUI {
     const d = t.dataset;
     switch (d.act) {
       case 'tab': this._setTab(d.tab); break;
-      case 'undock': w.undock(); break;
+      case 'undock': if (this.remote) this.closeRemote(); else w.undock(); break;
       case 'slot':
         this.sel.kind = d.kind; this.sel.index = +d.i;
         this.render(true);

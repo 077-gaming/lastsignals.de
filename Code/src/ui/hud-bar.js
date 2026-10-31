@@ -1,19 +1,22 @@
-// Schnellleiste (AKT·08) unten mittig: zehn frei belegbare Plätze auf Tasten 1 bis 0, vier Leisten zum Umschalten.
+// Schnellleiste (AKT·08) unten mittig: zehn frei belegbare Plätze auf Tasten 1 bis 0, fünf Leisten zum Umschalten
+// (Leiste 5: Schnellkauf – eine Packung mit einem Klick, erste Rückfrage abschaltbar).
 // Belegen per Ziehen und Ablegen aus dem Arsenal (AKT·09, öffnet über der Leiste): Lasermunition L1–L4, SAB, SAL,
 // Raketen R1–R3, Extras (EMP, SOS, BMB, TRN, JMP), Minen (SPM, BRM, STM), Techs (VMP, ARC, LCK, RSV, FIX), Formationen, Konfigurationen 1–3.
 // Plätze untereinander tauschen durch Ziehen, aus der Leiste ziehen = Platz leeren. Gespeichert in localStorage 'ls.hud.bar'.
 //
-// Tasten: 1–9, 0 lösen den Platz der aktuellen Leiste aus, Alt+1–4 wechselt die Leiste. Der Hörer läuft in der
+// Tasten: 1–9, 0 lösen den Platz der aktuellen Leiste aus, Alt+1–5 wechselt die Leiste. Der Hörer läuft in der
 // Capture-Phase vor input.js und hält die Taste dort an; ohne HUD gilt weiter die feste Belegung aus input.js.
 // Welt-Befehle: vorhandene direkt (selectAmmo, fireSal, fireRocket); für Extras, Techs, Formationen und
 // Konfigurationen werden die in SCHNITTSTELLEN.md vorgeschlagenen Befehle aufgerufen, sobald die Simulation sie hat
 // (bis dahin: Platz gesperrt, klare Rückmeldung). Keine Speicher-Neuanlage pro Bild, DOM nur bei Änderung.
 import './hud-bar.css';
 import { AMMO, ROCKETS, EXTRAS, MINES, TECHS } from '../core/data.js';
+
+export const QUICKBUY_KEY = 'ls.quickbuy.ok'; // '1' = Schnellkauf ohne Rückfrage
 import { fmt, clamp01, TextSlot, ClassSlot, EdgeProgress, EDGE_SVG } from './hud-parts.js';
 
 export const BAR_KEY = 'ls.hud.bar';
-const BARS = 4;
+const BARS = 5; // Leiste 5 = Schnellkauf (Shop mit einem Klick)
 const SLOTS = 10;
 const KEYCAP = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 const DRAG_MIN = 6;  // px, ab hier wird aus einem Klick ein Ziehen
@@ -63,6 +66,12 @@ export const CATS = [
     F('wing', 'WING', 'Wing: Tempo'), F('pulse', 'PULSE', 'Pulse: Schaden um dich'), F('vortex', 'VORTEX', 'Vortex: fängt Raketen ab'),
     F('halo', 'HALO', 'Halo: heilt Verbündete'), F('crown', 'CROWN', 'Crown: mehr Erfahrung und Ehre'),
   ] },
+  // Schnellkauf: eine Packung mit einem Klick (beim ersten Mal mit Rückfrage, abschaltbar)
+  { id: 'buy', code: 'KAUF', title: 'SCHNELLKAUF', items: [
+    ...['L1', 'L2', 'L3', 'L4', 'SAB', 'SAL'].map((k) => ({ ...F('b' + k, k, `Kauft eine Packung ${k} (${fmt(AMMO[k].pack)} Schuss)`), sk: 'ammo', sid: k })),
+    ...Object.keys(ROCKETS).map((k) => ({ ...F('b' + k, k, `Kauft eine Packung ${k} (${fmt(ROCKETS[k].pack)} Stück)`), sk: 'rocket', sid: k })),
+    ...['EMP', 'SOS', 'BMB'].map((k) => ({ ...F('b' + k, k, `Kauft ${k}-Vorrat`), sk: 'extra', sid: k })),
+  ] },
   { id: 'config', code: 'KFG', title: 'KONFIGURATION', items: [
     F('1', 'K1', 'Konfiguration 1: eigene Verteilung von Lasern, Generatoren, Extras'),
     F('2', 'K2', 'Konfiguration 2'), F('3', 'K3', 'Konfiguration 3'),
@@ -79,6 +88,7 @@ const DEFAULT = [
   ['tech:VMP', 'tech:ARC', 'tech:LCK', 'tech:RSV', 'tech:FIX', 'extra:TRN', 'extra:JMP', 'config:1', 'config:2', 'config:3'],
   ['form:standard', 'form:wall', 'form:spear', 'form:ring', 'form:helix', 'form:comet', 'form:swarm', 'form:star', 'form:wing', 'form:pulse'],
   ['rocket:R1', 'rocket:R2', 'rocket:R3', 'mine:SPM', 'mine:BRM', 'mine:STM', 'tech:ARC', 'tech:RSV', 'extra:EMP', 'extra:SOS'],
+  ['buy:bL1', 'buy:bL2', 'buy:bL3', 'buy:bL4', 'buy:bSAB', 'buy:bSAL', 'buy:bR1', 'buy:bR2', 'buy:bEMP', 'buy:bSOS'],
 ];
 const MIGRATE = 2; // Leiste 4 war früher leer: einmal mit Raketen und Minen füllen, wenn sie noch leer ist
 
@@ -296,6 +306,7 @@ export class HudBar {
     window.removeEventListener('pointercancel', this._onUp);
     this.pal.remove();
     this.ghost.remove();
+    this._qbEl?.remove();
   }
 
   // ---------- Zustand je Platz (ohne Speicher-Neuanlage) ----------
@@ -340,6 +351,13 @@ export class HudBar {
         if (a) { st.left = a.readyIn || 0; st.total = a.cooldown || 1; }
         break;
       }
+      case 'buy': {
+        // Bestand an Bord als Zahl; gesperrt, wenn die Welt es nicht verkauft (Stufe, Währung)
+        const n = it.sk === 'extra' ? (w.abilities && w.abilities[it.sid] ? w.abilities[it.sid].count : (p.extras || {})[it.sid]) : ammo[it.sid];
+        st.count = n != null ? n : null;
+        st.na = typeof w.buy !== 'function';
+        break;
+      }
       case 'config': {
         st.na = typeof w.setConfig !== 'function';
         st.sel = !st.na && String(w.config || 1) === it.id;
@@ -349,6 +367,39 @@ export class HudBar {
       }
       default: break;
     }
+  }
+
+  // ---------- Schnellkauf ----------
+  _quickBuy(it) {
+    const w = this.hud.world;
+    if (!w || typeof w.buy !== 'function') return;
+    const info = typeof w.shopInfo === 'function' ? w.shopInfo(it.sk, it.sid, 1) : null;
+    const doBuy = () => {
+      const r = w.buy(it.sk, it.sid, 1);
+      const s = this.slots.find((x) => x.it === it);
+      if (s) { if (r && r.ok) { s.flashT = 0.16; s.sFlash.set(false); void s.el.offsetWidth; s.sFlash.set(true); } else { s.denyT = 0.5; s.sDeny.set(false); void s.el.offsetWidth; s.sDeny.set(true); } }
+    };
+    let skip = false;
+    try { skip = localStorage.getItem(QUICKBUY_KEY) === '1'; } catch { /* privat */ }
+    if (skip || !info || !info.ok) { doBuy(); return; } // abgelehnt → die Welt meldet den Grund
+    this._confirmBuy(it, info, doBuy);
+  }
+  _confirmBuy(it, info, doBuy) {
+    this._qbEl?.remove();
+    const cur = info.currency === 'tritium' ? 'Tritium' : 'Credits';
+    const el = this._qbEl = document.createElement('div');
+    el.className = 'qb-confirm'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Schnellkauf bestätigen');
+    el.innerHTML = `<b>SCHNELLKAUF</b><p>${esc(it.name)} · ${esc(it.note)}<br>Preis: <span class="ls-num">${fmt(info.cost)}</span> ${cur}</p>
+      <label class="qb-chk"><input type="checkbox" data-qb-skip> Nicht mehr nachfragen (in den Einstellungen änderbar)</label>
+      <div class="qb-act"><button type="button" class="ls-btn is-primary" data-qb-ok>KAUFEN</button><button type="button" class="ls-btn" data-qb-no>ABBRECHEN</button></div>`;
+    document.body.appendChild(el);
+    const close = () => { el.remove(); if (this._qbEl === el) this._qbEl = null; window.removeEventListener('keydown', onKey, true); };
+    const ok = () => { try { if (el.querySelector('[data-qb-skip]').checked) localStorage.setItem(QUICKBUY_KEY, '1'); } catch { /* privat */ } close(); doBuy(); };
+    const onKey = (e) => { if (e.code === 'Enter') { e.preventDefault(); e.stopPropagation(); ok(); } else if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+    el.querySelector('[data-qb-ok]').addEventListener('click', ok);
+    el.querySelector('[data-qb-no]').addEventListener('click', close);
+    window.addEventListener('keydown', onKey, true);
+    el.querySelector('[data-qb-ok]').focus();
   }
 
   // ---------- Auslösen ----------
@@ -372,6 +423,7 @@ export class HudBar {
       case 'tech': call(w.useTech, it.id); break;
       case 'form': call(w.setFormation, it.id); break;
       case 'config': call(w.setConfig, +it.id); break;
+      case 'buy': this._quickBuy(it); return;
       default: ok = false;
     }
     if (ok && res !== false) { s.flashT = 0.16; s.sFlash.set(false); void s.el.offsetWidth; s.sFlash.set(true); return; }
@@ -454,7 +506,7 @@ export class HudBar {
   }
 
   _showInfo(it) {
-    if (!it) { this.info.innerHTML = `<span class="ls-label">LEISTE ${this.cur + 1}</span> Platz per Rechtsklick oder Herausziehen leeren · Alt+1–4 wechselt die Leiste`; return; }
+    if (!it) { this.info.innerHTML = `<span class="ls-label">LEISTE ${this.cur + 1}</span> Platz per Rechtsklick oder Herausziehen leeren · Alt+1–5 wechselt die Leiste`; return; }
     const w = this.hud.world, p = w && w.profile;
     if (w && p) this._state(it, w, p, this._st);
     const na = this._st.na;

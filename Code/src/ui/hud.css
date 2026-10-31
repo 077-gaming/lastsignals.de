@@ -721,7 +721,7 @@
 .mp-crow .ls-key { justify-self: start; height: 17px; font-size: 10px; }
 .mp-foot {
   flex-shrink: 0; padding: 12px 16px 16px; border-top: 1px solid var(--ls-line);
-  display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 6px;
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; /* SPEICHERN · HUB-SHOP · FLUG BEENDEN, darunter WEITER über volle Breite */
   background: linear-gradient(rgba(255, 255, 255, .06), rgba(255, 255, 255, .06)) 0 0 / 100% 1px no-repeat, rgba(255, 255, 255, .025);
 }
 .mp-foot .ls-btn { height: 36px; font-size: 13px; padding: 3px 10px 0; }
@@ -850,3 +850,4 @@
 
 /* Bordmenü offen: Flug-Coach und Auftragsmarker ausblenden (lagen sonst über dem Menü) */
 .hd.hd-menu ~ .hud-coach, .hd.hd-menu ~ .hud-qm { opacity: 0 !important; }
+.mp-foot .ls-btn.is-primary { grid-column: 1 / -1; }

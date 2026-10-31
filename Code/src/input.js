@@ -139,6 +139,7 @@ export class Input {
       }
       case 'Space': e.preventDefault(); if (!w.docked) w.fireRocket(); break;
       case 'KeyH': if (!w.docked) { this.cruise = false; this.mouseDown = false; w.autoHome(); } break;
+      case 'KeyB': if (!w.docked) this.bus.emit('remoteShop', {}); break; // Fernhandel (Hub-Shop im Flug)
       case 'Digit6': if (!w.docked) w.fireSal(); break;
       case 'KeyR': if (!w.docked) w.fireRocket(); break;
       case 'KeyJ': if (!w.docked) w.tryJump(); break;

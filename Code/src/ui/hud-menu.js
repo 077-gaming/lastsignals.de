@@ -31,9 +31,10 @@ const CONTROLS = [
     ['2× LMB', 'Erfassen, Angriff'],
     ['STRG', 'Angriff an, aus'],
     ['1–0', 'Schnellleiste, frei belegbar'],
-    ['ALT 1–4', 'Leiste wechseln'],
+    ['ALT 1–5', 'Leiste wechseln (5 = Schnellkauf)'],
     ['LEER', 'Rakete (auch R)'],
     ['H', 'Autopilot zur Station'],
+    ['B', 'Hub-Shop im Flug'],
   ]],
   ['SYSTEM', [
     ['ESC', 'Bordmenü'],
@@ -111,7 +112,8 @@ export function menuHtml(windows) {
     </div>
     <footer class="mp-foot">
       <button class="ls-btn" type="button" data-act="save">SPEICHERN</button>
-      <button class="ls-btn" type="button" data-act="hub">ZUM HUB</button>
+      <button class="ls-btn" type="button" data-act="hub" title="Shop im Flug öffnen (Taste B)">HUB · SHOP</button>
+      <button class="ls-btn" type="button" data-act="leave" title="Flug beenden, zurück zu Mission Control">FLUG BEENDEN</button>
       <button class="ls-btn is-primary" type="button" data-act="resume">WEITER<span class="ls-key">ESC</span></button>
     </footer>
   </aside>

@@ -754,7 +754,8 @@ export class Hud {
       case 'menu': this.toggleMenu(); break;
       case 'allbar': this.wins.setAllModes(false); break;
       case 'allnum': this.wins.setAllModes(true); break;
-      case 'hub': this.toggleMenu(false); this.bus.emit('toHub', {}); break;
+      case 'hub': this.toggleMenu(false); this.bus.emit('remoteShop', {}); break; // Hub-Shop als Fenster im Flug
+      case 'leave': this.toggleMenu(false); this.bus.emit('toHub', {}); break; // Flug beenden → Mission Control
       case 'tab': this.menu.setTab(t.dataset.tab); break;
       case 'winvis': this.wins.toggleHidden(t.dataset.id); this.menu.syncWins(); break;
       case 'calm': this.menu.setCalm(!this.menu.calm); break;
