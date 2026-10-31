@@ -92,10 +92,16 @@ function engine() {
 }
 function loadSfx(E) {
   if (E.sfxLoad) return E.sfxLoad;
-  const load = async (url) => {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(url);
-    return E.ctx.decodeAudioData(await r.arrayBuffer());
+  // Wiederholung bei Serverfehler (5xx, z. B. kurz nach einem Deploy) oder Netzproblem – vorher fehlte der Klang
+  // dann bis zum Neuladen der Seite. 404 (Datei gibt es nicht) wird nicht wiederholt.
+  const load = async (url, left = 2) => {
+    let r = null;
+    try { r = await fetch(url); } catch (err) { if (left <= 0) throw err; }
+    if (r && r.ok) return E.ctx.decodeAudioData(await r.arrayBuffer());
+    if (r && r.status === 404) throw new Error(url);
+    if (left <= 0) throw new Error(url);
+    await new Promise((res) => setTimeout(res, 1500 * (3 - left)));
+    return load(url, left - 1);
   };
   E.sfxLoad = Promise.all(SFX.map(async (id) => {
     try { E.buffers.set(id, await load(`/audio/sfx/${id}.mp3`)); } catch { /* fehlt: still */ }

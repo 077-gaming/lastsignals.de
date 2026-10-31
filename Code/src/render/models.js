@@ -534,7 +534,10 @@ async function glbLoader() {
 export function preloadGLB(url) {
   let p = GLB_CACHE.get(url);
   if (!p) {
-    p = glbLoader().then((l) => l.loadAsync(url));
+    // bis zu 2 weitere Versuche mit Pause (kurze Serverfehler, z. B. 503 direkt nach einem Deploy, oder Funkloch)
+    const attempt = (left) => glbLoader().then((l) => l.loadAsync(url))
+      .catch((err) => (left > 0 ? new Promise((r) => setTimeout(r, 1500 * (3 - left))).then(() => attempt(left - 1)) : Promise.reject(err)));
+    p = attempt(2);
     p.catch(() => GLB_CACHE.delete(url));
     GLB_CACHE.set(url, p);
   }
