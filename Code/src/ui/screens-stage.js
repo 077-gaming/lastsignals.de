@@ -274,7 +274,11 @@ class Stage {
     this.gl.shadowMap.enabled = q >= 3;
     this.lights.key.castShadow = q >= 3;
     if (shadowsBefore !== this.gl.shadowMap.enabled) this.scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; });
-    if (this.composer) { this.composer.renderTarget1.dispose(); this.composer.renderTarget2.dispose(); this.composer = null; this.smaa = null; }
+    if (this.composer) {
+      // alle Durchgänge freigeben (vorher nur die beiden Zwischenbilder → Bloom/SMAA/Look blieben bei jedem Stufenwechsel im GPU-Speicher)
+      try { this.bloom?.dispose(); this.smaa?.dispose(); this.look?.dispose?.(); } catch { /* egal */ }
+      this.composer.renderTarget1.dispose(); this.composer.renderTarget2.dispose(); this.composer = null; this.smaa = null; this.bloom = null; this.look = null;
+    }
     if (q >= 1) {
       const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: this.samples });
       this.composer = new EffectComposer(this.gl, rt);

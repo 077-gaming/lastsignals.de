@@ -1940,7 +1940,6 @@ export class Renderer {
     this.trails.dispose();
     this.tele.dispose();
     this.speedDust.dispose();
-    this.views.forEach((v) => { if (v.life) v.life.dispose(); });
     this._clearDying();
     this.sel.geometry.dispose(); this.selMat.dispose(); this._hitMat?.dispose();
     this.selInner.geometry.dispose(); this.selInner.material.dispose();
