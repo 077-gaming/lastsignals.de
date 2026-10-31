@@ -7,8 +7,8 @@ import './hud-coach.css';
 const STEPS = [
   { key: 'fly', title: 'FLIEGEN', text: 'Maus zeigt die Richtung · <kbd>W</kbd> Schub · <kbd>S</kbd> bremsen · Linke Maustaste halten = fliegen' },
   { key: 'target', title: 'ZIEL WÄHLEN', text: '<kbd>TAB</kbd> wählt den nächsten Gegner · oder Gegner anklicken' },
-  { key: 'attack', title: 'ANGREIFEN', text: '<kbd>LEERTASTE</kbd> schaltet den Angriff ein und aus · in der sicheren Zone der Station sind Waffen gesperrt' },
-  { key: 'loot', title: 'BEUTE', text: 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · einfach drüberfliegen' },
+  { key: 'attack', title: 'ANGREIFEN', text: 'Gegner <b>doppelt anklicken</b> oder <kbd>STRG</kbd> = Angriff · <kbd>LEERTASTE</kbd> = Rakete · in der sicheren Zone sind Waffen gesperrt' },
+  { key: 'loot', title: 'BEUTE', text: 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · einfach drüberfliegen · <kbd>H</kbd> = Autopilot zur Station (Reparatur)' },
 ];
 
 export class HudCoach {

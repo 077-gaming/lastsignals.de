@@ -657,7 +657,7 @@ export class Hud {
       // Einmal je Leben ein klarer Funkspruch, was jetzt zu tun ist
       if (k > 0 && !this._lowWarned && w.sector && w.sector.station) {
         this._lowWarned = true;
-        this._pushMsg({ kind: 'warn', title: 'FUNK · STATION', text: 'Hülle kritisch! Zurück in die sichere Zone der Station – dort wirst du repariert.' });
+        this._pushMsg({ kind: 'warn', title: 'FUNK · STATION', text: 'Hülle kritisch! Taste H: Autopilot zur Station – in der sicheren Zone wirst du repariert.' });
       }
       if (pl && pl.hpMax && pl.hp / pl.hpMax > 0.6) this._lowWarned = false;
     }
@@ -1384,7 +1384,7 @@ export class Hud {
     const free = (p.level || 1) <= REPAIR.freeUntilLevel;
     // Lerneffekt: wer war es, und ein konkreter Tipp für das nächste Mal (wechselt je Tod)
     const TIPS = [
-      'Tipp: Unter 30 % Hülle zurück in die sichere Zone der Station fliegen – dort heilt das Schiff, Gegner folgen nicht.',
+      'Tipp: Unter 30 % Hülle H drücken – der Autopilot fliegt in die sichere Zone der Station, dort wird repariert.',
       'Tipp: Gegnergruppen einzeln anlocken statt mitten hineinzufliegen. Ein Schuss auf den Rand zieht nur wenige mit.',
       'Tipp: Bessere Laser und Generatoren gibt es im Shop der Station (Taste 3 in Mission Control).',
       'Tipp: Mit SOS (Taste 9) und EMP (Taste 8) kommst du aus brenzligen Lagen – Vorrat in der Schnellleiste.',

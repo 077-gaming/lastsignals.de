@@ -178,7 +178,9 @@ function playSession(profile, opts = {}) {
     const onResize = () => renderer.resize();
     window.addEventListener('resize', onResize);
 
-    const saveOnLeave = () => world.saveNow();
+    // Speichern beim Verlassen und Nachfrage „Seite verlassen?“ im Flug: Strg ist die Angriffstaste, und Strg+W
+    // (W = Schub) schließt in Chrome/Edge den Tab – das lässt sich nicht abfangen, nur mit Rückfrage absichern.
+    const saveOnLeave = (e) => { world.saveNow(); if (e && !world.docked) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', saveOnLeave);
     const onVisibility = () => { if (document.hidden) world.saveNow(); };
     document.addEventListener('visibilitychange', onVisibility);

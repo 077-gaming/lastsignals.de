@@ -36,7 +36,7 @@ export const CATS = [
     F('L1', 'L1', '×1 Schaden'), F('L2', 'L2', '×2 Schaden'), F('L3', 'L3', '×3 Schaden'), F('L4', 'L4', '×4 Schaden'),
     F('SAB', 'SAB', '×2 Schaden, saugt Schild ab'), F('SAL', 'SAL', 'Salve ×6, eigene Nachladezeit, danach zurück zur gewählten Munition'),
   ] },
-  { id: 'rocket', code: 'RAK', title: 'RAKETEN', items: Object.keys(ROCKETS).map((k) => F(k, k, `${fmt(ROCKETS[k].damage)} Schaden, ${NF1.format(ROCKETS[k].cooldown)} s Nachladen · ${fmt(ROCKETS[k].price)} ${ROCKETS[k].currency === 'tritium' ? 'Tritium' : 'Credits'} je Stück · Taste R feuert die zuletzt gewählte`)) },
+  { id: 'rocket', code: 'RAK', title: 'RAKETEN', items: Object.keys(ROCKETS).map((k) => F(k, k, `${fmt(ROCKETS[k].damage)} Schaden, ${NF1.format(ROCKETS[k].cooldown)} s Nachladen · ${fmt(ROCKETS[k].price)} ${ROCKETS[k].currency === 'tritium' ? 'Tritium' : 'Credits'} je Stück · Leertaste (oder R) feuert die zuletzt gewählte`)) },
   { id: 'extra', code: 'EXT', title: 'EXTRAS', items: [
     F('EMP', 'EMP', `Löst Zielerfassung und Tarnung im Umkreis von ${fmt(EXTRAS.EMP.radius)} m, ${EXTRAS.EMP.jam} s keine neue Erfassung · ${EXTRAS.EMP.cooldown} s Abklingzeit`),
     F('SOS', 'SOS', `Sofortschild, ${EXTRAS.SOS.duration} s unverwundbar · ${EXTRAS.SOS.cooldown} s Abklingzeit`),

@@ -1,0 +1,164 @@
+[
+  {
+    "datei": "saturn-starter.glb",
+    "vorher": {
+      "tris": 88972,
+      "kb": 1593
+    },
+    "versuche": [
+      {
+        "level": "stark+einseitig",
+        "tris": 44082,
+        "kb": 1288,
+        "mean": 4,
+        "bad": 1.15,
+        "ok": false
+      },
+      {
+        "level": "mittel+einseitig",
+        "tris": 54316,
+        "kb": 1357,
+        "mean": 1.23,
+        "bad": 0.36,
+        "ok": true
+      }
+    ],
+    "gewaehlt": "mittel+einseitig",
+    "geschrieben": true
+  },
+  {
+    "datei": "europa-starter.glb",
+    "vorher": {
+      "tris": 81900,
+      "kb": 1256
+    },
+    "versuche": [
+      {
+        "level": "stark+einseitig",
+        "tris": 35412,
+        "kb": 946,
+        "mean": 6,
+        "bad": 3.55,
+        "ok": false
+      },
+      {
+        "level": "mittel+einseitig",
+        "tris": 45688,
+        "kb": 1019,
+        "mean": 2.62,
+        "bad": 1.54,
+        "ok": false
+      },
+      {
+        "level": "leicht+einseitig",
+        "tris": 59474,
+        "kb": 1111,
+        "mean": 1.09,
+        "bad": 0.55,
+        "ok": true
+      }
+    ],
+    "gewaehlt": "leicht+einseitig",
+    "geschrieben": true
+  },
+  {
+    "datei": "eris-starter.glb",
+    "vorher": {
+      "tris": 86812,
+      "kb": 1290
+    },
+    "versuche": [
+      {
+        "level": "stark+einseitig",
+        "tris": 36168,
+        "kb": 948,
+        "mean": 4.53,
+        "bad": 2.46,
+        "ok": false
+      },
+      {
+        "level": "mittel+einseitig",
+        "tris": 47300,
+        "kb": 1026,
+        "mean": 2.75,
+        "bad": 1.26,
+        "ok": false
+      },
+      {
+        "level": "leicht+einseitig",
+        "tris": 63076,
+        "kb": 1131,
+        "mean": 0.7,
+        "bad": 0.32,
+        "ok": true
+      }
+    ],
+    "gewaehlt": "leicht+einseitig",
+    "geschrieben": true
+  },
+  {
+    "datei": "saturn-schiff2.glb",
+    "vorher": {
+      "tris": 34502,
+      "kb": 1072
+    },
+    "versuche": [
+      {
+        "level": "stark+einseitig",
+        "tris": 31544,
+        "kb": 1069,
+        "mean": 0.76,
+        "bad": 0.13,
+        "ok": true
+      }
+    ],
+    "gewaehlt": "stark+einseitig",
+    "geschrieben": true
+  },
+  {
+    "datei": "europa-schiff2.glb",
+    "vorher": {
+      "tris": 34352,
+      "kb": 875
+    },
+    "versuche": [
+      {
+        "level": "stark+einseitig",
+        "tris": 31426,
+        "kb": 874,
+        "mean": 1.44,
+        "bad": 0.91,
+        "ok": false
+      },
+      {
+        "level": "mittel+einseitig",
+        "tris": 34154,
+        "kb": 894,
+        "mean": 0.33,
+        "bad": 0.13,
+        "ok": true
+      }
+    ],
+    "gewaehlt": "mittel+einseitig",
+    "geschrieben": true
+  },
+  {
+    "datei": "eris-schiff2.glb",
+    "vorher": {
+      "tris": 34788,
+      "kb": 845
+    },
+    "versuche": [
+      {
+        "level": "stark+einseitig",
+        "tris": 31796,
+        "kb": 845,
+        "mean": 0.8,
+        "bad": 0.22,
+        "ok": true
+      }
+    ],
+    "gewaehlt": "stark+einseitig",
+    "geschrieben": true
+  }
+]

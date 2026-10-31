@@ -1120,6 +1120,79 @@ export class Renderer {
     // Treffer-Blitz: Gegner leuchtet ~70 ms weiß auf (klassisches, gut lesbares Trefferfeedback)
     if (v.kind === 'enemy') v.hitT = 0.07;
   }
+  // Reparatur-Drohne: erscheint, sobald die Hülle repariert wird (sichere Zone, FIX, Drohnen-Heilung), kreist um das
+  // eigene Schiff, schweißt mit Strahl und Funken an wechselnden Stellen der Hülle und fliegt danach weg.
+  // Ein Mesh-Satz für die ganze Sitzung (kein Neuaufbau), nur sichtbar während der Reparatur.
+  _repairDrone(dt, pv, W) {
+    const p = W && W.player;
+    if (!p || !pv) return;
+    const hp = p.hp, last = this._repHp;
+    this._repHp = hp;
+    // Hülle steigt (aber kein Sprung auf voll = Wiederbelebung, kein Andocken)
+    if (last != null && hp > last + 0.01 && p.alive !== false && !W.docked && hp - last < (p.hpMax || 1) * 0.25) this._repT = 1.4;
+    else if (this._repT > 0) this._repT -= dt;
+    const want = this._repT > 0 ? 1 : 0;
+    this._repK = (this._repK || 0) + (want - (this._repK || 0)) * Math.min(1, dt * (want ? 4 : 2.5));
+    let D = this._repD;
+    if (this._repK < 0.01) { if (D) D.g.visible = false; return; }
+    if (!D) {
+      const g = new THREE.Group();
+      const hull = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, metalness: 0.75, roughness: 0.35 });
+      const dark = new THREE.MeshStandardMaterial({ color: 0x23272d, metalness: 0.6, roughness: 0.5 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.1, 3.2), hull);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 2.2), dark); arm.position.set(0, -0.4, 2.2);
+      const rotorG = new THREE.CylinderGeometry(1.1, 1.1, 0.12, 12);
+      const rotors = [-1, 1].map((sx) => { const r = new THREE.Mesh(rotorG, dark); r.position.set(sx * 2, 0.2, -0.4); g.add(r); return r; });
+      // runder, weicher Lichtpunkt (ohne Textur zeichnet ein Sprite ein Quadrat)
+      const lc = document.createElement('canvas'); lc.width = lc.height = 64;
+      const lg = lc.getContext('2d'), grd = lg.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.25, 'rgba(255,200,120,0.85)'); grd.addColorStop(1, 'rgba(255,140,40,0)');
+      lg.fillStyle = grd; lg.fillRect(0, 0, 64, 64);
+      const lampTex = new THREE.CanvasTexture(lc); lampTex.colorSpace = THREE.SRGBColorSpace;
+      const lampMat = new THREE.SpriteMaterial({ map: lampTex, color: 0xffd0a0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+      const lamp = new THREE.Sprite(lampMat); lamp.scale.setScalar(4); lamp.position.set(0, -0.4, 3.4);
+      const beamGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, 1)]);
+      const beam = new THREE.Line(beamGeo, new THREE.LineBasicMaterial({ color: new THREE.Color(2.6, 1.7, 0.7), transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+      beam.frustumCulled = false;
+      g.add(body, arm, lamp);
+      this.scene.add(g); this.scene.add(beam);
+      D = this._repD = { g, rotors, lamp, beam, a: 0, spot: new THREE.Vector3(), spotT: 0, mats: [hull, dark, lampMat, beam.material, lampTex], geos: [body.geometry, arm.geometry, rotorG, beamGeo] };
+    }
+    D.g.visible = true; D.beam.visible = this._repK > 0.6;
+    const sp = pv.root.position, r = (pv.vr || 24) * 1.35;
+    D.a += dt * 1.9;
+    const x = sp.x + Math.cos(D.a) * r, z = sp.z + Math.sin(D.a) * r, y = sp.y + 7 + Math.sin(D.a * 2.3) * 2;
+    D.g.position.set(x, y, z);
+    D.g.scale.setScalar(Math.max(0.001, this._repK) * 1.7 * Math.max(1, (pv.vr || 24) / 24));
+    for (const ro of D.rotors) ro.rotation.y += dt * 40;
+    // Schweißpunkt wandert alle ~0,6 s an eine andere Stelle der Hülle
+    D.spotT -= dt;
+    if (D.spotT <= 0) { D.spotT = 0.6; const t = Math.random() * Math.PI * 2, rr = (pv.vr || 24) * (0.25 + Math.random() * 0.35); D.spot.set(Math.cos(t) * rr, 2 + Math.random() * 3, Math.sin(t) * rr); }
+    const hx = sp.x + D.spot.x, hy = sp.y + D.spot.y, hz = sp.z + D.spot.z;
+    D.g.lookAt(hx, hy, hz);
+    const pa = D.beam.geometry.attributes.position;
+    pa.setXYZ(0, x, y - 0.4, z); pa.setXYZ(1, hx, hy, hz); pa.needsUpdate = true;
+    D.beam.material.opacity = 0.55 + Math.random() * 0.45; // Flackern wie beim Schweißen
+    D.lamp.material.opacity = 0.6 + Math.random() * 0.4;
+    // Funken am Schweißpunkt (gedrosselt)
+    this._repSpark = (this._repSpark || 0) - dt;
+    if (this._repSpark <= 0 && this._repK > 0.6 && this.effects.glowP) {
+      this._repSpark = 0.05;
+      for (let i = 0; i < 3; i++) {
+        const a = Math.random() * Math.PI * 2, v = 20 + Math.random() * 50;
+        this.effects.glowP.emit(hx, hy, hz, Math.cos(a) * v, 10 + Math.random() * 40, Math.sin(a) * v, 3, 1.9, 0.6, 1, 5, 1.2, 0.3 + Math.random() * 0.35, 2);
+      }
+    }
+  }
+  _disposeRepairDrone() {
+    const D = this._repD;
+    if (!D) return;
+    this.scene.remove(D.g); this.scene.remove(D.beam);
+    for (const m of D.mats) m.dispose();
+    for (const g of D.geos) g.dispose();
+    this._repD = null;
+  }
+
   // Blitz-Material einmal anlegen und für alle Gegner teilen (kein neuer Shader je Treffer)
   _flashMat() {
     if (!this._hitMat) this._hitMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.55, 1.45), fog: false });
@@ -1652,6 +1725,7 @@ export class Renderer {
     this.output.uniforms.uWarp.value = this.effects.warp;
     // Sprung in der Welt abgebrochen (weggeflogen, angedockt, abgeschossen) → Lade-Effekt sofort weg
     if (this.effects.jump.on && W && !W.jump) this.effects.jumpCancel();
+    this._repairDrone(dt, pv, W);
     this.effects.update(dt);
     this.trails.update(dt);
     this.tele.update(dt);
@@ -1944,7 +2018,7 @@ export class Renderer {
     this.tele.dispose();
     this.speedDust.dispose();
     this._clearDying();
-    this.sel.geometry.dispose(); this.selMat.dispose(); this._hitMat?.dispose();
+    this.sel.geometry.dispose(); this.selMat.dispose(); this._hitMat?.dispose(); this._disposeRepairDrone();
     this.selInner.geometry.dispose(); this.selInner.material.dispose();
     this.factory.dispose();
     disposeTextures();

@@ -934,6 +934,20 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Lager: Teil verkaufen nur angedockt, 50 % zurück, Teil weg', !space.ok && bought.ok && r.ok && pr.credits === c0 + 1250 && pr.owned.lasers.length === n0 - 1, `+${r.amount} ${r.currency}`);
 }
 
+// Taste H: Autopilot zurück zur Station (31.10.2026)
+{
+  const pr = newProfile('Heimkehr', 'eris');
+  const w = new World(pr, makeBus(), { seed: 77 });
+  w.update(1 / 60);
+  const st = w.station;
+  w.player.x = st.x + 2500; w.player.z = st.z + 1200;
+  for (let i = 0; i < 10; i++) w.update(1 / 60);
+  const ok = w.autoHome();
+  let t = 0;
+  while (t < 40 && !w.inSafeZone) { w.update(1 / 60); t += 1 / 60; }
+  check('Taste H: Autopilot fliegt in die sichere Zone der Station', ok && w.inSafeZone, `nach ${t.toFixed(1)} s, Abstand ${Math.round(Math.hypot(w.player.x - st.x, w.player.z - st.z))} m`);
+}
+
 // Kollision mit der Station, Sprung durch Treffer gestört (31.10.2026)
 {
   const pr = newProfile('Stossfest', 'saturn');

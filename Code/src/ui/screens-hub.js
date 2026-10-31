@@ -842,11 +842,12 @@ const KEYS = [
     [['LMB'], 'Gegner anklicken: Ziel wählen'],
     [['2×LMB'], 'Ziel wählen und angreifen'],
     [['TAB'], 'Nächster Gegner als Ziel'],
-    [['LEER'], 'Angriff an oder aus'],
+    [['STRG'], 'Angriff auf das Ziel an oder aus (ohne Ziel: nächster Gegner)'],
     [['1', '2', '3', '4'], 'Munition L1 bis L4'],
     [['5'], 'SAB, saugt Schild ab'],
     [['6'], 'SAL, starker Einzelschuss'],
-    [['R'], 'Rakete R1 auf das Ziel'],
+    [['LEER'], 'Rakete auf das Ziel (auch R)'],
+    [['H'], 'Autopilot zur Station: in der sicheren Zone wird repariert'],
   ]],
   ['mc', 'MISSION CONTROL', [
     [['ENTER'], 'Ins All starten'],
@@ -858,9 +859,9 @@ const KEYS = [
 const KB = [
   [['ESC', 'MENÜ', 1.5], ['1', 'L1'], ['2', 'L2'], ['3', 'L3'], ['4', 'L4'], ['5', 'SAB'], ['6', 'SAL'], ['7'], ['8'], ['9'], ['0']],
   [['TAB', 'ZIEL', 1.5], ['Q'], ['W', 'VOR'], ['E', 'DOCK'], ['R', 'R1'], ['T'], ['Z'], ['U'], ['I'], ['O'], ['P']],
-  [['⇪', '', 1.75], ['A', 'LINKS'], ['S', 'ZURÜCK'], ['D', 'RECHTS'], ['F'], ['G'], ['H'], ['J', 'SPRUNG'], ['K'], ['L'], ['Ö', '', 0.75]],
+  [['⇪', '', 1.75], ['A', 'LINKS'], ['S', 'ZURÜCK'], ['D', 'RECHTS'], ['F'], ['G'], ['H', 'HEIM'], ['J', 'SPRUNG'], ['K'], ['L'], ['Ö', '', 0.75]],
   [['⇧', '', 2.25], ['Y'], ['X'], ['C'], ['V'], ['B'], ['N'], ['M'], ['⇧', '', 2.25]],
-  [['CTRL', '', 1.5], ['⌥', '', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'ANGRIFF', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
+  [['STRG', 'ANGRIFF', 1.5], ['⌥', '', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'RAKETE', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
 ];
 function keyboard() {
   return `<div class="mc-kb" aria-hidden="true">${KB.map((row) => `<div class="mc-kb-r" style="grid-template-columns:${row.map((r) => `${r[2] || 1}fr`).join(' ')}">${row.map(([k, fn]) =>

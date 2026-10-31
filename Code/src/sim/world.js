@@ -1360,6 +1360,22 @@ export class World {
 
   stopMove() {
     this.player.hasMove = false;
+    this.homing = false;
+  }
+
+  /** Taste H: Autopilot zur Station des Sektors – in die sichere Zone (dort wird repariert), Angriff aus.
+   *  → true, wenn der Kurs gesetzt wurde. Ohne Station im Sektor: Hinweis auf das Sprungtor. */
+  autoHome() {
+    const p = this.player, st = this.station;
+    if (!p.alive || this.docked) return false;
+    if (!st) { this._msg('Keine Station in diesem Sektor – über das Sprungtor zurück in den Heimatsektor.', 'info', 'home', 2); return false; }
+    // Ziel: Rand der sicheren Zone auf der Seite des Spielers (außerhalb des Stationsrumpfs, innerhalb der 400 m)
+    const dx = p.x - st.x, dz = p.z - st.z, d = Math.hypot(dx, dz) || 1, r = Math.min(C.SAFE_RADIUS * 0.6, Math.max(st.radius + p.radius + 40, d));
+    p.attacking = false;
+    this.moveTo(st.x + (dx / d) * r, st.z + (dz / d) * r);
+    this.homing = true;
+    this._msg(d <= C.SAFE_RADIUS ? `Du bist in der sicheren Zone von ${st.name} – hier wird repariert.` : `Autopilot: Kurs auf ${st.name} (${fmt(Math.round(d / 10) * 10)} m). In der sicheren Zone wird repariert.`, 'info', 'home', 1);
+    return true;
   }
 
   setTarget(id) {

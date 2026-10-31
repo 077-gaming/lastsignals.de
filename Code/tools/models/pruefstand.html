@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><title>Prüfstand Modelle</title>
+<style>html,body{margin:0;background:#0b0e13}canvas{display:block}</style></head>
+<body>
+<canvas id="c" width="512" height="384"></canvas>
+<script type="module">
+// Prüfstand für den Modell-Agenten (tools/models/agent.mjs): lädt ein GLB, rendert es reproduzierbar aus 4 Blickwinkeln
+// (Studiolicht + Umgebungslicht, fester Kameraabstand aus der Bounding-Box) und liefert die Bilder als PNG-Daten.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+
+const canvas = document.getElementById('c');
+const gl = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+gl.outputColorSpace = THREE.SRGBColorSpace; gl.toneMapping = THREE.ACESFilmicToneMapping; gl.setPixelRatio(1);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b0e13);
+const pm = new THREE.PMREMGenerator(gl); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.6;
+const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(4, 6, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9fc4ff, 1.4); rim.position.set(-5, 2, -6); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x50607a, 0x05060a, 0.4));
+const cam = new THREE.PerspectiveCamera(32, 512 / 384, 0.01, 1000);
+const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+
+window.renderModel = async (url) => {
+  const g = await loader.loadAsync(url + '?t=' + Date.now());
+  const root = g.scene; scene.add(root);
+  const box = new THREE.Box3().setFromObject(root), c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
+  const views = [[0.6, 0.35, 1], [-1, 0.5, -0.4], [0.05, 1, 0.02], [1, -0.25, -0.6]], out = [];
+  for (const [x, y, z] of views) {
+    const d = new THREE.Vector3(x, y, z).normalize().multiplyScalar(r * 2.6);
+    cam.position.copy(c).add(d); cam.lookAt(c); cam.updateProjectionMatrix();
+    gl.render(scene, cam);
+    out.push(canvas.toDataURL('image/png'));
+  }
+  let tris = 0; root.traverse((o) => { if (o.isMesh) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+  scene.remove(root);
+  root.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose()); } });
+  return { views: out, tris: Math.round(tris) };
+};
+window.ready = true;
+</script>
+</body>
+</html>

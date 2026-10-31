@@ -1,5 +1,6 @@
 // Maus und Tastatur → Befehle an die Welt.
-// Leertaste: Angriff an/aus · 1–4: L1–L4 · 5: SAB · 6: SAL · R: Rakete · J: Springen · E: Andocken/Abdocken
+// Maus zuerst: Klick auf Gegner = Ziel, Doppelklick = Ziel + Angriff · Strg: Angriff auf das Ziel an/aus
+// Leertaste: Rakete (auch R) · H: Autopilot zur Station (Reparatur) · 1–4: L1–L4 · 5: SAB · 6: SAL · J: Springen · E: Andocken/Abdocken
 // Tab: nächster Gegner · Mausrad: Zoom · V: Kamera (Verfolger ↔ Taktisch)
 //
 // Verfolger-Kamera (Standard): **Maus lenkt.** Das Schiff dreht sanft in Richtung des Mauszeigers.
@@ -128,7 +129,16 @@ export class Input {
     if (e.repeat) return;
     if (w.playerDead) return;
     switch (e.code) {
-      case 'Space': e.preventDefault(); if (!w.docked) w.toggleAttack(); break;
+      // Strg: Angriff auf das anvisierte Ziel an/aus; ohne Ziel wird der nächste Gegner gewählt und angegriffen
+      case 'ControlLeft': case 'ControlRight': {
+        e.preventDefault();
+        if (w.docked) break;
+        if (!w.player.attacking && !w.player.targetId) { const n = this.nearestEnemy(); if (n) w.setTarget(n.id); }
+        w.toggleAttack();
+        break;
+      }
+      case 'Space': e.preventDefault(); if (!w.docked) w.fireRocket(); break;
+      case 'KeyH': if (!w.docked) { this.cruise = false; this.mouseDown = false; w.autoHome(); } break;
       case 'Digit6': if (!w.docked) w.fireSal(); break;
       case 'KeyR': if (!w.docked) w.fireRocket(); break;
       case 'KeyJ': if (!w.docked) w.tryJump(); break;

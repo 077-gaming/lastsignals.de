@@ -29,10 +29,11 @@ const CONTROLS = [
     ['TAB', 'Nächster Gegner'],
     ['LMB', 'Ziel erfassen'],
     ['2× LMB', 'Erfassen, Angriff'],
-    ['LEER', 'Angriff an, aus'],
+    ['STRG', 'Angriff an, aus'],
     ['1–0', 'Schnellleiste, frei belegbar'],
     ['ALT 1–4', 'Leiste wechseln'],
-    ['R', 'Rakete R1'],
+    ['LEER', 'Rakete (auch R)'],
+    ['H', 'Autopilot zur Station'],
   ]],
   ['SYSTEM', [
     ['ESC', 'Bordmenü'],
