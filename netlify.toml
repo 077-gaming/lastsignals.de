@@ -87,6 +87,11 @@
   status = 200
   force = true
 [[redirects]]
+  from = "https://lastsignals.online/fonts/*"
+  to = "/fonts/:splat"
+  status = 200
+  force = true
+[[redirects]]
   from = "https://lastsignals.online/audio/*"
   to = "/audio/:splat"
   status = 200
@@ -136,3 +141,8 @@
   for = "/audio/*"
   [headers.values]
     Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
