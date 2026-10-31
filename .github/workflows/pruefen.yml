@@ -1,0 +1,42 @@
+# Automatische Prüfung bei jedem Push und Pull Request (Website + Spiel).
+# Schlägt eine Prüfung fehl, zeigt GitHub ein rotes X am Commit – dann NICHT deployen.
+name: Prüfen
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  website:
+    name: Website bauen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run build
+
+  spiel:
+    name: Spiel testen und bauen
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Code
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Code/package-lock.json
+      - run: npm ci
+      - name: Selbsttest der Simulation
+        run: npm test
+      - name: Sperre für geschlossene Testphase darf nicht gesetzt sein
+        run: test -z "$VITE_ALLOWED_CALLSIGNS"
+      - name: Spiel bauen (wie live unter /play/)
+        run: npx vite build --base=/play/
