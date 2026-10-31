@@ -844,3 +844,6 @@
 @keyframes hud-lowhp-pulse { 50% { opacity: .65; } }
 @media (prefers-reduced-motion: reduce) { .hud-lowhp.on { animation: none; } }
 .hd-calm .hud-lowhp.on { animation: none; }
+
+/* HUD-Größe: Fenster werden ab ihrer linken oberen Ecke skaliert (hud-win.js setzt scale() hinter die Position) */
+.hd-layer > .hw { transform-origin: 0 0; }

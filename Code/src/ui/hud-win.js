@@ -161,12 +161,19 @@ export class HudWindows {
     this.layout();
   }
 
+  // HUD-Größe (Einstellung „HUD-GRÖSSE“, auf kleinen Bildschirmen automatisch kleiner): CSS-Variable --hud-k an der
+  // Fensterebene. Jedes Fenster wird per scale() ab der linken oberen Ecke skaliert; Positionen bleiben Bildschirm-px,
+  // gemessene Größen werden mit k multipliziert (offsetWidth ignoriert Transformationen).
+  _scaleK() { const v = parseFloat(getComputedStyle(this.layer).getPropertyValue('--hud-k')); return v > 0.5 && v < 2 ? v : 1; }
+  _applyK(w) { if (w._k !== this.k) { w._k = this.k; w.placed = false; } }
+
   /** Alle Fenster neu platzieren (nach Start, Größenänderung, Reset). Liest Größen einmal. */
   layout() {
     const W = window.innerWidth, H = window.innerHeight;
     this._measureBar();
     let any = false;
-    for (const w of this.wins) { w.w = w.el.offsetWidth; w.h = w.el.offsetHeight; if (w.w) any = true; }
+    this.k = this._scaleK();
+    for (const w of this.wins) { this._applyK(w); w.w = w.el.offsetWidth * this.k; w.h = w.el.offsetHeight * this.k; if (w.w) any = true; }
     if (!W || !any) return; // noch unsichtbar oder alles ausgeblendet
     const pending = this._pending || (this._pending = []);
     pending.length = 0;
@@ -215,7 +222,7 @@ export class HudWindows {
     const w = this.byId.get(id);
     if (!w) return;
     const oh = w.h;
-    w.w = w.el.offsetWidth; w.h = w.el.offsetHeight;
+    w.w = w.el.offsetWidth * (this.k || 1); w.h = w.el.offsetHeight * (this.k || 1);
     if (oh === w.h) return;
     this.layout();
   }
@@ -242,7 +249,7 @@ export class HudWindows {
     if (b.placed && y < b.y + b.h + GAP && x < b.x + b.w + GAP && x + w.w > b.x - GAP) y = Math.min(H - w.h, b.y + b.h + GAP);
     if (x !== w.x || y !== w.y || !w.placed) {
       w.x = x; w.y = y; w.placed = true;
-      w.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)';
+      w.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)' + (this.k && this.k !== 1 ? ' scale(' + this.k + ')' : '');
     }
   }
 
@@ -268,7 +275,7 @@ export class HudWindows {
     const x = w.x, y = w.y;
     w.collapsed = on;
     this._applyClasses(w);
-    w.w = w.el.offsetWidth; w.h = w.el.offsetHeight;
+    w.w = w.el.offsetWidth * (this.k || 1); w.h = w.el.offsetHeight * (this.k || 1);
     w.placed = false;
     this._place(w, x, y, window.innerWidth, window.innerHeight);
     this._resave(w);
@@ -342,7 +349,7 @@ export class HudWindows {
       w.num = !w.num;
       this._applyClasses(w);
       const oh = w.h;
-      w.h = w.el.offsetHeight;
+      w.h = w.el.offsetHeight * (this.k || 1);
       if (oh !== w.h && w.saved && w.saved.ay === 'b' && !w.saved.dock) { w.placed = false; this._place(w, w.x, w.y - (w.h - oh), window.innerWidth, window.innerHeight); this._resave(w); }
       if (oh !== w.h) this.layout();
     }
@@ -359,12 +366,12 @@ export class HudWindows {
     const w = el && this.byId.get(el.dataset.win);
     if (!w) return;
     e.preventDefault();
-    w.w = w.el.offsetWidth; w.h = w.el.offsetHeight;
+    w.w = w.el.offsetWidth * (this.k || 1); w.h = w.el.offsetHeight * (this.k || 1);
     this._measureBar();
     this._others.length = 0;
     for (const o of this.wins) {
       if (o === w || o.el.offsetParent === null) continue;
-      o.w = o.el.offsetWidth; o.h = o.el.offsetHeight;
+      o.w = o.el.offsetWidth * (this.k || 1); o.h = o.el.offsetHeight * (this.k || 1);
       this._others.push(o);
     }
     this._drag = { w, id: e.pointerId, dx: e.clientX - w.x, dy: e.clientY - w.y, moved: false };

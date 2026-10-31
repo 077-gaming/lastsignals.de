@@ -117,10 +117,10 @@ function padTex(fx, berth) {
     g.globalAlpha = 1;
     // Platznummer in Schablonenschrift
     g.fillStyle = 'rgba(255,255,255,.22)';
-    g.font = `700 ${m * 6}px "DIN Condensed", "Arial Narrow", sans-serif`;
+    g.font = `700 ${m * 6}px "DIN Condensed", "LS Display", "Arial Narrow", sans-serif`;
     g.textBaseline = 'alphabetic';
     g.fillText(berth, a + m * 1.5, H - a - m * 1.2);
-    g.font = `600 ${m * 1.4}px Menlo, monospace`;
+    g.font = `600 ${m * 1.4}px Menlo, "LS Mono", monospace`;
     g.fillText('LANDEFELD · MAX 60 T', a + m * 1.5, a + m * 2.6);
   });
 }
@@ -149,7 +149,7 @@ function wallTex() {
       for (let yy = y + 4; yy < y + h - 2; yy += 6) g.fillRect(x + 4, yy, w - 8, 2);
     }
     g.fillStyle = 'rgba(255,255,255,.08)';
-    g.font = '600 13px Menlo, monospace';
+    g.font = '600 13px Menlo, "LS Mono", monospace';
     g.fillText('P-14', 152, 150); g.fillText('DRUCK 2,1', 280, 278);
   }, true);
 }
@@ -171,9 +171,9 @@ function doorTex(fx) {
     g.restore(); g.globalAlpha = 1;
     g.fillStyle = 'rgba(0,0,0,.8)'; g.fillRect(W / 2 - 1, 0, 2, H);
     g.fillStyle = 'rgba(255,255,255,.12)';
-    g.font = '700 120px "DIN Condensed", "Arial Narrow", sans-serif';
+    g.font = '700 120px "DIN Condensed", "LS Display", "Arial Narrow", sans-serif';
     g.fillText('A', 120, 420); g.fillText('B', W - 190, 420);
-    g.font = '600 20px Menlo, monospace';
+    g.font = '600 20px Menlo, "LS Mono", monospace';
     g.fillText('SCHLEUSE · DRUCKTOR', 120, 470);
   });
 }

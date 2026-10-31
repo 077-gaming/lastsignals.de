@@ -19,6 +19,7 @@ import { HudMid } from './hud-mid.js';
 import { HudBar, quickBody } from './hud-bar.js';
 import { HudCombat } from './hud-combat.js';
 import { HudCoach } from './hud-coach.js';
+import { settings } from './screens-kit.js';
 import { HudQuest } from './hud-quest.js';
 import { HudMap } from './hud-map.js';
 import { HudMenu, menuHtml } from './hud-menu.js';
@@ -335,6 +336,16 @@ export class Hud {
 
     // Fenster
     const layer = q('layer');
+    // HUD-Größe aus den Einstellungen (vorher ohne Wirkung). Auf niedrigen Bildschirmen (≤ 800 px Höhe, z. B. 720p)
+    // automatisch 85 %, solange der Spieler 100 % eingestellt hat – sonst verdeckt das HUD das eigene Schiff.
+    this._applyHudK = () => {
+      const s = settings(), base = Number(s.hudScale) || 1;
+      const k = base === 1 && window.innerHeight <= 800 ? 0.85 : base;
+      if (k === this._hudK) return false;
+      this._hudK = k; layer.style.setProperty('--hud-k', String(k));
+      return true;
+    };
+    this._applyHudK();
     const W = (id) => layer.querySelector(`[data-win="${id}"]`);
     this.wins = new HudWindows(layer, [
       // Zonen: Konsole unten mittig (Schnellleiste, darüber das Schiff; auf sehr breiten Schirmen links daneben),
@@ -552,7 +563,7 @@ export class Hud {
       if (!e.repeat) this.wins.toggleHidden(id);
     };
     window.addEventListener('keydown', this._onWinKey, true);
-    this._onResize = () => this._sizeMap();
+    this._onResize = () => { if (this._applyHudK()) this.wins.layout(); this._sizeMap(); };
     window.addEventListener('resize', this._onResize);
 
     // Ereignisse der Simulation

@@ -8,8 +8,8 @@ import { HangarBay } from './station-bay.js';
 const CUR = { credits: 'Credits', tritium: 'Tritium' };
 const U = '\u202f'; // schmaler Abstand zwischen Wert und Einheit
 
-// Klassennamen der Schiffsreihe (Vorschlag für data.js, bis dort eigene Namen stehen)
-const SHIP_CLASS = { s1: 'Kestrel', s2: 'Harrier', s3: 'Warden', s5: 'Bastion', s8: 'Sovereign' };
+// Klassennamen aus data.js (SHIPS[id].cls) – vorher eigene, abweichende Liste (Kestrel/Harrier/Sovereign vs. Hub)
+const SHIP_CLASS = Object.fromEntries(Object.entries(SHIPS).map(([k, v]) => [k, v.cls || v.name]));
 function shipCode(id) { return 'SF-0' + ((SHIPS[id] && SHIPS[id].no) || 1); }
 function shipClass(id) { return SHIP_CLASS[id] || (SHIPS[id] ? SHIPS[id].name : ''); }
 function shipLabel(id) { return shipCode(id) + ' ' + shipClass(id); }

@@ -405,12 +405,13 @@ export const GENERATORS = {
 };
 
 // Schiffsreihe: Nr. 1 und 2 im Test spielbar, Rest als Ausblick im Hangar.
+// cls = Klassenname für alle Anzeigen (Hub, Station, Meldungen) – eine Quelle statt zwei abweichender Listen
 export const SHIPS = {
-  s1: { no: 1, name: 'Starter', hp: 6000, speed: 320, laserSlots: 2, genSlots: 2, cargo: 100, level: 1, price: 0, currency: null },
-  s2: { no: 2, name: 'Schiff 2', hp: 16000, speed: 300, laserSlots: 4, genSlots: 3, cargo: 300, level: 5, price: 60000, currency: 'credits' },
-  s3: { no: 3, name: 'Schiff 3', hp: 32000, speed: 290, laserSlots: 5, genSlots: 5, cargo: 500, level: 10, price: 250000, currency: 'credits', locked: true },
-  s5: { no: 5, name: 'Schiff 5', hp: 90000, speed: 300, laserSlots: 8, genSlots: 8, cargo: 1000, level: 20, price: 40000, currency: 'tritium', locked: true },
-  s8: { no: 8, name: 'Top-Kampfschiff', hp: 250000, speed: 320, laserSlots: 13, genSlots: 13, cargo: 3000, level: 45, price: 250000, currency: 'tritium', locked: true },
+  s1: { cls: 'Starter', no: 1, name: 'Starter', hp: 6000, speed: 320, laserSlots: 2, genSlots: 2, cargo: 100, level: 1, price: 0, currency: null },
+  s2: { cls: 'Courier', no: 2, name: 'Schiff 2', hp: 16000, speed: 300, laserSlots: 4, genSlots: 3, cargo: 300, level: 5, price: 60000, currency: 'credits' },
+  s3: { cls: 'Warden', no: 3, name: 'Schiff 3', hp: 32000, speed: 290, laserSlots: 5, genSlots: 5, cargo: 500, level: 10, price: 250000, currency: 'credits', locked: true },
+  s5: { cls: 'Bastion', no: 5, name: 'Schiff 5', hp: 90000, speed: 300, laserSlots: 8, genSlots: 8, cargo: 1000, level: 20, price: 40000, currency: 'tritium', locked: true },
+  s8: { cls: 'Leviathan', no: 8, name: 'Top-Kampfschiff', hp: 250000, speed: 320, laserSlots: 13, genSlots: 13, cargo: 3000, level: 45, price: 250000, currency: 'tritium', locked: true },
 };
 
 export const ORES = {

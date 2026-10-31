@@ -1,3 +1,14 @@
+/* Selbst gehostete Schriften (OFL, siehe public/fonts/LIZENZ.txt) als Rückfall: Auf Windows/Linux fehlen DIN und
+   SF Pro – dort landete die Oberfläche bisher bei Arial Narrow/Arial. Mac behält die Original-Schriften. */
+@font-face { font-family: "LS Display"; src: url("/fonts/barlow-condensed-latin-500-normal.woff2") format("woff2"); font-weight: 400 500; font-display: swap; }
+@font-face { font-family: "LS Display"; src: url("/fonts/barlow-condensed-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "LS Display"; src: url("/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); font-weight: 700 900; font-display: swap; }
+@font-face { font-family: "LS Text"; src: url("/fonts/inter-latin-400-normal.woff2") format("woff2"); font-weight: 100 400; font-display: swap; }
+@font-face { font-family: "LS Text"; src: url("/fonts/inter-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "LS Text"; src: url("/fonts/inter-latin-600-normal.woff2") format("woff2"); font-weight: 600 900; font-display: swap; }
+@font-face { font-family: "LS Mono"; src: url("/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2"); font-weight: 100 400; font-display: swap; }
+@font-face { font-family: "LS Mono"; src: url("/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500 900; font-display: swap; }
+
 /* LAST SIGNALS · gemeinsame Bausteine (siehe Planung/UI_STIL.md) */
 :root {
   --ls-bg: #04060a;
@@ -7,16 +18,16 @@
   --ls-line-2: rgba(255, 255, 255, .32);
   --ls-tx: rgba(255, 255, 255, .94);
   --ls-tx-2: rgba(255, 255, 255, .66);
-  --ls-tx-3: rgba(255, 255, 255, .42);
+  --ls-tx-3: rgba(255, 255, 255, .6);   /* vorher .42: Nebentexte waren auf hellem Hintergrund kaum lesbar (Kontrast)  */
   --ls-warn: #ffb020;
   --ls-danger: #ff3b30;
   --ls-loot: #7dffb0;
   --fx: #e0782a;
   --ls-cut: 12px;
-  --ls-display: "DIN Condensed", "DIN Alternate", "Avenir Next Condensed", "Arial Narrow", sans-serif;
-  --ls-digits: "DIN Alternate", "SF Mono", ui-monospace, Menlo, monospace;
-  --ls-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-  --ls-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  --ls-display: "DIN Condensed", "DIN Alternate", "Avenir Next Condensed", "LS Display", "Arial Narrow", sans-serif;
+  --ls-digits: "DIN Alternate", "SF Mono", "LS Mono", ui-monospace, Menlo, monospace;
+  --ls-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "LS Text", sans-serif;
+  --ls-mono: "SF Mono", "LS Mono", ui-monospace, Menlo, monospace;
   --ls-ease: cubic-bezier(.2, .8, .2, 1);
 }
 body[data-faction="europa"] { --fx: #d8b25a; }

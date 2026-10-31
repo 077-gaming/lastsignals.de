@@ -712,8 +712,24 @@ class Stage {
    * Schiff einmal aus der 3D-Bühne rendern (2× überabgetastet, 4× MSAA, Fließkomma), Tonwerte wie im Bild,
    * Ergebnis als PNG-Adresse zwischengespeichert. Liefert null ohne WebGL.
    */
+  /** Echtes Schiffsmodell für Vorschaubilder nachladen. Promise, sobald es da ist (oder endgültig fehlt). */
+  waitShipModel(faction, shipId) {
+    const gk = `ship:${shipId}:${faction}`;
+    if (!this.factory || this.factory.glb.has(gk)) return Promise.resolve();
+    this._glbWait = this._glbWait || new Map();
+    if (!this._glbWait.has(gk)) {
+      const file = shipId === 's1' ? 'starter' : 'schiff' + String(shipId).replace(/^s/, '');
+      this._glbWait.set(gk, this.factory.registerGLB(gk, `/models/${faction}-${file}.glb`).catch(() => { this._glbMissing = this._glbMissing || new Set(); this._glbMissing.add(gk); }));
+    }
+    return this._glbWait.get(gk);
+  }
+
   thumbnail(faction, shipId) {
     if (!this.ok || !this.cur) return null;
+    // Erst das echte Modell laden: sonst entstand ein Platzhalter-Bild, das nie ersetzt wurde (alle gesperrten
+    // Schiffe sahen im Shop gleich aus). undefined = „noch nicht, später erneut fragen“.
+    const gk = `ship:${shipId}:${faction}`;
+    if (!this.factory.glb.has(gk) && !(this._glbMissing && this._glbMissing.has(gk))) { this.waitShipModel(faction, shipId); return undefined; }
     const key = `${faction}|${shipId}|${this.factory.version}`;
     if (this.thumbs.has(key)) return this.thumbs.get(key);
     let m = null;

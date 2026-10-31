@@ -43,7 +43,8 @@ export const NEUTRAL_FX = 'rgba(255, 255, 255, .94)';
 export const FX_CODE = { europa: 'EU', saturn: 'SA', eris: 'ER' };
 
 // Schiffsklassen für die Anzeige (Daten bleiben in data.js), fortlaufend nummeriert
-const SHIP_CLASS = { s1: 'Starter', s2: 'Courier', s3: 'Warden', s5: 'Bastion', s8: 'Leviathan' };
+// Klassennamen kommen aus data.js (SHIPS[id].cls) – dieselben wie an der Station im All
+const SHIP_CLASS = Object.fromEntries(Object.entries(SHIPS).map(([k, v]) => [k, v.cls || v.name]));
 const SHIP_IDS = Object.keys(SHIPS);
 export const shipName = (id) => SHIP_CLASS[id] || SHIPS[id]?.name || 'Starter';
 export const shipNo = (id) => Math.max(1, SHIP_IDS.indexOf(id) + 1);
