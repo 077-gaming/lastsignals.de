@@ -1859,6 +1859,26 @@ export class World {
   /** Eigene Drohnen (Spielstand, nur lesen): [{ id, type, module, level, xp, hp, broken }] */
   get drones() { return this.profile.drones; }
   sellDrone(ref) { return sellDrone(this, ref); }
+
+  /** Laser/Generator aus dem Lager verkaufen (nur angedockt): 50 % des Kaufpreises in der Kaufwährung zurück.
+   *  Vorher gab es keinen Weg, Fehlkäufe loszuwerden. → { ok, reason, amount, currency } */
+  sellPart(kind, id) {
+    const pr = this.profile;
+    if (kind !== 'laser' && kind !== 'gen') return this._fail('Unbekanntes Teil.');
+    if (!this.docked) return this._fail('Nur angedockt an einer Station möglich.');
+    const inv = kind === 'laser' ? pr.owned.lasers : pr.owned.gens;
+    const def = (kind === 'laser' ? LASERS : GENERATORS)[id];
+    const i = inv.indexOf(id);
+    if (i < 0 || !def) return this._fail('Teil nicht im Lager.');
+    const currency = def.currency || 'credits';
+    const amount = Math.floor((def.price || 0) * 0.5);
+    inv.splice(i, 1);
+    pr[currency] = (pr[currency] || 0) + amount;
+    this._msg(`${def.name} verkauft: +${fmt(amount)} ${CURRENCY_NAME[currency]}`, 'loot');
+    this._emitProfile();
+    this.save();
+    return { ok: true, reason: '', amount, currency };
+  }
   repairDrone(ref = 'all') { return repairDrone(this, ref); }
   setDroneModule(ref, module) { return setDroneModule(this, ref, module); }
   droneInfo(d) { return droneInfo(d); }

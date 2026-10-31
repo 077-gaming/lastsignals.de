@@ -920,6 +920,20 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   }
 }
 
+// Teile aus dem Lager verkaufen (31.10.2026)
+{
+  const pr = newProfile('Haendler', 'europa');
+  const w = new World(pr, makeBus(), { seed: 73 });
+  w.update(1 / 60);
+  pr.credits = 10000;
+  const space = w.sellPart('laser', 'pulse');
+  w.docked = true;
+  const bought = w.buy('laser', 'pulse'); // Plätze voll → Lager
+  const c0 = pr.credits, n0 = pr.owned.lasers.length;
+  const r = w.sellPart('laser', 'pulse');
+  check('Lager: Teil verkaufen nur angedockt, 50 % zurück, Teil weg', !space.ok && bought.ok && r.ok && pr.credits === c0 + 1250 && pr.owned.lasers.length === n0 - 1, `+${r.amount} ${r.currency}`);
+}
+
 // Kollision mit der Station, Sprung durch Treffer gestört (31.10.2026)
 {
   const pr = newProfile('Stossfest', 'saturn');

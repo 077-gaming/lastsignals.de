@@ -339,7 +339,7 @@ function hpCard(P, kind, i, id, ctx) {
   if (open) {
     const cnt = {};
     for (const x of inv) cnt[x] = (cnt[x] || 0) + 1;
-    const opts = Object.entries(cnt).map(([k, c]) => `<button type="button" class="hg-opt" data-equip="${kind}:${i}:${k}">${preview(kind, k, 'is-sm')}<span><b>${esc(src[k].name.toUpperCase())}</b><span>${kind === 'laser' ? `${fmt(src[k].damage)} SCHADEN` : genText(src[k])}</span></span><i class="ls-num">${c}×</i></button>`).join('');
+    const opts = Object.entries(cnt).map(([k, c]) => `<div class="hg-opt-row"><button type="button" class="hg-opt" data-equip="${kind}:${i}:${k}">${preview(kind, k, 'is-sm')}<span><b>${esc(src[k].name.toUpperCase())}</b><span>${kind === 'laser' ? `${fmt(src[k].damage)} SCHADEN` : genText(src[k])}</span></span><i class="ls-num">${c}×</i></button><button type="button" class="ls-btn hg-sell" data-sell="${kind}:${k}" title="Für 50 % des Kaufpreises verkaufen">VERKAUFEN<span>+${fmt(Math.floor((src[k].price || 0) * 0.5))} ${src[k].currency === 'tritium' ? 'T' : 'CR'}</span></button></div>`).join('');
     pick = `<div class="hg-pick">
       <div class="hg-pick-h"><span class="ls-label">LAGER · ${kind === 'laser' ? 'LASER' : 'GENERATOREN'}</span><span class="ls-num">${pad2(inv.length)}</span></div>
       ${opts || '<p class="hg-empty">Kein passendes Teil im Lager.</p>'}
@@ -1440,6 +1440,13 @@ export async function hubScreen(root, profile, store) {
       if (eq) { const [k, i, id] = eq.dataset.equip.split(':'); doEquip(k, Number(i), id); return; }
       const uq = e.target.closest('[data-unequip]');
       if (uq) { const [k, i] = uq.dataset.unequip.split(':'); doEquip(k, Number(i), null); return; }
+      const sb = e.target.closest('[data-sell]');
+      if (sb) {
+        const [k, id] = sb.dataset.sell.split(':');
+        const w = ctx.world();
+        if (w) { const r = w.sellPart(k, id); if (r.ok) { w.saveNow(); refreshTop(); } flashMsg(r.ok, r.reason); redraw(); }
+        return;
+      }
       const d = e.target.closest('[data-det]');
       if (d && body.contains(d)) { show(current, d.dataset.det); body.focus({ preventScroll: true }); return; }
       if (e.target.closest('[data-back]')) { back(); return; }
