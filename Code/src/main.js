@@ -6,6 +6,7 @@ import { World } from './sim/world.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { StationUI } from './ui/station.js';
+import { HudTouch } from './ui/hud-touch.js';
 import { Input } from './input.js';
 import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
 import { PerfHud } from './perf/perfhud.js';
@@ -76,6 +77,7 @@ function playSession(profile, opts = {}) {
     hud.setRenderer(renderer);
     const station = new StationUI(hudRoot, bus, world);
     const input = new Input(canvas, world, renderer, bus);
+    const touch = new HudTouch(hudRoot); // iPad/Tablet: Knöpfe für Tastaturbefehle
     const audio = new AudioSystem(bus, world, renderer);
     audio.start();
     if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud }; // nur Entwicklung: Test-Pilot (tools/playtest)
@@ -194,7 +196,7 @@ function playSession(profile, opts = {}) {
       window.removeEventListener('beforeunload', saveOnLeave);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('ls:store', onStore);
-      input.dispose();
+      input.dispose(); touch.dispose();
       audio.dispose();
       hud.dispose();
       hudRoot.innerHTML = '';

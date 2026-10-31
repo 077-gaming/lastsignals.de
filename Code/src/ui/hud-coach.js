@@ -10,6 +10,14 @@ const STEPS = [
   { key: 'attack', title: 'ANGREIFEN', text: 'Gegner <b>doppelt anklicken</b> oder <kbd>STRG</kbd> = Angriff · <kbd>LEERTASTE</kbd> = Rakete · in der sicheren Zone sind Waffen gesperrt' },
   { key: 'loot', title: 'BEUTE', text: 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · einfach drüberfliegen · <kbd>H</kbd> = Autopilot zur Station (Reparatur)' },
 ];
+// Touch (iPad): gleiche Schritte, Texte für Finger und Knöpfe
+const TOUCH = {
+  fly: 'Finger auf die Spielfläche legen = in diese Richtung fliegen · zwei Finger = Zoom',
+  target: 'Gegner antippen = Ziel · oder Knopf <b>ZIEL</b>',
+  attack: 'Gegner <b>zweimal antippen</b> oder Knopf <b>ANGRIFF</b> · <b>RAKETE</b> feuert · in der sicheren Zone sind Waffen gesperrt',
+  loot: 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · drüberfliegen · Knopf <b>HEIM</b> = Autopilot zur Station',
+};
+if (typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1)) for (const s of STEPS) if (TOUCH[s.key]) s.text = TOUCH[s.key];
 
 export class HudCoach {
   constructor(root, bus, world) {

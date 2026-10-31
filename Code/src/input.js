@@ -34,6 +34,7 @@ export class Input {
     this.cruise = false;        // Verfolger: Schub an (W), aus mit S
     this.lastClick = { t: 0, id: null };
     this.steer = new Set();
+    this.touches = new Map(); this.primary = null; this.pinch = 0; // Touch: Finger, Lenk-Finger, Pinch-Abstand
 
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -47,6 +48,7 @@ export class Input {
     canvas.addEventListener('pointerdown', this.onMouseDown);
     window.addEventListener('pointermove', this.onMouseMove);
     window.addEventListener('pointerup', this.onMouseUp);
+    window.addEventListener('pointercancel', this.onMouseUp);
     canvas.addEventListener('wheel', this.onWheel, { passive: false });
     canvas.addEventListener('contextmenu', this.onContext);
     window.addEventListener('keydown', this.onKeyDown);
@@ -62,6 +64,13 @@ export class Input {
   }
 
   onMouseDown(e) {
+    // Touch (iPad): zwei Finger auf der Spielfläche = Zoomen (Pinch), der erste Finger lenkt wie die Maus
+    if (e.pointerType === 'touch') {
+      this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.touches.size === 2) { this.mouseDown = false; this.pinch = this._pinchDist(); return; }
+      if (this.touches.size > 2) return;
+      this.primary = e.pointerId;
+    }
     if (e.button !== 0) return;
     if (this.world.docked || this.world.playerDead) return;
     this.mouseX = e.clientX; this.mouseY = e.clientY; this.mouseOnCanvas = true;
@@ -92,10 +101,29 @@ export class Input {
   }
 
   onMouseMove(e) {
+    if (e.pointerType === 'touch') {
+      const t = this.touches.get(e.pointerId);
+      if (t) { t.x = e.clientX; t.y = e.clientY; }
+      if (this.touches.size >= 2) {
+        const d = this._pinchDist();
+        if (this.pinch && Math.abs(d - this.pinch) > 6) { this.renderer.setZoom((this.pinch - d) * 2.5); this.pinch = d; }
+        return;
+      }
+      if (e.pointerId !== this.primary) return;
+    }
     this.mouseX = e.clientX; this.mouseY = e.clientY;
     this.mouseOnCanvas = e.target === this.canvas;
   }
-  onMouseUp(e) { if (e.button === 0) this.mouseDown = false; }
+  onMouseUp(e) {
+    if (e.pointerType === 'touch') {
+      this.touches.delete(e.pointerId);
+      if (this.touches.size < 2) this.pinch = 0;
+      if (e.pointerId !== this.primary) return; // anderer Finger (z. B. Knopf) beendet das Lenken nicht
+      this.primary = null;
+    }
+    if (e.button === 0) this.mouseDown = false;
+  }
+  _pinchDist() { const [a, b] = [...this.touches.values()]; return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0; }
 
   onWheel(e) {
     e.preventDefault();
@@ -227,6 +255,7 @@ export class Input {
     c.removeEventListener('pointerdown', this.onMouseDown);
     window.removeEventListener('pointermove', this.onMouseMove);
     window.removeEventListener('pointerup', this.onMouseUp);
+    window.removeEventListener('pointercancel', this.onMouseUp);
     c.removeEventListener('wheel', this.onWheel);
     c.removeEventListener('contextmenu', this.onContext);
     window.removeEventListener('keydown', this.onKeyDown);

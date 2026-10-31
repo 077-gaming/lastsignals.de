@@ -2,8 +2,15 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
+  <!-- Als App installierbar (iPad: Teilen → Zum Home-Bildschirm, Mac-Safari: Zum Dock hinzufügen, Chrome/Edge: Installieren) -->
+  <link rel="manifest" href="/play/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Last Signals" />
+  <link rel="apple-touch-icon" href="/play/img/app-180.png" />
   <title>LAST SIGNALS</title>
   <link rel="stylesheet" href="/src/base.css" />
 </head>

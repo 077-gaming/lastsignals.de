@@ -2,6 +2,7 @@
 // oben eine schlanke Pilotenleiste, links die Bereiche als Liste mit großen Symbolen, in der Mitte immer nur EIN Bereich.
 // Start = 3D-Szene (Heimatstation, eigenes Schiff) mit großem START-Knopf und drei Kurzinfos. Jeder andere Bereich:
 // klare Überschrift, wenige große Kacheln, Details erst auf Klick. Bildsprache: Planung/UI_STIL.md.
+import { wireInstall } from './install.js';
 import {
   FACTIONS, SHIPS, LASERS, GENERATORS, AMMO, ROCKETS, ENEMIES, QUESTS, RANKS, ORES, REPAIR, DRONES,
   BACKDROPS, xpForLevel, MAX_LEVEL, sectorsFor, newProfile,
@@ -1009,6 +1010,7 @@ export async function hubScreen(root, profile, store) {
         <div class="ls-corners"></div>
         <div class="hb-nav" data-nav>${nav}</div>
         <div class="hb-mini" data-mini>${railMini(P, sector)}</div>
+        <button type="button" class="hb-nv hb-out" data-install hidden><span class="hb-nv-ic">${icon('logout')}</span><span class="hb-nv-t">APP INSTALLIEREN</span></button>
         <button type="button" class="hb-nv hb-out" data-logout><span class="hb-nv-ic">${icon('logout')}</span><span class="hb-nv-t">ABMELDEN</span></button>
         <span class="hb-ver ls-label">${VERSION}</span>
       </nav>
@@ -1487,6 +1489,7 @@ export async function hubScreen(root, profile, store) {
     });
     s.on(launchBtn, 'click', () => finish('launch'));
     s.on($('[data-logout]'), 'click', () => finish('logout'));
+    wireInstall($('[data-install]'), (t) => { const d = document.createElement('div'); d.className = 'hb-install'; d.setAttribute('role', 'dialog'); d.innerHTML = `<div class="ls-panel"><b>ALS APP INSTALLIEREN</b><p>${esc(t)}</p><button type="button" class="ls-btn is-fx">VERSTANDEN</button></div>`; d.querySelector('button').onclick = () => d.remove(); document.body.appendChild(d); });
     s.on(window, 'keydown', (e) => {
       if (done || e.metaKey || e.ctrlKey || e.altKey) return;
       const a = document.activeElement;

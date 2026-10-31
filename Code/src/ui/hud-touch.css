@@ -1,0 +1,8 @@
+/* Touch-Knöpfe rechts unten über der Karte, groß genug für Daumen (≥ 56 px), halbtransparent */
+.ht-pad { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(340px + env(safe-area-inset-bottom)); z-index: 60; display: grid; grid-template-columns: repeat(2, 72px); gap: 10px; touch-action: none; }
+.ht-b { height: 60px; border: 1px solid rgba(255,255,255,.28); background: rgba(8,10,14,.55); color: #fff; font: 600 12px/1 var(--ls-display, sans-serif); letter-spacing: .14em; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.ht-b.ht-big { grid-column: span 2; height: 72px; background: color-mix(in srgb, var(--fx, #e0782a) 70%, transparent); color: #000; font-size: 15px; }
+.ht-b.is-hit { background: rgba(255,255,255,.35); }
+/* Ganze Seite: keine Browser-Gesten (Zoomen, Ziehen, Text markieren, Lupe) im Spiel */
+body.is-touch, body.is-touch canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
+@media (orientation: portrait) and (pointer: coarse) { .ht-pad { bottom: calc(360px + env(safe-area-inset-bottom)); } }
