@@ -1049,6 +1049,18 @@ export class Effects {
     this._ring(p.x, p.z, 8, 60, 0.45, tri ? 0x7dffb0 : 0xffd36a, 1.2, null);
   }
 
+  /** Stufenaufstieg: doppelte Ringwelle in Fraktionsfarbe und heller Blitz am eigenen Schiff (folgt dem Schiff) */
+  levelUp(x, z, hex, follow) {
+    this._flash(x, 8, z, 160, 0.5, 0xffffff, 3.2, follow);
+    this._ring(x, z, 20, 420, 0.9, hex, 2.2, follow);
+    this._ring(x, z, 10, 260, 0.7, 0xffffff, 1.6, follow);
+    const n = this._n(40);
+    for (let i = 0; i < n; i++) {
+      const a = rand() * Math.PI * 2, sp = 60 + rand() * 140;
+      this.glowP.emit(x, 6, z, Math.cos(a) * sp, 60 + rand() * 120, Math.sin(a) * sp, 2.4, 2.1, 1.4, 1, 5, 1.4, 0.8 + rand() * 0.6, 1.2);
+    }
+  }
+
   trap(p) {
     this._ring(p.x, p.z, 20, 320, 0.9, 0xff3a2a, 2.4, null);
     this._flash(p.x, 6, p.z, 120, 0.4, 0xff4a30, 3, null);

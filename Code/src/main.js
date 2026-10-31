@@ -197,6 +197,12 @@ function playSession(profile, opts = {}) {
       hud.dispose();
       hudRoot.innerHTML = '';
       document.body.classList.remove('in-game');
+      // Flug-Grafik sofort freigeben: Im Hub läuft eine eigene 3D-Szene – zwei WebGL-Kontexte gleichzeitig kosten
+      // GPU-Speicher und führen am Handy zu Kontextverlust. Der nächste Abflug baut ohnehin eine frische Engine.
+      canvas.removeEventListener('webglcontextlost', onCtxLost);
+      perfHud.setRenderer(null);
+      try { renderer.dispose(); } catch { /* egal */ } // three.js r170 gibt dabei den WebGL-Kontext frei
+      renderer = null;
       resolve();
     });
   });

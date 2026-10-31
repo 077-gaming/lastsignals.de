@@ -262,6 +262,13 @@ export class Renderer {
     on('docked', () => { this._dockT = 0; this._docking = 1; });
     on('undocked', () => { this._dockT = 0; this._docking = -1; });
     on('loot', (p) => this.effects.loot(p));
+    on('levelup', () => {
+      const pv = this.world && this.world.player && this.views.get(this.world.player.id);
+      if (!pv) return;
+      const fac = this.world.player.faction || this.world.profile?.faction;
+      this.effects.levelUp(pv.rx, pv.rz, FACTIONS[fac]?.glow ?? FACTIONS[fac]?.accent ?? 0xffd36a, null); // Leuchtfarbe (color ist bei Eris fast schwarz)
+      this.rig.shake(6);
+    });
     on('trap', (p) => this.effects.trap(p));
     on('jumpStart', (p) => this.effects.jumpStart(p));
     on('sector', () => { this.effects.sectorFlash(); this._arrive = true; });
