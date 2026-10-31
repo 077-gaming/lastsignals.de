@@ -1,0 +1,4748 @@
+{
+  "meta": {
+    "zeit": "2026-10-30_16-48-15",
+    "minuten": 2,
+    "fraktionen": [
+      "europa",
+      "saturn",
+      "eris"
+    ],
+    "qualitaet": "hoch",
+    "url": "http://localhost:5199",
+    "fenster": "1440x900 @2x",
+    "browser": "Google Chrome (installiert, sichtbar)"
+  },
+  "ergebnisse": [
+    {
+      "dauerSpielS": 120,
+      "faction": "europa",
+      "startSektor": "EU-1",
+      "endSektor": "EU-2",
+      "qualitaet": {
+        "stufe": 2,
+        "aufloesungsFaktor": 0.9399999999999998,
+        "pixeldichte": 1.6449999999999998,
+        "puffer": "2368x1480",
+        "gpuTimer": true,
+        "meldungen": []
+      },
+      "bilder": {
+        "gesamt": {
+          "bilder": 6052,
+          "bildabstandMs": {
+            "n": 6052,
+            "mittel": 18.2,
+            "median": 16.7,
+            "p95": 17.7,
+            "max": 1967.5,
+            "min": 12.9
+          },
+          "rechenzeitCpuMs": {
+            "n": 6052,
+            "mittel": 4.2,
+            "median": 3.7,
+            "p95": 6.4,
+            "max": 1320.2,
+            "min": 0.4
+          },
+          "gpuMs": {
+            "n": 6052,
+            "mittel": 7.2,
+            "median": 7.1,
+            "p95": 11.7,
+            "max": 48,
+            "min": 1.5
+          },
+          "bildzeitMs": {
+            "n": 6052,
+            "mittel": 7.8,
+            "median": 7.2,
+            "p95": 12,
+            "max": 1320.2,
+            "min": 2.1
+          },
+          "ueber20ms": 228,
+          "ueber25ms": 228,
+          "ueber33ms": 147,
+          "fps": 55
+        },
+        "kampf": {
+          "bilder": 4735,
+          "bildabstandMs": {
+            "n": 4735,
+            "mittel": 18,
+            "median": 16.7,
+            "p95": 17.7,
+            "max": 1315.9,
+            "min": 15.6
+          },
+          "rechenzeitCpuMs": {
+            "n": 4735,
+            "mittel": 4.7,
+            "median": 3.9,
+            "p95": 6.7,
+            "max": 1320.2,
+            "min": 1.3
+          },
+          "gpuMs": {
+            "n": 4735,
+            "mittel": 7,
+            "median": 6.8,
+            "p95": 11.1,
+            "max": 48,
+            "min": 1.5
+          },
+          "bildzeitMs": {
+            "n": 4735,
+            "mittel": 7.7,
+            "median": 7.1,
+            "p95": 11.4,
+            "max": 1320.2,
+            "min": 2.4
+          },
+          "ueber20ms": 213,
+          "ueber25ms": 213,
+          "ueber33ms": 134,
+          "fps": 55.5
+        },
+        "ruhe": {
+          "bilder": 1111,
+          "bildabstandMs": {
+            "n": 1111,
+            "mittel": 17,
+            "median": 16.7,
+            "p95": 17.6,
+            "max": 100.4,
+            "min": 12.9
+          },
+          "rechenzeitCpuMs": {
+            "n": 1111,
+            "mittel": 2.8,
+            "median": 2.7,
+            "p95": 4.8,
+            "max": 28.9,
+            "min": 0.9
+          },
+          "gpuMs": {
+            "n": 1111,
+            "mittel": 7.5,
+            "median": 7.6,
+            "p95": 11.9,
+            "max": 24,
+            "min": 2.1
+          },
+          "bildzeitMs": {
+            "n": 1111,
+            "mittel": 7.7,
+            "median": 7.7,
+            "p95": 12,
+            "max": 28.9,
+            "min": 2.1
+          },
+          "ueber20ms": 13,
+          "ueber25ms": 13,
+          "ueber33ms": 11,
+          "fps": 58.9
+        },
+        "ersterKampf": {
+          "bilder": 261,
+          "bildabstandMs": {
+            "n": 261,
+            "mittel": 20.3,
+            "median": 16.7,
+            "p95": 49.5,
+            "max": 100.8,
+            "min": 15.6
+          },
+          "rechenzeitCpuMs": {
+            "n": 261,
+            "mittel": 5.2,
+            "median": 4.2,
+            "p95": 8.7,
+            "max": 102.6,
+            "min": 2.1
+          },
+          "gpuMs": {
+            "n": 261,
+            "mittel": 7.8,
+            "median": 6.1,
+            "p95": 19.4,
+            "max": 39.4,
+            "min": 2.1
+          },
+          "bildzeitMs": {
+            "n": 261,
+            "mittel": 8.7,
+            "median": 6.6,
+            "p95": 20.1,
+            "max": 102.6,
+            "min": 3.3
+          },
+          "ueber20ms": 33,
+          "ueber25ms": 33,
+          "ueber33ms": 23,
+          "fps": 49.2
+        },
+        "angedockt": {
+          "bilder": 206,
+          "bildabstandMs": {
+            "n": 206,
+            "mittel": 28.2,
+            "median": 16.7,
+            "p95": 17.6,
+            "max": 1967.5,
+            "min": 15.6
+          },
+          "rechenzeitCpuMs": {
+            "n": 206,
+            "mittel": 1.3,
+            "median": 0.8,
+            "p95": 3.4,
+            "max": 3.9,
+            "min": 0.4
+          },
+          "gpuMs": {
+            "n": 206,
+            "mittel": 10.9,
+            "median": 10.5,
+            "p95": 17.4,
+            "max": 23.1,
+            "min": 5
+          },
+          "bildzeitMs": {
+            "n": 206,
+            "mittel": 10.9,
+            "median": 10.5,
+            "p95": 17.4,
+            "max": 23.1,
+            "min": 5
+          },
+          "ueber20ms": 2,
+          "ueber25ms": 2,
+          "ueber33ms": 2,
+          "fps": 35.5
+        }
+      },
+      "laengsteBilder": [
+        {
+          "t": 30.2,
+          "bildabstandMs": 1967.5,
+          "rechenzeitMs": 3.6,
+          "gpuMs": 6.4,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "EU-1",
+          "gegnerNah": 3,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 87,
+          "dreiecke": 156309,
+          "qualitaet": 2,
+          "aufloesung": 0.9299999999999999
+        },
+        {
+          "t": 93.8,
+          "bildabstandMs": 1315.9,
+          "rechenzeitMs": 7.1,
+          "gpuMs": 6.9,
+          "phase": "sprung",
+          "aktion": "Sprung lädt",
+          "sektor": "EU-2",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "sector": 1,
+            "message": 1
+          },
+          "drawCalls": 68,
+          "dreiecke": 115035,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 30.2,
+          "bildabstandMs": 433,
+          "rechenzeitMs": 1.4,
+          "gpuMs": 6.4,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "EU-1",
+          "gegnerNah": 4,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 87,
+          "dreiecke": 156309,
+          "qualitaet": 2,
+          "aufloesung": 0.9299999999999999
+        },
+        {
+          "t": 94.1,
+          "bildabstandMs": 151,
+          "rechenzeitMs": 5,
+          "gpuMs": 3.6,
+          "phase": "tod",
+          "aktion": "Todestest: kämpfen ohne Rückzug",
+          "sektor": "EU-2",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "sector": 1,
+            "message": 1
+          },
+          "drawCalls": 70,
+          "dreiecke": 140297,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 112.2,
+          "bildabstandMs": 116.7,
+          "rechenzeitMs": 5.4,
+          "gpuMs": 9.2,
+          "phase": "jagd4",
+          "aktion": "Kampf: Jackal umkreisen",
+          "sektor": "EU-2",
+          "gegnerNah": 3,
+          "angreifer": 2,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1,
+            "damage": 1
+          },
+          "drawCalls": 77,
+          "dreiecke": 138875,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 88.4,
+          "bildabstandMs": 101,
+          "rechenzeitMs": 9.6,
+          "gpuMs": 5,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (465 m)",
+          "sektor": "EU-1",
+          "gegnerNah": 3,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": "nest",
+          "zuletzt": {},
+          "drawCalls": 73,
+          "dreiecke": 142481,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 14.7,
+          "bildabstandMs": 100.8,
+          "rechenzeitMs": 8.8,
+          "gpuMs": 2.7,
+          "phase": "jagd",
+          "aktion": "Kampf: Raider umkreisen",
+          "sektor": "EU-1",
+          "gegnerNah": 7,
+          "angreifer": 4,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "damage": 3,
+            "profile": 1
+          },
+          "drawCalls": 101,
+          "dreiecke": 144813,
+          "qualitaet": 2,
+          "aufloesung": 0.85
+        },
+        {
+          "t": 0.5,
+          "bildabstandMs": 100.4,
+          "rechenzeitMs": 5.2,
+          "gpuMs": 10.4,
+          "phase": "jagd",
+          "aktion": "Beute: Crate einsammeln",
+          "sektor": "EU-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {},
+          "drawCalls": 90,
+          "dreiecke": 156913,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 113.1,
+          "bildabstandMs": 99.4,
+          "rechenzeitMs": 7.7,
+          "gpuMs": 2,
+          "phase": "jagd4",
+          "aktion": "Kampf: Jackal umkreisen",
+          "sektor": "EU-2",
+          "gegnerNah": 3,
+          "angreifer": 2,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "damage": 2,
+            "profile": 1
+          },
+          "drawCalls": 77,
+          "dreiecke": 140713,
+          "qualitaet": 2,
+          "aufloesung": 0.85
+        },
+        {
+          "t": 14.4,
+          "bildabstandMs": 84.3,
+          "rechenzeitMs": 6.7,
+          "gpuMs": 6,
+          "phase": "jagd",
+          "aktion": "Kampf: Raider umkreisen",
+          "sektor": "EU-1",
+          "gegnerNah": 7,
+          "angreifer": 4,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "damage": 4
+          },
+          "drawCalls": 104,
+          "dreiecke": 144817,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 112,
+          "bildabstandMs": 83.2,
+          "rechenzeitMs": 5.7,
+          "gpuMs": 13.7,
+          "phase": "jagd4",
+          "aktion": "Kampf: Jackal umkreisen",
+          "sektor": "EU-2",
+          "gegnerNah": 3,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 76,
+          "dreiecke": 138869,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 113,
+          "bildabstandMs": 67.6,
+          "rechenzeitMs": 13,
+          "gpuMs": 17.1,
+          "phase": "jagd4",
+          "aktion": "Kampf: Jackal umkreisen",
+          "sektor": "EU-2",
+          "gegnerNah": 3,
+          "angreifer": 2,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "message": 1,
+            "damage": 2,
+            "profile": 1
+          },
+          "drawCalls": 79,
+          "dreiecke": 140717,
+          "qualitaet": 2,
+          "aufloesung": 0.85
+        }
+      ],
+      "haengerAnzahl": 236,
+      "kampf": {
+        "spielerSchuesse": 97,
+        "trefferquoteProzent": 81.4,
+        "schuesseJeMunition": {
+          "L1": 79,
+          "L2": 18
+        },
+        "raketen": 19,
+        "munitionWechsel": {
+          "L1": {
+            "versuche": 1,
+            "ok": 1,
+            "vorrat": 5388
+          },
+          "L2": {
+            "versuche": 1,
+            "ok": 1,
+            "vorrat": 1200
+          },
+          "L3": {
+            "versuche": 1,
+            "ok": 0,
+            "vorrat": 0
+          },
+          "L4": {
+            "versuche": 1,
+            "ok": 0,
+            "vorrat": 0
+          },
+          "SAB": {
+            "versuche": 1,
+            "ok": 0,
+            "vorrat": 0
+          }
+        },
+        "abschuesse": {
+          "raider": 3,
+          "jackal": 1
+        },
+        "zeitBisAbschussS": {
+          "raider": {
+            "abschuesse": 3,
+            "n": 3,
+            "mittel": 5,
+            "median": 5.5,
+            "p95": 5.5,
+            "max": 5.6,
+            "min": 3.9
+          },
+          "jackal": {
+            "abschuesse": 1,
+            "n": 1,
+            "mittel": 13.5,
+            "median": 13.5,
+            "p95": 13.5,
+            "max": 13.5,
+            "min": 13.5
+          }
+        },
+        "eingesteckt": {
+          "huelle": 1880,
+          "schild": 4599,
+          "jeQuelle": {
+            "raider": 4677,
+            "jackal": 1802
+          }
+        },
+        "tode": 1,
+        "todErzwungen": 1,
+        "reparaturen": [
+          {
+            "t": 106.9,
+            "wo": "here",
+            "ok": true,
+            "kosten": "kostenlos (bis Stufe 10)"
+          }
+        ],
+        "beute": {
+          "credits": 1857,
+          "tritium": 2,
+          "xp": 2440,
+          "honor": 12
+        },
+        "beuteJeMinute": {
+          "credits": 928,
+          "tritium": 1,
+          "erfahrung": 1220,
+          "ehre": 6
+        },
+        "profilVorher": {
+          "credits": 20000,
+          "tritium": 50,
+          "xp": 0,
+          "honor": 0,
+          "level": 1
+        },
+        "profilNachher": {
+          "credits": 3357,
+          "tritium": 52,
+          "xp": 2440,
+          "honor": 12,
+          "level": 1
+        },
+        "stufenAufstiege": [],
+        "einkaeufe": [
+          {
+            "was": "ammo L2",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 1000,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "rocket R1",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 2500,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo L3",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 250 nötig, du hast 50.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo SAL",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 200 nötig, du hast 50.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo SAB",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 500 nötig, du hast 50.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "laser ion",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 15000,
+            "tritiumAusgegeben": 0
+          }
+        ],
+        "aufrufDauerMs": {
+          "andocken": 1551.6,
+          "einkaufen": 432.8,
+          "abdocken": 0.4
+        },
+        "angedockt": 1,
+        "spruenge": [
+          {
+            "t": 93.8,
+            "id": "EU-2"
+          }
+        ],
+        "schussWinkelZurNase": {
+          "n": 97,
+          "mittel": 10.9,
+          "median": 0.6,
+          "p95": 71.3,
+          "max": 74.5,
+          "min": 0,
+          "ueber45Grad": 10,
+          "ueber90Grad": 0
+        }
+      },
+      "gegner": {
+        "verhalten": {
+          "raider": {
+            "stichproben": 3487,
+            "anteilProzent": {
+              "patrouille": 50.6,
+              "anfliegen / flanke": 23,
+              "hold / wartet im kreis": 8.7,
+              "fliehen / rückzug zum heilen": 6.3,
+              "umkreisen / flanke": 4.6,
+              "abdrehen / flanke": 1.6,
+              "ausweichen / flanke": 0.9,
+              "umkreisen / lädt salve": 0.7,
+              "angreifen (stehend) / lädt salve": 0.7,
+              "angreifen (stehend) / salve": 0.5,
+              "anfliegen / lädt salve": 0.4,
+              "angreifen (stehend) / flanke": 0.3,
+              "abdrehen": 0.2,
+              "abdrehen / lädt salve": 0.2,
+              "umkreisen": 0.2,
+              "hold": 0.1,
+              "angreifen (stehend)": 0.1,
+              "ausweichen / lädt salve": 0.1,
+              "ausweichen / rückzug zum heilen": 0.1,
+              "anfliegen": 0.1,
+              "ausweichen": 0.1,
+              "abdrehen / salve": 0.1,
+              "umkreisen / salve": 0
+            },
+            "abstandZumSpieler": {
+              "n": 1190,
+              "mittel": 774.4,
+              "median": 709,
+              "p95": 1499,
+              "max": 1735,
+              "min": 41
+            },
+            "ausweichmanoever": 12,
+            "angriffsbeginn": {
+              "selbstGetroffen": 3,
+              "eigeneSicht": 10,
+              "mitgezogenHilfe": 12
+            },
+            "fluchten": 8,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 116,
+            "schuesse": 115,
+            "treffer": 86
+          },
+          "jackal": {
+            "stichproben": 334,
+            "anteilProzent": {
+              "patrouille": 47.3,
+              "umkreisen / springt an": 15.3,
+              "anfliegen / springt an": 10.8,
+              "anfliegen / rammt": 5.1,
+              "umkreisen / lädt rammangriff": 3,
+              "abdrehen / springt an": 3,
+              "fliehen / rückzug zum heilen": 3,
+              "patrouille / lauert getarnt": 2.7,
+              "ausweichen / springt an": 2.4,
+              "abdrehen / lädt rammangriff": 1.8,
+              "anfliegen": 1.5,
+              "hold / wartet im kreis": 0.9,
+              "anfliegen / lädt rammangriff": 0.9,
+              "angreifen (stehend) / rammt": 0.6,
+              "umkreisen / rammt": 0.6,
+              "abdrehen / rammt": 0.6,
+              "angreifen (stehend) / lädt rammangriff": 0.3,
+              "angreifen (stehend)": 0.3
+            },
+            "abstandZumSpieler": {
+              "n": 154,
+              "mittel": 422.5,
+              "median": 402,
+              "p95": 744,
+              "max": 883,
+              "min": 49
+            },
+            "ausweichmanoever": 2,
+            "angriffsbeginn": {
+              "selbstGetroffen": 0,
+              "eigeneSicht": 3,
+              "mitgezogenHilfe": 3
+            },
+            "fluchten": 1,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 150,
+            "schuesse": 22,
+            "treffer": 19
+          }
+        },
+        "uebereinander": {
+          "stichprobenMitUeberlappung": 0,
+          "stichproben": 582,
+          "anteilProzent": 0,
+          "vorfaelleJeTyp": {},
+          "hoechstensGleichzeitig": 0
+        },
+        "hilfeMeldungen": 6,
+        "vorübergehendErzeugt": 10
+      },
+      "meldungen": [
+        [
+          "info: Ziel ist zu weit weg# Flieg näher ran (# m)#",
+          11
+        ],
+        [
+          "info: Salve von Raider unterbrochen!",
+          4
+        ],
+        [
+          "warn: Raider ruft Verstärkung: # Raider im Anflug aus # km#",
+          3
+        ],
+        [
+          "loot: Raider zerstört: +# Erfahrung# +# Ehre",
+          3
+        ],
+        [
+          "info: Nach der Reparatur kurz kein Schießen (# s)#",
+          3
+        ],
+        [
+          "warn: Keine L#-Munition# Kaufe Nachschub in der Station#",
+          2
+        ],
+        [
+          "radio: Station Europa an Pilot: Raider greifen unsere Frachter an# Zerstöre # Raider#",
+          1
+        ],
+        [
+          "loot: Crate: +# L#-Munition",
+          1
+        ],
+        [
+          "loot: Crate: +# Credits",
+          1
+        ],
+        [
+          "info: Angedockt an Europa#",
+          1
+        ],
+        [
+          "info: # L# gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "info: # R# gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "warn: Zu wenig Tritium: # nötig# du hast #",
+          1
+        ],
+        [
+          "info: Ion Laser gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "warn: Elite Raider voraus (# km): dreifach stark# dreifache Beute: # Credits# # Tritium# # Erfah",
+          1
+        ],
+        [
+          "radio: Station Europa an Pilot: Ein Schwarm-Nest wächst # km nördlich und spuckt Larven aus# Zers",
+          1
+        ],
+        [
+          "info: Sprung nach Io wird geladen …",
+          1
+        ],
+        [
+          "info: Willkommen in Io (EU-#)#",
+          1
+        ],
+        [
+          "warn: Dein Schiff wurde zerstört# Wähle# wo du repariert werden willst#",
+          1
+        ],
+        [
+          "info: Schiff repariert (kostenlos bis Stufe #)# # Sekunden geschützt#",
+          1
+        ],
+        [
+          "loot: Jackal zerstört: +# Erfahrung# +# Ehre",
+          1
+        ],
+        [
+          "loot: Beute: +# Credits# +# Tritium",
+          1
+        ],
+        [
+          "warn: Keine SAB-Munition# Kaufe Nachschub in der Station#",
+          1
+        ]
+      ],
+      "ausrichtung": {
+        "modelle": {
+          "ship:s1:europa": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.28,
+              "symmetrieQuer": 1.77,
+              "sicherheitAchse": 0.84,
+              "verjuengung": 1.62,
+              "laenge": 44,
+              "breite": 44,
+              "mitte": [
+                0,
+                -1.9
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Cockpit-Glas vorn",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": -3.1714695575018364e-16,
+                "z": -1
+              },
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.2685183611088393e-16,
+                "z": -1
+              },
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": -180,
+                "x": 0,
+                "z": 1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.77,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.92,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:europa:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.58,
+              "symmetrieQuer": 1.56,
+              "sicherheitAchse": 0.63,
+              "verjuengung": 2.05,
+              "laenge": 51.4,
+              "breite": 51.4,
+              "mitte": [
+                0,
+                -2.4
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.77,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:europa": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": -0.3,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.64,
+              "symmetrieQuer": 2.46,
+              "sicherheitAchse": 0.74,
+              "verjuengung": 1.04,
+              "laenge": 53.6,
+              "breite": 54.9,
+              "mitte": [
+                -0.2,
+                -1.1
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.3630748326795952e-16,
+                "z": -1
+              },
+              {
+                "name": "eigene Laser des Modells vorn",
+                "gewicht": 2,
+                "winkelGrad": -0.7,
+                "x": 0.011646875140444156,
+                "z": -0.9999321728494703
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.78,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -26,
+                "z": -16.8,
+                "vorMitte": 0.59,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 26,
+                "z": -19.5,
+                "vorMitte": 0.69,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:europa:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.53,
+              "symmetrieQuer": 1.65,
+              "sicherheitAchse": 0.68,
+              "verjuengung": 1.49,
+              "laenge": 62.8,
+              "breite": 78.8,
+              "mitte": [
+                0,
+                -3
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -21,
+                "z": -23.1,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 21,
+                "z": -27,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -31.7,
+                "z": -20.5,
+                "vorMitte": 0.56,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 31.7,
+                "z": -23.8,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:saturn": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.28,
+              "symmetrieQuer": 1.83,
+              "sicherheitAchse": 0.85,
+              "verjuengung": 1.62,
+              "laenge": 44,
+              "breite": 44,
+              "mitte": [
+                0,
+                -1.9
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Cockpit-Glas vorn",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": -3.1714695575018364e-16,
+                "z": -1
+              },
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.2846778154625504e-16,
+                "z": -1
+              },
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": -180,
+                "x": 0,
+                "z": 1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.77,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.92,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:saturn:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.58,
+              "symmetrieQuer": 1.98,
+              "sicherheitAchse": 0.71,
+              "verjuengung": 2.07,
+              "laenge": 51.5,
+              "breite": 51.5,
+              "mitte": [
+                0,
+                -2.5
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:saturn": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": -0.3,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.62,
+              "symmetrieQuer": 2.47,
+              "sicherheitAchse": 0.75,
+              "verjuengung": 1.04,
+              "laenge": 53.5,
+              "breite": 54.9,
+              "mitte": [
+                -0.2,
+                -1.1
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.3630748326795952e-16,
+                "z": -1
+              },
+              {
+                "name": "eigene Laser des Modells vorn",
+                "gewicht": 2,
+                "winkelGrad": -0.7,
+                "x": 0.011646875140444156,
+                "z": -0.9999321728494703
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.67,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.79,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -26,
+                "z": -16.8,
+                "vorMitte": 0.59,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 26,
+                "z": -19.5,
+                "vorMitte": 0.69,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:saturn:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.69,
+              "symmetrieQuer": 2.02,
+              "sicherheitAchse": 0.66,
+              "verjuengung": 1.5,
+              "laenge": 62.8,
+              "breite": 78.7,
+              "mitte": [
+                0,
+                -3
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -21,
+                "z": -23.1,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 21,
+                "z": -27,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -31.7,
+                "z": -20.5,
+                "vorMitte": 0.56,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 31.7,
+                "z": -23.8,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:eris": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.26,
+              "symmetrieQuer": 1.74,
+              "sicherheitAchse": 0.85,
+              "verjuengung": 1.62,
+              "laenge": 44,
+              "breite": 44,
+              "mitte": [
+                0,
+                -1.9
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Cockpit-Glas vorn",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": -3.1714695575018364e-16,
+                "z": -1
+              },
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.2685183611088393e-16,
+                "z": -1
+              },
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": -180,
+                "x": 0,
+                "z": 1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.77,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.92,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:eris:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.62,
+              "symmetrieQuer": 1.69,
+              "sicherheitAchse": 0.63,
+              "verjuengung": 2.01,
+              "laenge": 51.5,
+              "breite": 51.5,
+              "mitte": [
+                0,
+                -2.5
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:eris": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": -0.3,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.65,
+              "symmetrieQuer": 2.44,
+              "sicherheitAchse": 0.73,
+              "verjuengung": 1.04,
+              "laenge": 53.6,
+              "breite": 54.9,
+              "mitte": [
+                -0.2,
+                -1.1
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.3630748326795952e-16,
+                "z": -1
+              },
+              {
+                "name": "eigene Laser des Modells vorn",
+                "gewicht": 2,
+                "winkelGrad": -0.7,
+                "x": 0.011646875140444156,
+                "z": -0.9999321728494703
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.78,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -26,
+                "z": -16.8,
+                "vorMitte": 0.59,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 26,
+                "z": -19.5,
+                "vorMitte": 0.69,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:eris:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.73,
+              "symmetrieQuer": 1.83,
+              "sicherheitAchse": 0.6,
+              "verjuengung": 1.47,
+              "laenge": 62.8,
+              "breite": 78.7,
+              "mitte": [
+                0,
+                -3
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -21,
+                "z": -23.1,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 21,
+                "z": -27,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -31.7,
+                "z": -20.5,
+                "vorMitte": 0.56,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 31.7,
+                "z": -23.8,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "enemy:raider": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0,
+              "symmetrieQuer": 3.73,
+              "sicherheitAchse": 1,
+              "verjuengung": 2085278.75,
+              "laenge": 2.2,
+              "breite": 2.2,
+              "mitte": [
+                0,
+                -0.2
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [
+              {
+                "x": -0.46,
+                "z": 0.88,
+                "hinterMitte": 0.98,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0.46,
+                "z": 0.88,
+                "hinterMitte": 0.98,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": 0.8,
+              "hinterMitte": 0.91
+            },
+            "formEindeutig": true,
+            "ok": true
+          },
+          "enemy:larva": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0,
+              "symmetrieQuer": 0.83,
+              "sicherheitAchse": 1,
+              "verjuengung": 2.49,
+              "laenge": 2.9,
+              "breite": 2.9,
+              "mitte": [
+                0,
+                -0.2
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": -0.05,
+              "hinterMitte": 0.1
+            },
+            "formEindeutig": true,
+            "ok": true
+          },
+          "enemy:jackal": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0,
+              "symmetrieQuer": 3.24,
+              "sicherheitAchse": 1,
+              "verjuengung": 1.5,
+              "laenge": 2.2,
+              "breite": 2.2,
+              "mitte": [
+                0,
+                -0.2
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [
+              {
+                "x": -0.68,
+                "z": 0.55,
+                "hinterMitte": 0.68,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0.68,
+                "z": 0.55,
+                "hinterMitte": 0.68,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": 0.8,
+              "hinterMitte": 0.91
+            },
+            "formEindeutig": true,
+            "ok": true
+          },
+          "enemy:spiker": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 165,
+              "bugWinkelGrad": 165,
+              "laengsachseGrad": 165,
+              "symmetrieFehler": 1.31,
+              "symmetrieQuer": 2.46,
+              "sicherheitAchse": 0.47,
+              "verjuengung": 3.12,
+              "laenge": 2.2,
+              "breite": 2.2,
+              "mitte": [
+                0,
+                0
+              ],
+              "bugX": -0.26,
+              "bugZ": 0.97
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 165,
+                "x": -0.2589019948456405,
+                "z": 0.9659035961548896
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": -0.05,
+              "hinterMitte": -0.05
+            },
+            "formEindeutig": true,
+            "ok": true,
+            "rundum": true,
+            "dreht": true
+          },
+          "enemy:vulture": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0,
+              "symmetrieQuer": 3.54,
+              "sicherheitAchse": 1,
+              "verjuengung": 3.25,
+              "laenge": 2.1,
+              "breite": 2.5,
+              "mitte": [
+                0,
+                -0.2
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [
+              {
+                "x": -0.36,
+                "z": 0.33,
+                "hinterMitte": 0.5,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0.36,
+                "z": 0.33,
+                "hinterMitte": 0.5,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": 0.8,
+              "hinterMitte": 0.95
+            },
+            "formEindeutig": true,
+            "ok": true
+          }
+        },
+        "imFlug": {
+          "enemy:raider": {
+            "n": 1971,
+            "mittel": 3.5,
+            "median": 0,
+            "p95": 0.2,
+            "max": 146.9,
+            "min": 0,
+            "quelle": "Spiel",
+            "modellversatzGrad": 0
+          },
+          "ship:s1:europa": {
+            "n": 471,
+            "mittel": 32.3,
+            "median": 0.8,
+            "p95": 149.2,
+            "max": 170.9,
+            "min": 0,
+            "quelle": "Spiel",
+            "modellversatzGrad": 0
+          },
+          "enemy:jackal": {
+            "n": 58,
+            "mittel": 0.4,
+            "median": 0.1,
+            "p95": 1.5,
+            "max": 8.4,
+            "min": 0,
+            "quelle": "Spiel",
+            "modellversatzGrad": 0
+          },
+          "ship:s1:europa:szene": {
+            "abweichungGrad": 0,
+            "tempo": 264,
+            "modell": "GLB",
+            "bild": "2026-10-30_16-48-15/europa-09-ausrichtung-ship-s1-europa.png"
+          },
+          "ship:s2:europa:szene": {
+            "abweichungGrad": 0.6,
+            "tempo": 332,
+            "modell": "GLB"
+          },
+          "ship:s1:saturn:szene": {
+            "abweichungGrad": 0.2,
+            "tempo": 338,
+            "modell": "GLB"
+          },
+          "ship:s2:saturn:szene": {
+            "abweichungGrad": 1,
+            "tempo": 318,
+            "modell": "GLB"
+          },
+          "ship:s1:eris:szene": {
+            "abweichungGrad": 0,
+            "tempo": 340,
+            "modell": "GLB"
+          },
+          "ship:s2:eris:szene": {
+            "abweichungGrad": 0.3,
+            "tempo": 185,
+            "modell": "GLB"
+          },
+          "enemy:raider:szene": {
+            "abweichungGrad": 0,
+            "tempo": 83,
+            "zustand": "wander",
+            "dreht": false
+          },
+          "enemy:larva:szene": {
+            "abweichungGrad": 0,
+            "tempo": 67,
+            "zustand": "wander",
+            "dreht": false
+          },
+          "enemy:jackal:szene": {
+            "abweichungGrad": 0,
+            "tempo": 95,
+            "zustand": "wander",
+            "dreht": false
+          },
+          "enemy:spiker:szene": {
+            "abweichungGrad": null,
+            "tempo": 59,
+            "zustand": "wander",
+            "dreht": true
+          },
+          "enemy:vulture:szene": {
+            "abweichungGrad": 0,
+            "tempo": 103,
+            "zustand": "wander",
+            "dreht": false
+          }
+        },
+        "abweichungen": []
+      },
+      "ladezeitS": 1.3,
+      "konsole": [
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-europa.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-saturn.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-eris.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Fehler",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "ort": "/favicon.ico:0"
+        },
+        {
+          "art": "Fehler",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "ort": "/favicon.ico:0"
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/europa-starter.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/eris-starter.glb abgebrochen",
+          "ort": ""
+        }
+      ],
+      "bilderDateien": [
+        {
+          "datei": "2026-10-30_16-48-15/europa-01-haenger.png",
+          "grund": "Hänger 100 ms (Beute: Crate einsammeln)",
+          "zeitS": 0.5,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/europa-02-ereignis.png",
+          "grund": "Ereignis: Erster Kontakt",
+          "zeitS": 1.6,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/europa-03-erster-kampf.png",
+          "grund": "Erster Kampf (1,5 s nach dem ersten Schuss)",
+          "zeitS": 14.5,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/europa-04-haenger.png",
+          "grund": "Hänger 67 ms (Flug zur Station (Andocken))",
+          "zeitS": 18.8,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/europa-05-station.png",
+          "grund": "Angedockt: Station/Shop",
+          "zeitS": 31.4,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/europa-06-sektor.png",
+          "grund": "Neuer Sektor EU-2 (Io)",
+          "zeitS": 96.3,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/europa-07-tod.png",
+          "grund": "Abgeschossen: Reparatur-Auswahl",
+          "zeitS": 104.4,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/europa-ende.png",
+          "grund": "Ende der Spielzeit",
+          "zeitS": 120,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/europa-09-ausrichtung-ship-s1-europa.png",
+          "grund": "Ausrichtung ship:s1:europa: 0° (Beispiel, in Ordnung)",
+          "zeitS": 125.5,
+          "art": "ausrichtung"
+        }
+      ],
+      "start": {
+        "ok": true,
+        "sector": "EU-1",
+        "faction": "europa",
+        "quality": 2,
+        "gpuTimer": true
+      }
+    },
+    {
+      "dauerSpielS": 133.6,
+      "faction": "saturn",
+      "startSektor": "SA-1",
+      "endSektor": "SA-2",
+      "qualitaet": {
+        "stufe": 0,
+        "aufloesungsFaktor": 0.7,
+        "pixeldichte": 0.7,
+        "puffer": "1007x630",
+        "gpuTimer": true,
+        "meldungen": [
+          {
+            "t": 21.4,
+            "text": "Bildrate dauerhaft unter 50 – Grafik für diese Sitzung auf MITTEL gesenkt. Deine Einstellung bleibt gespeichert."
+          },
+          {
+            "t": 133.6,
+            "text": "Bildrate dauerhaft unter 50 – Grafik für diese Sitzung auf NIEDRIG gesenkt. Deine Einstellung bleibt gespeichert."
+          }
+        ]
+      },
+      "bilder": {
+        "gesamt": {
+          "bilder": 3938,
+          "bildabstandMs": {
+            "n": 3938,
+            "mittel": 23.3,
+            "median": 16.7,
+            "p95": 50,
+            "max": 3700.1,
+            "min": 15.3
+          },
+          "rechenzeitCpuMs": {
+            "n": 3938,
+            "mittel": 10,
+            "median": 4.3,
+            "p95": 10.5,
+            "max": 17978.9,
+            "min": 0.4
+          },
+          "gpuMs": {
+            "n": 3938,
+            "mittel": 6.2,
+            "median": 5.6,
+            "p95": 12.3,
+            "max": 103.7,
+            "min": 1
+          },
+          "bildzeitMs": {
+            "n": 3938,
+            "mittel": 12.3,
+            "median": 6.4,
+            "p95": 14.7,
+            "max": 17978.9,
+            "min": 2.3
+          },
+          "ueber20ms": 676,
+          "ueber25ms": 675,
+          "ueber33ms": 442,
+          "fps": 42.9
+        },
+        "kampf": {
+          "bilder": 2388,
+          "bildabstandMs": {
+            "n": 2388,
+            "mittel": 22.9,
+            "median": 16.7,
+            "p95": 50.1,
+            "max": 483.4,
+            "min": 15.5
+          },
+          "rechenzeitCpuMs": {
+            "n": 2388,
+            "mittel": 13.3,
+            "median": 4.5,
+            "p95": 11,
+            "max": 17978.9,
+            "min": 2
+          },
+          "gpuMs": {
+            "n": 2388,
+            "mittel": 6,
+            "median": 5.6,
+            "p95": 11.8,
+            "max": 48.1,
+            "min": 1
+          },
+          "bildzeitMs": {
+            "n": 2388,
+            "mittel": 15.3,
+            "median": 6.4,
+            "p95": 14,
+            "max": 17978.9,
+            "min": 2.7
+          },
+          "ueber20ms": 479,
+          "ueber25ms": 478,
+          "ueber33ms": 312,
+          "fps": 43.6
+        },
+        "ruhe": {
+          "bilder": 1425,
+          "bildabstandMs": {
+            "n": 1425,
+            "mittel": 21,
+            "median": 16.7,
+            "p95": 49,
+            "max": 433.3,
+            "min": 15.3
+          },
+          "rechenzeitCpuMs": {
+            "n": 1425,
+            "mittel": 5.2,
+            "median": 4.1,
+            "p95": 10.3,
+            "max": 94.5,
+            "min": 1.3
+          },
+          "gpuMs": {
+            "n": 1425,
+            "mittel": 5.7,
+            "median": 5.3,
+            "p95": 11.1,
+            "max": 39.7,
+            "min": 1
+          },
+          "bildzeitMs": {
+            "n": 1425,
+            "mittel": 7,
+            "median": 6,
+            "p95": 12.6,
+            "max": 94.5,
+            "min": 2.3
+          },
+          "ueber20ms": 190,
+          "ueber25ms": 190,
+          "ueber33ms": 123,
+          "fps": 47.7
+        },
+        "ersterKampf": {
+          "bilder": 23,
+          "bildabstandMs": {
+            "n": 23,
+            "mittel": 36.2,
+            "median": 16.7,
+            "p95": 83.3,
+            "max": 183.4,
+            "min": 15.8
+          },
+          "rechenzeitCpuMs": {
+            "n": 23,
+            "mittel": 5.4,
+            "median": 4.5,
+            "p95": 9.1,
+            "max": 10.5,
+            "min": 3
+          },
+          "gpuMs": {
+            "n": 23,
+            "mittel": 5.7,
+            "median": 5.8,
+            "p95": 7.9,
+            "max": 9.5,
+            "min": 3.1
+          },
+          "bildzeitMs": {
+            "n": 23,
+            "mittel": 6.6,
+            "median": 6,
+            "p95": 9.5,
+            "max": 10.5,
+            "min": 3.8
+          },
+          "ueber20ms": 5,
+          "ueber25ms": 5,
+          "ueber33ms": 4,
+          "fps": 27.6
+        },
+        "angedockt": {
+          "bilder": 125,
+          "bildabstandMs": {
+            "n": 125,
+            "mittel": 57.2,
+            "median": 16.7,
+            "p95": 18.4,
+            "max": 3700.1,
+            "min": 15.4
+          },
+          "rechenzeitCpuMs": {
+            "n": 125,
+            "mittel": 2.8,
+            "median": 0.9,
+            "p95": 6.9,
+            "max": 82.8,
+            "min": 0.4
+          },
+          "gpuMs": {
+            "n": 125,
+            "mittel": 16.1,
+            "median": 12.5,
+            "p95": 36.7,
+            "max": 103.7,
+            "min": 2.7
+          },
+          "bildzeitMs": {
+            "n": 125,
+            "mittel": 16.2,
+            "median": 12.5,
+            "p95": 36.7,
+            "max": 103.7,
+            "min": 2.7
+          },
+          "ueber20ms": 7,
+          "ueber25ms": 7,
+          "ueber33ms": 7,
+          "fps": 17.5
+        }
+      },
+      "laengsteBilder": [
+        {
+          "t": 32.5,
+          "bildabstandMs": 3700.1,
+          "rechenzeitMs": 7.1,
+          "gpuMs": 4.6,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "SA-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 107,
+          "dreiecke": 157001,
+          "qualitaet": 1,
+          "aufloesung": 0.85
+        },
+        {
+          "t": 32.5,
+          "bildabstandMs": 1066.6,
+          "rechenzeitMs": 2,
+          "gpuMs": 4.6,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "SA-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 107,
+          "dreiecke": 157001,
+          "qualitaet": 1,
+          "aufloesung": 0.85
+        },
+        {
+          "t": 6.9,
+          "bildabstandMs": 433.3,
+          "rechenzeitMs": 34.5,
+          "gpuMs": 39.7,
+          "phase": "jagd",
+          "aktion": "Anflug auf Raider (1253 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {},
+          "drawCalls": 68,
+          "dreiecke": 147287,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 7.2,
+          "bildabstandMs": 283.2,
+          "rechenzeitMs": 7.2,
+          "gpuMs": 2.5,
+          "phase": "jagd",
+          "aktion": "Anflug auf Raider (1152 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {},
+          "drawCalls": 68,
+          "dreiecke": 147287,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 42.3,
+          "bildabstandMs": 200,
+          "rechenzeitMs": 16,
+          "gpuMs": 5,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (10287 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 4,
+          "angreifer": 2,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "damage": 2
+          },
+          "drawCalls": 90,
+          "dreiecke": 151747,
+          "qualitaet": 1,
+          "aufloesung": 0.77
+        },
+        {
+          "t": 41.7,
+          "bildabstandMs": 199.9,
+          "rechenzeitMs": 8.8,
+          "gpuMs": 9.5,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (10425 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 4,
+          "angreifer": 2,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 94,
+          "dreiecke": 155179,
+          "qualitaet": 1,
+          "aufloesung": 0.77
+        },
+        {
+          "t": 8.8,
+          "bildabstandMs": 183.4,
+          "rechenzeitMs": 9.5,
+          "gpuMs": 7.9,
+          "phase": "jagd",
+          "aktion": "Kampf: Raider umkreisen",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "rocket": 1,
+            "profile": 1
+          },
+          "drawCalls": 97,
+          "dreiecke": 151099,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 9.1,
+          "bildabstandMs": 183.3,
+          "rechenzeitMs": 9.1,
+          "gpuMs": 7.4,
+          "phase": "jagd",
+          "aktion": "Kampf: Raider umkreisen",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {},
+          "drawCalls": 94,
+          "dreiecke": 149251,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 40.1,
+          "bildabstandMs": 183.3,
+          "rechenzeitMs": 40,
+          "gpuMs": 7.5,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (10935 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 2,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "rocket": 1,
+            "profile": 1,
+            "damage": 1
+          },
+          "drawCalls": 98,
+          "dreiecke": 155055,
+          "qualitaet": 1,
+          "aufloesung": 0.77
+        },
+        {
+          "t": 37,
+          "bildabstandMs": 183.2,
+          "rechenzeitMs": 45.8,
+          "gpuMs": 5.1,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (11527 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {},
+          "drawCalls": 110,
+          "dreiecke": 157881,
+          "qualitaet": 1,
+          "aufloesung": 0.6900000000000001
+        },
+        {
+          "t": 42.8,
+          "bildabstandMs": 166.5,
+          "rechenzeitMs": 21.4,
+          "gpuMs": 11.6,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (10156 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 4,
+          "angreifer": 2,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1,
+            "telegraph": 1
+          },
+          "drawCalls": 85,
+          "dreiecke": 146449,
+          "qualitaet": 1,
+          "aufloesung": 0.77
+        },
+        {
+          "t": 32.7,
+          "bildabstandMs": 150.5,
+          "rechenzeitMs": 82.8,
+          "gpuMs": 103.7,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "SA-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 106,
+          "dreiecke": 157151,
+          "qualitaet": 1,
+          "aufloesung": 0.85
+        }
+      ],
+      "haengerAnzahl": 400,
+      "kampf": {
+        "spielerSchuesse": 65,
+        "trefferquoteProzent": 73.8,
+        "schuesseJeMunition": {
+          "L1": 65
+        },
+        "raketen": 14,
+        "munitionWechsel": {
+          "L1": {
+            "versuche": 1,
+            "ok": 1,
+            "vorrat": 5397
+          },
+          "L2": {
+            "versuche": 1,
+            "ok": 1,
+            "vorrat": 1200
+          },
+          "L3": {
+            "versuche": 1,
+            "ok": 0,
+            "vorrat": 0
+          }
+        },
+        "abschuesse": {
+          "raider": 6,
+          "larva": 3
+        },
+        "zeitBisAbschussS": {
+          "raider": {
+            "abschuesse": 6,
+            "n": 6,
+            "mittel": 7.8,
+            "median": 3.8,
+            "p95": 7.3,
+            "max": 22.1,
+            "min": 3.8
+          },
+          "larva": {
+            "abschuesse": 3,
+            "n": 3,
+            "mittel": 0.7,
+            "median": 0.7,
+            "p95": 0.7,
+            "max": 0.8,
+            "min": 0.6
+          }
+        },
+        "eingesteckt": {
+          "huelle": 371,
+          "schild": 1493,
+          "jeQuelle": {
+            "raider": 1810,
+            "larva": 54
+          }
+        },
+        "tode": 1,
+        "todErzwungen": 2,
+        "reparaturen": [
+          {
+            "t": 106.5,
+            "wo": "here",
+            "ok": true,
+            "kosten": "kostenlos (bis Stufe 10)"
+          }
+        ],
+        "beute": {
+          "credits": 12631,
+          "tritium": 23,
+          "xp": 7160,
+          "honor": 35
+        },
+        "beuteJeMinute": {
+          "credits": 5671,
+          "tritium": 10.3,
+          "erfahrung": 3214,
+          "ehre": 15.7
+        },
+        "profilVorher": {
+          "credits": 20000,
+          "tritium": 50,
+          "xp": 0,
+          "honor": 0,
+          "level": 1
+        },
+        "profilNachher": {
+          "credits": 14131,
+          "tritium": 73,
+          "xp": 7160,
+          "honor": 35,
+          "level": 2
+        },
+        "stufenAufstiege": [
+          {
+            "t": 77.6,
+            "level": 2
+          }
+        ],
+        "einkaeufe": [
+          {
+            "was": "ammo L2",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 1000,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "rocket R1",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 2500,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo L3",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 250 nötig, du hast 51.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo SAL",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 200 nötig, du hast 51.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo SAB",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 500 nötig, du hast 51.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "laser ion",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 15000,
+            "tritiumAusgegeben": 0
+          }
+        ],
+        "aufrufDauerMs": {
+          "andocken": 1675.6,
+          "einkaufen": 1045.1,
+          "abdocken": 0.8
+        },
+        "angedockt": 1,
+        "spruenge": [
+          {
+            "t": 89.9,
+            "id": "SA-2"
+          }
+        ],
+        "schussWinkelZurNase": {
+          "n": 65,
+          "mittel": 18.2,
+          "median": 0.5,
+          "p95": 71.8,
+          "max": 74.4,
+          "min": 0,
+          "ueber45Grad": 15,
+          "ueber90Grad": 0
+        }
+      },
+      "gegner": {
+        "verhalten": {
+          "raider": {
+            "stichproben": 1930,
+            "anteilProzent": {
+              "patrouille": 68.3,
+              "anfliegen / flanke": 17.2,
+              "umkreisen / flanke": 5.2,
+              "hold / wartet im kreis": 2.2,
+              "fliehen / rückzug zum heilen": 1.7,
+              "ausweichen / flanke": 1.1,
+              "abdrehen / flanke": 1.1,
+              "umkreisen / lädt salve": 0.6,
+              "angreifen (stehend) / lädt salve": 0.5,
+              "anfliegen / lädt salve": 0.5,
+              "hold": 0.3,
+              "angreifen (stehend) / flanke": 0.3,
+              "angreifen (stehend) / salve": 0.2,
+              "abdrehen": 0.2,
+              "anfliegen": 0.2,
+              "ausweichen / lädt salve": 0.1,
+              "abdrehen / lädt salve": 0.1,
+              "ausweichen": 0.1,
+              "umkreisen / salve": 0.1,
+              "umkreisen": 0.1
+            },
+            "abstandZumSpieler": {
+              "n": 531,
+              "mittel": 660.2,
+              "median": 580,
+              "p95": 1179,
+              "max": 1725,
+              "min": 142
+            },
+            "ausweichmanoever": 8,
+            "angriffsbeginn": {
+              "selbstGetroffen": 1,
+              "eigeneSicht": 7,
+              "mitgezogenHilfe": 3
+            },
+            "fluchten": 1,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 103,
+            "schuesse": 71,
+            "treffer": 37
+          },
+          "larva": {
+            "stichproben": 613,
+            "anteilProzent": {
+              "patrouille": 84.7,
+              "anfliegen / umzingeln": 9.8,
+              "umkreisen / umzingeln": 2,
+              "abdrehen / umzingeln": 1.1,
+              "hold / wartet im kreis": 0.7,
+              "angreifen (stehend) / umzingeln": 0.7,
+              "ausweichen / umzingeln": 0.5,
+              "abdrehen": 0.5,
+              "anfliegen": 0.2
+            },
+            "abstandZumSpieler": {
+              "n": 90,
+              "mittel": 624.1,
+              "median": 506,
+              "p95": 1133,
+              "max": 1150,
+              "min": 30
+            },
+            "ausweichmanoever": 1,
+            "angriffsbeginn": {
+              "selbstGetroffen": 2,
+              "eigeneSicht": 2,
+              "mitgezogenHilfe": 3
+            },
+            "fluchten": 0,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 73,
+            "schuesse": 3,
+            "treffer": 1
+          }
+        },
+        "uebereinander": {
+          "stichprobenMitUeberlappung": 0,
+          "stichproben": 502,
+          "anteilProzent": 0,
+          "vorfaelleJeTyp": {},
+          "hoechstensGleichzeitig": 0
+        },
+        "hilfeMeldungen": 6,
+        "vorübergehendErzeugt": 11
+      },
+      "meldungen": [
+        [
+          "info: Ziel ist zu weit weg# Flieg näher ran (# m)#",
+          5
+        ],
+        [
+          "loot: Raider zerstört: +# Erfahrung# +# Ehre",
+          4
+        ],
+        [
+          "info: Salve von Raider unterbrochen!",
+          4
+        ],
+        [
+          "loot: Beute: +# Credits# +# Tritium",
+          3
+        ],
+        [
+          "loot: Crate: +# Credits",
+          3
+        ],
+        [
+          "warn: Raider ruft Verstärkung: # Raider im Anflug aus # km#",
+          2
+        ],
+        [
+          "loot: Raider zerstört: +# Erfahrung# +# Ehre · Combo ×#: +# Erfahrung# +# Ehre# +# Credits im Wr",
+          2
+        ],
+        [
+          "loot: Combo beendet: # Abschüsse in Folge# Bonus +# Erfahrung# +# Ehre# +# Credits#",
+          2
+        ],
+        [
+          "loot: Larva zerstört: +# Erfahrung# +# Ehre",
+          2
+        ],
+        [
+          "loot: Crate: +# L#-Munition",
+          1
+        ],
+        [
+          "loot: +# Nickel",
+          1
+        ],
+        [
+          "info: Bildrate dauerhaft unter # – Grafik für diese Sitzung auf MITTEL gesenkt# Deine Einstellun",
+          1
+        ],
+        [
+          "info: Angedockt an Enceladus#",
+          1
+        ],
+        [
+          "info: # L# gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "info: # R# gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "warn: Zu wenig Tritium: # nötig# du hast #",
+          1
+        ],
+        [
+          "info: Ion Laser gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "warn: Elite Larva voraus (# km): dreifach stark# dreifache Beute: # Credits# # Tritium# # Erfahr",
+          1
+        ],
+        [
+          "quest: Auftrag erledigt: Erster Kontakt# Belohnung: # Credits# # Ehre# # Erfahrung#",
+          1
+        ],
+        [
+          "info: Stufe # erreicht!",
+          1
+        ],
+        [
+          "radio: Dock Enceladus an Pilot: Im Sektor schweben Crates# Sammle # davon ein#",
+          1
+        ],
+        [
+          "radio: Dock Enceladus an Pilot: Treibgut-Feld entdeckt: # Crates # km nordwestlich# Sammle sie ei",
+          1
+        ],
+        [
+          "loot: Larva zerstört: +# Erfahrung# +# Ehre · Combo ×#: +# Erfahrung# +# Ehre# +# Credits im Wra",
+          1
+        ],
+        [
+          "warn: Elite Larva ruft Verstärkung: # Larva im Anflug aus # km#",
+          1
+        ],
+        [
+          "info: Sprung nach Mimas wird geladen …",
+          1
+        ]
+      ],
+      "ausrichtung": {
+        "modelle": {
+          "ship:s1:europa": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.28,
+              "symmetrieQuer": 1.77,
+              "sicherheitAchse": 0.84,
+              "verjuengung": 1.62,
+              "laenge": 44,
+              "breite": 44,
+              "mitte": [
+                0,
+                -1.9
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Cockpit-Glas vorn",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": -3.1714695575018364e-16,
+                "z": -1
+              },
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.2685183611088393e-16,
+                "z": -1
+              },
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": -180,
+                "x": 0,
+                "z": 1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.77,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.92,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:europa:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.58,
+              "symmetrieQuer": 1.56,
+              "sicherheitAchse": 0.63,
+              "verjuengung": 2.05,
+              "laenge": 51.4,
+              "breite": 51.4,
+              "mitte": [
+                0,
+                -2.4
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.77,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:europa": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": -0.3,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.64,
+              "symmetrieQuer": 2.46,
+              "sicherheitAchse": 0.74,
+              "verjuengung": 1.04,
+              "laenge": 53.6,
+              "breite": 54.9,
+              "mitte": [
+                -0.2,
+                -1.1
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.3630748326795952e-16,
+                "z": -1
+              },
+              {
+                "name": "eigene Laser des Modells vorn",
+                "gewicht": 2,
+                "winkelGrad": -0.7,
+                "x": 0.011646875140444156,
+                "z": -0.9999321728494703
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.78,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -26,
+                "z": -16.8,
+                "vorMitte": 0.59,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 26,
+                "z": -19.5,
+                "vorMitte": 0.69,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:europa:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.53,
+              "symmetrieQuer": 1.65,
+              "sicherheitAchse": 0.68,
+              "verjuengung": 1.49,
+              "laenge": 62.8,
+              "breite": 78.8,
+              "mitte": [
+                0,
+                -3
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -21,
+                "z": -23.1,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 21,
+                "z": -27,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -31.7,
+                "z": -20.5,
+                "vorMitte": 0.56,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 31.7,
+                "z": -23.8,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:saturn": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.28,
+              "symmetrieQuer": 1.83,
+              "sicherheitAchse": 0.85,
+              "verjuengung": 1.62,
+              "laenge": 44,
+              "breite": 44,
+              "mitte": [
+                0,
+                -1.9
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Cockpit-Glas vorn",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": -3.1714695575018364e-16,
+                "z": -1
+              },
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.2846778154625504e-16,
+                "z": -1
+              },
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": -180,
+                "x": 0,
+                "z": 1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.77,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.92,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:saturn:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.58,
+              "symmetrieQuer": 1.98,
+              "sicherheitAchse": 0.71,
+              "verjuengung": 2.07,
+              "laenge": 51.5,
+              "breite": 51.5,
+              "mitte": [
+                0,
+                -2.5
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:saturn": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": -0.3,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.62,
+              "symmetrieQuer": 2.47,
+              "sicherheitAchse": 0.75,
+              "verjuengung": 1.04,
+              "laenge": 53.5,
+              "breite": 54.9,
+              "mitte": [
+                -0.2,
+                -1.1
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.3630748326795952e-16,
+                "z": -1
+              },
+              {
+                "name": "eigene Laser des Modells vorn",
+                "gewicht": 2,
+                "winkelGrad": -0.7,
+                "x": 0.011646875140444156,
+                "z": -0.9999321728494703
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.67,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.79,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -26,
+                "z": -16.8,
+                "vorMitte": 0.59,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 26,
+                "z": -19.5,
+                "vorMitte": 0.69,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:saturn:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.69,
+              "symmetrieQuer": 2.02,
+              "sicherheitAchse": 0.66,
+              "verjuengung": 1.5,
+              "laenge": 62.8,
+              "breite": 78.7,
+              "mitte": [
+                0,
+                -3
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -21,
+                "z": -23.1,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 21,
+                "z": -27,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -31.7,
+                "z": -20.5,
+                "vorMitte": 0.56,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 31.7,
+                "z": -23.8,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:eris": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.26,
+              "symmetrieQuer": 1.74,
+              "sicherheitAchse": 0.85,
+              "verjuengung": 1.62,
+              "laenge": 44,
+              "breite": 44,
+              "mitte": [
+                0,
+                -1.9
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Cockpit-Glas vorn",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": -3.1714695575018364e-16,
+                "z": -1
+              },
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.2685183611088393e-16,
+                "z": -1
+              },
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": -180,
+                "x": 0,
+                "z": 1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.77,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.92,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1.14,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s1:eris:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.62,
+              "symmetrieQuer": 1.69,
+              "sicherheitAchse": 0.63,
+              "verjuengung": 2.01,
+              "laenge": 51.5,
+              "breite": 51.5,
+              "mitte": [
+                0,
+                -2.5
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 5,
+                "z": 23.2,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 15.5,
+                "z": 12.4,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:eris": {
+            "art": "GLB",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": -180,
+              "bugWinkelGrad": -0.3,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.65,
+              "symmetrieQuer": 2.44,
+              "sicherheitAchse": 0.73,
+              "verjuengung": 1.04,
+              "laenge": 53.6,
+              "breite": 54.9,
+              "mitte": [
+                -0.2,
+                -1.1
+              ],
+              "bugX": 0,
+              "bugZ": 1
+            },
+            "hinweise": [
+              {
+                "name": "Hoheitszeichen links/rechts",
+                "gewicht": 3,
+                "winkelGrad": 0,
+                "x": 1.3630748326795952e-16,
+                "z": -1
+              },
+              {
+                "name": "eigene Laser des Modells vorn",
+                "gewicht": 2,
+                "winkelGrad": -0.7,
+                "x": 0.011646875140444156,
+                "z": -0.9999321728494703
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -17.2,
+                "z": -18.9,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 17.2,
+                "z": -22.1,
+                "vorMitte": 0.78,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -26,
+                "z": -16.8,
+                "vorMitte": 0.59,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 26,
+                "z": -19.5,
+                "vorMitte": 0.69,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 7,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1.1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "ship:s2:eris:platzhalter": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0.73,
+              "symmetrieQuer": 1.83,
+              "sicherheitAchse": 0.6,
+              "verjuengung": 1.47,
+              "laenge": 62.8,
+              "breite": 78.7,
+              "mitte": [
+                0,
+                -3
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [
+              {
+                "platz": 0,
+                "laser": "pulse",
+                "x": -21,
+                "z": -23.1,
+                "vorMitte": 0.64,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 1,
+                "laser": "ion",
+                "x": 21,
+                "z": -27,
+                "vorMitte": 0.76,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 2,
+                "laser": "plasma",
+                "x": -31.7,
+                "z": -20.5,
+                "vorMitte": 0.56,
+                "laufrichtungGrad": 0
+              },
+              {
+                "platz": 3,
+                "laser": "gamma",
+                "x": 31.7,
+                "z": -23.8,
+                "vorMitte": 0.66,
+                "laufrichtungGrad": 0
+              }
+            ],
+            "triebwerke": [
+              {
+                "x": -8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 8.5,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": -18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 18.9,
+                "z": 15.1,
+                "hinterMitte": 0.58,
+                "groesse": 0.62,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0,
+                "z": 28.3,
+                "hinterMitte": 1,
+                "groesse": 1,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "schweife": [],
+            "befunde": [],
+            "formEindeutig": true,
+            "ok": true
+          },
+          "enemy:raider": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0,
+              "symmetrieQuer": 3.73,
+              "sicherheitAchse": 1,
+              "verjuengung": 2085278.75,
+              "laenge": 2.2,
+              "breite": 2.2,
+              "mitte": [
+                0,
+                -0.2
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [
+              {
+                "x": -0.46,
+                "z": 0.88,
+                "hinterMitte": 0.98,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0.46,
+                "z": 0.88,
+                "hinterMitte": 0.98,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": 0.8,
+              "hinterMitte": 0.91
+            },
+            "formEindeutig": true,
+            "ok": true
+          },
+          "enemy:larva": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0,
+              "symmetrieQuer": 0.83,
+              "sicherheitAchse": 1,
+              "verjuengung": 2.49,
+              "laenge": 2.9,
+              "breite": 2.9,
+              "mitte": [
+                0,
+                -0.2
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": -0.05,
+              "hinterMitte": 0.1
+            },
+            "formEindeutig": true,
+            "ok": true
+          },
+          "enemy:jackal": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0,
+              "symmetrieQuer": 3.24,
+              "sicherheitAchse": 1,
+              "verjuengung": 1.5,
+              "laenge": 2.2,
+              "breite": 2.2,
+              "mitte": [
+                0,
+                -0.2
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [
+              {
+                "x": -0.68,
+                "z": 0.55,
+                "hinterMitte": 0.68,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0.68,
+                "z": 0.55,
+                "hinterMitte": 0.68,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": 0.8,
+              "hinterMitte": 0.91
+            },
+            "formEindeutig": true,
+            "ok": true
+          },
+          "enemy:spiker": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 165,
+              "bugWinkelGrad": 165,
+              "laengsachseGrad": 165,
+              "symmetrieFehler": 1.31,
+              "symmetrieQuer": 2.46,
+              "sicherheitAchse": 0.47,
+              "verjuengung": 3.12,
+              "laenge": 2.2,
+              "breite": 2.2,
+              "mitte": [
+                0,
+                0
+              ],
+              "bugX": -0.26,
+              "bugZ": 0.97
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 165,
+                "x": -0.2589019948456405,
+                "z": 0.9659035961548896
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": -0.05,
+              "hinterMitte": -0.05
+            },
+            "formEindeutig": true,
+            "ok": true,
+            "rundum": true,
+            "dreht": true
+          },
+          "enemy:vulture": {
+            "art": "Platzhalter",
+            "form": {
+              "rund": false,
+              "formBugWinkelGrad": 0,
+              "bugWinkelGrad": 0,
+              "laengsachseGrad": 0,
+              "symmetrieFehler": 0,
+              "symmetrieQuer": 3.54,
+              "sicherheitAchse": 1,
+              "verjuengung": 3.25,
+              "laenge": 2.1,
+              "breite": 2.5,
+              "mitte": [
+                0,
+                -0.2
+              ],
+              "bugX": 0,
+              "bugZ": -1
+            },
+            "hinweise": [
+              {
+                "name": "Rumpf verjüngt sich zum Bug",
+                "gewicht": 1,
+                "winkelGrad": 0,
+                "x": 0,
+                "z": -1
+              }
+            ],
+            "muendungen": [],
+            "triebwerke": [],
+            "schweife": [
+              {
+                "x": -0.36,
+                "z": 0.33,
+                "hinterMitte": 0.5,
+                "schweifAbweichungGrad": 0
+              },
+              {
+                "x": 0.36,
+                "z": 0.33,
+                "hinterMitte": 0.5,
+                "schweifAbweichungGrad": 0
+              }
+            ],
+            "befunde": [],
+            "leuchtpunkt": {
+              "z": 0.8,
+              "hinterMitte": 0.95
+            },
+            "formEindeutig": true,
+            "ok": true
+          }
+        },
+        "imFlug": {
+          "enemy:raider": {
+            "n": 1109,
+            "mittel": 1,
+            "median": 0,
+            "p95": 0.1,
+            "max": 138.8,
+            "min": 0,
+            "quelle": "Spiel",
+            "modellversatzGrad": 0
+          },
+          "ship:s1:saturn": {
+            "n": 478,
+            "mittel": 25.1,
+            "median": 0.2,
+            "p95": 151.4,
+            "max": 171.7,
+            "min": 0,
+            "quelle": "Spiel",
+            "modellversatzGrad": 0
+          },
+          "enemy:larva": {
+            "n": 441,
+            "mittel": 0,
+            "median": 0,
+            "p95": 0,
+            "max": 0.1,
+            "min": 0,
+            "quelle": "Spiel",
+            "modellversatzGrad": 0
+          },
+          "ship:s1:europa:szene": {
+            "abweichungGrad": 0,
+            "tempo": 262,
+            "modell": "GLB"
+          },
+          "ship:s2:europa:szene": {
+            "abweichungGrad": 0.1,
+            "tempo": 337,
+            "modell": "GLB"
+          },
+          "ship:s1:saturn:szene": {
+            "abweichungGrad": 0.2,
+            "tempo": 338,
+            "modell": "GLB",
+            "bild": "2026-10-30_16-48-15/saturn-09-ausrichtung-ship-s1-saturn.png"
+          },
+          "ship:s2:saturn:szene": {
+            "abweichungGrad": 0.3,
+            "tempo": 340,
+            "modell": "GLB"
+          },
+          "ship:s1:eris:szene": {
+            "abweichungGrad": 0,
+            "tempo": 340,
+            "modell": "GLB"
+          },
+          "ship:s2:eris:szene": {
+            "abweichungGrad": 0.3,
+            "tempo": 340,
+            "modell": "GLB"
+          },
+          "enemy:raider:szene": {
+            "abweichungGrad": 0,
+            "tempo": 83,
+            "zustand": "wander",
+            "dreht": false
+          },
+          "enemy:larva:szene": {
+            "abweichungGrad": 0,
+            "tempo": 67,
+            "zustand": "wander",
+            "dreht": false
+          },
+          "enemy:jackal:szene": {
+            "abweichungGrad": 0,
+            "tempo": 95,
+            "zustand": "wander",
+            "dreht": false
+          },
+          "enemy:spiker:szene": {
+            "abweichungGrad": null,
+            "tempo": 59,
+            "zustand": "wander",
+            "dreht": true
+          },
+          "enemy:vulture:szene": {
+            "abweichungGrad": 0,
+            "tempo": 103,
+            "zustand": "wander",
+            "dreht": false
+          }
+        },
+        "abweichungen": []
+      },
+      "ladezeitS": 7.3,
+      "konsole": [
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-europa.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-saturn.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-eris.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Warnung",
+          "text": "The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio",
+          "ort": "/src/audio/audio.js:159"
+        },
+        {
+          "art": "Fehler",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "ort": "/favicon.ico:0"
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/europa-starter.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/eris-starter.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Fehler",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "ort": "/favicon.ico:0"
+        }
+      ],
+      "bilderDateien": [
+        {
+          "datei": "2026-10-30_16-48-15/saturn-01-haenger.png",
+          "grund": "Hänger 67 ms (Beute: Crate einsammeln)",
+          "zeitS": 2.9,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/saturn-02-haenger.png",
+          "grund": "Hänger 83 ms (Anflug auf Raider (697 m))",
+          "zeitS": 8.4,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/saturn-03-erster-kampf.png",
+          "grund": "Erster Kampf (1,5 s nach dem ersten Schuss)",
+          "zeitS": 9.9,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/saturn-04-station.png",
+          "grund": "Angedockt: Station/Shop",
+          "zeitS": 33.7,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/saturn-05-ereignis.png",
+          "grund": "Ereignis: Treibgut",
+          "zeitS": 80.6,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/saturn-06-sektor.png",
+          "grund": "Neuer Sektor SA-2 (Mimas)",
+          "zeitS": 92.4,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/saturn-07-tod.png",
+          "grund": "Abgeschossen: Reparatur-Auswahl",
+          "zeitS": 103.9,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/saturn-ende.png",
+          "grund": "Ende der Spielzeit",
+          "zeitS": 120,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_16-48-15/saturn-09-ausrichtung-ship-s1-saturn.png",
+          "grund": "Ausrichtung ship:s1:saturn: 0.2° (Beispiel, in Ordnung)",
+          "zeitS": 151.2,
+          "art": "ausrichtung"
+        }
+      ],
+      "start": {
+        "ok": true,
+        "sector": "SA-1",
+        "faction": "saturn",
+        "quality": 2,
+        "gpuTimer": true
+      }
+    },
+    {
+      "faction": "eris",
+      "abgebrochen": "page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:5199/?dev=game&f=eris\", waiting until \"domcontentloaded\"\n\n    at runFaction (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:95:14)\n    at async main (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:232:24)"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+/* Leistungsanzeige (F3) im Stil der UI-Panels (theme.css) */
+.ls-perf.ls-panel {
+  position: fixed; top: 38%; right: 12px; z-index: 9000; /* rechts mittig: frei zwischen Ziel- und Kartenfenster */
+  min-width: 190px; padding: 6px 12px 8px calc(var(--ls-cut, 12px) + 2px);
+  pointer-events: none; user-select: none;
+  font-family: var(--ls-mono, ui-monospace, Menlo, monospace); font-size: 11px; line-height: 1.5;
+}
+.ls-perf.ls-panel[hidden] { display: none; }
+.ls-perf-h {
+  font-family: var(--ls-display, sans-serif); font-size: 12px; letter-spacing: .14em;
+  color: var(--ls-tx-2, rgba(255,255,255,.66));
+  border-bottom: 1px solid var(--ls-line, rgba(255,255,255,.16)); margin-bottom: 4px; padding-bottom: 2px;
+  display: flex; justify-content: space-between;
+}
+.ls-perf-h span { color: var(--fx, #e0782a); }
+.ls-perf dl { margin: 0; display: grid; grid-template-columns: auto auto; column-gap: 14px; }
+.ls-perf dt { color: var(--ls-tx-3, rgba(255,255,255,.42)); letter-spacing: .06em; }
+.ls-perf dd { margin: 0; text-align: right; color: var(--ls-tx, #fff); font-variant-numeric: tabular-nums; }

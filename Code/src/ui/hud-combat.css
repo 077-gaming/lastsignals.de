@@ -1,0 +1,112 @@
+/* Kampf-Lesbarkeit (hud-combat.js): Trefferzeichen, Abschusszeichen, Serie, Angriffswarnungen.
+   Alles absolut an (0,0), bewegt nur per transform; keine Schatten über Fläche, keine Filter. */
+.hk-layer { position: absolute; inset: 0; pointer-events: none; contain: strict; }
+.hd-docked .hk-layer, .hd-dead .hk-layer, .hd-menu .hk-layer { display: none; }
+
+/* ---------- Trefferzeichen ---------- */
+.hk-m {
+  position: absolute; left: -12px; top: -12px; width: 24px; height: 24px;
+  opacity: 0; will-change: transform, opacity;
+}
+.hk-m svg { width: 100%; height: 100%; overflow: visible; fill: none; stroke-linecap: square; }
+.hk-m path { stroke: #fff; stroke-width: 2.2; vector-effect: non-scaling-stroke; }
+/* dunkle Unterlinie für Lesbarkeit über hellen Explosionen (zweiter Strich statt Schatten) */
+.hk-m.is-sh path { stroke: color-mix(in srgb, var(--fx) 80%, #fff); }
+.hk-m.is-crit { left: -18px; top: -18px; width: 36px; height: 36px; }
+.hk-m.is-crit path { stroke: var(--ls-warn); stroke-width: 2.8; }
+
+/* Abschuss: rote Winkel springen auf, Rauten außen, Text darunter */
+.hk-kill {
+  position: absolute; left: -24px; top: -24px; width: 48px; height: 48px; opacity: 0;
+  will-change: transform, opacity;
+}
+.hk-kill svg { width: 100%; height: 100%; overflow: visible; fill: none; stroke-linecap: square; }
+.hk-kill .k0 { stroke: var(--ls-danger); stroke-width: 2.6; vector-effect: non-scaling-stroke; }
+.hk-kill .k1 { fill: var(--ls-danger); opacity: .85; }
+.hk-kill.on svg { animation: hk-kill .5s cubic-bezier(.2, .8, .2, 1) both; }
+.hk-kt {
+  position: absolute; left: 50%; top: 54px; transform: translateX(-50%);
+  font-family: var(--ls-display); font-size: 12px; letter-spacing: .24em; color: var(--ls-danger); white-space: nowrap;
+  padding: 1px 6px 0; background: rgba(10, 2, 2, .7); border-top: 1px solid rgba(255, 59, 48, .6);
+}
+@keyframes hk-kill { from { transform: scale(.55) rotate(-12deg); } to { transform: scale(1.15) rotate(0deg); } }
+
+/* ---------- Serie (Combo) oben mittig ---------- */
+.hk-combo {
+  --c: 8px;
+  position: absolute; left: 50%; top: 110px; transform: translateX(-50%);
+  display: grid; grid-template-columns: auto auto auto; grid-template-rows: 30px 14px 3px; column-gap: 10px; align-items: end;
+  padding: 6px 16px 6px 12px; min-width: 210px;
+  background:
+    linear-gradient(var(--fx), var(--fx)) left / 2px 100% no-repeat,
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) top / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line), var(--ls-line)) bottom / 100% 1px no-repeat,
+    rgba(6, 9, 13, .82);
+  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
+  visibility: hidden; opacity: 0;
+  transition: opacity .25s linear, visibility 0s linear .25s;
+}
+.hk-combo.on { visibility: visible; opacity: 1; transition: none; }
+.hk-cc { grid-row: 1; font-family: var(--ls-display); font-size: 12px; letter-spacing: .24em; color: var(--fx); padding-bottom: 5px; }
+.hk-cn { grid-row: 1; font-family: var(--ls-digits); font-weight: 400; font-size: 30px; line-height: 30px; color: var(--ls-tx); font-variant-numeric: tabular-nums; }
+.hk-cb { grid-row: 1; font-family: var(--ls-display); font-size: 14px; letter-spacing: .14em; color: var(--ls-loot); padding-bottom: 5px; white-space: nowrap; }
+.hk-cb:empty { display: none; }
+.hk-cl {
+  grid-row: 2; grid-column: 1 / -1; align-self: center;
+  font-family: var(--ls-display); font-size: 11px; letter-spacing: .16em; color: var(--ls-tx-2); white-space: nowrap;
+}
+.hk-ct { grid-row: 3; grid-column: 1 / -1; display: block; height: 3px; background: rgba(255, 255, 255, .12); }
+.hk-ct i { display: block; height: 100%; background: var(--fx); transform-origin: 0 50%; transform: scaleX(1); }
+.hk-combo.is-pop .hk-cn { animation: hk-pop .22s cubic-bezier(.2, .8, .2, 1) both; }
+.hk-combo.is-end .hk-cc, .hk-combo.is-end .hk-cn { color: var(--ls-tx-3); }
+.hk-combo.is-end .hk-ct i { background: var(--ls-tx-3); }
+@keyframes hk-pop { from { transform: scale(1.45); color: var(--fx); } to { transform: scale(1); } }
+
+/* ---------- Angriffswarnung am Bildrand ---------- */
+.hk-w { position: absolute; left: 0; top: 0; width: 0; height: 0; display: none; }
+.hk-w.on { display: block; }
+.ht-wsvg {
+  position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; overflow: visible;
+  transform-origin: 26px 26px;
+}
+.hk-w .w0 { fill: rgba(255, 176, 32, .18); stroke: var(--ls-warn); stroke-width: 1.6; stroke-linejoin: miter; }
+.hk-w .w1 { stroke: var(--ls-warn); stroke-width: 2.4; fill: none; transform: rotate(0deg); }
+.hk-w .w2 { fill: none; stroke: var(--ls-warn); stroke-width: 2; opacity: .7; }
+.hk-w.on .ht-wsvg { animation: hk-warn .5s steps(2, start) infinite; }
+.hk-wl {
+  position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  white-space: nowrap; padding: 2px 7px 2px;
+  background: rgba(24, 14, 2, .86); border-top: 1px solid var(--ls-warn);
+}
+.hk-wl b { font-family: var(--ls-display); font-weight: 400; font-size: 13px; letter-spacing: .18em; color: var(--ls-warn); padding-top: 1px; }
+.hk-wl span { font-family: var(--ls-digits); font-size: 15px; color: var(--ls-tx); font-variant-numeric: tabular-nums; }
+/* letzte 0,6 s: Gefahr rot */
+.hk-w.is-urgent .w0 { fill: rgba(255, 59, 48, .28); stroke: var(--ls-danger); }
+.hk-w.is-urgent .w1, .hk-w.is-urgent .w2 { stroke: var(--ls-danger); }
+.hk-w.is-urgent .hk-wl { border-top-color: var(--ls-danger); background: rgba(30, 4, 4, .88); }
+.hk-w.is-urgent .hk-wl b { color: var(--ls-danger); }
+.hk-w.is-urgent .ht-wsvg { animation-duration: .2s; }
+@keyframes hk-warn { to { opacity: .45; } }
+
+/* im Bild: kleines Schild über dem Gegner */
+.hk-wm {
+  position: absolute; left: 0; top: 0; display: none; align-items: center; gap: 5px;
+  transform-origin: 0 0; margin-left: 0; white-space: nowrap;
+  padding: 1px 6px 1px 4px; translate: -50% -100%;
+  background: rgba(24, 14, 2, .82); border-bottom: 1px solid var(--ls-warn);
+}
+.hk-wm.on { display: flex; }
+.hk-wm.is-side { translate: -100% -50%; border-bottom: 0; border-right: 1px solid var(--ls-warn); }
+.hk-wm.is-side.is-urgent { border-right-color: var(--ls-danger); }
+.hk-wm svg { width: 14px; height: 13px; fill: none; stroke: var(--ls-warn); stroke-width: 1.6; stroke-linejoin: miter; }
+.hk-wm b { font-family: var(--ls-display); font-weight: 400; font-size: 12px; letter-spacing: .16em; color: var(--ls-warn); padding-top: 2px; }
+.hk-wm span { font-family: var(--ls-digits); font-size: 13px; color: var(--ls-tx); font-variant-numeric: tabular-nums; }
+.hk-wm.on svg { animation: hk-warn .5s steps(2, start) infinite; }
+.hk-wm.is-urgent { border-bottom-color: var(--ls-danger); background: rgba(30, 4, 4, .86); }
+.hk-wm.is-urgent svg { stroke: var(--ls-danger); animation-duration: .2s; }
+.hk-wm.is-urgent b { color: var(--ls-danger); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hk-kill.on svg, .hk-combo.is-pop .hk-cn, .hk-w.on .ht-wsvg, .hk-wm.on svg { animation: none; }
+}
+.hd-calm .hk-kill.on svg, .hd-calm .hk-combo.is-pop .hk-cn, .hd-calm .hk-w.on .ht-wsvg, .hd-calm .hk-wm.on svg { animation: none; }

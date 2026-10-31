@@ -1,0 +1,1400 @@
+{
+  "version": 1,
+  "generated": "2026-10-30T16:50:29.845Z",
+  "note": "Spielfertige Drohnenmodelle (Pioneer, drei Fraktionen, Level 1-10, je Laser oder Schild). Geometrie = bestaetigte EUROPA-Pioneer LOD0 inkl. Modul; SATURN/ERIS nur neue Lackierung.",
+  "loader": {
+    "requires": [
+      "EXT_meshopt_compression",
+      "KHR_mesh_quantization",
+      "EXT_texture_webp"
+    ],
+    "decoder": "GLTFLoader.setMeshoptDecoder(MeshoptDecoder) aus 'three/examples/jsm/libs/meshopt_decoder.module.js'"
+  },
+  "units": "Meter",
+  "axes": {
+    "up": "+Y",
+    "forward": "+Z",
+    "left": "+X"
+  },
+  "materials": [
+    "M_Hull",
+    "M_Glass",
+    "M_Glow"
+  ],
+  "drawCallsPerDrone": 3,
+  "nodes": {
+    "root": "DroneRoot",
+    "mesh": "Drone",
+    "moduleHardpoint": "HP_DroneModule",
+    "ground": "HP_Ground"
+  },
+  "types": {
+    "pioneer": {
+      "europa": {
+        "1": {
+          "laser": "/models/drones/pioneer-europa-l01-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l01-shield.glb"
+        },
+        "2": {
+          "laser": "/models/drones/pioneer-europa-l02-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l02-shield.glb"
+        },
+        "3": {
+          "laser": "/models/drones/pioneer-europa-l03-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l03-shield.glb"
+        },
+        "4": {
+          "laser": "/models/drones/pioneer-europa-l04-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l04-shield.glb"
+        },
+        "5": {
+          "laser": "/models/drones/pioneer-europa-l05-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l05-shield.glb"
+        },
+        "6": {
+          "laser": "/models/drones/pioneer-europa-l06-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l06-shield.glb"
+        },
+        "7": {
+          "laser": "/models/drones/pioneer-europa-l07-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l07-shield.glb"
+        },
+        "8": {
+          "laser": "/models/drones/pioneer-europa-l08-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l08-shield.glb"
+        },
+        "9": {
+          "laser": "/models/drones/pioneer-europa-l09-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l09-shield.glb"
+        },
+        "10": {
+          "laser": "/models/drones/pioneer-europa-l10-laser.glb",
+          "shield": "/models/drones/pioneer-europa-l10-shield.glb"
+        }
+      },
+      "saturn": {
+        "1": {
+          "laser": "/models/drones/pioneer-saturn-l01-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l01-shield.glb"
+        },
+        "2": {
+          "laser": "/models/drones/pioneer-saturn-l02-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l02-shield.glb"
+        },
+        "3": {
+          "laser": "/models/drones/pioneer-saturn-l03-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l03-shield.glb"
+        },
+        "4": {
+          "laser": "/models/drones/pioneer-saturn-l04-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l04-shield.glb"
+        },
+        "5": {
+          "laser": "/models/drones/pioneer-saturn-l05-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l05-shield.glb"
+        },
+        "6": {
+          "laser": "/models/drones/pioneer-saturn-l06-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l06-shield.glb"
+        },
+        "7": {
+          "laser": "/models/drones/pioneer-saturn-l07-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l07-shield.glb"
+        },
+        "8": {
+          "laser": "/models/drones/pioneer-saturn-l08-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l08-shield.glb"
+        },
+        "9": {
+          "laser": "/models/drones/pioneer-saturn-l09-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l09-shield.glb"
+        },
+        "10": {
+          "laser": "/models/drones/pioneer-saturn-l10-laser.glb",
+          "shield": "/models/drones/pioneer-saturn-l10-shield.glb"
+        }
+      },
+      "eris": {
+        "1": {
+          "laser": "/models/drones/pioneer-eris-l01-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l01-shield.glb"
+        },
+        "2": {
+          "laser": "/models/drones/pioneer-eris-l02-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l02-shield.glb"
+        },
+        "3": {
+          "laser": "/models/drones/pioneer-eris-l03-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l03-shield.glb"
+        },
+        "4": {
+          "laser": "/models/drones/pioneer-eris-l04-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l04-shield.glb"
+        },
+        "5": {
+          "laser": "/models/drones/pioneer-eris-l05-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l05-shield.glb"
+        },
+        "6": {
+          "laser": "/models/drones/pioneer-eris-l06-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l06-shield.glb"
+        },
+        "7": {
+          "laser": "/models/drones/pioneer-eris-l07-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l07-shield.glb"
+        },
+        "8": {
+          "laser": "/models/drones/pioneer-eris-l08-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l08-shield.glb"
+        },
+        "9": {
+          "laser": "/models/drones/pioneer-eris-l09-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l09-shield.glb"
+        },
+        "10": {
+          "laser": "/models/drones/pioneer-eris-l10-laser.glb",
+          "shield": "/models/drones/pioneer-eris-l10-shield.glb"
+        }
+      }
+    }
+  },
+  "sharedTextures": {
+    "note": "Alle 20 Pioneer-Dateien einer Fraktion enthalten denselben 512er-WebP-Atlas (je Datei eingebettet, damit jede GLB allein ladbar bleibt). Fuer viele gleichzeitige Drohnen kann der Loader die Materialien je Fraktion einmal halten und fuer weitere Drohnen wiederverwenden (spart Grafikspeicher: ca. 5 MB je Fraktion statt je Drohne).",
+    "atlas": {
+      "europa": {
+        "identicalInAllFiles": true,
+        "textures": [
+          "europa-drone-basecolor:a005bbaaf5eb81ff",
+          "europa-drone-emissive:3a3fd35d9d8adfba",
+          "europa-drone-normal:88a2d248e9dc3fe5",
+          "europa-drone-orm:8ddffc19c8489d32"
+        ]
+      },
+      "saturn": {
+        "identicalInAllFiles": true,
+        "textures": [
+          "saturn-drone-basecolor:21154bdb311f5ffe",
+          "saturn-drone-emissive:e30f9ee92c4e88b1",
+          "saturn-drone-normal:96439e2cdbab4e09",
+          "saturn-drone-orm:f844e53868db66da"
+        ]
+      },
+      "eris": {
+        "identicalInAllFiles": true,
+        "textures": [
+          "eris-drone-basecolor:0b83ea90a9552653",
+          "eris-drone-emissive:d3fdbecb18e01f14",
+          "eris-drone-normal:4280187ce854b85f",
+          "eris-drone-orm:09620eeba151e303"
+        ]
+      }
+    }
+  },
+  "files": [
+    {
+      "path": "/models/drones/pioneer-europa-l01-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 1,
+      "module": "laser",
+      "bytes": 48444,
+      "triangles": 1864,
+      "size_m": [
+        0.787,
+        0.395,
+        1.407
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "873e724239bb079a884b6917611bdb9f3a5be398f209641562aefc5be273eb2b"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l01-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 1,
+      "module": "shield",
+      "bytes": 46504,
+      "triangles": 1750,
+      "size_m": [
+        0.787,
+        0.395,
+        1.259
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "05f35d25e1b04113ec257eb246d9135a58ae938d06e120f1e7f7f77f0eb8866d"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l02-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 2,
+      "module": "laser",
+      "bytes": 49352,
+      "triangles": 1908,
+      "size_m": [
+        0.915,
+        0.665,
+        1.417
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "82c4303b3c3b1ae3edbab9de45f0df41291a480745e6e134f376546cc3507e44"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l02-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 2,
+      "module": "shield",
+      "bytes": 47532,
+      "triangles": 1794,
+      "size_m": [
+        0.915,
+        0.665,
+        1.269
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "eea52daa3e2ae5969f16bfa7a8e8c4fd1ae6c359e4c830c4e075d0e87a3f2f8a"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l03-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 3,
+      "module": "laser",
+      "bytes": 51572,
+      "triangles": 1996,
+      "size_m": [
+        1.04,
+        0.696,
+        1.424
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "0d6249d47895da0f4f60810291dc7775d164bb8019feff4e9acd93c2d795b5b4"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l03-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 3,
+      "module": "shield",
+      "bytes": 49540,
+      "triangles": 1882,
+      "size_m": [
+        1.04,
+        0.696,
+        1.276
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "b9b0b4f010beb4d4d9768abbf94992c96f66080d140139f8af9e0c0a2cb4a29a"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l04-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 4,
+      "module": "laser",
+      "bytes": 52624,
+      "triangles": 2040,
+      "size_m": [
+        1.161,
+        0.762,
+        1.432
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "2f9f3c4195360a5266aab9ba663a114941e0c96553df6752f529fbb80b104851"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l04-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 4,
+      "module": "shield",
+      "bytes": 50680,
+      "triangles": 1926,
+      "size_m": [
+        1.161,
+        0.762,
+        1.285
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "dd47cd79e2bd0a2ff6dbc3f14262ad1308e1b59cf4a37975fc3a86e5f3ae7a68"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l05-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 5,
+      "module": "laser",
+      "bytes": 52736,
+      "triangles": 2040,
+      "size_m": [
+        1.282,
+        0.791,
+        1.441
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "953e9827437db4d2f1668279d1735b9e285ce22f316d42c5b93d200b4c0376ab"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l05-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 5,
+      "module": "shield",
+      "bytes": 50860,
+      "triangles": 1926,
+      "size_m": [
+        1.282,
+        0.791,
+        1.293
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "f5912a55b45642f67bb895f13518314bc0d4c9eafd5672eab8d40ab492050734"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l06-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 6,
+      "module": "laser",
+      "bytes": 53356,
+      "triangles": 2064,
+      "size_m": [
+        1.4,
+        0.82,
+        1.449
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "6e8af3cbea5ffafdf4ca363fdc6139360ab72cfff64b05b9e4452b932936ad86"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l06-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 6,
+      "module": "shield",
+      "bytes": 51228,
+      "triangles": 1950,
+      "size_m": [
+        1.4,
+        0.82,
+        1.302
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "1c596501b84ec0a591a3b1a43f9e4ee63062dc50fec59497445571bd6b2924f5"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l07-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 7,
+      "module": "laser",
+      "bytes": 53352,
+      "triangles": 2064,
+      "size_m": [
+        1.515,
+        0.849,
+        1.458
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "94852cb89862e3da4dfeed702047b9ddd95f2755737b45a926f766c0d88a7aae"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l07-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 7,
+      "module": "shield",
+      "bytes": 51276,
+      "triangles": 1950,
+      "size_m": [
+        1.515,
+        0.849,
+        1.31
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "ab9fa02e5cb044f7df87b949b2bbaf9fabe8760bb7a334eeb72f5097a0b41cd4"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l08-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 8,
+      "module": "laser",
+      "bytes": 55652,
+      "triangles": 2176,
+      "size_m": [
+        1.631,
+        0.878,
+        1.657
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "8b6364b507de5eb783bc9eb5b65108290d09cf4e138187614741a877c04ae5cf"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l08-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 8,
+      "module": "shield",
+      "bytes": 53484,
+      "triangles": 2062,
+      "size_m": [
+        1.631,
+        0.878,
+        1.51
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "cf10c5dd0e6a6ecad0939e5f88d717f2410681fb72b96e62268ab92b86099ce8"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l09-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 9,
+      "module": "laser",
+      "bytes": 55660,
+      "triangles": 2176,
+      "size_m": [
+        1.745,
+        0.907,
+        1.663
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "492345e5a4709b2affb354cf87a1122f1a95fe8bc59a91c2fed4a4d1c9c506e1"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l09-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 9,
+      "module": "shield",
+      "bytes": 53512,
+      "triangles": 2062,
+      "size_m": [
+        1.745,
+        0.907,
+        1.515
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "e4c0172dda794b70babbddafcbc48035f33afad7ffafd95ccbc0318a938b6111"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l10-laser.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 10,
+      "module": "laser",
+      "bytes": 56076,
+      "triangles": 2200,
+      "size_m": [
+        1.853,
+        0.936,
+        1.669
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "d57b9bcba71cfa217f8b820833d6a1652101e327f6d6bbf8b8559ac08235e9e8"
+    },
+    {
+      "path": "/models/drones/pioneer-europa-l10-shield.glb",
+      "type": "pioneer",
+      "faction": "europa",
+      "level": 10,
+      "module": "shield",
+      "bytes": 53928,
+      "triangles": 2086,
+      "size_m": [
+        1.853,
+        0.936,
+        1.521
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "dec51934e3e474d9d9d0eef3648bb9925392557faed066bb283683a779f4fdfa"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l01-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 1,
+      "module": "laser",
+      "bytes": 82376,
+      "triangles": 1864,
+      "size_m": [
+        0.787,
+        0.395,
+        1.407
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "bdd19f6f7ec0867e51ff70f9935ef155ea2a1d2657e426f990790f630fbcff4e"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l01-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 1,
+      "module": "shield",
+      "bytes": 80276,
+      "triangles": 1750,
+      "size_m": [
+        0.787,
+        0.395,
+        1.259
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "497042ac787011ff58b560cdb3c1c5bf529db72f0ad91514741d14100a9102e3"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l02-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 2,
+      "module": "laser",
+      "bytes": 83632,
+      "triangles": 1908,
+      "size_m": [
+        0.915,
+        0.665,
+        1.417
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "0761b13e00bd230d2d793720f42b142a17d250fb5bfb3e6c34e1f43dba0882ed"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l02-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 2,
+      "module": "shield",
+      "bytes": 81524,
+      "triangles": 1794,
+      "size_m": [
+        0.915,
+        0.665,
+        1.269
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "58b8ec42299a7f07df576bb29c174955db276de6e1328e294c29ac652c8fb32a"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l03-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 3,
+      "module": "laser",
+      "bytes": 86232,
+      "triangles": 1996,
+      "size_m": [
+        1.04,
+        0.696,
+        1.424
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "22b0d8c613eed91893da83ece975e8034151c0077defaae64441c3e347b95f0e"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l03-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 3,
+      "module": "shield",
+      "bytes": 83920,
+      "triangles": 1882,
+      "size_m": [
+        1.04,
+        0.696,
+        1.276
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "ee0fca843ba45b42df26af981992d1387f10d75f4073fdbb0a81862dcd7baacb"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l04-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 4,
+      "module": "laser",
+      "bytes": 87356,
+      "triangles": 2040,
+      "size_m": [
+        1.161,
+        0.762,
+        1.432
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "a462003a3770e9237e35a02b59bbc97ed302d173b3ceea7ee382ad4e3d4a1e25"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l04-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 4,
+      "module": "shield",
+      "bytes": 85160,
+      "triangles": 1926,
+      "size_m": [
+        1.161,
+        0.762,
+        1.285
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "37278ba74e2a2605f19d040dda3ab74a5bad35b93b0f363dfb89c0703281b40b"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l05-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 5,
+      "module": "laser",
+      "bytes": 87344,
+      "triangles": 2040,
+      "size_m": [
+        1.282,
+        0.791,
+        1.441
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "2267b5d7e77b5fc97bc3bd814d405cdd957e31e501fb1d67c90df275b6ed4f7c"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l05-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 5,
+      "module": "shield",
+      "bytes": 85224,
+      "triangles": 1926,
+      "size_m": [
+        1.282,
+        0.791,
+        1.293
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "370caad04c3bc012e51b1b7cf98b077a782edff3484e6a949cd46d7493b1b7b1"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l06-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 6,
+      "module": "laser",
+      "bytes": 88036,
+      "triangles": 2064,
+      "size_m": [
+        1.4,
+        0.82,
+        1.449
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "31423660eadbbdc2447c98adc659ba340a47fb8d5009d060d95ddb8119702a3c"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l06-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 6,
+      "module": "shield",
+      "bytes": 85636,
+      "triangles": 1950,
+      "size_m": [
+        1.4,
+        0.82,
+        1.302
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "4c7ea6af92de8d4db86b4c05fd687d919be1ac0d8cc81696cad810f1dfd6c708"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l07-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 7,
+      "module": "laser",
+      "bytes": 87956,
+      "triangles": 2064,
+      "size_m": [
+        1.515,
+        0.849,
+        1.458
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "b4b902c8e19367cbb44c5773252359adc1d8d9eff74a08fa181d4149ec55d77f"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l07-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 7,
+      "module": "shield",
+      "bytes": 85588,
+      "triangles": 1950,
+      "size_m": [
+        1.515,
+        0.849,
+        1.31
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "a87da08aeb951f2b0225cd7fa73e399abbb62fce9aae3ffa67b90667d9076b77"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l08-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 8,
+      "module": "laser",
+      "bytes": 90568,
+      "triangles": 2176,
+      "size_m": [
+        1.631,
+        0.878,
+        1.657
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "eed86dae89625bd889984e108d4d314f7eebc7ec32775942fbc2946db8877f24"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l08-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 8,
+      "module": "shield",
+      "bytes": 88140,
+      "triangles": 2062,
+      "size_m": [
+        1.631,
+        0.878,
+        1.51
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "2b3481d3dbe29f71545a0a689687ea8fb700339d499972f8a4358ba8ac4ee31d"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l09-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 9,
+      "module": "laser",
+      "bytes": 90420,
+      "triangles": 2176,
+      "size_m": [
+        1.745,
+        0.907,
+        1.663
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "fd3acf515b849a4ca8afeac2dd354f02ebbd345211ecbedbf99149905e4a4b59"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l09-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 9,
+      "module": "shield",
+      "bytes": 88140,
+      "triangles": 2062,
+      "size_m": [
+        1.745,
+        0.907,
+        1.515
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "e64c08dd3e52c02263ef0dad4c499da23a3e81beb606c3ba53fbba9a272fe4a1"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l10-laser.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 10,
+      "module": "laser",
+      "bytes": 91128,
+      "triangles": 2200,
+      "size_m": [
+        1.853,
+        0.936,
+        1.669
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "425a26edc77491d72fab9455a7aafc44f89a04753ed92867a48b4d9968c4672f"
+    },
+    {
+      "path": "/models/drones/pioneer-saturn-l10-shield.glb",
+      "type": "pioneer",
+      "faction": "saturn",
+      "level": 10,
+      "module": "shield",
+      "bytes": 88712,
+      "triangles": 2086,
+      "size_m": [
+        1.853,
+        0.936,
+        1.521
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "336a786e9a95ada53f117dd4457a4e1612750b1fd1d09454dfdf3af5c50a9a7c"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l01-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 1,
+      "module": "laser",
+      "bytes": 66636,
+      "triangles": 1864,
+      "size_m": [
+        0.787,
+        0.395,
+        1.407
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "f34c24ac421a7d497162a31e739c31fd9e35efbd5b2023825a30310a9db4b864"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l01-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 1,
+      "module": "shield",
+      "bytes": 64352,
+      "triangles": 1750,
+      "size_m": [
+        0.787,
+        0.395,
+        1.259
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "11016203b205c4817494e038f49ed62e7c5dcaab4866ef8cfb569678cd63819f"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l02-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 2,
+      "module": "laser",
+      "bytes": 67808,
+      "triangles": 1908,
+      "size_m": [
+        0.915,
+        0.665,
+        1.417
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "cd5c62f3d1b9d6367b7f40edf55db701236d4513d3ddaaed8f11f18c211c46ec"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l02-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 2,
+      "module": "shield",
+      "bytes": 65660,
+      "triangles": 1794,
+      "size_m": [
+        0.915,
+        0.665,
+        1.269
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "977e03fd3f886dfbdffab6331fa70b377e8bf829ec3ef1d734d9be64e32a6b8b"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l03-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 3,
+      "module": "laser",
+      "bytes": 70232,
+      "triangles": 1996,
+      "size_m": [
+        1.04,
+        0.696,
+        1.424
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "3c9757a54dc0dc67039b639c57fbdac0e95cc307880a2110424613531ee6852f"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l03-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 3,
+      "module": "shield",
+      "bytes": 67828,
+      "triangles": 1882,
+      "size_m": [
+        1.04,
+        0.696,
+        1.276
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "1b539f5cc326e4f73db38525f4297324bb4618d64b09db98ac4343e9614ecf0d"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l04-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 4,
+      "module": "laser",
+      "bytes": 71276,
+      "triangles": 2040,
+      "size_m": [
+        1.161,
+        0.762,
+        1.432
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "5a5cb27e58229ef7c8d19792680dcd2b050b6b6d2a1649a65e035d8ce327d80f"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l04-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 4,
+      "module": "shield",
+      "bytes": 68996,
+      "triangles": 1926,
+      "size_m": [
+        1.161,
+        0.762,
+        1.285
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "8f1bc75b6727a704f09551210d089da2552665d34c716715cfed71013471a378"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l05-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 5,
+      "module": "laser",
+      "bytes": 71448,
+      "triangles": 2040,
+      "size_m": [
+        1.282,
+        0.791,
+        1.441
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "3fcf91fac5ac05d9127164e973b1df534603d940ecd5551c7d19bbe045c16129"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l05-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 5,
+      "module": "shield",
+      "bytes": 69208,
+      "triangles": 1926,
+      "size_m": [
+        1.282,
+        0.791,
+        1.293
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "929a2990ad3ae5f8a1559acde0cee1797bb934a7005086b61cb11a2feb528286"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l06-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 6,
+      "module": "laser",
+      "bytes": 72200,
+      "triangles": 2064,
+      "size_m": [
+        1.4,
+        0.82,
+        1.449
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "4fe6556bce90ef100cc28de6667fd126853413b7fc3709abd91d425a80a73c3c"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l06-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 6,
+      "module": "shield",
+      "bytes": 69760,
+      "triangles": 1950,
+      "size_m": [
+        1.4,
+        0.82,
+        1.302
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "8a31cc19f89f1be162032b3487383ab837e2c9a4761304d7854a38cd40cdeac0"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l07-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 7,
+      "module": "laser",
+      "bytes": 72144,
+      "triangles": 2064,
+      "size_m": [
+        1.515,
+        0.849,
+        1.458
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "f0c2f91ee73e2e72269f5b0bf78f2880e40bca19817cc9e32cd59a37b7838d3c"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l07-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 7,
+      "module": "shield",
+      "bytes": 69732,
+      "triangles": 1950,
+      "size_m": [
+        1.515,
+        0.849,
+        1.31
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "a41c40b0245ef97092f279e2ff18171f615beb125ab227162e85f6bab89b347f"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l08-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 8,
+      "module": "laser",
+      "bytes": 74692,
+      "triangles": 2176,
+      "size_m": [
+        1.631,
+        0.878,
+        1.657
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "3060d57369d2f9016a7242b803e1b087ae04eae78b9f061c39cf1ea410dc2b00"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l08-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 8,
+      "module": "shield",
+      "bytes": 72188,
+      "triangles": 2062,
+      "size_m": [
+        1.631,
+        0.878,
+        1.51
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "d94970a34f516ebfeb40b7a2ec7dfa56206cba91f0c3701741f96c7491a57d50"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l09-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 9,
+      "module": "laser",
+      "bytes": 74592,
+      "triangles": 2176,
+      "size_m": [
+        1.745,
+        0.907,
+        1.663
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "57293cc28ac9af8438d597662e84fc30a9957de608b6c9bcadc7643bf5506fae"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l09-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 9,
+      "module": "shield",
+      "bytes": 72092,
+      "triangles": 2062,
+      "size_m": [
+        1.745,
+        0.907,
+        1.515
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "2a816ba52be3edc3c8e24ee2b6625464e74801e66f990673aedf92e1acb8d516"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l10-laser.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 10,
+      "module": "laser",
+      "bytes": 75172,
+      "triangles": 2200,
+      "size_m": [
+        1.853,
+        0.936,
+        1.669
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "037b9ffa3a9afe5b95fec1bc8049839f8901ff08ac6ac7f36a21af0e4824092b"
+    },
+    {
+      "path": "/models/drones/pioneer-eris-l10-shield.glb",
+      "type": "pioneer",
+      "faction": "eris",
+      "level": 10,
+      "module": "shield",
+      "bytes": 72668,
+      "triangles": 2086,
+      "size_m": [
+        1.853,
+        0.936,
+        1.521
+      ],
+      "hp_module": [
+        0,
+        -0.03,
+        0.56
+      ],
+      "sha256": "1619b455fd9aefb5a556701d516f1da31d440ce1ba92445e16a427c1386ace7c"
+    }
+  ],
+  "pending": {
+    "voyager": "Kontrollstand, wartet auf Tonis Freigabe",
+    "cassini": "Kontrollstand, wartet auf Tonis Freigabe",
+    "juno": "Kontrollstand, wartet auf Tonis Freigabe"
+  }
+}

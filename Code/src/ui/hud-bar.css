@@ -1,0 +1,248 @@
+/* AKT·08 Schnellleiste und AKT·09 Arsenal (hud-bar.js). Bildsprache: Planung/UI_STIL.md.
+   Plätze haben feste Breite (kein Umbruch beim Munitionswechsel), Zustände nur über Klassen. */
+
+.hw-quick .hw-body { padding: 9px 10px 10px; }
+.qb { display: flex; align-items: stretch; gap: 8px; }
+
+/* Leistenwahl links: ▲ Nummer ▼ mit vier Punkten */
+.qb-pg {
+  width: 26px; flex-shrink: 0; display: grid; grid-template-rows: 18px 1fr 8px 18px; justify-items: center; align-items: center;
+  border: 1px solid var(--ls-line); background: rgba(255, 255, 255, .025);
+}
+.qb-pb {
+  appearance: none; border: 0; background: none; padding: 0; width: 100%; height: 18px; cursor: pointer;
+  display: grid; place-items: center; color: var(--hd-sub);
+}
+.qb-pb svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: square; }
+.qb-pb:hover { color: var(--ls-tx); background: rgba(255, 255, 255, .08); }
+.qb-pn { font-family: var(--ls-digits); font-weight: 400; font-size: 18px; color: var(--hd-val); line-height: 1; }
+.qb-pips { display: flex; gap: 2px; }
+.qb-pips i { width: 4px; height: 4px; background: rgba(255, 255, 255, .22); }
+.qb-pips i.on { background: var(--fx); }
+
+/* Arsenal-Knopf rechts */
+.qb-ed {
+  appearance: none; border: 1px solid var(--ls-line); background: rgba(255, 255, 255, .025); cursor: pointer;
+  width: 26px; flex-shrink: 0; padding: 6px 0 4px; color: var(--hd-sub);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.qb-ed svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: square; }
+.qb-ed span {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  font-family: var(--ls-display); font-size: 10px; letter-spacing: .2em; line-height: 1;
+}
+.qb-ed:hover { color: var(--ls-tx); background: rgba(255, 255, 255, .08); }
+.qb-ed.on { color: var(--fx); border-color: color-mix(in srgb, var(--fx) 60%, transparent); background: color-mix(in srgb, var(--fx) 12%, transparent); }
+.hd-locked .qb-ed { opacity: .4; }
+
+/* ---------- Plätze ---------- */
+.qb-slots { display: grid; grid-template-columns: repeat(10, 56px); gap: 4px; }
+.qs {
+  --c: 6px;
+  --sl: var(--ls-line);
+  position: relative; appearance: none; border: 0; cursor: pointer; padding: 0;
+  width: 56px; height: 66px;
+  display: grid; grid-template-rows: 20px 1fr 13px 8px; justify-items: center;
+  background:
+    linear-gradient(var(--sl), var(--sl)) top / 100% 1px no-repeat,
+    linear-gradient(var(--sl), var(--sl)) bottom / 100% 1px no-repeat,
+    linear-gradient(var(--sl), var(--sl)) left / 1px 100% no-repeat,
+    linear-gradient(var(--sl), var(--sl)) right / 1px 100% no-repeat,
+    rgba(255, 255, 255, .035);
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  transition: background-color .12s;
+  touch-action: none;
+}
+.qs:hover { background-color: rgba(255, 255, 255, .09); }
+.qs:active { background-color: rgba(255, 255, 255, .15); }
+.qs:focus-visible { outline: 1px solid var(--fx); outline-offset: -3px; }
+.qs-k { position: absolute; left: 4px; top: 4px; min-width: 15px; height: 15px; font-size: 10px; padding: 0 3px; z-index: 2; }
+.qs-cat {
+  position: absolute; right: 5px; top: 5px; z-index: 2;
+  font-family: var(--ls-mono); font-size: 8.5px; letter-spacing: .04em; line-height: 10px; color: var(--hd-deco);
+}
+.qs.k-ammo .qs-cat { display: none; }
+.qs-n {
+  grid-row: 2; grid-column: 1; align-self: center; position: relative; z-index: 1;
+  font-family: var(--ls-display); font-size: 19px; letter-spacing: .05em; color: var(--hd-val); padding-top: 4px; white-space: nowrap;
+}
+.qs.is-long .qs-n { font-size: 14px; letter-spacing: .04em; }
+.qs-c { grid-row: 3; align-self: end; line-height: 12px; font-family: var(--ls-digits); font-size: 11px; color: var(--hd-sub); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.qs.no-count .qs-c { display: none; }
+.qs-m { grid-row: 4; align-self: center; width: 36px; height: 3px; background: rgba(255, 255, 255, .1); }
+.qs-m i { display: block; height: 100%; background: var(--hd-sub); transform-origin: 0 50%; transform: scaleX(0); }
+.qs.k-extra .qs-m, .qs.k-mine .qs-m, .qs.k-tech .qs-m, .qs.k-form .qs-m, .qs.k-config .qs-m { background: none; }
+.qs.k-extra.on .qs-m, .qs.k-mine.on .qs-m, .qs.k-tech.on .qs-m { background: rgba(255, 255, 255, .1); }
+.hw.is-bar .qs:not(.on) .qs-c { display: none; }
+
+/* Kategorie-Kennung als feine Unterkante (Form statt Farbe): Extras/Techs Doppelstrich, Formationen Punkte */
+.qs.k-extra::after, .qs.k-mine::after, .qs.k-tech::after, .qs.k-form::after, .qs.k-config::after, .qs.k-rocket::after {
+  content: ""; position: absolute; left: 10px; right: 10px; top: 20px; height: 1px; pointer-events: none;
+}
+.qs.k-rocket::after { background: rgba(255, 255, 255, .22); }
+.qs.k-extra::after { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .3) 0 6px, transparent 6px 8px); }
+.qs.k-tech::after { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .3) 0 2px, transparent 2px 4px); }
+.qs.k-mine::after { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .3) 0 3px, transparent 3px 7px, rgba(255, 255, 255, .3) 7px 8px, transparent 8px 11px); }
+.qs.k-form::after { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .3) 0 1px, transparent 1px 5px); }
+.qs.k-config::after { background: linear-gradient(90deg, rgba(255, 255, 255, .3) 0 30%, transparent 30% 70%, rgba(255, 255, 255, .3) 70%); }
+
+/* leerer Platz: gestrichelter Rahmen, Taste bleibt lesbar */
+.qs.is-free {
+  --sl: transparent; background-color: transparent; cursor: default;
+  outline: 1px dashed rgba(255, 255, 255, .14); outline-offset: -1px;
+}
+.qs.is-free .qs-k { opacity: .5; }
+.qs.is-free .qs-m, .qs.is-free .wp-edge { display: none; }
+
+/* keine Munition mehr */
+.qs.empty { --sl: rgba(255, 255, 255, .2); background-color: transparent; }
+.qs.empty .qs-n { color: rgba(255, 255, 255, .3); }
+.qs.empty .qs-c { color: var(--ls-danger); }
+.qs.empty .qs-m { background: repeating-linear-gradient(45deg, rgba(255, 59, 48, .5) 0 1px, transparent 1px 3px); }
+.qs.empty .qs-m i { display: none; }
+
+/* System noch nicht an Bord: schraffiert, Schloss */
+.qs-lock, .qi .qs-lock { display: none; }
+.qs.na { --sl: rgba(255, 255, 255, .12); background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 5px); }
+.qs.na .qs-n { color: rgba(255, 255, 255, .34); }
+.qs.na .qs-lock, .qi.na .qs-lock {
+  display: block; position: absolute; right: 5px; bottom: 6px; width: 8px; height: 10px; z-index: 2;
+  fill: none; stroke: rgba(255, 255, 255, .45); stroke-width: 1.1;
+}
+.qs.na .qs-cat { right: 5px; }
+
+/* aktiv (gewählte Munition, laufende Fähigkeit, aktuelle Formation/Konfiguration) */
+.qs.on {
+  --sl: color-mix(in srgb, var(--fx) 70%, transparent);
+  background:
+    linear-gradient(var(--fx), var(--fx)) top / 100% 2px no-repeat,
+    linear-gradient(var(--sl), var(--sl)) bottom / 100% 1px no-repeat,
+    linear-gradient(var(--sl), var(--sl)) left / 1px 100% no-repeat,
+    linear-gradient(var(--sl), var(--sl)) right / 1px 100% no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--fx) 30%, transparent), color-mix(in srgb, var(--fx) 8%, transparent));
+}
+.qs.on .qs-n { color: var(--fx); }
+.qs.on .qs-c { color: var(--hd-val); }
+.qs.on .qs-m i { background: var(--fx); }
+.qs.on .qs-cat { color: var(--fx); }
+
+/* Auslösen: kurzer heller Blitz; verweigert: rote Kante blinkt */
+.qs.flash { background-color: rgba(255, 255, 255, .32); }
+.qs.flash .qs-n { color: #fff; }
+.qs.deny { --sl: var(--ls-danger); animation: hd-blink .12s steps(2, start) 4; }
+
+/* Nachladen: Umlauf am Rand (wie bisher), Restzeit statt Name */
+.qs .wp-edge { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.qs .wp-edge path { fill: none; vector-effect: non-scaling-stroke; }
+.qs .wp-edge .tr { stroke: none; }
+.qs .wp-edge .pr { stroke: var(--ls-warn); stroke-width: 2; stroke-dasharray: 100 100; stroke-dashoffset: 0; opacity: 0; transition: stroke-dashoffset .1s linear; }
+.qs.cooling .wp-edge .tr { stroke: rgba(255, 176, 32, .22); stroke-width: 1; }
+.qs.cooling .wp-edge .pr { opacity: 1; }
+.qs.cooling .qs-n { opacity: 0; }
+.qs-cd {
+  grid-row: 2; grid-column: 1; align-self: center; justify-self: center; position: relative; z-index: 1; padding-top: 3px;
+  font-family: var(--ls-digits); font-size: 16px; color: var(--ls-warn); font-variant-numeric: tabular-nums; display: none;
+}
+.qs.cooling .qs-cd { display: block; }
+
+/* Ziehen und Ablegen */
+.qb.is-dragging .qs { outline: 1px dashed rgba(255, 255, 255, .28); outline-offset: -1px; }
+.qb.is-dragging .qs.drop { outline: 2px solid var(--fx); outline-offset: -2px; background-color: color-mix(in srgb, var(--fx) 22%, transparent); }
+.qs.is-src { opacity: .35; }
+.hd-qdrag, .hd-qdrag * { cursor: grabbing !important; }
+.qg {
+  --c: 6px;
+  position: fixed; left: 0; top: 0; z-index: 40; width: 56px; height: 66px; pointer-events: none;
+  display: none; place-items: center;
+  background:
+    linear-gradient(var(--fx), var(--fx)) top / 100% 2px no-repeat,
+    linear-gradient(rgba(255, 255, 255, .5), rgba(255, 255, 255, .5)) bottom / 100% 1px no-repeat,
+    linear-gradient(rgba(255, 255, 255, .5), rgba(255, 255, 255, .5)) left / 1px 100% no-repeat,
+    linear-gradient(rgba(255, 255, 255, .5), rgba(255, 255, 255, .5)) right / 1px 100% no-repeat,
+    rgba(10, 14, 20, .94);
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  will-change: transform;
+}
+.qg.show { display: grid; }
+.qg b { font-family: var(--ls-display); font-weight: 400; font-size: 19px; letter-spacing: .05em; color: var(--fx); padding-top: 4px; }
+.qg.is-long b { font-size: 14px; }
+.qg-cat { position: absolute; right: 5px; top: 5px; font-family: var(--ls-mono); font-size: 8.5px; color: var(--hd-sub); }
+
+/* ---------- AKT·09 Arsenal ---------- */
+.hd .qp {
+  --ls-cut: 12px;
+  --ls-panel: var(--ls-panel-solid);
+  position: absolute; left: 0; top: 0; z-index: 6;
+  pointer-events: auto; visibility: hidden; opacity: 0;
+  contain: layout paint style;
+}
+.hd .qp.show { visibility: visible; opacity: 1; animation: ls-wipe .18s var(--ls-ease) both; }
+.qp .ls-head { height: 28px; font-size: 13px; padding-right: 6px; }
+.qp .ls-head .ls-code { font-size: 11px; color: var(--hd-deco); letter-spacing: .1em; }
+.qp-hint { font-family: var(--ls-display); font-size: 11px; letter-spacing: .14em; color: var(--hd-lab); white-space: nowrap; overflow: hidden; min-width: 0; }
+.qp-x { width: 20px; }
+.qp-x svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: square; }
+.qp-tabs { display: grid; grid-template-columns: repeat(6, 1fr); margin: 8px 12px 0; border-bottom: 1px solid var(--ls-line); }
+.qp-tab {
+  appearance: none; border: 0; background: none; cursor: pointer; position: relative; text-align: left;
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: 11px 16px; column-gap: 4px; padding: 5px 6px 5px;
+  font-family: var(--ls-display); font-size: 12px; letter-spacing: .12em; color: var(--hd-lab); white-space: nowrap; overflow: hidden;
+}
+.qp-tab i { grid-column: 1 / -1; font-style: normal; font-family: var(--ls-mono); font-size: 9.5px; letter-spacing: .04em; color: var(--hd-deco); }
+.qp-tab span { grid-row: 1; grid-column: 2; justify-self: end; font-family: var(--ls-mono); font-size: 9.5px; letter-spacing: 0; color: var(--hd-deco); }
+.qp-tab:hover { color: var(--ls-tx); background: rgba(255, 255, 255, .04); }
+.qp-tab.on { color: var(--hd-val); background: rgba(255, 255, 255, .05); }
+.qp-tab.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--fx); }
+.qp-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, 56px); gap: 4px; padding: 10px 12px; min-height: 66px;
+  max-height: 140px; overflow: hidden;
+}
+.qi {
+  --c: 6px;
+  position: relative; appearance: none; border: 0; cursor: grab; padding: 0; width: 56px; height: 66px;
+  display: grid; grid-template-rows: 20px 1fr 14px; justify-items: center; touch-action: none;
+  background:
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) top / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line), var(--ls-line)) bottom / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line), var(--ls-line)) left / 1px 100% no-repeat,
+    linear-gradient(var(--ls-line), var(--ls-line)) right / 1px 100% no-repeat,
+    rgba(255, 255, 255, .05);
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+.qi:hover { background-color: rgba(255, 255, 255, .12); }
+.qi:hover b { color: var(--fx); }
+.qi-cat { position: absolute; right: 5px; top: 5px; font-family: var(--ls-mono); font-size: 8.5px; color: var(--hd-deco); }
+.qi b { grid-row: 2; align-self: center; font-family: var(--ls-display); font-weight: 400; font-size: 19px; letter-spacing: .05em; color: var(--hd-val); padding-top: 4px; }
+.qi.is-long b { font-size: 14px; }
+.qi-c { grid-row: 3; font-family: var(--ls-digits); font-size: 11px; color: var(--hd-sub); line-height: 12px; }
+.qi.na { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 5px); }
+.qi.na b { color: rgba(255, 255, 255, .4); }
+.qp-foot {
+  display: flex; align-items: center; gap: 6px; padding: 8px 12px 10px; border-top: 1px solid var(--ls-line);
+  background: linear-gradient(rgba(255, 255, 255, .05), rgba(255, 255, 255, .05)) 0 0 / 100% 1px no-repeat, rgba(255, 255, 255, .02);
+}
+.qp-info {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden; white-space: nowrap;
+  font-size: 12.5px; color: var(--hd-sub);
+}
+.qp-info b { font-family: var(--ls-display); font-weight: 400; font-size: 15px; letter-spacing: .12em; color: var(--fx); padding-top: 2px; }
+.qp-info em { font-style: normal; font-family: var(--ls-display); font-size: 11px; letter-spacing: .16em; color: var(--ls-warn); border: 1px solid rgba(255, 176, 32, .5); padding: 1px 5px 0; }
+.qp-info .ls-label { font-size: 11px; }
+.qp-b { height: 26px; padding: 3px 10px 0; font-size: 11px; line-height: 1; flex-shrink: 0; }
+
+@media (max-width: 1360px) {
+  .qb-slots { grid-template-columns: repeat(10, 50px); }
+  .qs { width: 50px; height: 62px; }
+  .qs-n { font-size: 17px; }
+  .qs.is-long .qs-n { font-size: 12.5px; }
+  .qp-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hd .qp.show { animation: none; }
+  .qs.deny { animation: none; }
+  .qs .wp-edge .pr { transition: none; }
+}
+.hd-calm .qp.show, .hd-calm .qs.deny { animation: none !important; }
+/* Arsenal und Zieh-Vorschau gehören zum Flug: angedockt, nach Abschuss und im Bordmenü weg */
+.hd-docked .qp, .hd-dead .qp, .hd-menu .qp, .hd-boot .qp,
+.hd-docked .qg, .hd-dead .qg, .hd-menu .qg { display: none !important; }

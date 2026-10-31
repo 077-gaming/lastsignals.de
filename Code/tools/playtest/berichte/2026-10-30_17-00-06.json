@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "zeit": "2026-10-30_17-00-06",
+    "minuten": 2,
+    "fraktionen": [
+      "europa",
+      "saturn",
+      "eris"
+    ],
+    "qualitaet": "hoch",
+    "url": "http://localhost:5191",
+    "fenster": "1440x900 @2x",
+    "browser": "Google Chrome (installiert, sichtbar)"
+  },
+  "ergebnisse": [
+    {
+      "faction": "europa",
+      "abgebrochen": "page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:5191/?dev=game&f=europa\", waiting until \"domcontentloaded\"\n\n    at runFaction (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:95:14)\n    at async main (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:232:24)"
+    },
+    {
+      "faction": "saturn",
+      "abgebrochen": "page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:5191/?dev=game&f=saturn\", waiting until \"domcontentloaded\"\n\n    at runFaction (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:95:14)\n    at async main (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:232:24)"
+    },
+    {
+      "faction": "eris",
+      "abgebrochen": "page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:5191/?dev=game&f=eris\", waiting until \"domcontentloaded\"\n\n    at runFaction (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:95:14)\n    at async main (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:232:24)"
+    }
+  ]
+}

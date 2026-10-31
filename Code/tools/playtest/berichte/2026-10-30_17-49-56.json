@@ -1,0 +1,1954 @@
+{
+  "meta": {
+    "zeit": "2026-10-30_17-49-56",
+    "minuten": 2,
+    "fraktionen": [
+      "europa",
+      "saturn",
+      "eris"
+    ],
+    "qualitaet": "hoch",
+    "url": "http://localhost:5173",
+    "fenster": "1440x900 @2x",
+    "browser": "Google Chrome (installiert, sichtbar)"
+  },
+  "ergebnisse": [
+    {
+      "faction": "europa",
+      "abgebrochen": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'start')\n    at eval (eval at evaluate (:370:30), <anonymous>:1:20)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at runFaction (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:100:27)\n    at async main (/Users/077-gaming/Desktop/077/90_Weitere_Projekte/Last-Signals/Code/tools/playtest/spielen.mjs:232:24)"
+    },
+    {
+      "dauerSpielS": 120,
+      "faction": "saturn",
+      "startSektor": "SA-1",
+      "endSektor": "SA-2",
+      "qualitaet": {
+        "stufe": 2,
+        "aufloesungsFaktor": 1,
+        "pixeldichte": 1.75,
+        "puffer": "2520x1575",
+        "gpuTimer": true,
+        "meldungen": []
+      },
+      "bilder": {
+        "gesamt": {
+          "bilder": 5570,
+          "bildabstandMs": {
+            "n": 5570,
+            "mittel": 19.9,
+            "median": 16.7,
+            "p95": 18.3,
+            "max": 9433.2,
+            "min": 14.6
+          },
+          "rechenzeitCpuMs": {
+            "n": 5570,
+            "mittel": 5.4,
+            "median": 4.3,
+            "p95": 7.1,
+            "max": 6451.6,
+            "min": 0.7
+          },
+          "gpuMs": {
+            "n": 5570,
+            "mittel": 7.9,
+            "median": 7.8,
+            "p95": 12.3,
+            "max": 64.4,
+            "min": 2.1
+          },
+          "bildzeitMs": {
+            "n": 5570,
+            "mittel": 9.5,
+            "median": 8,
+            "p95": 12.4,
+            "max": 6451.6,
+            "min": 2.9
+          },
+          "ueber20ms": 39,
+          "ueber25ms": 39,
+          "ueber33ms": 26,
+          "fps": 50.3
+        },
+        "kampf": {
+          "bilder": 3644,
+          "bildabstandMs": {
+            "n": 3644,
+            "mittel": 18.6,
+            "median": 16.7,
+            "p95": 18.3,
+            "max": 6448.7,
+            "min": 14.6
+          },
+          "rechenzeitCpuMs": {
+            "n": 3644,
+            "mittel": 6.2,
+            "median": 4.5,
+            "p95": 7.2,
+            "max": 6451.6,
+            "min": 1.1
+          },
+          "gpuMs": {
+            "n": 3644,
+            "mittel": 7.5,
+            "median": 7.3,
+            "p95": 12,
+            "max": 63.4,
+            "min": 2.1
+          },
+          "bildzeitMs": {
+            "n": 3644,
+            "mittel": 9.9,
+            "median": 7.7,
+            "p95": 12,
+            "max": 6451.6,
+            "min": 2.9
+          },
+          "ueber20ms": 29,
+          "ueber25ms": 29,
+          "ueber33ms": 19,
+          "fps": 53.7
+        },
+        "ruhe": {
+          "bilder": 1835,
+          "bildabstandMs": {
+            "n": 1835,
+            "mittel": 16.8,
+            "median": 16.7,
+            "p95": 18.4,
+            "max": 66.8,
+            "min": 14.6
+          },
+          "rechenzeitCpuMs": {
+            "n": 1835,
+            "mittel": 4.1,
+            "median": 4.1,
+            "p95": 6.7,
+            "max": 10.8,
+            "min": 1.1
+          },
+          "gpuMs": {
+            "n": 1835,
+            "mittel": 8.4,
+            "median": 8.5,
+            "p95": 12.6,
+            "max": 23.1,
+            "min": 2.2
+          },
+          "bildzeitMs": {
+            "n": 1835,
+            "mittel": 8.6,
+            "median": 8.5,
+            "p95": 12.6,
+            "max": 23.1,
+            "min": 3.7
+          },
+          "ueber20ms": 7,
+          "ueber25ms": 7,
+          "ueber33ms": 4,
+          "fps": 59.7
+        },
+        "ersterKampf": {
+          "bilder": 533,
+          "bildabstandMs": {
+            "n": 533,
+            "mittel": 16.8,
+            "median": 16.7,
+            "p95": 18.2,
+            "max": 66.5,
+            "min": 14.7
+          },
+          "rechenzeitCpuMs": {
+            "n": 533,
+            "mittel": 5.4,
+            "median": 5.2,
+            "p95": 7.2,
+            "max": 15.4,
+            "min": 2.4
+          },
+          "gpuMs": {
+            "n": 533,
+            "mittel": 6,
+            "median": 5.7,
+            "p95": 9.9,
+            "max": 14.9,
+            "min": 2.3
+          },
+          "bildzeitMs": {
+            "n": 533,
+            "mittel": 6.9,
+            "median": 6.6,
+            "p95": 10,
+            "max": 15.4,
+            "min": 3.9
+          },
+          "ueber20ms": 3,
+          "ueber25ms": 3,
+          "ueber33ms": 2,
+          "fps": 59.4
+        },
+        "angedockt": {
+          "bilder": 91,
+          "bildabstandMs": {
+            "n": 91,
+            "mittel": 133.3,
+            "median": 16.7,
+            "p95": 18.3,
+            "max": 9433.2,
+            "min": 14.9
+          },
+          "rechenzeitCpuMs": {
+            "n": 91,
+            "mittel": 2.2,
+            "median": 1.3,
+            "p95": 6.2,
+            "max": 12.7,
+            "min": 0.7
+          },
+          "gpuMs": {
+            "n": 91,
+            "mittel": 13.3,
+            "median": 10.8,
+            "p95": 26.9,
+            "max": 64.4,
+            "min": 2.9
+          },
+          "bildzeitMs": {
+            "n": 91,
+            "mittel": 13.5,
+            "median": 10.8,
+            "p95": 26.9,
+            "max": 64.4,
+            "min": 2.9
+          },
+          "ueber20ms": 3,
+          "ueber25ms": 3,
+          "ueber33ms": 3,
+          "fps": 7.5
+        }
+      },
+      "laengsteBilder": [
+        {
+          "t": 34.6,
+          "bildabstandMs": 9433.2,
+          "rechenzeitMs": 12.7,
+          "gpuMs": 3.8,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 132,
+          "dreiecke": 164011,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 91.6,
+          "bildabstandMs": 6448.7,
+          "rechenzeitMs": 5.2,
+          "gpuMs": 4.9,
+          "phase": "sprung",
+          "aktion": "Sprung lädt",
+          "sektor": "SA-2",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "sector": 1,
+            "message": 2,
+            "profile": 1
+          },
+          "drawCalls": 69,
+          "dreiecke": 104113,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 34.6,
+          "bildabstandMs": 932.4,
+          "rechenzeitMs": 2.7,
+          "gpuMs": 3.8,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 132,
+          "dreiecke": 164011,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 34.9,
+          "bildabstandMs": 298.7,
+          "rechenzeitMs": 3.2,
+          "gpuMs": 3.8,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 114,
+          "dreiecke": 162499,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 6.4,
+          "bildabstandMs": 100.5,
+          "rechenzeitMs": 4.3,
+          "gpuMs": 7.2,
+          "phase": "jagd",
+          "aktion": "Anflug auf Larva (930 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 3,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {
+            "message": 1
+          },
+          "drawCalls": 69,
+          "dreiecke": 147205,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 91.9,
+          "bildabstandMs": 84.7,
+          "rechenzeitMs": 5.9,
+          "gpuMs": 10.9,
+          "phase": "tod",
+          "aktion": "Todestest: kämpfen ohne Rückzug",
+          "sektor": "SA-2",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "sector": 1,
+            "message": 2,
+            "profile": 1
+          },
+          "drawCalls": 69,
+          "dreiecke": 128845,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 61.6,
+          "bildabstandMs": 83.4,
+          "rechenzeitMs": 5.7,
+          "gpuMs": 6.2,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (5772 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 6,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "damage": 2
+          },
+          "drawCalls": 77,
+          "dreiecke": 150781,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 0.3,
+          "bildabstandMs": 66.8,
+          "rechenzeitMs": 4.3,
+          "gpuMs": 11.2,
+          "phase": "jagd",
+          "aktion": "Anflug auf Larva (1718 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {},
+          "drawCalls": 108,
+          "dreiecke": 75603,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 11.5,
+          "bildabstandMs": 66.5,
+          "rechenzeitMs": 6,
+          "gpuMs": 9.9,
+          "phase": "jagd",
+          "aktion": "Beute: Wrack einsammeln",
+          "sektor": "SA-1",
+          "gegnerNah": 5,
+          "angreifer": 4,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "telegraph": 1,
+            "profile": 2,
+            "damage": 2,
+            "special": 1,
+            "message": 2,
+            "explode": 1,
+            "despawn": 1,
+            "loot": 2,
+            "combo": 1,
+            "spawn": 1
+          },
+          "drawCalls": 103,
+          "dreiecke": 171117,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 91.9,
+          "bildabstandMs": 66,
+          "rechenzeitMs": 87.1,
+          "gpuMs": 39.3,
+          "phase": "tod",
+          "aktion": "Todestest: kämpfen ohne Rückzug",
+          "sektor": "SA-2",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "sector": 1,
+            "message": 2,
+            "profile": 1
+          },
+          "drawCalls": 72,
+          "dreiecke": 129997,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 91.7,
+          "bildabstandMs": 51.4,
+          "rechenzeitMs": 4.6,
+          "gpuMs": 28,
+          "phase": "tod",
+          "aktion": "Todestest: kämpfen ohne Rückzug",
+          "sektor": "SA-2",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "sector": 1,
+            "message": 2,
+            "profile": 1
+          },
+          "drawCalls": 69,
+          "dreiecke": 104333,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 65.6,
+          "bildabstandMs": 50.5,
+          "rechenzeitMs": 9.4,
+          "gpuMs": 45.4,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (4809 m)",
+          "sektor": "SA-1",
+          "gegnerNah": 5,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "special": 1,
+            "damage": 2,
+            "profile": 1
+          },
+          "drawCalls": 98,
+          "dreiecke": 152623,
+          "qualitaet": 2,
+          "aufloesung": 1
+        }
+      ],
+      "haengerAnzahl": 42,
+      "kampf": {
+        "spielerSchuesse": 56,
+        "trefferquoteProzent": 78.6,
+        "schuesseJeMunition": {
+          "L1": 4,
+          "L2": 52
+        },
+        "raketen": 13,
+        "munitionWechsel": {
+          "L1": {
+            "versuche": 1,
+            "ok": 1,
+            "vorrat": 4998
+          },
+          "L2": {
+            "versuche": 1,
+            "ok": 1,
+            "vorrat": 200
+          },
+          "L3": {
+            "versuche": 1,
+            "ok": 0,
+            "vorrat": 0
+          },
+          "L4": {
+            "versuche": 1,
+            "ok": 0,
+            "vorrat": 0
+          }
+        },
+        "abschuesse": {
+          "larva": 3,
+          "raider": 6
+        },
+        "zeitBisAbschussS": {
+          "larva": {
+            "abschuesse": 3,
+            "n": 3,
+            "mittel": 0.7,
+            "median": 0.8,
+            "p95": 0.8,
+            "max": 0.8,
+            "min": 0.6
+          },
+          "raider": {
+            "abschuesse": 6,
+            "n": 6,
+            "mittel": 3.2,
+            "median": 1.9,
+            "p95": 4.1,
+            "max": 8.5,
+            "min": 1.1
+          }
+        },
+        "eingesteckt": {
+          "huelle": 493,
+          "schild": 1963,
+          "jeQuelle": {
+            "larva": 74,
+            "raider": 2382
+          }
+        },
+        "tode": 1,
+        "todErzwungen": 2,
+        "reparaturen": [
+          {
+            "t": 108.2,
+            "wo": "here",
+            "ok": true,
+            "kosten": "kostenlos (bis Stufe 10)"
+          }
+        ],
+        "beute": {
+          "credits": 7110,
+          "tritium": 5,
+          "xp": 5770,
+          "honor": 37
+        },
+        "beuteJeMinute": {
+          "credits": 3555,
+          "tritium": 2.5,
+          "erfahrung": 2885,
+          "ehre": 18.5
+        },
+        "profilVorher": {
+          "credits": 20000,
+          "tritium": 50,
+          "xp": 0,
+          "honor": 0,
+          "level": 1
+        },
+        "profilNachher": {
+          "credits": 8610,
+          "tritium": 55,
+          "xp": 5770,
+          "honor": 37,
+          "level": 2
+        },
+        "stufenAufstiege": [
+          {
+            "t": 115.4,
+            "level": 2
+          }
+        ],
+        "einkaeufe": [
+          {
+            "was": "ammo L2",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 1000,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "rocket R1",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 2500,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo L3",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 250 nötig, du hast 53.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo SAL",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 200 nötig, du hast 53.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo SAB",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 500 nötig, du hast 53.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "laser ion",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 15000,
+            "tritiumAusgegeben": 0
+          }
+        ],
+        "aufrufDauerMs": {
+          "andocken": 1198,
+          "einkaufen": 903.6,
+          "abdocken": 0.3
+        },
+        "angedockt": 1,
+        "spruenge": [
+          {
+            "t": 91.6,
+            "id": "SA-2"
+          }
+        ],
+        "schussWinkelZurNase": {
+          "n": 56,
+          "mittel": 26.7,
+          "median": 0.7,
+          "p95": 72.6,
+          "max": 74.4,
+          "min": 0,
+          "ueber45Grad": 20,
+          "ueber90Grad": 0
+        }
+      },
+      "gegner": {
+        "verhalten": {
+          "larva": {
+            "stichproben": 256,
+            "anteilProzent": {
+              "patrouille": 76.2,
+              "anfliegen / umzingeln": 9,
+              "umkreisen / umzingeln": 7,
+              "abdrehen / umzingeln": 2.7,
+              "abdrehen": 1.2,
+              "abdrehen / lädt sprungbiss": 1.2,
+              "anfliegen / springt": 1.2,
+              "angreifen (stehend) / umzingeln": 0.4,
+              "abdrehen / springt": 0.4,
+              "anfliegen": 0.4,
+              "anfliegen / lädt sprungbiss": 0.4
+            },
+            "abstandZumSpieler": {
+              "n": 61,
+              "mittel": 286.3,
+              "median": 253,
+              "p95": 561,
+              "max": 637,
+              "min": 113
+            },
+            "ausweichmanoever": 0,
+            "angriffsbeginn": {
+              "selbstGetroffen": 1,
+              "eigeneSicht": 0,
+              "mitgezogenHilfe": 2
+            },
+            "fluchten": 0,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 74,
+            "schuesse": 4,
+            "treffer": 4
+          },
+          "raider": {
+            "stichproben": 2320,
+            "anteilProzent": {
+              "patrouille": 66.8,
+              "anfliegen / flanke": 17.6,
+              "umkreisen / flanke": 7,
+              "hold / wartet im kreis": 2.8,
+              "ausweichen / flanke": 1.2,
+              "anfliegen / lädt salve": 1,
+              "abdrehen / flanke": 0.8,
+              "angreifen (stehend) / lädt salve": 0.7,
+              "umkreisen / lädt salve": 0.6,
+              "angreifen (stehend) / salve": 0.4,
+              "angreifen (stehend) / flanke": 0.3,
+              "hold": 0.3,
+              "anfliegen": 0.2,
+              "abdrehen": 0.1,
+              "umkreisen": 0.1,
+              "ausweichen / schildwall": 0.1,
+              "angreifen (stehend)": 0,
+              "ausweichen / wartet im kreis": 0
+            },
+            "abstandZumSpieler": {
+              "n": 697,
+              "mittel": 661.6,
+              "median": 590,
+              "p95": 1359,
+              "max": 1698,
+              "min": 154
+            },
+            "ausweichmanoever": 9,
+            "angriffsbeginn": {
+              "selbstGetroffen": 2,
+              "eigeneSicht": 12,
+              "mitgezogenHilfe": 4
+            },
+            "fluchten": 0,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 104,
+            "schuesse": 65,
+            "treffer": 44
+          },
+          "jackal": {
+            "stichproben": 293,
+            "anteilProzent": {
+              "patrouille": 68.6,
+              "hold / wartet im kreis": 28.7,
+              "anfliegen / springt an": 2.4,
+              "hold": 0.3
+            },
+            "abstandZumSpieler": {
+              "n": 7,
+              "mittel": 1189.4,
+              "median": 1186,
+              "p95": 1249,
+              "max": 1284,
+              "min": 1104
+            },
+            "ausweichmanoever": 0,
+            "angriffsbeginn": {
+              "selbstGetroffen": 0,
+              "eigeneSicht": 0,
+              "mitgezogenHilfe": 1
+            },
+            "fluchten": 0,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 106,
+            "schuesse": 0,
+            "treffer": 0
+          }
+        },
+        "uebereinander": {
+          "stichprobenMitUeberlappung": 0,
+          "stichproben": 515,
+          "anteilProzent": 0,
+          "vorfaelleJeTyp": {},
+          "hoechstensGleichzeitig": 0
+        },
+        "hilfeMeldungen": 7,
+        "vorübergehendErzeugt": 0
+      },
+      "meldungen": [
+        [
+          "info: Ziel ist zu weit weg# Flieg näher ran (# m)#",
+          5
+        ],
+        [
+          "loot: Beute: +# Credits# +# Tritium",
+          5
+        ],
+        [
+          "info: Salve von Raider unterbrochen!",
+          5
+        ],
+        [
+          "loot: Raider zerstört: +# Erfahrung# +# Ehre",
+          4
+        ],
+        [
+          "warn: Elite Raider voraus (# km): dreifach stark# dreifache Beute: # Credits# # Tritium# # Erfah",
+          3
+        ],
+        [
+          "loot: Larva zerstört: +# Erfahrung# +# Ehre · Combo ×#: +# Erfahrung# +# Ehre# +# Credits im Wra",
+          2
+        ],
+        [
+          "warn: Raider ruft Verstärkung: # Raider im Anflug aus # km#",
+          2
+        ],
+        [
+          "loot: Combo beendet: # Abschüsse in Folge# Bonus +# Erfahrung# +# Ehre# +# Credits#",
+          2
+        ],
+        [
+          "loot: Raider zerstört: +# Erfahrung# +# Ehre · Combo ×#: +# Erfahrung# +# Ehre# +# Credits im Wr",
+          2
+        ],
+        [
+          "warn: Keine L#-Munition# Kaufe Nachschub in der Station#",
+          2
+        ],
+        [
+          "radio: Dock Enceladus an Pilot: Raider greifen unsere Frachter an# Zerstöre # Raider#",
+          1
+        ],
+        [
+          "loot: Larva zerstört: +# Erfahrung# +# Ehre",
+          1
+        ],
+        [
+          "info: Sprungbiss von Larva unterbrochen!",
+          1
+        ],
+        [
+          "info: Angedockt an Enceladus#",
+          1
+        ],
+        [
+          "info: # L# gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "info: # R# gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "warn: Zu wenig Tritium: # nötig# du hast #",
+          1
+        ],
+        [
+          "info: Ion Laser gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "info: Salve von Elite Raider unterbrochen!",
+          1
+        ],
+        [
+          "info: Sprung nach Mimas wird geladen …",
+          1
+        ],
+        [
+          "info: Willkommen in Mimas (SA-#)#",
+          1
+        ],
+        [
+          "warn: Sektorwarnung: Alpha Raider gesichtet# # km östlich# Extra: Verstärkung# Zehnfache Beute: ",
+          1
+        ],
+        [
+          "loot: Crate: +# L#-Munition",
+          1
+        ],
+        [
+          "warn: Dein Schiff wurde zerstört# Wähle# wo du repariert werden willst#",
+          1
+        ],
+        [
+          "info: Schiff repariert (kostenlos bis Stufe #)# # Sekunden geschützt#",
+          1
+        ]
+      ],
+      "ausrichtung": null,
+      "ladezeitS": 2.6,
+      "konsole": [
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-europa.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-saturn.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-eris.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Fehler",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "ort": "/favicon.ico:0"
+        },
+        {
+          "art": "Fehler",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "ort": "/favicon.ico:0"
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/europa-starter.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/eris-starter.glb abgebrochen",
+          "ort": ""
+        }
+      ],
+      "bilderDateien": [
+        {
+          "datei": "2026-10-30_17-49-56/saturn-01-haenger.png",
+          "grund": "Hänger 67 ms (Anflug auf Larva (1718 m))",
+          "zeitS": 0.3,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/saturn-02-ereignis.png",
+          "grund": "Ereignis: Erster Kontakt",
+          "zeitS": 2,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/saturn-03-erster-kampf.png",
+          "grund": "Erster Kampf (1,5 s nach dem ersten Schuss)",
+          "zeitS": 8.8,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/saturn-04-station.png",
+          "grund": "Angedockt: Station/Shop",
+          "zeitS": 35.8,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/saturn-05-haenger.png",
+          "grund": "Hänger 6449 ms (Sprung lädt)",
+          "zeitS": 91.6,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/saturn-06-sektor.png",
+          "grund": "Neuer Sektor SA-2 (Mimas)",
+          "zeitS": 94.1,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/saturn-07-tod.png",
+          "grund": "Abgeschossen: Reparatur-Auswahl",
+          "zeitS": 105.6,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/saturn-ende.png",
+          "grund": "Ende der Spielzeit",
+          "zeitS": 120,
+          "art": "moment"
+        }
+      ],
+      "start": {
+        "ok": true,
+        "sector": "SA-1",
+        "faction": "saturn",
+        "quality": 2,
+        "gpuTimer": true
+      }
+    },
+    {
+      "dauerSpielS": 120,
+      "faction": "eris",
+      "startSektor": "ER-1",
+      "endSektor": "ER-2",
+      "qualitaet": {
+        "stufe": 2,
+        "aufloesungsFaktor": 1,
+        "pixeldichte": 1.75,
+        "puffer": "2520x1575",
+        "gpuTimer": true,
+        "meldungen": []
+      },
+      "bilder": {
+        "gesamt": {
+          "bilder": 6524,
+          "bildabstandMs": {
+            "n": 6524,
+            "mittel": 17.3,
+            "median": 16.7,
+            "p95": 18.4,
+            "max": 1616.6,
+            "min": 14.4
+          },
+          "rechenzeitCpuMs": {
+            "n": 6524,
+            "mittel": 4.9,
+            "median": 4.6,
+            "p95": 7.3,
+            "max": 1127.3,
+            "min": 0.3
+          },
+          "gpuMs": {
+            "n": 6524,
+            "mittel": 7.7,
+            "median": 7.1,
+            "p95": 14.2,
+            "max": 148.2,
+            "min": 2
+          },
+          "bildzeitMs": {
+            "n": 6524,
+            "mittel": 8.5,
+            "median": 7.5,
+            "p95": 14.4,
+            "max": 1127.3,
+            "min": 3.1
+          },
+          "ueber20ms": 51,
+          "ueber25ms": 51,
+          "ueber33ms": 31,
+          "fps": 57.7
+        },
+        "kampf": {
+          "bilder": 4617,
+          "bildabstandMs": {
+            "n": 4617,
+            "mittel": 16.8,
+            "median": 16.7,
+            "p95": 18.4,
+            "max": 99.9,
+            "min": 14.6
+          },
+          "rechenzeitCpuMs": {
+            "n": 4617,
+            "mittel": 5,
+            "median": 4.8,
+            "p95": 7.5,
+            "max": 87.4,
+            "min": 1.8
+          },
+          "gpuMs": {
+            "n": 4617,
+            "mittel": 7.1,
+            "median": 6.6,
+            "p95": 13.1,
+            "max": 51.8,
+            "min": 2
+          },
+          "bildzeitMs": {
+            "n": 4617,
+            "mittel": 7.9,
+            "median": 7.1,
+            "p95": 13.2,
+            "max": 87.4,
+            "min": 3.1
+          },
+          "ueber20ms": 37,
+          "ueber25ms": 37,
+          "ueber33ms": 23,
+          "fps": 59.4
+        },
+        "ruhe": {
+          "bilder": 1768,
+          "bildabstandMs": {
+            "n": 1768,
+            "mittel": 17.4,
+            "median": 16.7,
+            "p95": 18.4,
+            "max": 1135,
+            "min": 14.4
+          },
+          "rechenzeitCpuMs": {
+            "n": 1768,
+            "mittel": 5.1,
+            "median": 4.3,
+            "p95": 6.8,
+            "max": 1127.3,
+            "min": 1.3
+          },
+          "gpuMs": {
+            "n": 1768,
+            "mittel": 8.7,
+            "median": 8.3,
+            "p95": 14.4,
+            "max": 148.2,
+            "min": 2
+          },
+          "bildzeitMs": {
+            "n": 1768,
+            "mittel": 9.7,
+            "median": 8.3,
+            "p95": 14.5,
+            "max": 1127.3,
+            "min": 3.2
+          },
+          "ueber20ms": 10,
+          "ueber25ms": 10,
+          "ueber33ms": 5,
+          "fps": 57.4
+        },
+        "ersterKampf": {
+          "bilder": 544,
+          "bildabstandMs": {
+            "n": 544,
+            "mittel": 16.7,
+            "median": 16.7,
+            "p95": 18.3,
+            "max": 33.4,
+            "min": 14.6
+          },
+          "rechenzeitCpuMs": {
+            "n": 544,
+            "mittel": 4.7,
+            "median": 4.5,
+            "p95": 7.2,
+            "max": 16.7,
+            "min": 1.8
+          },
+          "gpuMs": {
+            "n": 544,
+            "mittel": 7.7,
+            "median": 7.4,
+            "p95": 13.5,
+            "max": 30.9,
+            "min": 2.3
+          },
+          "bildzeitMs": {
+            "n": 544,
+            "mittel": 8.3,
+            "median": 7.7,
+            "p95": 13.5,
+            "max": 30.9,
+            "min": 3.1
+          },
+          "ueber20ms": 2,
+          "ueber25ms": 2,
+          "ueber33ms": 1,
+          "fps": 59.8
+        },
+        "angedockt": {
+          "bilder": 139,
+          "bildabstandMs": {
+            "n": 139,
+            "mittel": 33.6,
+            "median": 16.7,
+            "p95": 18.5,
+            "max": 1616.6,
+            "min": 14.8
+          },
+          "rechenzeitCpuMs": {
+            "n": 139,
+            "mittel": 2.1,
+            "median": 1.3,
+            "p95": 6.1,
+            "max": 7.8,
+            "min": 0.3
+          },
+          "gpuMs": {
+            "n": 139,
+            "mittel": 14.4,
+            "median": 12.7,
+            "p95": 28.5,
+            "max": 32.8,
+            "min": 5.2
+          },
+          "bildzeitMs": {
+            "n": 139,
+            "mittel": 14.4,
+            "median": 12.7,
+            "p95": 28.5,
+            "max": 32.8,
+            "min": 5.2
+          },
+          "ueber20ms": 4,
+          "ueber25ms": 4,
+          "ueber33ms": 3,
+          "fps": 29.8
+        }
+      },
+      "laengsteBilder": [
+        {
+          "t": 25.3,
+          "bildabstandMs": 1616.6,
+          "rechenzeitMs": 7.7,
+          "gpuMs": 10.6,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "ER-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 87,
+          "dreiecke": 136153,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 89.1,
+          "bildabstandMs": 1135,
+          "rechenzeitMs": 9.3,
+          "gpuMs": 16.8,
+          "phase": "jagd3",
+          "aktion": "Sprung lädt",
+          "sektor": "ER-2",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {
+            "sector": 1,
+            "message": 1
+          },
+          "drawCalls": 65,
+          "dreiecke": 101427,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 25.3,
+          "bildabstandMs": 699.9,
+          "rechenzeitMs": 1.9,
+          "gpuMs": 10.6,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "ER-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 87,
+          "dreiecke": 136153,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 42.3,
+          "bildabstandMs": 99.9,
+          "rechenzeitMs": 7.6,
+          "gpuMs": 17.7,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (8819 m)",
+          "sektor": "ER-1",
+          "gegnerNah": 4,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1,
+            "damage": 2
+          },
+          "drawCalls": 92,
+          "dreiecke": 146217,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 89.3,
+          "bildabstandMs": 67.3,
+          "rechenzeitMs": 6.9,
+          "gpuMs": 42.2,
+          "phase": "tod",
+          "aktion": "Todestest: kämpfen ohne Rückzug",
+          "sektor": "ER-2",
+          "gegnerNah": 0,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {
+            "sector": 1,
+            "message": 1
+          },
+          "drawCalls": 67,
+          "dreiecke": 126689,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 25.4,
+          "bildabstandMs": 66.2,
+          "rechenzeitMs": 1.8,
+          "gpuMs": 9.1,
+          "phase": "docken",
+          "aktion": "Angedockt: Shop",
+          "sektor": "ER-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 86,
+          "dreiecke": 136461,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 47.6,
+          "bildabstandMs": 65.7,
+          "rechenzeitMs": 4.2,
+          "gpuMs": 23.3,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (7630 m)",
+          "sektor": "ER-1",
+          "gegnerNah": 3,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {},
+          "drawCalls": 109,
+          "dreiecke": 162451,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 64.1,
+          "bildabstandMs": 51.2,
+          "rechenzeitMs": 5.8,
+          "gpuMs": 3.4,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (4818 m)",
+          "sektor": "ER-1",
+          "gegnerNah": 7,
+          "angreifer": 2,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {},
+          "drawCalls": 70,
+          "dreiecke": 143151,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 29.3,
+          "bildabstandMs": 50.2,
+          "rechenzeitMs": 5.8,
+          "gpuMs": 12.5,
+          "phase": "sprung",
+          "aktion": "Angedockt: Shop",
+          "sektor": "ER-1",
+          "gegnerNah": 2,
+          "angreifer": 0,
+          "imKampf": false,
+          "ereignis": null,
+          "zuletzt": {
+            "undocked": 1
+          },
+          "drawCalls": 81,
+          "dreiecke": 136301,
+          "qualitaet": 2,
+          "aufloesung": 0.92
+        },
+        {
+          "t": 73.3,
+          "bildabstandMs": 50,
+          "rechenzeitMs": 6.8,
+          "gpuMs": 22.1,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (3007 m)",
+          "sektor": "ER-1",
+          "gegnerNah": 8,
+          "angreifer": 4,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "profile": 1
+          },
+          "drawCalls": 96,
+          "dreiecke": 157765,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 46,
+          "bildabstandMs": 49.1,
+          "rechenzeitMs": 6.1,
+          "gpuMs": 8.6,
+          "phase": "sprung",
+          "aktion": "Flug zum Sprungtor (8001 m)",
+          "sektor": "ER-1",
+          "gegnerNah": 3,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "damage": 1,
+            "profile": 1
+          },
+          "drawCalls": 97,
+          "dreiecke": 152497,
+          "qualitaet": 2,
+          "aufloesung": 1
+        },
+        {
+          "t": 113.5,
+          "bildabstandMs": 35.2,
+          "rechenzeitMs": 8.4,
+          "gpuMs": 4.3,
+          "phase": "jagd4",
+          "aktion": "Kampf: Jackal umkreisen",
+          "sektor": "ER-2",
+          "gegnerNah": 4,
+          "angreifer": 3,
+          "imKampf": true,
+          "ereignis": null,
+          "zuletzt": {
+            "damage": 1
+          },
+          "drawCalls": 82,
+          "dreiecke": 149619,
+          "qualitaet": 2,
+          "aufloesung": 1
+        }
+      ],
+      "haengerAnzahl": 55,
+      "kampf": {
+        "spielerSchuesse": 91,
+        "trefferquoteProzent": 86.8,
+        "schuesseJeMunition": {
+          "L1": 4,
+          "L2": 87
+        },
+        "raketen": 19,
+        "munitionWechsel": {
+          "L1": {
+            "versuche": 1,
+            "ok": 1,
+            "vorrat": 4998
+          },
+          "L2": {
+            "versuche": 1,
+            "ok": 1,
+            "vorrat": 200
+          },
+          "L3": {
+            "versuche": 1,
+            "ok": 0,
+            "vorrat": 0
+          },
+          "L4": {
+            "versuche": 1,
+            "ok": 0,
+            "vorrat": 0
+          }
+        },
+        "abschuesse": {
+          "larva": 3,
+          "raider": 8,
+          "jackal": 1
+        },
+        "zeitBisAbschussS": {
+          "larva": {
+            "abschuesse": 3,
+            "n": 3,
+            "mittel": 0.8,
+            "median": 0.8,
+            "p95": 0.8,
+            "max": 0.8,
+            "min": 0.7
+          },
+          "raider": {
+            "abschuesse": 8,
+            "n": 8,
+            "mittel": 3.4,
+            "median": 3.1,
+            "p95": 3.9,
+            "max": 6.1,
+            "min": 1.8
+          },
+          "jackal": {
+            "abschuesse": 1,
+            "n": 1,
+            "mittel": 6,
+            "median": 6,
+            "p95": 6,
+            "max": 6,
+            "min": 6
+          }
+        },
+        "eingesteckt": {
+          "huelle": 605,
+          "schild": 2415,
+          "jeQuelle": {
+            "larva": 57,
+            "raider": 1633,
+            "jackal": 1330
+          }
+        },
+        "tode": 1,
+        "todErzwungen": 2,
+        "reparaturen": [
+          {
+            "t": 105.8,
+            "wo": "here",
+            "ok": true,
+            "kosten": "kostenlos (bis Stufe 10)"
+          }
+        ],
+        "beute": {
+          "credits": 13174,
+          "tritium": 23,
+          "xp": 9315,
+          "honor": 47
+        },
+        "beuteJeMinute": {
+          "credits": 6587,
+          "tritium": 11.5,
+          "erfahrung": 4657,
+          "ehre": 23.5
+        },
+        "profilVorher": {
+          "credits": 20000,
+          "tritium": 50,
+          "xp": 0,
+          "honor": 0,
+          "level": 1
+        },
+        "profilNachher": {
+          "credits": 14674,
+          "tritium": 73,
+          "xp": 9315,
+          "honor": 47,
+          "level": 2
+        },
+        "stufenAufstiege": [
+          {
+            "t": 67.5,
+            "level": 2
+          }
+        ],
+        "einkaeufe": [
+          {
+            "was": "ammo L2",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 1000,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "rocket R1",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 2500,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo L3",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 250 nötig, du hast 53.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo SAL",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 200 nötig, du hast 53.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "ammo SAB",
+            "ok": false,
+            "grund": "Zu wenig Tritium: 500 nötig, du hast 53.",
+            "creditsAusgegeben": 0,
+            "tritiumAusgegeben": 0
+          },
+          {
+            "was": "laser ion",
+            "ok": true,
+            "grund": "",
+            "creditsAusgegeben": 15000,
+            "tritiumAusgegeben": 0
+          }
+        ],
+        "aufrufDauerMs": {
+          "andocken": 955.2,
+          "einkaufen": 700.8,
+          "abdocken": 0.5
+        },
+        "angedockt": 1,
+        "spruenge": [
+          {
+            "t": 89.1,
+            "id": "ER-2"
+          }
+        ],
+        "schussWinkelZurNase": {
+          "n": 91,
+          "mittel": 22.7,
+          "median": 0.9,
+          "p95": 72.6,
+          "max": 73.6,
+          "min": 0,
+          "ueber45Grad": 24,
+          "ueber90Grad": 0
+        }
+      },
+      "gegner": {
+        "verhalten": {
+          "raider": {
+            "stichproben": 2280,
+            "anteilProzent": {
+              "patrouille": 45.7,
+              "anfliegen / flanke": 26.4,
+              "hold / wartet im kreis": 15.6,
+              "umkreisen / flanke": 3.4,
+              "fliehen / rückzug zum heilen": 3.2,
+              "ausweichen / flanke": 1.7,
+              "abdrehen / flanke": 1,
+              "anfliegen / lädt salve": 0.7,
+              "angreifen (stehend) / lädt salve": 0.5,
+              "umkreisen": 0.3,
+              "anfliegen": 0.2,
+              "angreifen (stehend) / salve": 0.2,
+              "hold": 0.2,
+              "abdrehen": 0.2,
+              "angreifen (stehend) / flanke": 0.2,
+              "umkreisen / schildwall": 0.1,
+              "abdrehen / lädt salve": 0.1,
+              "angreifen (stehend)": 0.1,
+              "umkreisen / lädt salve": 0.1,
+              "ausweichen": 0.1,
+              "abdrehen / schildwall": 0,
+              "ausweichen / lädt salve": 0
+            },
+            "abstandZumSpieler": {
+              "n": 807,
+              "mittel": 757.2,
+              "median": 672,
+              "p95": 1383,
+              "max": 1695,
+              "min": 94
+            },
+            "ausweichmanoever": 12,
+            "angriffsbeginn": {
+              "selbstGetroffen": 2,
+              "eigeneSicht": 10,
+              "mitgezogenHilfe": 9
+            },
+            "fluchten": 5,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 121,
+            "schuesse": 45,
+            "treffer": 31
+          },
+          "larva": {
+            "stichproben": 126,
+            "anteilProzent": {
+              "patrouille": 51.6,
+              "anfliegen / umzingeln": 17.5,
+              "umkreisen / umzingeln": 10.3,
+              "ausweichen / umzingeln": 4.8,
+              "abdrehen / umzingeln": 4,
+              "hold": 2.4,
+              "anfliegen": 2.4,
+              "abdrehen / lädt sprungbiss": 2.4,
+              "anfliegen / springt": 2.4,
+              "umkreisen / lädt sprungbiss": 1.6,
+              "anfliegen / lädt sprungbiss": 0.8
+            },
+            "abstandZumSpieler": {
+              "n": 58,
+              "mittel": 276.8,
+              "median": 227,
+              "p95": 557,
+              "max": 667,
+              "min": 59
+            },
+            "ausweichmanoever": 2,
+            "angriffsbeginn": {
+              "selbstGetroffen": 1,
+              "eigeneSicht": 0,
+              "mitgezogenHilfe": 2
+            },
+            "fluchten": 0,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 89,
+            "schuesse": 3,
+            "treffer": 3
+          },
+          "jackal": {
+            "stichproben": 421,
+            "anteilProzent": {
+              "patrouille": 59.9,
+              "anfliegen / springt an": 7.6,
+              "umkreisen / springt an": 6.2,
+              "hold / wartet im kreis": 5.7,
+              "patrouille / lauert getarnt": 4.5,
+              "abdrehen / springt an": 3.8,
+              "anfliegen / rammt": 3.8,
+              "anfliegen / lädt rammangriff": 2.9,
+              "fliehen / rückzug zum heilen": 1.9,
+              "abdrehen / lädt rammangriff": 1,
+              "ausweichen / springt an": 0.7,
+              "anfliegen": 0.5,
+              "angreifen (stehend) / springt an": 0.5,
+              "hold / lauert getarnt": 0.2,
+              "abdrehen": 0.2,
+              "abdrehen / rammt": 0.2,
+              "angreifen (stehend) / lädt rammangriff": 0.2,
+              "umkreisen / rammt": 0.2
+            },
+            "abstandZumSpieler": {
+              "n": 117,
+              "mittel": 478.3,
+              "median": 485,
+              "p95": 943,
+              "max": 1006,
+              "min": 29
+            },
+            "ausweichmanoever": 1,
+            "angriffsbeginn": {
+              "selbstGetroffen": 1,
+              "eigeneSicht": 0,
+              "mitgezogenHilfe": 3
+            },
+            "fluchten": 1,
+            "uebereinanderAnteilProzent": 0,
+            "tempoMittel": 122,
+            "schuesse": 12,
+            "treffer": 11
+          }
+        },
+        "uebereinander": {
+          "stichprobenMitUeberlappung": 0,
+          "stichproben": 583,
+          "anteilProzent": 0,
+          "vorfaelleJeTyp": {},
+          "hoechstensGleichzeitig": 0
+        },
+        "hilfeMeldungen": 4,
+        "vorübergehendErzeugt": 0
+      },
+      "meldungen": [
+        [
+          "info: Ziel ist zu weit weg# Flieg näher ran (# m)#",
+          9
+        ],
+        [
+          "info: Salve von Raider unterbrochen!",
+          5
+        ],
+        [
+          "loot: Raider zerstört: +# Erfahrung# +# Ehre",
+          4
+        ],
+        [
+          "loot: Raider zerstört: +# Erfahrung# +# Ehre · Combo ×#: +# Erfahrung# +# Ehre# +# Credits im Wr",
+          4
+        ],
+        [
+          "loot: Beute: +# Credits# +# Tritium",
+          3
+        ],
+        [
+          "loot: Combo beendet: # Abschüsse in Folge# Bonus +# Erfahrung# +# Ehre# +# Credits#",
+          3
+        ],
+        [
+          "loot: Crate: +# Credits",
+          3
+        ],
+        [
+          "loot: Larva zerstört: +# Erfahrung# +# Ehre · Combo ×#: +# Erfahrung# +# Ehre# +# Credits im Wra",
+          2
+        ],
+        [
+          "warn: Raider ruft Verstärkung: # Raider im Anflug aus # km#",
+          2
+        ],
+        [
+          "warn: Keine L#-Munition# Kaufe Nachschub in der Station#",
+          2
+        ],
+        [
+          "radio: Gefängnisring Eris an Häftling: Raider greifen unsere Frachter an# Zerstöre # Raider#",
+          1
+        ],
+        [
+          "loot: Larva zerstört: +# Erfahrung# +# Ehre",
+          1
+        ],
+        [
+          "info: Sprungbiss von Larva unterbrochen!",
+          1
+        ],
+        [
+          "info: Angedockt an Eris#",
+          1
+        ],
+        [
+          "info: # L# gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "info: # R# gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "warn: Zu wenig Tritium: # nötig# du hast #",
+          1
+        ],
+        [
+          "info: Ion Laser gekauft# (−# Credits)",
+          1
+        ],
+        [
+          "warn: Elite Raider voraus (# km): dreifach stark# dreifache Beute: # Credits# # Tritium# # Erfah",
+          1
+        ],
+        [
+          "info: Salve von Elite Raider unterbrochen!",
+          1
+        ],
+        [
+          "quest: Auftrag erledigt: Erster Kontakt# Belohnung: # Credits# # Ehre# # Erfahrung#",
+          1
+        ],
+        [
+          "info: Stufe # erreicht!",
+          1
+        ],
+        [
+          "radio: Gefängnisring Eris an Häftling: Im Sektor schweben Crates# Sammle # davon ein#",
+          1
+        ],
+        [
+          "info: Sprung nach Dysnomia wird geladen …",
+          1
+        ],
+        [
+          "radio: Gefängnisring Eris an Häftling: Treibgut-Feld entdeckt: # Crates # km nordwestlich# Sammle",
+          1
+        ]
+      ],
+      "ausrichtung": null,
+      "ladezeitS": 3.4,
+      "konsole": [
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-europa.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-saturn.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/station-eris.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Fehler",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "ort": "/favicon.ico:0"
+        },
+        {
+          "art": "Warnung",
+          "text": "The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio",
+          "ort": "/src/audio/audio.js?t=1793372308003:159"
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/eris-starter.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Hinweis",
+          "text": "HEAD /models/europa-starter.glb abgebrochen",
+          "ort": ""
+        },
+        {
+          "art": "Fehler",
+          "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "ort": "/favicon.ico:0"
+        }
+      ],
+      "bilderDateien": [
+        {
+          "datei": "2026-10-30_17-49-56/eris-01-ereignis.png",
+          "grund": "Ereignis: Erster Kontakt",
+          "zeitS": 0.4,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/eris-02-erster-kampf.png",
+          "grund": "Erster Kampf (1,5 s nach dem ersten Schuss)",
+          "zeitS": 5.5,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/eris-03-haenger.png",
+          "grund": "Hänger 1617 ms (Angedockt: Shop)",
+          "zeitS": 25.3,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/eris-04-station.png",
+          "grund": "Angedockt: Station/Shop",
+          "zeitS": 26.5,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/eris-05-haenger.png",
+          "grund": "Hänger 1135 ms (Sprung lädt)",
+          "zeitS": 89.1,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/eris-06-sektor.png",
+          "grund": "Neuer Sektor ER-2 (Dysnomia)",
+          "zeitS": 91.6,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/eris-07-tod.png",
+          "grund": "Abgeschossen: Reparatur-Auswahl",
+          "zeitS": 103.2,
+          "art": "moment"
+        },
+        {
+          "datei": "2026-10-30_17-49-56/eris-ende.png",
+          "grund": "Ende der Spielzeit",
+          "zeitS": 120,
+          "art": "moment"
+        }
+      ],
+      "start": {
+        "ok": true,
+        "sector": "ER-1",
+        "faction": "eris",
+        "quality": 2,
+        "gpuTimer": true
+      }
+    }
+  ]
+}

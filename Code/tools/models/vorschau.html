@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schiffe Vorschau</title>
+<style>
+  :root { --bg: #0b0d12; --panel: rgba(20, 22, 28, 0.82); --line: rgba(255, 255, 255, 0.12); --text: #e8e8ec; --dim: #9a9ca6; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  #ui { position: fixed; top: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100vw - 24px); }
+  #ui .grp { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(12px); }
+  #ui button { border: 0; border-radius: 999px; padding: 5px 11px; background: transparent; color: var(--dim); font: inherit; cursor: pointer; }
+  #ui button.on { background: rgba(255, 255, 255, 0.16); color: var(--text); }
+  #ui label { display: flex; align-items: center; gap: 6px; padding: 0 8px; color: var(--dim); }
+  #ui input[type=range] { width: 90px; }
+  #info { position: fixed; left: 12px; bottom: 12px; padding: 8px 12px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); color: var(--dim); white-space: pre; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #title { position: fixed; right: 16px; bottom: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--text); opacity: 0.85; }
+  body.clean #ui, body.clean #info { display: none; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <div class="grp" id="fac"></div>
+  <div class="grp" id="ship"></div>
+  <div class="grp" id="view"></div>
+  <div class="grp">
+    <label>Laser <input id="nl" type="range" min="0" max="13" value="13"><span id="nlv"></span></label>
+    <label>Gen <input id="ng" type="range" min="0" max="13" value="13"><span id="ngv"></span></label>
+  </div>
+  <div class="grp" id="look"></div>
+</div>
+<div id="info">lädt …</div>
+<div id="title"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+
+const Q = new URLSearchParams(location.search);
+const st = {
+  f: Q.get('f') || 'europa', s: +(Q.get('s') || 3), v: Q.get('v') || 'schraeg',
+  sil: Q.get('sil') === '1', light: Q.get('light') || 'neutral', bg: Q.get('bg') || 'dunkel',
+  nl: Q.has('nl') ? +Q.get('nl') : 99, ng: Q.has('ng') ? +Q.get('ng') : 99, spin: Q.get('spin') === '1',
+};
+if (Q.get('clean') === '1') document.body.classList.add('clean');
+const FILES = { 1: 'starter', 2: 'schiff2' };
+const file = (f, s) => `/models/${f}-${FILES[s] || 'schiff' + s}.glb`;
+const LEN = { 1: 44, 2: 53.7 }; // Spielmaß der vorhandenen Modelle (Platzhalter-Länge × Layout-Skalierung)
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.5, 5000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+const hemi = new THREE.HemisphereLight(0xbfd4ff, 0x20242c, 0.5);
+const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(-60, 120, -40);
+const rim = new THREE.DirectionalLight(0x9fc0ff, 1.0); rim.position.set(80, 30, 120);
+scene.add(hemi, key, rim);
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const cache = new Map();
+const load = (url) => { if (!cache.has(url)) cache.set(url, loader.loadAsync(url)); return cache.get(url); };
+let holder = new THREE.Group(); scene.add(holder);
+const silMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+function applyLook() {
+  const L = st.light;
+  scene.environment = L === 'dunkel' ? null : envTex;
+  scene.environmentIntensity = 0.9;
+  hemi.intensity = L === 'dunkel' ? 0.12 : 0.5;
+  key.intensity = L === 'dunkel' ? 0.9 : 2.6;
+  rim.intensity = L === 'dunkel' ? 0.3 : 1.0;
+  renderer.toneMappingExposure = 1.0;
+  scene.background = new THREE.Color(st.sil || st.bg === 'hell' ? 0xe9e9ec : st.bg === 'grau' ? 0x4a4d55 : 0x0b0d12);
+}
+function equip(root) {
+  root.traverse((o) => {
+    const m = /^(Laser|Generator)_(\d\d)$/.exec(o.name);
+    if (m) o.visible = +m[2] <= (m[1] === 'Laser' ? st.nl : st.ng);
+  });
+}
+function silhouette(root) {
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    o.userData.mat ??= o.material;
+    o.material = st.sil ? silMat : o.userData.mat;
+  });
+}
+const info = document.getElementById('info');
+async function show() {
+  scene.remove(holder); holder = new THREE.Group(); scene.add(holder);
+  applyLook();
+  const lineup = st.v === 'reihe' || st.v === 'reihe-norm';
+  const list = lineup ? [1, 2, 3, 4, 5, 6, 7, 8] : [st.s];
+  let x = 0, maxLen = 0, stats = [];
+  for (const s of list) {
+    let gltf;
+    try { gltf = await load(file(st.f, s)); } catch { continue; }
+    const obj = gltf.scene.clone(true);
+    const box = new THREE.Box3().setFromObject(obj), size = box.getSize(new THREE.Vector3());
+    let k = 1;
+    if (LEN[s]) k = LEN[s] / size.z;
+    if (st.v === 'reihe-norm') k = 50 / size.z;
+    obj.scale.setScalar(k);
+    equip(obj); silhouette(obj);
+    const wrap = new THREE.Group(); wrap.add(obj);
+    const c = box.getCenter(new THREE.Vector3()).multiplyScalar(k);
+    obj.position.set(-c.x, 0, -c.z);
+    if (lineup) { const w = size.x * k; x += w / 2; wrap.position.x = -x; x += w / 2 + 8; }
+    holder.add(wrap);
+    maxLen = Math.max(maxLen, size.z * k);
+    let tri = 0, nodes = [];
+    obj.traverse((o) => { if (o.isMesh && o.visible) tri += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(Laser|Generator)_\d\d$/.test(o.name)) nodes.push(o.name); });
+    stats.push({ s, size: size.clone().multiplyScalar(k), tri, nL: nodes.filter((n) => n.startsWith('Laser')).length, nG: nodes.filter((n) => n.startsWith('Gen')).length });
+  }
+  if (lineup) holder.children.forEach((w) => { w.position.x += x / 2; });
+  frame(maxLen, lineup ? x : 0);
+  const s0 = stats[0];
+  let kb = '';
+  if (!lineup) { try { const r = await fetch(file(st.f, st.s), { method: 'HEAD' }); kb = (r.headers.get('content-length') / 1024).toFixed(0) + ' KB'; } catch { /* egal */ } }
+  info.textContent = lineup
+    ? stats.map((t) => `Nr. ${t.s}: ${t.size.z.toFixed(1)} m lang, ${t.size.x.toFixed(1)} m breit`).join('\n')
+    : `${st.f.toUpperCase()} Schiff ${st.s}   ${kb}\nLänge ${s0.size.z.toFixed(1)} m  Breite ${s0.size.x.toFixed(1)} m  Höhe ${s0.size.y.toFixed(1)} m\nDreiecke sichtbar ${s0.tri}\nLaserplätze ${s0.nL}  Generatorplätze ${s0.nG}`;
+  document.getElementById('title').textContent = lineup ? `${st.f.toUpperCase()} · Schiffsreihe` : `${st.f.toUpperCase()} · NR. ${st.s}`;
+  syncUI();
+  window.__ready = true;
+}
+function frame(len, width) {
+  const d = Math.max(len, width * 0.62);
+  const views = {
+    spiel: [0, 0.82, -0.57], verfolger: [0, 0.27, -0.96], schraeg: [0.62, 0.48, -0.62], oben: [0, 1, -0.0001], unten: [0, -1, 0.0001],
+    seite: [1, 0.02, 0], front: [0, 0.05, 1], heck: [0, 0.12, -1], reihe: [0, 0.82, -0.57], 'reihe-norm': [0, 1, -0.0001],
+  };
+  const dir = new THREE.Vector3(...(views[st.v] || views.schraeg)).normalize();
+  const fov = camera.fov * Math.PI / 180;
+  const dist = (d * 0.62) / Math.tan(fov / 2) * (st.v === 'spiel' ? 1.25 : 1) * Math.max(1, 1 / camera.aspect * 1.2);
+  camera.position.copy(dir.multiplyScalar(dist));
+  camera.up.set(0, 1, 0);
+  if (st.v === 'oben' || st.v === 'reihe-norm') camera.up.set(0, 0, 1);
+  if (st.v === 'unten') camera.up.set(0, 0, 1);
+  controls.target.set(0, 0, 0);
+  camera.lookAt(0, 0, 0);
+  controls.update();
+}
+function btns(id, items, keyName, cb) {
+  const el = document.getElementById(id); el.innerHTML = '';
+  for (const [val, label] of items) {
+    const b = document.createElement('button'); b.textContent = label; b.dataset.v = val;
+    b.onclick = () => { st[keyName] = typeof st[keyName] === 'number' ? +val : (typeof st[keyName] === 'boolean' ? !st[keyName] : val); cb ? cb() : show(); };
+    el.appendChild(b);
+  }
+}
+btns('fac', [['europa', 'EUROPA'], ['saturn', 'SATURN'], ['eris', 'ERIS']], 'f');
+btns('ship', [[1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6'], [7, '7'], [8, '8']], 's');
+btns('view', [['spiel', 'Spielkamera'], ['verfolger', 'Verfolger'], ['schraeg', 'Schräg'], ['oben', 'Oben'], ['seite', 'Seite'], ['front', 'Front'], ['heck', 'Heck'], ['unten', 'Unten'], ['reihe', 'Reihe'], ['reihe-norm', 'Umrisse']], 'v');
+const look = document.getElementById('look');
+for (const [k, label, vals] of [['light', 'Licht', ['neutral', 'dunkel']], ['bg', 'Grund', ['dunkel', 'grau', 'hell']]]) {
+  const b = document.createElement('button'); b.textContent = `${label}: ${st[k]}`;
+  b.onclick = () => { st[k] = vals[(vals.indexOf(st[k]) + 1) % vals.length]; b.textContent = `${label}: ${st[k]}`; show(); };
+  look.appendChild(b);
+}
+for (const [k, label] of [['sil', 'Silhouette'], ['spin', 'Drehen']]) {
+  const b = document.createElement('button'); b.textContent = label; b.dataset.k = k;
+  b.onclick = () => { st[k] = !st[k]; show(); };
+  look.appendChild(b);
+}
+const nl = document.getElementById('nl'), ng = document.getElementById('ng');
+nl.value = Math.min(13, st.nl); ng.value = Math.min(13, st.ng);
+nl.oninput = () => { st.nl = +nl.value; holder.traverse(equip); syncUI(); };
+ng.oninput = () => { st.ng = +ng.value; holder.traverse(equip); syncUI(); };
+function syncUI() {
+  for (const [id, k] of [['fac', 'f'], ['ship', 's'], ['view', 'v']]) document.querySelectorAll(`#${id} button`).forEach((b) => b.classList.toggle('on', String(st[k]) === b.dataset.v));
+  document.querySelectorAll('#look button[data-k]').forEach((b) => b.classList.toggle('on', !!st[b.dataset.k]));
+  document.getElementById('nlv').textContent = st.nl > 13 ? 'alle' : st.nl;
+  document.getElementById('ngv').textContent = st.ng > 13 ? 'alle' : st.ng;
+  const q = new URLSearchParams({ f: st.f, s: st.s, v: st.v }); if (document.body.classList.contains('clean')) q.set('clean', '1'); history.replaceState(null, '', '?' + q);
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+renderer.setAnimationLoop(() => { if (st.spin) holder.rotation.y += 0.004; controls.update(); renderer.render(scene, camera); });
+window.__show = (o) => { window.__ready = false; Object.assign(st, o); nl.value = Math.min(13, st.nl); ng.value = Math.min(13, st.ng); return show(); };
+show();
+</script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+/* LAST SIGNALS · Mitte-Ebene des Flug-HUD (Zielklammer, Peilmarke, Bögen am Schiff).
+   Farben der Zielmarkierung wie der Auswahlring der 3D-Szene: Feind #ff4a3a, Crate #ffd36a, sonst #9fe8ff.
+   Zielschild in Weiß 66 % (kein eigener Blauton), Feindhülle rot.
+   Alles per transform verschoben, keine Schatten über Fläche, kein backdrop-filter. */
+
+.hc { position: absolute; inset: 0; pointer-events: none; contain: strict; }
+.hc-tgt, .hc-arr, .hc-ship { position: absolute; left: 0; top: 0; visibility: hidden; will-change: transform; }
+.hc-tgt.on, .hc-arr.on, .hc-ship.on { visibility: visible; }
+.hc-tgt, .hc-arr { --tc: #9fe8ff; color: var(--tc); }
+.hc-tgt.is-enemy, .hc-arr.is-enemy { --tc: #ff4a3a; }
+.hc-tgt.is-crate, .hc-arr.is-crate { --tc: #ffd36a; }
+
+/* ---------- Zielklammer ---------- */
+.hc-box { position: absolute; left: -50px; top: -50px; width: 100px; height: 100px; transform-origin: 50% 50%; }
+.hc-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hc-svg path { fill: none; stroke: currentColor; vector-effect: non-scaling-stroke; }
+.hc-c { stroke-width: 1.5; }
+.hc-tk { stroke-width: 1; opacity: 0; }
+.hc-tgt.is-atk .hc-c { stroke-width: 2.5; }
+.hc-tgt.is-atk .hc-tk { opacity: 1; animation: hc-blink .5s steps(2, start) infinite; }
+.hc-tgt.is-out .hc-c { stroke-dasharray: 4 3; }
+
+/* Schild mit eigener dunkler Unterlage, damit es über heller Geometrie lesbar bleibt */
+.hc-lab {
+  position: absolute; left: -75px; top: 0; width: 150px; min-height: 46px; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 8px 4px;
+  background: rgba(4, 7, 10, .78);
+  border-top: 1px solid color-mix(in srgb, var(--tc) 70%, transparent);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%);
+}
+.hc-l1 { display: flex; align-items: baseline; justify-content: center; gap: 8px; white-space: nowrap; max-width: 134px; }
+.hc-name {
+  font-family: var(--ls-display); font-weight: 400; font-size: 15px; letter-spacing: .14em; padding-top: 2px;
+  color: var(--tc); overflow: hidden; text-overflow: clip; min-width: 0;
+}
+.hc-dist { font-family: var(--ls-digits); font-size: 13px; color: var(--ls-tx); letter-spacing: .02em; }
+.hc-bars { display: grid; gap: 2px; width: 96px; }
+.hc-bars .ls-bar { height: 4px; --seg: 4px; }
+.hc-hull { --bar: var(--ls-tx); }
+.hc-tgt.is-enemy .hc-hull { --bar: var(--tc); }
+.hc-tgt.is-enemy .hc-hull::before { background: rgba(255, 255, 255, .55); }
+.hc-sh { --bar: var(--ls-tx-2); }
+.hc-tgt.no-sh .hc-sh, .hc-tgt.no-bars .hc-bars { display: none; }
+.hc-st {
+  height: 13px; font-family: var(--ls-display); font-size: 12px; letter-spacing: .18em; line-height: 14px;
+  color: var(--tc); white-space: nowrap;
+}
+.hc-st:empty { display: none; }
+.hc-tgt.is-out .hc-st, .hc-tgt.is-flash .hc-st { color: var(--ls-warn); }
+.hc-tgt.is-flash .hc-st { animation: hc-blink .2s steps(2, start) 4; }
+
+/* ---------- Peilmarke: am Bildrand oder an der Fensterkante ---------- */
+.hc-chev { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; overflow: visible; }
+.hc-chev path { fill: color-mix(in srgb, currentColor 28%, transparent); stroke: currentColor; stroke-width: 1.5; stroke-linejoin: miter; }
+.hc-adist {
+  position: absolute; left: -32px; top: -9px; width: 64px; text-align: center; padding: 1px 0;
+  font-family: var(--ls-digits); font-size: 12px; color: var(--ls-tx); background: rgba(4, 7, 10, .72);
+}
+.hc-arr.is-peil .hc-chev { width: 18px; height: 18px; left: -9px; top: -9px; }
+
+/* ---------- Bögen am eigenen Schiff ---------- */
+.hc-ship { opacity: .62; transition: opacity .3s linear; }
+.hc-ship.is-hot { opacity: 1; transition-duration: .08s; }
+.hc-ring { position: absolute; left: 0; top: 0; width: 80px; height: 80px; transform: translate(-50%, -50%); }
+.hc-ship.is-up .hc-ring { transform: translate(-50%, -50%) rotate(180deg); }
+.hc-arcs { display: block; width: 100%; height: 100%; overflow: visible; }
+.hc-arcs path { fill: none; vector-effect: non-scaling-stroke; }
+.hc-a0 { stroke: rgba(255, 255, 255, .14); stroke-width: 3; }
+.hc-a1 { stroke-width: 3; stroke-dasharray: 100 100; stroke-dashoffset: 0; transition: stroke-dashoffset .15s linear; }
+.hc-a1.is-sh { stroke: var(--fx); }
+.hc-a1.is-hl { stroke: rgba(255, 255, 255, .92); }
+.hc-ak { stroke: rgba(255, 255, 255, .5); stroke-width: 1; }
+.hc-ship.no-sh .is-sh { opacity: 0; }
+.hc-ship.is-low .is-hl { stroke: var(--ls-danger); }
+.hc-low {
+  position: absolute; left: -60px; top: 0; width: 120px; text-align: center;
+  font-family: var(--ls-display); font-size: 13px; letter-spacing: .18em; color: var(--ls-danger);
+  transform: translateY(var(--low-y, 60px));
+}
+.hc-low:empty { display: none; }
+.hc-ship.is-low .hc-low { animation: hc-blink .6s steps(2, start) infinite; }
+.hc-ship.is-up .hc-low { transform: translateY(var(--low-up, -76px)); }
+
+@keyframes hc-blink { to { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) {
+  .hc-tgt.is-atk .hc-tk, .hc-tgt.is-flash .hc-st, .hc-ship.is-low .hc-low { animation: none; }
+  .hc-ship, .hc-a1 { transition: none; }
+}
+.hd-calm .hc-tgt.is-atk .hc-tk, .hd-calm .hc-tgt.is-flash .hc-st, .hd-calm .hc-ship.is-low .hc-low { animation: none; }
+
+/* ---------- Angreifer: Raute im Bild, Pfeil mit Trefferbogen am Rand ---------- */
+.hc-thr { position: absolute; inset: 0; }
+.hc-tm, .hc-ta { position: absolute; left: 0; top: 0; visibility: hidden; will-change: transform; color: #ff4a3a; }
+.hc-tm.on, .hc-ta.on { visibility: visible; }
+.hc-tm { width: 32px; height: 32px; }
+.hc-tsvg { display: block; width: 100%; height: 100%; overflow: visible; animation: hc-thr 1s ease-in-out infinite; }
+.hc-tsvg path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: square; vector-effect: non-scaling-stroke; }
+.hc-tm.is-fresh .hc-tsvg { animation: none; opacity: 1; }
+.hc-tm.is-fresh .hc-tsvg path { stroke: #ffb3a8; stroke-width: 2.5; }
+.hc-asvg { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; overflow: visible; animation: hc-thr .8s ease-in-out infinite; }
+.hc-ab { fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: butt; }
+.hc-ap { fill: color-mix(in srgb, currentColor 55%, transparent); stroke: currentColor; stroke-width: 1.5; stroke-linejoin: miter; }
+.hc-ta.is-fresh .hc-asvg { animation: none; opacity: 1; }
+.hc-ta.is-fresh .hc-ab { stroke: #ffd0c8; stroke-width: 4; }
+.hc-tad {
+  position: absolute; left: -28px; top: -8px; width: 56px; text-align: center; padding: 1px 0;
+  font-family: var(--ls-digits); font-size: 12px; color: #ffb3a8; background: rgba(20, 4, 3, .72);
+}
+@keyframes hc-thr { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+/* ---------- Richtungsblitz am Schildring ---------- */
+.hc-hits { position: absolute; left: 0; top: 0; }
+.hc-hit { position: absolute; left: 0; top: 0; width: 100px; height: 100px; opacity: 0; transform: translate(-50%, -50%); will-change: opacity, transform; }
+.hc-hsvg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hc-hsvg path { vector-effect: non-scaling-stroke; }
+.hc-h0 { fill: none; stroke: var(--fx); stroke-width: 5; stroke-linecap: round; }
+.hc-h1 { fill: none; stroke: #fff; stroke-width: 1.5; opacity: .8; }
+.hc-h2 { fill: #fff; }
+.hc-hit.is-hull .hc-h0 { stroke: #ff4a3a; }
+.hc-hit.is-hull .hc-h1 { stroke: #ffd0c8; }
+
+@media (prefers-reduced-motion: reduce) { .hc-tsvg, .hc-asvg { animation: none; } }
+.hd-calm .hc-tsvg, .hd-calm .hc-asvg { animation: none; }

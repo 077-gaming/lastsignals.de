@@ -1,0 +1,33 @@
+{
+  "sfx": [
+    {"id": "laser_pulse", "dur": 0.6, "text": "short sharp sci-fi pulse laser shot, punchy, metallic zap, no reverb tail"},
+    {"id": "laser_ion", "dur": 0.7, "text": "sci-fi ion laser shot, bright electric crackle, slightly longer than a pulse laser"},
+    {"id": "laser_plasma", "dur": 0.8, "text": "heavy sci-fi plasma cannon shot, hot sizzling energy burst, deep thump"},
+    {"id": "laser_gamma", "dur": 1.0, "text": "very powerful rare sci-fi gamma beam shot, intense rising energy discharge, crystalline shimmer"},
+    {"id": "salvo", "dur": 1.2, "text": "massive sci-fi salvo of heavy energy shots fired in rapid succession, powerful and punchy"},
+    {"id": "shield_drain", "dur": 1.2, "text": "sci-fi energy drain beam, sucking electrical hum that rises in pitch"},
+    {"id": "rocket_launch", "dur": 1.0, "text": "small missile launch from a spaceship, whoosh and ignition burst"},
+    {"id": "rocket_hit", "dur": 1.5, "text": "missile impact explosion on a spaceship hull, deep boom with debris"},
+    {"id": "hit_shield", "dur": 0.5, "text": "energy shield being hit, short electric ripple with a soft glassy ring"},
+    {"id": "hit_hull", "dur": 0.5, "text": "metal spaceship hull being hit by a laser, sharp impact with sparks"},
+    {"id": "explosion_small", "dur": 2.0, "text": "small spaceship explosion, crisp blast with metal debris scattering"},
+    {"id": "explosion_big", "dur": 3.5, "text": "large spaceship explosion, deep heavy boom, secondary blasts, rumbling debris"},
+    {"id": "engine_loop", "dur": 4.0, "text": "steady spaceship engine hum, smooth low rumble with soft plasma hiss, seamless loop"},
+    {"id": "boost", "dur": 1.5, "text": "spaceship afterburner ignition, rising roar of plasma thrust"},
+    {"id": "jump_charge", "dur": 3.0, "text": "hyperspace jump drive charging up, rising electronic whine building tension"},
+    {"id": "jump_warp", "dur": 2.0, "text": "hyperspace jump, powerful whoosh and space distortion, deep sub bass drop"},
+    {"id": "dock", "dur": 2.0, "text": "spaceship docking clamps engaging, mechanical clunk, hiss of pressure equalizing"},
+    {"id": "loot", "dur": 0.6, "text": "collecting cargo in a sci-fi game, short positive chime with a soft digital sparkle"},
+    {"id": "levelup", "dur": 2.0, "text": "sci-fi level up sound, triumphant short rising synth fanfare"},
+    {"id": "alarm", "dur": 2.0, "text": "spaceship cockpit warning alarm, urgent repeating beeps"},
+    {"id": "ui_click", "dur": 0.3, "text": "subtle sci-fi user interface click, clean short digital tick"},
+    {"id": "ui_open", "dur": 0.5, "text": "sci-fi interface panel opening, soft digital swoosh"},
+    {"id": "radio", "dur": 1.0, "text": "short radio transmission static burst with a click, like a cockpit comm channel opening"}
+  ],
+  "music": [
+    {"id": "home_calm", "ms": 120000, "text": "slow ambient space music, vast and lonely, deep synth pads, distant piano, cinematic, no drums, loopable"},
+    {"id": "combat", "ms": 90000, "text": "intense cinematic space battle music, driving percussion, dark synth bass, heroic brass hits, loopable"},
+    {"id": "silence", "ms": 90000, "text": "dark eerie ambient space music, ominous low drones, faint distorted radio signals, mysterious, loopable"},
+    {"id": "hub", "ms": 90000, "text": "calm futuristic mission control ambience music, soft pulsing synths, hopeful and focused, loopable"}
+  ]
+}

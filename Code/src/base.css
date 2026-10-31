@@ -1,0 +1,33 @@
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --fg: #fff;
+  --fg-2: rgba(255,255,255,.74);
+  --fg-3: rgba(255,255,255,.52);
+  --line: rgba(255,255,255,.14);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --mono: "SF Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font); font-feature-settings: "tnum";
+  -webkit-font-smoothing: antialiased;
+  user-select: none; -webkit-user-select: none;
+  overscroll-behavior: none;
+}
+#game {
+  position: fixed; inset: 0; width: 100vw; height: 100vh; display: block;
+  opacity: 0; transition: opacity .6s cubic-bezier(.22,1,.36,1);
+  touch-action: none; outline: none;
+}
+body.in-game #game { opacity: 1; }
+#hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+body.in-game #hud { display: block; }
+#screens { position: fixed; inset: 0; z-index: 50; }
+#screens:empty { display: none; }
+.boot-error {
+  position: fixed; inset: 0; display: grid; place-items: center; padding: 24px;
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2); white-space: pre-wrap; text-align: left;
+}

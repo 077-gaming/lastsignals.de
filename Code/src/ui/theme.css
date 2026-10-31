@@ -1,0 +1,146 @@
+/* LAST SIGNALS · gemeinsame Bausteine (siehe Planung/UI_STIL.md) */
+:root {
+  --ls-bg: #04060a;
+  --ls-panel: rgba(6, 9, 13, .78);
+  --ls-panel-solid: #070a0f;
+  --ls-line: rgba(255, 255, 255, .16);
+  --ls-line-2: rgba(255, 255, 255, .32);
+  --ls-tx: rgba(255, 255, 255, .94);
+  --ls-tx-2: rgba(255, 255, 255, .66);
+  --ls-tx-3: rgba(255, 255, 255, .42);
+  --ls-warn: #ffb020;
+  --ls-danger: #ff3b30;
+  --ls-loot: #7dffb0;
+  --fx: #e0782a;
+  --ls-cut: 12px;
+  --ls-display: "DIN Condensed", "DIN Alternate", "Avenir Next Condensed", "Arial Narrow", sans-serif;
+  --ls-digits: "DIN Alternate", "SF Mono", ui-monospace, Menlo, monospace;
+  --ls-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --ls-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  --ls-ease: cubic-bezier(.2, .8, .2, 1);
+}
+body[data-faction="europa"] { --fx: #d8b25a; }
+body[data-faction="saturn"] { --fx: #e0782a; }
+body[data-faction="eris"] { --fx: #9a52ff; }
+
+/* Panel mit angeschnittenen Ecken, Haarlinie und Eckmarken */
+.ls-panel {
+  position: relative;
+  background:
+    linear-gradient(var(--ls-line), var(--ls-line)) top / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line), var(--ls-line)) bottom / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line), var(--ls-line)) left / 1px 100% no-repeat,
+    linear-gradient(var(--ls-line), var(--ls-line)) right / 1px 100% no-repeat,
+    var(--ls-panel);
+  clip-path: polygon(var(--ls-cut) 0, 100% 0, 100% calc(100% - var(--ls-cut)), calc(100% - var(--ls-cut)) 100%, 0 100%, 0 var(--ls-cut));
+  color: var(--ls-tx);
+  font-family: var(--ls-text);
+}
+/* schräge Kanten nachzeichnen + Eckmarken */
+.ls-panel::before,
+.ls-panel::after {
+  content: ""; position: absolute; pointer-events: none;
+  width: calc(var(--ls-cut) * 1.42); height: 1px; background: var(--ls-line-2);
+}
+.ls-panel::before { top: 0; left: 0; transform-origin: 0 0; transform: translateY(var(--ls-cut)) rotate(-45deg); }
+.ls-panel::after { bottom: 0; right: 0; transform-origin: 100% 100%; transform: translateY(calc(var(--ls-cut) * -1)) rotate(-45deg); }
+.ls-corners { position: absolute; inset: 0; pointer-events: none; }
+.ls-corners::before,
+.ls-corners::after {
+  content: ""; position: absolute; width: 9px; height: 9px; border-color: rgba(255, 255, 255, .7); border-style: solid;
+}
+.ls-corners::before { top: 0; right: 0; border-width: 1px 1px 0 0; }
+.ls-corners::after { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+
+/* Kopfleiste: Code + Titel, Akzentstrich in Fraktionsfarbe */
+.ls-head {
+  display: flex; align-items: center; gap: 10px;
+  height: 26px; padding: 0 10px 0 calc(var(--ls-cut) + 4px);
+  border-bottom: 1px solid var(--ls-line);
+  position: relative;
+  font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .14em;
+  font-size: 12px; color: var(--ls-tx-2);
+}
+.ls-head::after {
+  content: ""; position: absolute; left: calc(var(--ls-cut) + 4px); bottom: -1px; width: 32px; height: 2px; background: var(--fx);
+}
+.ls-head .ls-code { color: var(--ls-tx-3); letter-spacing: .1em; }
+.ls-head .ls-title { color: var(--ls-tx); }
+.ls-head .ls-spacer { flex: 1; }
+
+.ls-label {
+  font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .16em;
+  font-size: 11px; color: var(--ls-tx-3);
+}
+.ls-num {
+  font-family: var(--ls-digits); font-variant-numeric: tabular-nums; letter-spacing: .02em; color: var(--ls-tx);
+}
+
+/* Knopf: rechteckig mit kleinem Anschnitt */
+.ls-btn {
+  --c: 6px;
+  appearance: none; border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 32px; padding: 0 16px;
+  font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .16em; font-size: 13px;
+  color: var(--ls-tx);
+  background:
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) top / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) bottom / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) left / 1px 100% no-repeat,
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) right / 1px 100% no-repeat,
+    rgba(255, 255, 255, .04);
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  transition: background-color .12s var(--ls-ease), color .12s;
+}
+.ls-btn:hover { background-color: rgba(255, 255, 255, .1); }
+.ls-btn:focus-visible { outline: 1px solid var(--fx); outline-offset: 2px; }
+.ls-btn.is-primary { background: var(--ls-tx); color: #000; }
+.ls-btn.is-primary:hover { background: #fff; }
+.ls-btn.is-fx { background: var(--fx); color: #000; }
+.ls-btn[disabled], .ls-btn.is-locked { opacity: .38; cursor: not-allowed; }
+
+/* Tastenkappe */
+.ls-key {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px;
+  font-family: var(--ls-mono); font-size: 10px; color: var(--ls-tx);
+  border: 1px solid var(--ls-line-2); background: rgba(255, 255, 255, .05);
+}
+
+/* Segmentierter Balken: --v = 0..1, --trail = nachlaufender Schaden */
+.ls-bar {
+  --v: 1; --trail: 1; --bar: var(--ls-tx); --seg: 5px;
+  position: relative; height: 8px; background: rgba(255, 255, 255, .07);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(var(--seg) - 1px), transparent calc(var(--seg) - 1px) var(--seg));
+  mask: repeating-linear-gradient(90deg, #000 0 calc(var(--seg) - 1px), transparent calc(var(--seg) - 1px) var(--seg));
+}
+.ls-bar::before,
+.ls-bar::after { content: ""; position: absolute; inset: 0; transform-origin: 0 50%; }
+.ls-bar::before { background: rgba(255, 59, 48, .7); transform: scaleX(var(--trail)); }
+.ls-bar::after { background: var(--bar); transform: scaleX(var(--v)); transition: transform .15s linear; }
+.ls-bar.is-shield { --bar: var(--fx); }
+.ls-bar.is-danger { --bar: var(--ls-danger); }
+
+/* Messskala */
+.ls-tick {
+  height: 6px;
+  background: repeating-linear-gradient(90deg, var(--ls-line-2) 0 1px, transparent 1px 10%);
+}
+
+/* Scanlines als Overlay */
+.ls-scan::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 3px);
+}
+
+@keyframes ls-wipe {
+  0% { clip-path: inset(0 100% 0 0); opacity: .2; }
+  40% { opacity: 1; }
+  55% { opacity: .55; }
+  100% { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+.ls-enter { animation: ls-wipe .18s var(--ls-ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  .ls-enter { animation: none; }
+  .ls-bar::after { transition: none; }
+}
