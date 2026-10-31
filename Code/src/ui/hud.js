@@ -18,6 +18,8 @@ import {
 import { HudMid } from './hud-mid.js';
 import { HudBar, quickBody } from './hud-bar.js';
 import { HudCombat } from './hud-combat.js';
+import { HudCoach } from './hud-coach.js';
+import { HudQuest } from './hud-quest.js';
 import { HudMap } from './hud-map.js';
 import { HudMenu, menuHtml } from './hud-menu.js';
 import { questText, radioText } from './hud-text.js';
@@ -91,9 +93,9 @@ const SYS_RX = [
   [/^(.+?) zerstört: \+([\d.]+) Erfahrung, \+([\d.]+) Ehre/, '$1 ZERSTÖRT · +$2 EP · +$3 EHRE'],
   [/^Beute: \+([\d.]+) Credits, \+([\d.]+) Tritium/, 'BEUTE · +$1 CR · +$2 T'],
   [/^Beute: \+([\d.]+) Credits/, 'BEUTE · +$1 CR'],
-  [/^Crate: \+([\d.]+) Credits/, 'CRATE · +$1 CR'],
-  [/^Crate: \+([\d.]+) Tritium/, 'CRATE · +$1 T'],
-  [/^Crate: \+([\d.]+) (\S+)-Munition/, 'CRATE · +$1 $2'],
+  [/^Frachtkiste: \+([\d.]+) Credits/, 'FRACHTKISTE · +$1 CR'],
+  [/^Frachtkiste: \+([\d.]+) Tritium/, 'FRACHTKISTE · +$1 T'],
+  [/^Frachtkiste: \+([\d.]+) (\S+)-Munition/, 'FRACHTKISTE · +$1 $2'],
   [/^\+(\d+) (\S+)$/, 'ERZ GEBORGEN · +$1 $2'],
   [/^Ein (.+?) hat ein Wrack geklaut/, 'WRACK GEPLÜNDERT · $1', 'warn'],
   [/^Auftrag erledigt: (.+?)\. Belohnung/, 'AUFTRAG ERFÜLLT · $1'],
@@ -444,6 +446,8 @@ export class Hud {
     // Schnellleiste (Tasten 1–0 in der Capture-Phase vor input.js) und Kampf-Lesbarkeit
     this.bar = new HudBar(this, W('quick'), el);
     this.combat = new HudCombat(q('mid'));
+    this.coach = new HudCoach(root, bus, world); // Flug-Coach für neue Piloten (nur erster Flug)
+    this.questMark = new HudQuest(root, world, null); // Auftragsmarker im All
     this._zoneAcc = 1;
     this._promptB = NaN; this._comboY = NaN;
     this.sWLas = new TextSlot(q('wlas'));
@@ -564,6 +568,12 @@ export class Hud {
       bus.on('message', (p) => this._pushMsg(p)),
       bus.on('quest', (p) => this._onQuest(p)),
       bus.on('playerDead', () => this._showDead(true)),
+      // Wer hat zuletzt getroffen? Für „Zerstört von …“ im Todesdialog
+      bus.on('damage', (p) => {
+        if (!p || p.id !== 'player' || p.from == null) return;
+        const e = this.world && this.world.entities.get(p.from);
+        if (e && e.name) this._killer = { name: e.name, level: e.level || e.def?.level || null };
+      }),
       bus.on('respawn', () => this._showDead(false)),
       bus.on('heal', (p) => {
         // Heilzahlen (VMP, FIX, RSV) am eigenen Schiff
@@ -586,6 +596,7 @@ export class Hud {
   // ---------- öffentliche API ----------
   setWorld(world) {
     this.world = world || null;
+    if (world) { this.coach?.setWorld(world); this.questMark?.setWorld(world); }
     for (const f of this.floats) this._hideFloat(f);
     this._mark = null;
     this._secObj = null; this._hazSec = null; this._jPortal = null;
@@ -599,7 +610,7 @@ export class Hud {
     if (world && !!world.playerDead !== this._deadShown) this._showDead(!!world.playerDead);
   }
 
-  setRenderer(renderer) { this.renderer = renderer || null; }
+  setRenderer(renderer) { this.renderer = renderer || null; this.questMark?.setRenderer(this.renderer); }
 
   toggleMenu(force) {
     const open = force === undefined ? !this._menuOpen : !!force;
@@ -632,7 +643,15 @@ export class Hud {
         this._lowEl.style.setProperty('--low', String(q));
         this._lowEl.classList.toggle('on', q > 0);
       }
+      // Einmal je Leben ein klarer Funkspruch, was jetzt zu tun ist
+      if (k > 0 && !this._lowWarned && w.sector && w.sector.station) {
+        this._lowWarned = true;
+        this._pushMsg({ kind: 'warn', title: 'FUNK · STATION', text: 'Hülle kritisch! Zurück in die sichere Zone der Station – dort wirst du repariert.' });
+      }
+      if (pl && pl.hpMax && pl.hp / pl.hpMax > 0.6) this._lowWarned = false;
     }
+    this.coach?.update();
+    this.questMark?.update(dt);
     this._updateFeed(dt);
     this._updateFloats(dt);
     this._updateToasts(dt);
@@ -669,6 +688,8 @@ export class Hud {
     this.wins.dispose();
     this.bar.dispose();
     this.combat.dispose();
+    this.coach?.dispose();
+    this.questMark?.dispose();
     this.mid.dispose();
     window.removeEventListener('keydown', this._onKey);
     window.removeEventListener('keydown', this._onWinKey, true);
@@ -1348,9 +1369,20 @@ export class Hud {
     const p = w && w.profile;
     if (!p) return;
     const free = (p.level || 1) <= REPAIR.freeUntilLevel;
-    this.$('deadtext').textContent = free
+    // Lerneffekt: wer war es, und ein konkreter Tipp für das nächste Mal (wechselt je Tod)
+    const TIPS = [
+      'Tipp: Unter 30 % Hülle zurück in die sichere Zone der Station fliegen – dort heilt das Schiff, Gegner folgen nicht.',
+      'Tipp: Gegnergruppen einzeln anlocken statt mitten hineinzufliegen. Ein Schuss auf den Rand zieht nur wenige mit.',
+      'Tipp: Bessere Laser und Generatoren gibt es im Shop der Station (Taste 3 in Mission Control).',
+      'Tipp: Mit SOS (Taste 9) und EMP (Taste 8) kommst du aus brenzligen Lagen – Vorrat in der Schnellleiste.',
+      'Tipp: Gegner mit höherer Stufe als du sind gefährlich. Die Stufe steht am Ziel (TAB).',
+    ];
+    const deaths = (p.stats && p.stats.deaths) || 0;
+    const by = this._killer ? 'Zerstört von ' + this._killer.name + (this._killer.level ? ' (Stufe ' + this._killer.level + ')' : '') + '. ' : '';
+    this.$('deadtext').textContent = by + (free
       ? 'Rettungskapsel geborgen. Reparaturort wählen. Bis Stufe ' + REPAIR.freeUntilLevel + ' übernimmt die Werft die Kosten.'
-      : 'Rettungskapsel geborgen. Reparaturort wählen.';
+      : 'Rettungskapsel geborgen. Reparaturort wählen.') + ' ' + TIPS[deaths % TIPS.length];
+    this._killer = null;
     this.$('deadclock').textContent = 'T+' + clock(w.time);
     const s = w.sector;
     this.$('deadsec').textContent = s ? s.id + ' · ' + (s.name || '').toUpperCase() : '';

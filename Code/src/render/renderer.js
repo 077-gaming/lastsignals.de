@@ -1830,6 +1830,7 @@ export class Renderer {
     o.x = this.rect.left + (_v.x + 1) * 0.5 * this.rect.width;
     o.y = this.rect.top + (1 - _v.y) * 0.5 * this.rect.height;
     o.visible = _v.z > -1 && _v.z < 1 && _v.x > -1.1 && _v.x < 1.1 && _v.y > -1.1 && _v.y < 1.1;
+    o.behind = _v.z > 1; // hinter der Kamera: Bildposition ist gespiegelt
     return o;
   }
 

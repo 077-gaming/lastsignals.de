@@ -172,6 +172,8 @@ export function dronesOnDeath(w) {
   let n = 0;
   for (let i = 0; i < D.length; i++) if (!D[i].broken) n++;
   if (!n) return;
+  // Schonfrist für Neulinge: bis Stufe 10 kostet ein Abschuss keinen Drohnen-Zustand (Lernphase, nicht bestrafen)
+  if ((w.profile.level || 1) < 10) return;
   wearAll(w, lost + R.wearOnDeath);
   w._msg(`Deine Drohnen haben je ${R.wearOnDeath} % Zustand verloren. Reparatur in der Station.`, 'warn', 'droneDeath', 2);
 }

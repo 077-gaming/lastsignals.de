@@ -377,6 +377,8 @@ function findCover(w, e) {
 
 /** Verstärkung: nächstes ruhiges Rudel derselben Gruppe (Piraten/Schwarm) kommt zu Hilfe. */
 function tryCall(w, e) {
+  // Neulinge (unter Stufe 3) bekommen keine Verstärkung auf den Hals: der erste Auftrag war sonst oft tödlich
+  if ((w.profile?.level || 1) < 3) return;
   const g = e.group;
   if (!g || e.evTag) return;
   const t = w.time;

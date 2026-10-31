@@ -1,0 +1,13 @@
+/* Auftragsmarker: Raute in Fraktionsfarbe + Entfernung; am Bildrand Pfeil in Zielrichtung */
+.hud-qm { position: fixed; left: 0; top: 0; z-index: 11; pointer-events: none; opacity: 0; transition: opacity .2s; will-change: transform; }
+.hud-qm.on { opacity: 1; }
+.hud-qm .qm-ico { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border: 2px solid var(--fx); transform: rotate(45deg);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--fx) 60%, transparent); }
+.hud-qm .qm-ico::after { content: ''; position: absolute; inset: 4px; background: var(--fx); }
+.hud-qm .qm-l { position: absolute; left: 16px; top: -10px; display: flex; flex-direction: column; white-space: nowrap; line-height: 1.1; }
+.hud-qm .qm-l b { font-family: var(--ls-display); font-size: 12px; letter-spacing: .18em; color: var(--fx); font-weight: 600; }
+.hud-qm .qm-l em { font-style: normal; font-family: var(--ls-mono); font-size: 12px; color: rgba(255,255,255,.9); }
+.hud-qm.edge .qm-ico { left: -11px; top: -11px; width: 22px; height: 22px; border: 0; box-shadow: none; background: var(--fx);
+  clip-path: polygon(100% 50%, 0 0, 30% 50%, 0 100%); transform: rotate(var(--qa)); }
+.hud-qm.edge .qm-ico::after { display: none; }
+@media (prefers-reduced-motion: reduce) { .hud-qm { transition: none; } }

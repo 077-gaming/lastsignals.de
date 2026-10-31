@@ -444,7 +444,7 @@ export const MAX_LEVEL = 50;
 // Erste Quests (Funkspruch der Station). Typen: kill, crate, buy, jump, ore.
 export const QUESTS = [
   { id: 'q1', title: 'Erster Kontakt', text: 'Raider greifen unsere Frachter an. Zerstöre 5 Raider.', goal: { type: 'kill', target: 'raider', count: 5 }, reward: { credits: 5000, xp: 2000, honor: 20 } },
-  { id: 'q2', title: 'Treibgut', text: 'Im Sektor schweben Crates. Sammle 3 davon ein.', goal: { type: 'crate', count: 3 }, reward: { credits: 3000, xp: 1500, tritium: 20 } },
+  { id: 'q2', title: 'Treibgut', text: 'Im Sektor schweben Frachtkisten. Flieg über 3 davon, um sie einzusammeln.', goal: { type: 'crate', count: 3 }, reward: { credits: 3000, xp: 1500, tritium: 20 } },
   { id: 'q3', title: 'Aufrüsten', text: 'Fliege zur Station und kaufe einen Ion Laser. Du siehst ihn sofort am Schiff.', goal: { type: 'buy', target: 'ion', count: 1 }, reward: { credits: 2000, xp: 2000 } },
   { id: 'q4', title: 'Die Brut', text: 'Larven vermehren sich im Sektor. Zerstöre 8 Larva.', goal: { type: 'kill', target: 'larva', count: 8 }, reward: { credits: 6000, xp: 4000, tritium: 30 } },
   { id: 'q5', title: 'Hinaus', text: 'Spring durch das Sprungtor in den nächsten Sektor.', goal: { type: 'jump', target: 2, count: 1 }, reward: { credits: 4000, xp: 3000 } },

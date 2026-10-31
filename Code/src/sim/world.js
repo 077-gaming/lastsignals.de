@@ -853,7 +853,8 @@ export class World {
       if (bx || bh) this.bus.emit('loot', { credits: 0, tritium: 0, xp: bx, honor: bh, ammo: null, ore: null, x: e.x, z: e.z, combo: cb.count });
     } else { cb.mult = 0; cb.xp = 0; cb.honor = 0; cb.credits = 0; }
     let text = `${e.name} zerstört: +${fmt(xp)} Erfahrung, +${fmt(honor)} Ehre`;
-    if (e.rank !== 'normal') text += `, Wrack mit ${fmt(credits + bc)} Credits und ${fmt(tritium)} Tritium`;
+    // Immer sagen, wo das Geld liegt (vorher nur bei Elite-Rängen → Neulinge dachten, Abschüsse bringen keine Credits)
+    if (credits + bc > 0 || tritium > 0) text += tritium > 0 ? `, Wrack mit ${fmt(credits + bc)} Credits und ${fmt(tritium)} Tritium: drüberfliegen zum Einsammeln` : `, Wrack mit ${fmt(credits + bc)} Credits: drüberfliegen zum Einsammeln`;
     if (r.gray) text += ` (zu leicht für Stufe ${pr.level}: nur ${Math.round(r.xp * 100)} % Erfahrung)`;
     if (cb.count >= 2) text += ` · Combo ×${cb.count}: +${fmt(bx)} Erfahrung, +${fmt(bh)} Ehre, +${fmt(bc)} Credits im Wrack`;
     this._msg(text, 'loot');
@@ -1240,18 +1241,18 @@ export class World {
       const n = this.rng.int(row.credits[0], row.credits[1]);
       pr.credits += n;
       this.bus.emit('loot', { credits: n, tritium: 0, xp: 0, honor: 0, ammo: null, ore: null, x: c.x, z: c.z });
-      this._msg(`Crate: +${fmt(n)} Credits`, 'loot');
+      this._msg(`Frachtkiste: +${fmt(n)} Credits`, 'loot');
     } else if (row.ammo) {
       const key = row.ammo[0];
       const n = this.rng.int(row.ammo[1], row.ammo[2]);
       pr.ammo[key] = (pr.ammo[key] || 0) + n;
       this.bus.emit('loot', { credits: 0, tritium: 0, xp: 0, honor: 0, ammo: { type: key, amount: n }, ore: null, x: c.x, z: c.z });
-      this._msg(`Crate: +${fmt(n)} ${key}-Munition`, 'loot');
+      this._msg(`Frachtkiste: +${fmt(n)} ${key}-Munition`, 'loot');
     } else if (row.tritium) {
       const n = this.rng.int(row.tritium[0], row.tritium[1]);
       pr.tritium += n;
       this.bus.emit('loot', { credits: 0, tritium: n, xp: 0, honor: 0, ammo: null, ore: null, x: c.x, z: c.z });
-      this._msg(`Crate: +${fmt(n)} Tritium`, 'loot');
+      this._msg(`Frachtkiste: +${fmt(n)} Tritium`, 'loot');
     }
     this._emitProfile();
     this._questProgress('crate', null, 1);
