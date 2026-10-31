@@ -31,6 +31,8 @@ export class HudMap {
     this.cv = canvas;
     this.ctx = canvas.getContext('2d', { alpha: true });
     this.px = 0; this.dpr = 1;
+    // Schriften laden asynchron: danach das zwischengespeicherte Kartenbild neu zeichnen (sonst bliebe die Ersatzschrift)
+    try { document.fonts?.addEventListener?.('loadingdone', () => { this._sKey = null; }); } catch { /* egal */ }
     this.gx = new Float32Array(GROUP_MAX);
     this.gz = new Float32Array(GROUP_MAX);
     this.gn = new Uint8Array(GROUP_MAX);
@@ -76,36 +78,11 @@ export class HudMap {
     ctx.clearRect(0, 0, S, S);
     if (this._ls) ctx.letterSpacing = '0px';
 
-    // Raster alle 1.000 m, sehr leise
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
-    ctx.beginPath();
-    for (let m = -Math.floor(size / 1000) * 1000; m <= size; m += 1000) {
-      const v = Math.round(this._X(m)) + 0.5;
-      ctx.moveTo(v, 0); ctx.lineTo(v, S);
-      ctx.moveTo(0, v); ctx.lineTo(S, v);
-    }
-    ctx.stroke();
-
-    // Sektorrand mit Skala: kurze Striche alle 500 m, lange alle 1.000 m
-    ctx.strokeStyle = 'rgba(255,255,255,0.42)';
-    ctx.strokeRect(0.5, 0.5, S - 1, S - 1);
-    ctx.beginPath();
-    for (let m = -size + 500; m < size; m += 500) {
-      const v = Math.round(this._X(m)) + 0.5;
-      const L = m % 1000 === 0 ? 6 : 3;
-      ctx.moveTo(v, 0); ctx.lineTo(v, L);
-      ctx.moveTo(v, S); ctx.lineTo(v, S - L);
-      ctx.moveTo(0, v); ctx.lineTo(L, v);
-      ctx.moveTo(S, v); ctx.lineTo(S - L, v);
-    }
-    ctx.stroke();
-    // Warnband vor dem Rand
-    const edge = EDGE_WARN * k;
-    ctx.strokeStyle = 'rgba(255,176,32,0.28)';
-    ctx.setLineDash(this._dash);
-    ctx.strokeRect(edge + 0.5, edge + 0.5, S - 2 * edge - 1, S - 2 * edge - 1);
-    ctx.setLineDash(this._noDash);
+    // Unveränderliche Ebenen (Raster, Rand, Skala, Warnband, Station, Tore mit Beschriftung) einmal je Sektor und
+    // Größe in ein eigenes Bild zeichnen und dann nur noch hineinkopieren – vorher bei jedem Update (15×/s) neu (~2 ms).
+    const key = w.sector.id + '|' + S + '|' + this.dpr;
+    if (key !== this._sKey) { this._sKey = key; this._drawStatic(w, S, size, k); }
+    if (this._sCan) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(this._sCan, 0, 0); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); }
 
     // Sichtfeld der Kamera (Trapez auf der Spielebene)
     if (renderer && this._fov(renderer)) {
@@ -122,32 +99,6 @@ export class HudMap {
     ctx.font = FONT;
     ctx.textBaseline = 'alphabetic';
     if (this._ls) ctx.letterSpacing = '1px';
-
-    // Station mit sicherer Zone und Kurzlabel
-    const st = w.sector.station;
-    if (st) {
-      const sx = this._X(st.x), sz = this._X(st.z);
-      ctx.fillStyle = 'rgba(255,255,255,0.05)';
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.beginPath(); ctx.arc(sx, sz, 400 * k, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(Math.round(sx) - 3, Math.round(sz) - 3, 6, 6);
-      this._label(String(st.name || 'STATION').toUpperCase(), sx, sz, S, 'rgba(255,255,255,0.86)');
-    }
-    // Sprungtore mit Ziel-Sektor
-    const portals = w.sector.portals;
-    if (portals) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.92)';
-      ctx.lineWidth = 1.5;
-      for (let i = 0; i < portals.length; i++) {
-        const pp = portals[i];
-        const x = this._X(pp.x), z = this._X(pp.z);
-        ctx.beginPath(); ctx.arc(x, z, 4.5, 0, TAU); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(x, z - 7.5); ctx.lineTo(x, z - 5.5); ctx.moveTo(x, z + 5.5); ctx.lineTo(x, z + 7.5); ctx.stroke();
-        this._label('TOR ' + (pp.to || ''), x, z, S, 'rgba(255,255,255,0.78)');
-      }
-      ctx.lineWidth = 1;
-    }
 
     // Kleinkram (Crates, Wracks, Erz)
     if (w.entities) w.entities.forEach(this._drawEnt);
@@ -253,6 +204,78 @@ export class HudMap {
   _X(v) { return (v + this._size) * this._k; }
 
   // Kurzlabel neben einem Kartenpunkt, bleibt im Kartenrahmen
+  _drawStatic(w, S, size, k) {
+    const c = this._sCan || (this._sCan = document.createElement('canvas'));
+    c.width = Math.round(S * this.dpr); c.height = Math.round(S * this.dpr);
+    const main = this.ctx;
+    const ctx = this.ctx = c.getContext('2d');
+    try {
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.clearRect(0, 0, S, S);
+      if (this._ls) ctx.letterSpacing = '0px';
+    // Raster alle 1.000 m, sehr leise
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+      ctx.beginPath();
+      for (let m = -Math.floor(size / 1000) * 1000; m <= size; m += 1000) {
+        const v = Math.round(this._X(m)) + 0.5;
+        ctx.moveTo(v, 0); ctx.lineTo(v, S);
+        ctx.moveTo(0, v); ctx.lineTo(S, v);
+      }
+      ctx.stroke();
+
+      // Sektorrand mit Skala: kurze Striche alle 500 m, lange alle 1.000 m
+      ctx.strokeStyle = 'rgba(255,255,255,0.42)';
+      ctx.strokeRect(0.5, 0.5, S - 1, S - 1);
+      ctx.beginPath();
+      for (let m = -size + 500; m < size; m += 500) {
+        const v = Math.round(this._X(m)) + 0.5;
+        const L = m % 1000 === 0 ? 6 : 3;
+        ctx.moveTo(v, 0); ctx.lineTo(v, L);
+        ctx.moveTo(v, S); ctx.lineTo(v, S - L);
+        ctx.moveTo(0, v); ctx.lineTo(L, v);
+        ctx.moveTo(S, v); ctx.lineTo(S - L, v);
+      }
+      ctx.stroke();
+      // Warnband vor dem Rand
+      const edge = EDGE_WARN * k;
+      ctx.strokeStyle = 'rgba(255,176,32,0.28)';
+      ctx.setLineDash(this._dash);
+      ctx.strokeRect(edge + 0.5, edge + 0.5, S - 2 * edge - 1, S - 2 * edge - 1);
+      ctx.setLineDash(this._noDash);
+
+      ctx.font = FONT;
+      ctx.textBaseline = 'alphabetic';
+      if (this._ls) ctx.letterSpacing = '1px';
+    // Station mit sicherer Zone und Kurzlabel
+      const st = w.sector.station;
+      if (st) {
+        const sx = this._X(st.x), sz = this._X(st.z);
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath(); ctx.arc(sx, sz, 400 * k, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(Math.round(sx) - 3, Math.round(sz) - 3, 6, 6);
+        this._label(String(st.name || 'STATION').toUpperCase(), sx, sz, S, 'rgba(255,255,255,0.86)');
+      }
+      // Sprungtore mit Ziel-Sektor
+      const portals = w.sector.portals;
+      if (portals) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < portals.length; i++) {
+          const pp = portals[i];
+          const x = this._X(pp.x), z = this._X(pp.z);
+          ctx.beginPath(); ctx.arc(x, z, 4.5, 0, TAU); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x, z - 7.5); ctx.lineTo(x, z - 5.5); ctx.moveTo(x, z + 5.5); ctx.lineTo(x, z + 7.5); ctx.stroke();
+          this._label('TOR ' + (pp.to || ''), x, z, S, 'rgba(255,255,255,0.78)');
+        }
+        ctx.lineWidth = 1;
+      }
+
+    } finally { this.ctx = main; }
+  }
+
   _label(text, x, z, S, color) {
     const ctx = this.ctx;
     const tw = ctx.measureText(text).width;
