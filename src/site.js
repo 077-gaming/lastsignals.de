@@ -5,7 +5,7 @@ export const SITE = {
   //   Google/Discord gelten als aktiv, sobald Supabase sie unter GET /auth/v1/settings meldet (beim Bauen und im Browser geprüft).
   de: 'https://lastsignals.de',
   en: 'https://lastsignals.online', // internationale Adresse (vorerst .online)
-  play: 'https://lastsignals.de/play/', // Spiel (öffentliche Testversion, liegt unter /play/; absolut, damit es auch von lastsignals.online aus funktioniert)
+  play: '/play/', // Spiel unter /play/ derselben Domain (auf lastsignals.online liegt derselbe Build; vorher absolut → Domainwechsel)
   version: '0.1',
   status: 'live', // 'test' = Testphase, "Jetzt spielen" ohne Link; 'live' = Link auf SITE.play (seit 31.10.2026 öffentlich)
 };

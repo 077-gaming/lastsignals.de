@@ -253,16 +253,16 @@ export function startHero(root, opts = {}) {
     pU.uSpin.value = t * 0.0009;
     pointer.x += (pointer.tx - pointer.x) * Math.min(1, dt * 2);
     pointer.y += (pointer.ty - pointer.y) * Math.min(1, dt * 2);
-    camera.rotation.set(-pointer.y * 0.012, -pointer.x * 0.02, 0);
+    camera.rotation.set(-pointer.y * 0.004, -pointer.x * 0.007, 0); // Maus-Parallaxe nur noch angedeutet (Toni: Bewegung zu viel)
     if (shipReady) {
       const k = forced ? 1 : ease(Math.min(1, (t - shipT0) / 3.4));
       // Einflug von rechts hinten, danach Schweben mit langsamer Drehung
       const from = tmp.set(shipHome.x + 26, shipHome.y + 2.5, shipHome.z - 30);
       shipRig.position.set(lerp(from.x, shipHome.x, k), lerp(from.y, shipHome.y, k), lerp(from.z, shipHome.z, k));
-      shipRig.position.y += Math.sin(t * 0.7) * 0.08;
-      shipRig.position.x += Math.sin(t * 0.23) * 0.18;
+      shipRig.position.y += Math.sin(t * 0.7) * 0.04;
+      shipRig.position.x += Math.sin(t * 0.23) * 0.09;
       shipRig.scale.setScalar(shipScale);
-      const yaw = -0.62 + Math.sin(t * 0.16) * 0.34 + (1 - k) * -0.9;
+      const yaw = -0.62 + Math.sin(t * 0.16) * 0.15 + (1 - k) * -0.9;
       shipBody.rotation.set(0.36 + Math.sin(t * 0.31) * 0.035, yaw, -0.08 + Math.sin(t * 0.4) * 0.05 + (1 - k) * 0.35, 'YXZ');
       for (const o of shipBody.children) if (o.userData.glow) o.material.opacity = 0.62 + Math.sin(t * 9 + o.position.x * 7) * 0.08 + (1 - k) * 0.3;
     }

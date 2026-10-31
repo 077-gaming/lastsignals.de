@@ -304,7 +304,7 @@ export function startCosmos(canvas, opts = {}) {
     const tall = camera.aspect < 1 && s.posTall;
     const sPos = tall ? s.posTall : s.pos, sAt = tall ? s.atTall : s.at;
     // leichtes Schweben um die Station, damit das Bild lebt
-    const drift = i === 7 ? 40 : i >= 2 && i <= 4 ? 3.2 : i === 0 ? 1.2 : 0.35;
+    const drift = i === 7 ? 10 : i >= 2 && i <= 4 ? 1.6 : i === 0 ? 0.5 : 0.25; // ruhiger (vorher bis 40)
     if (i === 3) {
       // Warum: je Grund ein anderer Blick auf Saturn (Umlauf um den Planeten, Höhe wechselt, Ringe kippen ins Bild)
       const a = -0.6 + subS * 0.9; // bleibt auf der Tagseite

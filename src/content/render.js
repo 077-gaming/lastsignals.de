@@ -112,7 +112,7 @@ function header(page, t) {
   const cur = page.id.replace(/^(de|en)-/, '');
   const pageNav = ['wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}"${cur === k ? ' aria-current="page"' : ''}>${esc(t.pages[k])}</a></li>`).join('');
   const play = SITE.status === 'live'
-    ? `<a class="ls-btn is-primary hdr-play" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(h.play)}</span></a>`
+    ? `<a class="ls-btn is-primary is-gold hdr-play" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(h.play)}</span></a>`
     : `<span class="ls-btn hdr-play is-locked" aria-disabled="true" title="${esc(t.hero.playState)}">${ICONS.lock}<span>${esc(h.play)}</span><em>${esc(h.playLocked)}</em></span>`;
   return `<a class="skip" href="#main">${esc(t.ui.skip)}</a>
 <header class="hdr" data-hdr>
@@ -212,7 +212,7 @@ function hero(t) {
   const h = t.hero;
   const live = SITE.status === 'live';
   const play = live
-    ? `<a class="ls-btn is-primary is-big" href="${SITE.play}" data-click>${ICONS.play}${esc(h.play)}</a>`
+    ? `<a class="ls-btn is-primary is-gold is-big" href="${SITE.play}" data-click>${ICONS.play}${esc(h.play)}</a>`
     : `<span class="ls-btn is-primary is-big is-locked" aria-disabled="true">${ICONS.lock}${esc(h.play)}</span>`;
   return `<section class="hero" id="top" aria-labelledby="hero-title" data-ch="0">
   <p class="sr">${esc(h.alt)}</p>
@@ -223,11 +223,13 @@ function hero(t) {
   <div class="hero-in">
     <p class="hero-kicker"><i aria-hidden="true"></i>${esc(h.kicker)}<span class="hero-clock" aria-hidden="true"><span data-clock>--:--:--</span> UTC</span></p>
     <h1 id="hero-title" class="hero-wm">${wordmark({ layout: 'line', cls: 'wm-hero', title: 'LAST SIGNALS', id: 'wm-hero' })}</h1>
-    <p class="hero-lead">${esc(h.lead)}</p>
+    <p class="hero-head">${h.head}</p>
+    <p class="hero-sub">${esc(h.sub)}</p>
     <div class="hero-cta">
       ${live ? play : `<a class="ls-btn is-primary is-big" href="#${t.ids.founder}" data-click>${ICONS.signal}${esc(h.reserve)}</a>`}
-      ${live ? `<a class="ls-btn is-big" href="#${t.ids.founder}" data-click>${esc(h.reserve)}</a>` : `<div class="play-slot">${play.replace('is-primary ', '')}<span class="play-state"><i aria-hidden="true"></i>${esc(h.playState)}</span></div>`}
+      ${live ? '' : `<div class="play-slot">${play.replace('is-primary ', '')}<span class="play-state"><i aria-hidden="true"></i>${esc(h.playState)}</span></div>`}
     </div>
+    ${live ? `<p class="hero-trust">${esc(h.trust)}</p><a class="hero-alt" href="#${t.ids.founder}" data-click>${esc(h.reserve)} →</a>` : ''}
   </div>
   <a class="hero-scroll" href="#${t.ids.silence}"><span>${esc(h.scroll)}</span>${ICONS.down}</a>
 </section>`;

@@ -127,8 +127,8 @@ body[data-ch="0"] .hud, body.is-flying .hud { opacity: 1; transform: none; }
 .hero-kicker { flex-wrap: wrap; animation: ls-wipe .7s var(--ls-ease) both; }
 .hero-clock { margin-left: 8px; padding-left: 12px; border-left: 1px solid var(--ls-line-2); color: var(--ls-tx-3); font-variant-numeric: tabular-nums; }
 .hero-wm { margin: 0 0 28px; line-height: 0; }
-.wm-hero { width: min(1080px, 86vw); height: auto; color: #fff; overflow: visible; animation: ls-wipe .9s var(--ls-ease) .1s both; }
-.wm .wm-sig { color: var(--fx); stroke-dasharray: 100; stroke-dashoffset: 0; animation: sig-flicker 6s steps(1) infinite, sig-draw 1.6s var(--ls-ease) .5s both; }
+.wm-hero { width: min(620px, 72vw); height: auto; color: #fff; overflow: visible; animation: ls-wipe .9s var(--ls-ease) .1s both; }
+.wm .wm-sig { color: var(--fx); stroke-dasharray: 100; stroke-dashoffset: 0; animation: sig-draw 1.6s var(--ls-ease) .5s both; /* einmal einzeichnen, kein Dauerflackern */ }
 body:not([data-faction]) .wm .wm-sig { color: #fff; }
 .wm .wm-b { animation: wm-weak 9s steps(1) infinite; }
 @keyframes sig-flicker { 0%, 9%, 11%, 46%, 48%, 74%, 100% { opacity: 1; } 10%, 47% { opacity: .25; } 75% { opacity: .55; } }
@@ -694,7 +694,7 @@ body { transition: --fx .12s linear; }
 .hero-marks { transition: opacity .2s .3s; }
 .hero-kicker, .wm-hero, .hero-lead, .hero-cta { animation-duration: .22s !important; }
 .hero-lead { animation-delay: .08s !important; } .hero-cta { animation-delay: .14s !important; } .wm-hero { animation-delay: 0s !important; }
-.wm .wm-sig { animation: sig-flicker 6s steps(1) infinite, sig-draw .35s steps(6) .1s both; }
+.wm .wm-sig { animation: sig-draw .35s steps(6) .1s both; }
 .js .rv { opacity: 0; transform: translate3d(-14px, 0, 0); }
 .js .rv.in { opacity: 1; transform: none; transition: opacity .16s steps(3), transform .18s cubic-bezier(.1, .9, .1, 1); transition-delay: calc(var(--d, 0) * 40ms); animation: rv-flick .22s steps(1) calc(var(--d, 0) * 40ms) both; }
 @keyframes rv-flick { 0% { opacity: .2; } 30% { opacity: 1; } 45% { opacity: .45; } 60%, 100% { opacity: 1; } }
@@ -917,4 +917,21 @@ body.is-flying:not([data-ch="0"]) .hud, body:not([data-ch="0"]) .hud { opacity: 
   .fac-motto { font-size: 16px; margin-bottom: 10px; }
   .fac-kicker { margin-bottom: 6px; }
   .fac-btn { height: 44px; }
+}
+
+/* Startseite: Lust aufs Spielen (31.10.2026) – Schlagzeile, goldener Spielen-Knopf, Vertrauenszeile */
+.hero-head { font-family: var(--ls-display); font-weight: 500; font-size: clamp(40px, 5.4vw, 76px); line-height: 1.02; letter-spacing: -.01em; color: #fff; margin: 0 0 18px; max-width: 20ch; text-shadow: 0 2px 30px rgba(0,0,0,.65); animation: ls-wipe .7s var(--ls-ease) .2s both; }
+.hero-head em { font-style: normal; color: #e9c46a; }
+.hero-sub { max-width: 46ch; color: rgba(255,255,255,.82); font-size: clamp(15px, 1.25vw, 18px); line-height: 1.5; margin: 0; animation: ls-wipe .7s var(--ls-ease) .35s both; }
+.ls-btn.is-gold { background: linear-gradient(180deg, #f3d27a, #d8a63e); color: #0b0904; box-shadow: 0 0 0 1px rgba(255,220,140,.5), 0 10px 40px -8px rgba(233,180,70,.55); }
+.ls-btn.is-gold:hover { background: linear-gradient(180deg, #ffe39a, #e6b44a); box-shadow: 0 0 0 1px rgba(255,230,160,.7), 0 12px 48px -6px rgba(233,180,70,.75); }
+.hero-trust { margin: 12px 0 0; font-family: var(--ls-mono, monospace); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.72); }
+.hero-alt { display: inline-block; margin-top: 14px; color: #e9c46a; font-size: 15px; text-decoration: none; border-bottom: 1px solid rgba(233,196,106,.4); }
+.hero-alt:hover { border-color: #e9c46a; }
+.hero-cta { align-items: center; }
+@media (max-width: 640px) {
+  .hero-head { font-size: 42px; max-width: 12ch; }
+  /* Wortmarke steht schon im Kopf: im Hero nur für Screenreader (spart ~70 px, Knopf höher) */
+  .hero-wm { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; }
+  .hero-trust { font-size: 11px; letter-spacing: .08em; }
 }
