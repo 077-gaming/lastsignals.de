@@ -289,6 +289,7 @@ export function startCosmos(canvas, opts = {}) {
   const swarmLightMat = glowMat.clone(); swarmLightMat.uniforms = { uPR: { value: pr }, uScale: { value: 200 }, uTime: { value: 0 } };
   const swarmLights = new THREE.Points(lgeo, swarmLightMat); swarmLights.frustumCulled = false; scene.add(swarmLights);
   const swarmCenter = new THREE.Vector3();
+  const FWD = V3(0, 0, 1);
 
   // ---------- Kamera ----------
   let progress = 0, travel = 0, hover = null, hoverK = 0, sub = 0, subS = 0;
@@ -399,11 +400,12 @@ export function startCosmos(canvas, opts = {}) {
         const k = ((t / d.dur + d.ph) % 1);
         mp.lerpVectors(d.a, d.b, k);
         dir.subVectors(d.b, d.a).normalize();
-        mq.setFromUnitVectors(V3(0, 0, 1), dir);
+        mq.setFromUnitVectors(FWD, dir);
         const sc = (1.0 + k * 1.6) * smooth(0, 0.05, k) * (1 - smooth(0.93, 1, k));
         ms.setScalar(Math.max(0.0001, sc));
         mtx.compose(mp, mq, ms); swarm.setMatrixAt(i, mtx);
-        lightPos.set([mp.x + dir.x * 0.75 * sc, mp.y + dir.y * 0.75 * sc, mp.z + dir.z * 0.75 * sc], i * 3);
+        const o = i * 3, f = 0.75 * sc;
+        lightPos[o] = mp.x + dir.x * f; lightPos[o + 1] = mp.y + dir.y * f; lightPos[o + 2] = mp.z + dir.z * f;
         lightSize[i] = (i % 3 ? 0 : 1.4) * sc * inHero;
         if (k > best && k < 0.75 && i % 3 === 0) { best = k; swarmCenter.copy(mp); }
       }
@@ -422,10 +424,15 @@ export function startCosmos(canvas, opts = {}) {
 
   // ---------- Marken (Hero) ----------
   const proj = new THREE.Vector3();
-  function project(v3, w, h) {
+  // Ergebnisobjekte werden wiederverwendet: keine Allokation pro Frame (kein GC-Ruckeln)
+  const ORIGIN = V3(0, 0, 0);
+  const markSun = { x: 0, y: 0, vis: false }, markEarth = { x: 0, y: 0, vis: false }, markSwarm = { x: 0, y: 0, vis: false };
+  const frameInfo = { sun: markSun, earth: markEarth, swarm: markSwarm, progress: 0 };
+  function project(v3, w, h, out) {
     proj.copy(v3).project(camera);
-    const vis = proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1;
-    return { x: (proj.x * 0.5 + 0.5) * w, y: (-proj.y * 0.5 + 0.5) * h, vis };
+    out.vis = proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1;
+    out.x = (proj.x * 0.5 + 0.5) * w; out.y = (-proj.y * 0.5 + 0.5) * h;
+    return out;
   }
 
   // ---------- Schleife ----------
@@ -440,8 +447,10 @@ export function startCosmos(canvas, opts = {}) {
     update(clock, dt);
     renderer.render(scene, camera);
     if (opts.onFrame) {
-      const [w, h] = [canvas.clientWidth, canvas.clientHeight];
-      opts.onFrame({ sun: project(V3(0, 0, 0), w, h), earth: project(EARTH, w, h), swarm: project(swarmCenter, w, h), progress });
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      project(ORIGIN, w, h, markSun); project(EARTH, w, h, markEarth); project(swarmCenter, w, h, markSwarm);
+      frameInfo.progress = progress;
+      opts.onFrame(frameInfo);
     }
     watch(now, dt);
   }
@@ -469,6 +478,9 @@ export function startCosmos(canvas, opts = {}) {
   function stop() { running = false; cancelAnimationFrame(raf); }
 
   if (!forced) { const ro = new ResizeObserver(() => resize()); ro.observe(canvas); }
+  // GPU-Kontext verloren: die gebackenen Texturen (Himmel, Planeten) wären danach leer.
+  // Darum sauber auf das Standbild zurückfallen statt ein schwarzes Bild zu zeigen.
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); stop(); opts.onSlow?.(); });
 
   return {
     start, stop,

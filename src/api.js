@@ -16,7 +16,8 @@
 const URL_ = (import.meta.env.VITE_SUPABASE_URL || '').trim();
 const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 
-export const FACTIONS = ['europa', 'saturn', 'eris'];
+import { FACTIONS } from './factions.js';
+export { FACTIONS };
 export const isOnline = () => /^https:\/\/[\w.-]+$/.test(URL_) && KEY.length > 20;
 // Reservierung per E-Mail offen? Nur mit Server UND VITE_RESERVATION_OPEN=true. Ohne eigenen Mailserver kommt die
 // Bestätigungsmail von Supabase nicht zuverlässig bei fremden Adressen an, daher bleibt sie bis dahin ehrlich zu.
@@ -50,6 +51,19 @@ const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* privat */ } },
 };
+
+// Gibt es überhaupt etwas zu prüfen? Nur dann lohnt es sich, das Supabase-SDK (~60 KB gzip) zu laden:
+// gespeicherte Sitzung (sb-<projekt>-auth-token), Rückkehr von Bestätigungsmail/Google/Discord (?code=, #access_token)
+// oder eine ausstehende Reservierung. Besucher ohne Konto laden das SDK so nie.
+export function hasAuthState() {
+  if (!isOnline()) return false;
+  try {
+    const ref = new URL(URL_).hostname.split('.')[0];
+    if (localStorage.getItem(`sb-${ref}-auth-token`)) return true;
+    if (localStorage.getItem(PENDING)) return true;
+  } catch (e) { /* privat */ }
+  return /[?&](code|error_description)=/.test(location.search) || /access_token=|error_description=/.test(location.hash);
+}
 
 let clientP = null;
 function client() {

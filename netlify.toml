@@ -82,6 +82,16 @@
   status = 200
   force = true
 [[redirects]]
+  from = "https://lastsignals.online/play/*"
+  to = "/play/:splat"
+  status = 200
+  force = true
+[[redirects]]
+  from = "https://lastsignals.online/audio/*"
+  to = "/audio/:splat"
+  status = 200
+  force = true
+[[redirects]]
   from = "https://lastsignals.online/favicon.svg"
   to = "/favicon.svg"
   status = 200
@@ -114,5 +124,15 @@
 
 [[headers]]
   for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/play/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/audio/*"
   [headers.values]
     Cache-Control = "public, max-age=604800"

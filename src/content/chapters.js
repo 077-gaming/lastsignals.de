@@ -57,7 +57,7 @@ export const CH = {
     hero: {
       kicker: 'Übertragung 2391 · Inneres Sonnensystem',
       lead: 'Die Erde schweigt. Drei Mächte kämpfen um das, was von der Menschheit übrig ist.',
-      play: 'Jetzt spielen', playState: 'Testphase · noch nicht öffentlich', reserve: 'Rufnamen sichern',
+      play: 'Jetzt spielen', playState: 'Öffentliche Testversion 0.1', reserve: 'Rufnamen sichern',
       earth: 'Erde', earthState: 'Kein Signal', sun: 'Sonne', swarm: 'Kontakte', swarmState: 'Unbekannt',
       scroll: 'Signal folgen', alt: 'Blick ins dunkle innere Sonnensystem. Die Erde ist ein stummer blauer Punkt, aus Richtung Sonne nähern sich unbekannte Schiffe.',
     },
@@ -208,7 +208,7 @@ export const CH = {
     hero: {
       kicker: 'Transmission 2391 · Inner solar system',
       lead: 'Earth has gone silent. Three powers fight over what is left of humanity.',
-      play: 'Play now', playState: 'In testing · not public yet', reserve: 'Claim your callsign',
+      play: 'Play now', playState: 'Public test version 0.1', reserve: 'Claim your callsign',
       earth: 'Earth', earthState: 'No signal', sun: 'Sun', swarm: 'Contacts', swarmState: 'Unknown',
       scroll: 'Follow the signal', alt: 'A view into the dark inner solar system. Earth is a silent blue dot while unknown ships approach from the direction of the Sun.',
     },

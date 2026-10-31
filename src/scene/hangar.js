@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-const FX = { europa: 0xd8b25a, saturn: 0xe0782a, eris: 0x9a52ff };
+import { FX_INT as FX } from '../factions.js';
 const SHIP_URL = '/models/saturn-starter.glb';
 
 export function initHangar(root, opts = {}) {
@@ -147,7 +147,13 @@ export function initHangar(root, opts = {}) {
   let bp = null;
   function show() {
     turn.clear();
-    if (bp) { bp.traverse((o) => { o.geometry?.dispose(); }); bp = null; }
+    if (bp) {
+      // Blaupause komplett freigeben: Geometrien UND Materialien (sonst wächst der GPU-Speicher bei jedem Wechsel)
+      const mats = new Set();
+      bp.traverse((o) => { o.geometry?.dispose(); if (o.material) mats.add(o.material); });
+      mats.forEach((m) => m.dispose());
+      bp = null;
+    }
     const useReal = hasModel && fx === 'saturn' && real;
     wantReal = hasModel && fx === 'saturn';
     if (useReal) turn.add(real);
@@ -171,7 +177,10 @@ export function initHangar(root, opts = {}) {
     dirty = true;
   }
 
-  let raf = 0, running = false, last = 0, t = 0, dirty = true;
+  let raf = 0, running = false, last = 0, t = 0, dirty = true, lost = false;
+  // GPU-Kontext verloren (Handy, Treiber, zu viele 3D-Szenen): anhalten statt Fehler zu werfen, danach neu zeichnen
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; cancelAnimationFrame(raf); opts.onLost?.(); });
+  canvas.addEventListener('webglcontextrestored', () => { lost = false; dirty = true; if (running) raf = requestAnimationFrame(frame); });
   // ---------- Bedienung ----------
   canvas.style.touchAction = 'pan-y';
   canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false }; idle = 0; });
@@ -229,7 +238,7 @@ export function initHangar(root, opts = {}) {
   }
   opts.onInit?.();
   return {
-    start() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); },
+    start() { if (running) return; running = true; last = 0; if (!lost) raf = requestAnimationFrame(frame); },
     stop() { running = false; cancelAnimationFrame(raf); },
     set({ ship: s, fx: f, tier: ti, viz: vz, model }) {
       if (s) ship = s; if (f) fx = f; if (ti != null) tier = ti; if (vz) viz = vz; if (model != null) hasModel = model;

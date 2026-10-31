@@ -1,9 +1,7 @@
 // Gründungspilot: Formular (Rufname live geprüft, Fraktion, E-Mail mit Bestätigungsmail), Google/Discord, Teilen-Karte.
-import { callsignFormat, callsignAvailable, emailOk, reserve, startOAuth, isOnline, signupOpen, getProviders, FACTIONS } from './api.js';
+import { callsignFormat, callsignAvailable, emailOk, reserve, startOAuth, isOnline, signupOpen, getProviders } from './api.js';
 import { blip } from './audio.js';
-
-const FX = { europa: '#d8b25a', saturn: '#e0782a', eris: '#9a52ff' };
-const FXNAME = { europa: 'EUROPA', saturn: 'SATURN', eris: 'ERIS' };
+import { FACTIONS, FX_HEX as FX, FX_NAME as FXNAME } from './factions.js';
 
 export function initFounder(form, { getFaction, setFaction }) {
   const M = JSON.parse(form.dataset.msgs);
@@ -22,6 +20,7 @@ export function initFounder(form, { getFaction, setFaction }) {
   const online = isOnline();
   const open = signupOpen();
   let confirmed = null;
+  let cardBlob = null; // fertiges PNG der bestätigten Karte (für Teilen)
 
   link.classList.toggle('is-on', online);
   link.querySelector('span').textContent = online
@@ -150,21 +149,26 @@ export function initFounder(form, { getFaction, setFaction }) {
       g.save(); g.translate(W - m - 30, m + 140); g.rotate(0); g.fillStyle = 'rgba(255,176,32,.9)'; g.font = `500 24px ${mono}`; g.textAlign = 'right';
       g.fillText(lang === 'de' ? 'VORSCHAU' : 'PREVIEW', 0, 0); g.restore();
     }
+    // Teilen-Bild nur für bestätigte Karten vorhalten (nur dann ist der Knopf sichtbar)
+    if (confirmed) card.toBlob((b) => { cardBlob = b; }, 'image/png');
   }
   draw();
 
   actions?.querySelector('[data-card-save]')?.addEventListener('click', () => {
     card.toBlob((b) => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `last-signals-${(confirmed?.callsign || 'pilot').toLowerCase()}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, 'image/png');
   });
-  actions?.querySelector('[data-card-share]')?.addEventListener('click', (e) => {
-    card.toBlob(async (b) => {
-      const file = new File([b], 'last-signals.png', { type: 'image/png' });
-      const text = e.currentTarget?.dataset.text || 'LAST SIGNALS';
-      try {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], text });
-        else actions.querySelector('[data-card-save]').click();
-      } catch (_) { /* abgebrochen */ }
-    }, 'image/png');
+  // Teilen: Bild vorab erzeugen (bei jedem draw), damit navigator.share() direkt im Klick läuft.
+  // Safari/iOS verlangt die Nutzer-Aktivierung; ein asynchroner toBlob-Umweg davor lässt share() still scheitern.
+  const shareBtn = actions?.querySelector('[data-card-share]');
+  shareBtn?.addEventListener('click', async () => {
+    const text = shareBtn.dataset.text || 'LAST SIGNALS';
+    const saveFallback = () => actions.querySelector('[data-card-save]')?.click();
+    const b = cardBlob;
+    if (!b) { saveFallback(); return; }
+    const file = new File([b], `last-signals-${(confirmed?.callsign || 'pilot').toLowerCase()}.png`, { type: 'image/png' });
+    if (!(navigator.canShare && navigator.canShare({ files: [file] }))) { saveFallback(); return; }
+    try { await navigator.share({ files: [file], text }); }
+    catch (err) { if (err && err.name !== 'AbortError') saveFallback(); }
   });
 
   return {

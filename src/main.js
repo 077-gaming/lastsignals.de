@@ -4,7 +4,8 @@ import './styles/theme.css';
 import './styles/site.css';
 import './styles/cinema.css';
 import { setSound, blip, chapterCue } from './audio.js';
-import { getSession, getStatus, signOut, isOnline } from './api.js';
+import { getSession, getStatus, signOut, isOnline, hasAuthState } from './api.js';
+import { FACTIONS, FX_HEX } from './factions.js';
 
 const doc = document.documentElement;
 doc.classList.add('js');
@@ -83,8 +84,8 @@ getStatus().then((s) => {
 
 // ---------- Fraktion ----------
 let faction = store.get('ls-faction');
-if (!['europa', 'saturn', 'eris'].includes(faction)) faction = null;
-let cosmos = null, founderCtl = null;
+if (!FACTIONS.includes(faction)) faction = null;
+let cosmos = null, founderCtl = null, dead = false;
 const pickBtns = [...document.querySelectorAll('[data-pick-btn]')];
 const pickNote = document.querySelector('[data-pick-note]');
 function paint(f) { if (f) body.dataset.faction = f; else delete body.dataset.faction; }
@@ -168,7 +169,7 @@ function onScroll() {
   if (ch !== lastCh) {
     if (lastCh >= 0) { chapterCue(); jolt(); }
     lastCh = ch;
-    rail.forEach((a, i) => a.classList.toggle('is-on', i + 1 === ch || (ch === 0 && false)));
+    rail.forEach((a, i) => a.classList.toggle('is-on', i + 1 === ch));
     if (hudPlace) hudPlace.textContent = places[ch] || '';
   }
   if (hudAu) {
@@ -259,7 +260,8 @@ else if (cosmosEl && gl2 && !reduce && !lowDevice && params.get('still') === nul
     const canvas = cosmosEl.querySelector('.cosmos-canvas');
     cosmos = startCosmos(canvas, {
       mobile,
-      onSlow() { body.classList.remove('is-3d'); if (toggle) toggle.hidden = true; },
+      // Zu langsam oder GPU-Kontext verloren: endgültig aufs Standbild (auch nach Tab-Wechsel nicht wieder anlaufen)
+      onSlow() { dead = true; cosmos?.stop(); body.classList.remove('is-3d'); if (toggle) toggle.hidden = true; },
       onFrame({ sun, earth, swarm, progress }) {
         if (progress > 0.9) return;
         place(marks.sun, sun); place(marks.earth, earth); place(marks.swarm, swarm);
@@ -270,7 +272,7 @@ else if (cosmosEl && gl2 && !reduce && !lowDevice && params.get('still') === nul
     cosmos.setProgress(progressAt(scrollY));
     cosmos.setSub(reasonIdx / 7);
     let paused = false, others = 0;
-    const sync = () => (!paused && !document.hidden ? cosmos.start() : cosmos.stop());
+    const sync = () => (!dead && !paused && !document.hidden ? cosmos.start() : cosmos.stop());
     document.addEventListener('visibilitychange', sync);
     requestAnimationFrame(() => requestAnimationFrame(() => body.classList.add('is-3d')));
     if (toggle) {
@@ -315,7 +317,7 @@ if (hangarEl) {
     tag.textContent = real ? tag.dataset.real : tag.dataset.bp;
     tag.classList.toggle('is-bp', !real);
     hangarEl.classList.toggle('is-bp', !real);
-    hangarEl.style.setProperty('--fx', { europa: '#d8b25a', saturn: '#e0782a', eris: '#9a52ff' }[state.fx]);
+    hangarEl.style.setProperty('--fx', FX_HEX[state.fx]);
     if (lenEl) lenEl.textContent = `${b.querySelector('.ls-num').textContent} · ${state.fx.toUpperCase()}`;
     ctl?.set({ ship: state.ship, fx: state.fx, tier: +b.dataset.tier, viz: b.dataset.viz.split(',').map(Number), model: b.dataset.model === '1' });
   }
@@ -374,22 +376,50 @@ if (form) {
 }
 let session = null;
 const auth = document.querySelector('[data-auth]');
-if (isOnline()) {
+// Sitzung nur prüfen, wenn es etwas zu prüfen gibt (gespeicherte Anmeldung, Rückkehr aus Mail/OAuth, offene Reservierung).
+// Sonst bleibt das Supabase-SDK ungeladen: schnellere Seite für alle Besucher ohne Konto.
+const escHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+function renderAuth(s) {
+  if (!auth) return;
+  auth.classList.add('is-in');
+  const name = s.callsign || (lang === 'de' ? 'Profil' : 'Profile');
+  const avatar = s.avatar && /^https:\/\//.test(s.avatar)
+    ? `<img src="${escHtml(s.avatar)}" alt="" width="24" height="24" referrerpolicy="no-referrer">`
+    : `<span class="av" aria-hidden="true">${escHtml(name.slice(0, 1).toUpperCase())}</span>`;
+  auth.innerHTML = `${avatar}<span class="au-t"><b>${escHtml(name)}</b><em>${lang === 'de' ? 'Gründungspilot' : 'Founding pilot'}</em></span>`;
+  auth.setAttribute('aria-label', name);
+  // Abmelden: kleiner Knopf direkt neben dem Profil (vorher nur über die Konsole möglich)
+  if (!auth.parentElement.querySelector('[data-signout]')) {
+    const out = document.createElement('button');
+    out.type = 'button'; out.className = 'hdr-signout'; out.dataset.signout = '';
+    const label = lang === 'de' ? 'Abmelden' : 'Sign out';
+    out.textContent = label; out.setAttribute('aria-label', label); out.title = label;
+    out.addEventListener('click', async () => {
+      out.disabled = true;
+      await signOut();
+      try { localStorage.removeItem('ls-pending'); } catch (e) { /* privat */ }
+      location.reload();
+    });
+    auth.after(out);
+    // Handy: Kopfleiste blendet das Profil aus, darum Abmelden zusätzlich im Menü
+    if (menu) {
+      const m = out.cloneNode(true); m.className = 'ls-btn menu-signout';
+      m.addEventListener('click', () => out.click());
+      const pagesList = menu.querySelector('.menu-pages');
+      if (pagesList) pagesList.after(m); else menu.appendChild(m);
+    }
+  }
+}
+if (isOnline() && hasAuthState()) {
   idle(() => getSession().then((s) => {
     if (!s) return;
     session = s.callsign ? s : null;
-    if (auth) {
-      auth.classList.add('is-in');
-      const name = s.callsign || (lang === 'de' ? 'Profil' : 'Profile');
-      auth.innerHTML = `${s.avatar ? `<img src="${encodeURI(s.avatar)}" alt="" width="24" height="24" referrerpolicy="no-referrer">` : `<span class="av" aria-hidden="true">${name.slice(0, 1).toUpperCase()}</span>`}<span class="au-t"><b>${name.replace(/[<>&"]/g, '')}</b><em>${lang === 'de' ? 'Gründungspilot' : 'Founding pilot'}</em></span>`;
-      auth.setAttribute('aria-label', name);
-    }
+    renderAuth(s);
     if (s.faction) setFaction(s.faction, 'session');
     if (session) founderCtl?.confirmed(session);
     if (s.justClaimed && form) form.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
   }), 1500);
 }
-window.__lsSignOut = signOut;
 
 // ---------- Standbilder erzeugen (nur Dev-Server: ?poster=wide|tall|og|icon) ----------
 async function makePoster(kind) {

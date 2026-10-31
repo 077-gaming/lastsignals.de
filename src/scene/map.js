@@ -143,7 +143,10 @@ export function initMap(root, opts = {}) {
   const ro = new ResizeObserver(size); ro.observe(canvas); size(); camera.position.copy(home.pos);
 
   const v = new THREE.Vector3();
-  let raf = 0, running = false, last = 0, t = 0;
+  let raf = 0, running = false, last = 0, t = 0, lost = false;
+  // GPU-Kontext verloren: anhalten statt Fehler, nach Wiederherstellung weiterlaufen
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); lost = true; cancelAnimationFrame(raf); });
+  canvas.addEventListener('webglcontextrestored', () => { lost = false; if (running) raf = requestAnimationFrame(frame); });
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; t += dt;
@@ -161,7 +164,7 @@ export function initMap(root, opts = {}) {
     }
   }
   return {
-    start() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); },
+    start() { if (running) return; running = true; last = 0; if (!lost) raf = requestAnimationFrame(frame); },
     stop() { running = false; cancelAnimationFrame(raf); },
     select, reset,
   };

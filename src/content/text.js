@@ -38,7 +38,7 @@ export const TEXT = {
       lead: 'Die Erde schweigt. Drei Mächte kämpfen um das, was von der Menschheit übrig ist.',
       sub: 'Weltraum-MMO im Browser. Drei Fraktionen, 37 Sektoren, ein echtes Sonnensystem. Kostenlos, ohne Download. Stärke ist nicht käuflich.',
       play: 'Jetzt spielen',
-      playState: 'Testphase · noch nicht öffentlich',
+      playState: 'Öffentliche Testversion 0.1',
       more: 'Was dich erwartet',
       community: 'Gemeinschaft',
       sector: 'SA-1 · Enceladus',
@@ -247,7 +247,7 @@ export const TEXT = {
       entries: [
         {
           date: '30.10.2026', tag: 'Patchnotes', title: 'Testversion 0.1',
-          p: 'Der erste spielbare Stand läuft intern als Einzelspieler-Test. Der Spielstand liegt im Browser. Noch nicht öffentlich.',
+          p: 'Der erste spielbare Stand läuft als Einzelspieler-Test. Der Spielstand liegt im Browser. Seit 31.10.2026 für alle spielbar.',
           list: [
             'Ladebildschirm, Anmeldung, Fraktionswahl und Mission Control',
             'Startsequenz und Sektoren 1 bis 3 der eigenen Heimat',
@@ -292,7 +292,7 @@ export const TEXT = {
       title: 'Fragen und Antworten',
       items: [
         ['Was ist LAST SIGNALS?', 'Ein Weltraum-Onlinespiel im Browser. Du fliegst dein Schiff in echtem 3D, schräg von oben, per Klick oder mit WASD. Drei Fraktionen kämpfen im äußeren Sonnensystem gegeneinander und gegen den Schwarm.'],
-        ['Kann ich schon spielen?', 'Noch nicht. Die Testversion 0.1 läuft intern als Einzelspieler-Test. Als Nächstes kommt die Alpha mit Mehrspieler-Server und echten Konten. Termine nennen wir erst, wenn sie feststehen.'],
+        ['Kann ich schon spielen?', 'Ja. Die Testversion 0.1 ist für alle offen, direkt im Browser über „Jetzt spielen“. Sie ist ein Einzelspieler-Test, der Spielstand liegt nur in deinem Browser. Als Nächstes kommt die Alpha mit Mehrspieler-Server und echten Konten. Termine nennen wir erst, wenn sie feststehen.'],
         ['Kostet das Spiel etwas?', 'Nein. LAST SIGNALS wird kostenlos spielbar. Bezahlen kann man nur für Aussehen.'],
         ['Kann man Stärke kaufen?', 'Nein. Waffen, Werte, Erfahrung, Tritium und Booster gibt es nur im Spiel. Mit Nova kauft man ausschließlich Aussehen. Zufallskisten gegen echtes Geld gibt es nicht.'],
         ['Brauche ich einen Download?', 'Nein. LAST SIGNALS läuft im Browser, auf dem Computer mit einem aktuellen Chrome, Edge, Firefox oder Safari. Eine Version fürs Handy ist geplant.'],
@@ -355,7 +355,7 @@ export const TEXT = {
       lead: 'Earth has gone silent. Three powers fight over what is left of humanity.',
       sub: 'A space MMO in your browser. Three factions, 37 sectors, a real solar system. Free to play, no download. Power is never for sale.',
       play: 'Play now',
-      playState: 'In testing · not public yet',
+      playState: 'Public test version 0.1',
       more: 'What awaits you',
       community: 'Community',
       sector: 'SA-1 · Enceladus',
@@ -564,7 +564,7 @@ export const TEXT = {
       entries: [
         {
           date: '30 Oct 2026', tag: 'Patch notes', title: 'Test version 0.1',
-          p: 'The first playable build runs internally as a single-player test. Progress is saved in the browser. Not public yet.',
+          p: 'The first playable build runs as a single-player test. Progress is saved in the browser. Open to everyone since 31 Oct 2026.',
           list: [
             'Loading screen, sign-in, faction choice and Mission Control',
             'Launch sequence and sectors 1 to 3 of your home',
@@ -609,7 +609,7 @@ export const TEXT = {
       title: 'Questions and answers',
       items: [
         ['What is LAST SIGNALS?', 'An online space game in your browser. You fly your ship in true 3D, from an angled top view, by mouse or with WASD. Three factions fight each other and the Swarm in the outer solar system.'],
-        ['Can I play yet?', 'Not yet. Test version 0.1 runs internally as a single-player test. Next comes the alpha with a multiplayer server and real accounts. We will name dates once they are certain.'],
+        ['Can I play yet?', 'Yes. Test version 0.1 is open to everyone, right in your browser via “Play now”. It is a single-player test; progress is stored only in your browser. Next comes the alpha with a multiplayer server and real accounts. We will name dates once they are certain.'],
         ['Does it cost anything?', 'No. LAST SIGNALS will be free to play. Money buys looks only.'],
         ['Can you buy power?', 'No. Weapons, stats, experience, Tritium and boosters exist only in the game. Nova buys appearance and nothing else. There are no loot boxes for real money.'],
         ['Do I need to download anything?', 'No. LAST SIGNALS runs in the browser, on a computer with a current Chrome, Edge, Firefox or Safari. A mobile version is planned.'],
