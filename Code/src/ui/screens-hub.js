@@ -328,6 +328,9 @@ function shopView(P, ctx) {
 }
 
 // Hangar: Schiff groß in der Mitte, Steckplätze als Hardpoint-Leisten links (Laser) und rechts (Generatoren)
+// Gespeicherte Lautstärke auf die nächste Stufe der Auswahl (0/25/50/75/100 %) runden, damit eine Stufe markiert ist
+const nearestVol = (v) => [0, 0.25, 0.5, 0.75, 1].reduce((a, b) => (Math.abs(b - (Number(v) || 0)) < Math.abs(a - (Number(v) || 0)) ? b : a), 0);
+
 function hpCard(P, kind, i, id, ctx) {
   const src = kind === 'laser' ? LASERS : GENERATORS;
   const it = id && src[id];
@@ -802,7 +805,15 @@ function einstView() {
     </div>
     <div class="st-c">
       <section class="ak-sec">
-        ${sub('HD', 'HUD IM FLUG', '<span class="ls-label">AB NÄCHSTEM START</span>')}
+        ${sub('AU', 'TON', '<span class="ls-label">SOFORT</span>')}
+        <div class="mc-set st-set">
+          ${setRow('GESAMT', 'Lautstärke von allem.', seg('master', [[0, 'AUS'], [0.25, '25 %'], [0.5, '50 %'], [0.75, '75 %'], [1, '100 %']], nearestVol(s.master)))}
+          ${setRow('EFFEKTE', 'Waffen, Treffer, Triebwerk, Menü.', seg('sfx', [[0, 'AUS'], [0.25, '25 %'], [0.5, '50 %'], [0.75, '75 %'], [1, '100 %']], nearestVol(s.sfx)))}
+          ${setRow('MUSIK', 'Hub, Flug und Kampf.', seg('music', [[0, 'AUS'], [0.25, '25 %'], [0.5, '50 %'], [0.75, '75 %'], [1, '100 %']], nearestVol(s.music)))}
+        </div>
+      </section>
+      <section class="ak-sec">
+        ${sub('HD', 'HUD IM FLUG', '<span class="ls-label">SOFORT</span>')}
         <div class="mc-set st-set">
           ${setRow('HUD-GRÖSSE', 'Skaliert alle Fenster im Flug.', seg('hudScale', [[0.85, '85 %'], [1, '100 %'], [1.15, '115 %'], [1.3, '130 %']], s.hudScale))}
           ${setRow('ANZEIGE STANDARD', 'Schiff, Ziel, Pilot, Auftrag, Waffen. Je Fenster weiter umschaltbar.', seg('hudMode', [['bar', 'BALKEN'], ['num', 'WERTE']], h.mode))}
@@ -1308,7 +1319,7 @@ export async function hubScreen(root, profile, store) {
     if (key === 'hudMode') { hudSet((v) => { for (const id of HUD_TOGGLE) v.win[id] = { ...(v.win[id] || { collapsed: false }), mode: val }; }); }
     else if (key === 'hudLock') { val = val === 'true'; hudSet((v) => { v.locked = val; }); }
     else {
-      if (key === 'hudScale') val = Number(val);
+      if (key === 'hudScale' || key === 'master' || key === 'sfx' || key === 'music') val = Number(val);
       else if (key === 'reducedMotion') val = val === 'true';
       setSetting(key, val);
     }

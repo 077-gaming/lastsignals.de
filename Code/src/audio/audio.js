@@ -81,6 +81,8 @@ function engine() {
   limiter.threshold.value = -10; limiter.knee.value = 6; limiter.ratio.value = 12; limiter.attack.value = 0.003; limiter.release.value = 0.18;
   sfxGain.connect(master); musicGain.connect(master); master.connect(limiter); limiter.connect(ctx.destination);
   S = { ctx, master, sfxGain, musicGain, buffers: new Map(), sfxLoad: null, tracks: new Map() };
+  // Lautstärke-Einstellungen sofort übernehmen (Hub → Einstellungen → Ton)
+  window.addEventListener('ls:settings', () => { if (S) applyGains(S); });
   // Nach Tab-Wechsel/Sperrbildschirm setzt der Browser den Context aus: beim Zurückkehren fortsetzen
   const resume = () => { if (ctx.state === 'suspended' && !document.hidden) ctx.resume().catch(() => { }); };
   document.addEventListener('visibilitychange', resume);

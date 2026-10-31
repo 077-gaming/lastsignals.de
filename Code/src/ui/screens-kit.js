@@ -55,7 +55,7 @@ export function rankOf(level) { return RANKS[rankIndex(level)]; }
 // ---------------------------------------------------------------- Einstellungen (localStorage 'ls.settings')
 
 export const SETTINGS_KEY = 'ls.settings';
-export const SETTINGS_DEFAULT = Object.freeze({ quality: 'high', hudScale: 1, reducedMotion: false });
+export const SETTINGS_DEFAULT = Object.freeze({ quality: 'high', hudScale: 1, reducedMotion: false, master: 0.8, sfx: 0.9, music: 0.5 });
 const QUALITIES = ['ultra', 'high', 'medium', 'low'];
 // Einstellungsstand: ab 2 gibt es ULTRA. Ältere Stände mit HOCH (damals höchste Stufe) werden auf starken
 // Rechnern auf ULTRA gehoben, eine bewusst gewählte niedrigere Stufe bleibt.
@@ -80,7 +80,8 @@ export function strongDevice() {
   return strongCache;
 }
 const HUD_SCALES = [0.85, 1, 1.15, 1.3];
-export const SETTING_CHOICES = { quality: QUALITIES, hudScale: HUD_SCALES, reducedMotion: [false, true] };
+export const VOLUMES = [0, 0.25, 0.5, 0.75, 1];
+export const SETTING_CHOICES = { quality: QUALITIES, hudScale: HUD_SCALES, reducedMotion: [false, true], master: VOLUMES, sfx: VOLUMES, music: VOLUMES };
 
 export function loadSettings() {
   let raw = null;
@@ -92,6 +93,8 @@ export function loadSettings() {
     const hs = Number(raw.hudScale);
     if (hs >= 0.7 && hs <= 1.6) s.hudScale = hs;
     s.reducedMotion = raw.reducedMotion === true;
+    // Lautstärken (0..1) – das Audiosystem las sie schon, sie wurden hier aber beim Speichern verworfen
+    for (const k of ['master', 'sfx', 'music']) { const v = Number(raw[k]); if (raw[k] != null && v >= 0 && v <= 1) s[k] = v; }
   }
   return s;
 }

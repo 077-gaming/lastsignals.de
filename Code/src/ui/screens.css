@@ -1645,3 +1645,16 @@ body.in-game .sc-stage { display: none; }
 .hg-opt-row { display: flex; flex-direction: column; gap: 4px; }
 .hg-sell { display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; min-height: 30px; padding: 0 12px; font-size: 11px; letter-spacing: .14em; }
 .hg-sell span { font-family: var(--ls-mono); font-size: 12px; letter-spacing: 0; color: var(--ls-loot); }
+
+/* Anmeldung auf niedrigen Bildschirmen (z. B. 1280×720): Das Zugangsfeld darf nie schrumpfen (ANMELDEN-Knopf wurde
+   abgeschnitten); stattdessen werden Titel und Abstände kleiner und die Pilotenliste rollt. */
+.login-left > .sc-pn:not(.pi-pilots) { flex: none; }
+.login-left .pi-pilots { flex: 0 1 auto; min-height: 0; }
+.login-left .pi-pilots .pi-list { overflow-y: auto; }
+@media (max-height: 800px) {
+  .login-left { gap: 10px; }
+  .login-left .sc-title { font-size: clamp(40px, 4.4vw, 64px); margin: 2px 0 4px; }
+  .login-main { gap: 10px 40px; }
+}
+/* Signal-Panel: unter 1400 px Breite passt die 4. Kennzahl (LAUFZEIT) nicht – ausblenden statt mitten im Wort abschneiden */
+@media (max-width: 1400px) { .sg-ro.four { grid-template-columns: repeat(3, 1fr); } .sg-ro.four > div:last-child { display: none; } }
