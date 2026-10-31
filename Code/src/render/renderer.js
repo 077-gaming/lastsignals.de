@@ -1628,7 +1628,10 @@ export class Renderer {
       let mv = null, md = Infinity;
       if (pv && W && !W.docked) this.views.forEach((v) => { if (v.kind === 'portal' && v.root.visible) { const dd = Math.hypot(v.rx - pv.rx, v.rz - pv.rz); if (dd < md) { md = dd; mv = v; } } });
       const inRange = !!(W && W.nearPortal);
-      if (mv && (md < PORTAL_R * 1.5 || inRange)) this.jumpMarker.show(mv.rx, mv.rz, pv.rx, pv.rz, md, inRange, this.metersPerPixel(), this.effects.jump.on);
+      // In Reichweite zeigt das HUD schon den Knopf „J SPRINGEN“ – die Weltmarke dann ausblenden (vorher doppelt),
+      // außer während des Aufladens („SPRUNG LÄDT“) und außerhalb der Reichweite (Entfernung zum Tor)
+      const charging = this.effects.jump.on;
+      if (mv && (md < PORTAL_R * 1.5 || inRange) && (!inRange || charging)) this.jumpMarker.show(mv.rx, mv.rz, pv.rx, pv.rz, md, inRange, this.metersPerPixel(), charging);
       else this.jumpMarker.hide();
     }
     this.output.uniforms.uTime.value = this.time;

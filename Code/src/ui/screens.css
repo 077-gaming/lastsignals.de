@@ -783,7 +783,9 @@ body.in-game .sc-stage { display: none; }
 /* Hub: Ladezustand der Szene */
 .mc-load {
   position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 2;
-  transition: opacity .3s var(--ls-ease);
+  transition: opacity .45s var(--ls-ease);
+  /* deckend bis die Szene steht (vorher halbfertige Szene sichtbar), dann weich überblenden */
+  background: radial-gradient(ellipse at 50% 45%, rgba(8, 11, 16, .94), rgba(3, 4, 7, .985) 70%);
 }
 .mc-load.is-done { opacity: 0; }
 .mc-load-in { width: min(340px, 86%); display: grid; gap: 8px; padding: 14px 16px 12px; border-left: 2px solid var(--fx); background: rgba(6, 9, 13, .7); }
@@ -1282,6 +1284,9 @@ body.in-game .sc-stage { display: none; }
 @media (max-width: 1280px) {
   .hb-top { grid-template-columns: 228px auto auto minmax(0, 1fr) auto; }
   .hb-body { grid-template-columns: 210px minmax(0, 1fr); }
+  /* schmalere Leiste: Schrift und Abstände so, dass „PILOTENAKTE“, „RUHMESHALLE“, „EINSTELLUNGEN“ ganz passen */
+  .hb-nv { font-size: 15px; letter-spacing: .1em; gap: 10px; padding: 0 10px 0 14px; }
+  .hb-nv-ic { width: 40px; height: 36px; }
   .hb-xp { width: 170px; }
   .hb-acc .hb-ro { margin-left: 16px; padding-left: 16px; }
   .hb-panel { flex-basis: min(680px, 74%); }

@@ -238,12 +238,35 @@ async function chooseQuality() {
   } catch (err) { console.warn('Qualitätswahl übersprungen', err); }
 }
 
+// Ein Pilot nur in einem Tab: zwei Tabs mit demselben Piloten überschreiben sich sonst gegenseitig den Spielstand.
+// Web Locks (alle aktuellen Browser); ohne Unterstützung wird nicht gesperrt (wie bisher).
+function lockPilot(callsign) {
+  if (!navigator.locks || !navigator.locks.request) return Promise.resolve(() => { });
+  return new Promise((resolve) => {
+    navigator.locks.request('ls-pilot-' + String(callsign).toLowerCase(), { ifAvailable: true }, (lock) => {
+      if (!lock) { resolve(null); return undefined; }
+      return new Promise((release) => resolve(release)); // Sperre halten, bis release() aufgerufen wird
+    }).catch(() => resolve(() => { }));
+  });
+}
+function notice(text) {
+  const el = document.createElement('div');
+  el.className = 'ls-notice';
+  el.setAttribute('role', 'alert');
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add('out'), 4200);
+  setTimeout(() => el.remove(), 4800);
+}
+
 async function main() {
   await chooseQuality();
   if (DEV && DEV.get('dev')) { await devStart(); }
   await bootSequence(screensRoot);
   for (;;) {
     const { callsign } = await loginScreen(screensRoot, store);
+    const release = await lockPilot(callsign);
+    if (!release) { notice(`Pilot ${callsign.toUpperCase()} ist bereits in einem anderen Tab aktiv. Dort weiterspielen oder den Tab schließen.`); continue; }
     let profile = store.get(callsign);
     if (!profile) {
       const factionId = await factionSelect(screensRoot);
@@ -255,7 +278,7 @@ async function main() {
       hubMusic(true);
       const choice = await hubScreen(screensRoot, profile, store);
       hubMusic(false);
-      if (choice === 'logout') break;
+      if (choice === 'logout') { release(); break; }
       await launchSequence(screensRoot, profile);
       await playSession(profile);
     }
