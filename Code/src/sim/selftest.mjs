@@ -384,8 +384,16 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   let el = 0, al = 0;
   const probe = w.enemies.find((e) => e.alive && !e.temp && e !== b);
   w.applyRank(b, 'normal');
+  // Startsektor: nie ein Alpha (Neulingsschutz seit 31.10.2026)
+  let al1 = 0;
+  for (let i = 0; i < 3000; i++) { w._rollRank(probe); if (probe.rank === 'alpha') { al1++; w.applyRank(probe, 'normal'); } }
+  w.applyRank(probe, 'normal');
+  check('Kein Alpha im Startsektor', al1 === 0, `${al1} Alpha in 3.000 Würfen (Sektor ${w.sector.index})`);
+  // Häufigkeit ab Sektor 2 messen
+  const si0 = w.sector.index; w.sector.index = 2;
   for (let i = 0; i < 3000; i++) { w._rollRank(probe); if (probe.rank === 'elite') el++; if (probe.rank === 'alpha') { al++; w.applyRank(probe, 'normal'); } }
-  check('Elite selten (≈ 6 %), Alpha sehr selten', el / 3000 > 0.04 && el / 3000 < 0.08 && al > 0 && al / 3000 < 0.025, `${el} Elite, ${al} Alpha in 3.000 Würfen`);
+  w.sector.index = si0; w.applyRank(probe, 'normal');
+  check('Elite selten (≈ 6 %), Alpha sehr selten (ab Sektor 2)', el / 3000 > 0.04 && el / 3000 < 0.08 && al > 0 && al / 3000 < 0.025, `${el} Elite, ${al} Alpha in 3.000 Würfen`);
   // SAL-Salve versetzt
   pr.ammo.SAL = 10;
   pr.loadout.lasers = ['pulse', 'pulse', 'pulse', 'pulse'];
@@ -910,6 +918,27 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
     check('Drohnen: Pioneer für Credits kaufen (höchstens 8), verkaufen, Modul tauschen', b.ok && !full.ok && pr.drones.length === 7 && s.ok && pr.credits === c0 + Math.round(DRONES.pioneer.price * DRONE_RULES.sell[0]) && m.ok && pr.drones[0].module === 'shield' && pr.credits === c0 + s.credits,
       `${pr.drones.length} Drohnen, Verkauf +${s.credits}`);
   }
+}
+
+// Kollision mit der Station, Sprung durch Treffer gestört (31.10.2026)
+{
+  const pr = newProfile('Stossfest', 'saturn');
+  const w = new World(pr, makeBus(), { seed: 71 });
+  w.update(1 / 60);
+  const st = w.station;
+  w.player.x = st.x + 20; w.player.z = st.z + 10; w.player.vx = 0; w.player.vz = 0;
+  for (let i = 0; i < 120; i++) w.update(1 / 60);
+  const d = Math.hypot(w.player.x - st.x, w.player.z - st.z);
+  check('Station: Schiff wird aus dem Rumpf gedrückt (keine Geisterstation)', d > st.radius * 0.9, `Abstand ${Math.round(d)} m, Radius ${st.radius} m`);
+  const portal = w.portals[0];
+  w.player.x = portal.x + 20; w.player.z = portal.z; w.player.vx = 0; w.player.vz = 0;
+  w.update(1 / 60);
+  w.tryJump();
+  for (let i = 0; i < 60; i++) w.update(1 / 60);
+  const before = w.jump ? w.jump.t : -1;
+  w.player.hp -= 50; w.update(1 / 60);
+  const after = w.jump ? w.jump.t : -1;
+  check('Sprung: Hüllentreffer wirft das Aufladen zurück', before > 0.5 && after < before, `vorher ${before.toFixed(2)} s, nachher ${after.toFixed(2)} s`);
 }
 
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');

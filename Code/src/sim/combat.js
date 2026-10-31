@@ -24,7 +24,8 @@ export function applyDamage(target, dmg, shieldOnly, out) {
   }
   s = Math.round(s); h = Math.round(h);
   target.shield -= s;
-  if (target.shield < 0) target.shield = 0;
+  // Restschild unter 1 Punkt (Rundung) gilt als leer – sonst blieb ein unsichtbarer 0,4-Schild ewig stehen
+  if (target.shield < 1) target.shield = 0;
   target.hp -= h;
   if (target.hp < 0) target.hp = 0;
   out.shield = s;

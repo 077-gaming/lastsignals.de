@@ -517,6 +517,18 @@ export class World {
       const vn = p.vx * nx + p.vz * nz;
       if (vn < 0) { p.vx -= nx * vn * 0.8; p.vz -= nz * vn * 0.8; p.fs *= 0.985; }
     }
+    // Station ist kein Geist: weich abprallen statt durchfliegen (wie an Felsen). Nicht beim An-/Abdocken.
+    const st = this.station;
+    if (st && !this.docked) {
+      const ox = p.x - st.x, oz = p.z - st.z, min = st.radius + p.radius;
+      const d2 = ox * ox + oz * oz;
+      if (d2 < min * min) {
+        const d = Math.sqrt(d2) || 1, nx = ox / d, nz = oz / d, pen = min - d;
+        p.x += nx * pen * 0.35; p.z += nz * pen * 0.35;
+        const vn = p.vx * nx + p.vz * nz;
+        if (vn < 0) { p.vx -= nx * vn * 0.8; p.vz -= nz * vn * 0.8; p.fs *= 0.985; }
+      }
+    }
     p.speed = Math.sqrt(p.vx * p.vx + p.vz * p.vz);
     this._flightFeel(dt, rot0, fs0, vmax);
   }
@@ -631,7 +643,7 @@ export class World {
       this.profile.ammo[key] -= 1;
       this._profileDirty = true;
       this._fireLaser(lasers[i], tgt, key, AMMO[key].mult, key === 'SAB', false, i);
-      if (!tgt.alive) return;
+      if (!tgt.alive || !p.alive) return; // Ziel tot – oder eigenes Schiff durch Rückstrahlung zerstört
     }
   }
 
@@ -1010,7 +1022,9 @@ export class World {
   _rollRank(e) {
     if (e.def.eventOnly || e.temp) { this.applyRank(e, 'normal'); return; }
     const r = this.rng.next();
-    if (!this._alpha && r < VARIANTS.alpha.chance) this.applyRank(e, 'alpha');
+    // Kein Alpha (×10 Leben, ×6 Schaden) im Startsektor einer Fraktion: für Neulinge kaum zu schaffen
+    const alphaOk = (this.sector && this.sector.index || 1) >= 2;
+    if (!this._alpha && alphaOk && r < VARIANTS.alpha.chance) this.applyRank(e, 'alpha');
     else if (r < VARIANTS.alpha.chance + VARIANTS.elite.chance) this.applyRank(e, 'elite');
     else this.applyRank(e, 'normal');
   }
@@ -1486,6 +1500,13 @@ export class World {
       }
     }
     const dur = j.dur || C.JUMP_TIME;
+    // Beschuss stört das Aufladen: jeder Hüllentreffer wirft den Sprung um 25 % zurück (höchstens alle 0,5 s)
+    if (j.lastHp != null && p.hp < j.lastHp - 0.5 && this.time >= (j.hitAt || 0) + 0.5) {
+      j.hitAt = this.time;
+      j.t = Math.max(0, j.t - dur * 0.25);
+      this._msg('Sprung gestört: Treffer an der Hülle.', 'warn', 'jumpHit', 1.5);
+    }
+    j.lastHp = p.hp;
     j.t += dt;
     j.progress = Math.min(1, j.t / dur);
     if (j.t < dur) return;
