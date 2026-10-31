@@ -4,7 +4,7 @@ import { SHIPS, ENEMIES, AMMO } from '../core/data.js';
 import { TextSlot, ClassSlot, Bar, fmt } from './hud-parts.js';
 
 const GROUP = { pirate: 'PIRAT', swarm: 'SCHWARM' };
-const BEH = { aggressive: 'AGGRESSIV', passive: 'PASSIV', opportunist: 'LAUERT', thief: 'PLÜNDERER' };
+const BEH = { aggressive: 'AGGRESSIV', passive: 'PASSIV', opportunist: 'LAUERT', thief: 'PLÜNDERER', territorial: 'REVIER', stationary: 'STATIONÄR', nest: 'NEST' };
 const ENEMY_KEYS = Object.keys(ENEMIES);
 
 const CALM_KEY = 'ls.hud.calm';
@@ -82,7 +82,7 @@ export function menuHtml(windows) {
         <div class="mp-sec mp-sec-t">KONTAKTE IM SEKTOR<span class="hg-sp"></span><span class="mp-sec-n">TYP · ANZAHL · NÄCHSTER</span></div>
         <div class="mp-cts ls-scan">${ENEMY_KEYS.map((k) => {
     const d = ENEMIES[k];
-    return `<div class="mp-ct is-zero" data-mc="${k}"><i></i><span class="mp-cn">${esc(String(d.name).toUpperCase())}</span><span class="mp-cg">${GROUP[d.group] || ''} · ${BEH[d.behavior] || ''}</span><span class="hg-sp"></span><b class="ls-num" data-n></b><span class="ls-num mp-cd" data-d></span></div>`;
+    return `<div class="mp-ct is-zero" data-mc="${k}"><i></i><span class="mp-cn">${esc(String(d.name).toUpperCase())}</span><span class="mp-cg">${[GROUP[d.group], BEH[d.behavior]].filter(Boolean).join(' · ')}</span><span class="hg-sp"></span><b class="ls-num" data-n></b><span class="ls-num mp-cd" data-d></span></div>`;
   }).join('')}</div>
       </section>
       <section class="mp-pane" data-pane="anzeige">
