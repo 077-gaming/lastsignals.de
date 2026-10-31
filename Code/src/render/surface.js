@@ -105,7 +105,9 @@ ${VN}
         #include <opaque_fragment>`);
   };
   if (o.win) m.defines = { ...(m.defines || {}), LS_WIN: '' };
-  m.customProgramCacheKey = () => 'hull:' + JSON.stringify(o);
+  // Nur was den Shader-CODE ändert gehört in den Schlüssel (Fenster an/aus). Alle anderen Werte sind Uniforms –
+  // vorher stand das ganze Optionsobjekt drin: je Zahlenkombination ein eigenes Programm (Standbilder beim Übersetzen).
+  m.customProgramCacheKey = () => 'hull:' + (o.win ? 'W' : '');
   return m;
 }
 

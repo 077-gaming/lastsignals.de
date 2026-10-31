@@ -760,7 +760,7 @@ export class ModelFactory {
                 diffuseColor.rgb = mix(metal, mix(diffuseColor.rgb, uAcc * (0.5 + lum), 0.35), clamp(acc, 0.0, 1.0));
               }`);
           };
-          c.customProgramCacheKey = () => 'glbship:' + faction;
+          c.customProgramCacheKey = () => 'glbship'; // Fraktionsfarbe ist ein Uniform, kein Code-Unterschied
           c.metalness = 0.65; c.roughness = Math.min(c.roughness, 0.5);
           return c;
         });
