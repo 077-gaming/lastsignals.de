@@ -761,6 +761,8 @@ export class Hud {
       case 'tab': this.menu.setTab(t.dataset.tab); break;
       case 'winvis': this.wins.toggleHidden(t.dataset.id); this.menu.syncWins(); break;
       case 'calm': this.menu.setCalm(!this.menu.calm); break;
+      case 'sysguide': case 'sysdirect': case 'sysrestart':
+        window.dispatchEvent(new CustomEvent('ls:system', { detail: { act: t.dataset.act.slice(3) } })); this.menu._helpKey = ''; break;
       case 'save':
         if (w && w.saveNow) { w.saveNow(); this._saved = this._t; this.menu._acc = 1; }
         break;

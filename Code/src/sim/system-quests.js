@@ -3,7 +3,7 @@
 // und fortsetzen. Zustand im Profil: profile.system = { mode, idx, progress, done[], skipped[] }.
 //   mode: 'guided' (Karte führt aktiv) | 'direct' (Reihe liegt bereit, nichts wird eingeblendet) | null (noch nicht gewählt)
 
-export const SYSTEM_CHAPTERS = { 1: 'Fliegen', 2: 'Zielen und Angreifen', 3: 'Munition 1–6', 4: 'Raketen', 5: 'Schnellleiste', 6: 'Extras und Minen', 7: 'Techs', 8: 'Konfigurationen', 9: 'Beute', 10: 'Erz', 11: 'Station' };
+export const SYSTEM_CHAPTERS = { 1: 'Fliegen', 2: 'Zielen und Angreifen', 3: 'Munition 1–6', 4: 'Raketen', 5: 'Schnellleiste', 6: 'Extras und Minen', 7: 'Techs', 8: 'Konfigurationen', 9: 'Beute', 10: 'Erz', 11: 'Station', 12: 'Reparatur und Formation', 13: 'Sprung', 14: 'Gegnertypen', 15: 'Elite und Alpha', 16: 'Ehre und Rang', 17: 'Hub', 18: 'Abschluss' };
 
 // Ziele: fly {meters, camera?}, brake {fromSpeed}, camera {target}, reach {dx, dz, r} (relativ zur Station),
 // target {}, attack {}, kill {target?, count}, shoot {ammo, count}, rocket {rocket, count}, arsenal {},
@@ -56,6 +56,30 @@ export const SYSTEM_QUESTS = [
   { id: 'sys43', ch: 11, title: 'Ion Laser', text: 'Der Ion Laser macht mehr Schaden als der Pulse Laser. Kauf einen, er kommt auf einen freien oder den schwächsten Platz.', goal: { type: 'buy', id: 'ion' }, key: 'SHOP', reward: { credits: 3000, xp: 1200 } },
   { id: 'sys44', ch: 11, title: 'Umbau', text: 'Im Hangar baust du Laser und Generatoren um: mehr Schild oder mehr Tempo. Bau ein Teil um.', goal: { type: 'equip' }, key: 'HANGAR', reward: { credits: 1000, xp: 600 } },
   { id: 'sys45', ch: 11, title: 'Erste eigene Drohne', text: 'Drohnen fliegen mit dir und tragen je einen Laser oder Schildgenerator. Kauf eine Pioneer.', goal: { type: 'drone' }, key: 'SHOP', reward: { credits: 2000, xp: 800 } },
+  { id: 'sys46', ch: 12, title: 'Kampfreparatur', text: 'Abdocken mit E. Fällt die Hülle unter 80 %, setz FIX ein: 10 Sekunden lang 5 % je Sekunde.', goal: { type: 'tech', id: 'FIX', hullBelow: 0.8 }, key: 'FIX', reward: { credits: 1500, xp: 800 } },
+  { id: 'sys47', ch: 12, title: 'Ring', text: 'Formationen ordnen deine Drohnen. Ring kreist ums Schiff: mehr Schild, etwas langsamer. Schalte im Arsenal unter FORMATION auf Ring.', goal: { type: 'formation', id: 'ring' }, key: 'ARSENAL', reward: { credits: 800, xp: 500 } },
+  { id: 'sys48', ch: 12, title: 'Swarm', text: 'Swarm ist gegen Piraten und Schwarm gebaut. Zerstöre vier Gegner mit Swarm.', goal: { type: 'kill', count: 4, formation: 'swarm' }, reward: { credits: 2000, xp: 1200, honor: 10 } },
+  { id: 'sys49', ch: 13, title: 'Hinaus', text: 'Das Tor liegt am anderen Ende des Sektors. Bis auf 150 Meter ran, dann J. Drüben wird es härter.', goal: { type: 'jump', sector: 2 }, key: 'J', reward: { credits: 3000, xp: 1500 } },
+  { id: 'sys50', ch: 14, title: 'Schakale', text: 'Jackals lauern getarnt und springen an, wenn du unter 70 % fällst. EMP holt sie raus. Zerstöre drei.', goal: { type: 'kill', target: 'jackal', count: 3 }, reward: { credits: 4000, xp: 2500, tritium: 20, honor: 15 } },
+  { id: 'sys51', ch: 14, title: 'Salve', text: 'Leuchtet ein Gegner auf, lädt er einen Spezialangriff, die Bahn liegt am Boden. Kurs oder Tempo ändern, und die Salve geht vorbei. Zweimal.', goal: { type: 'dodge', kind: 'volley', count: 2 }, reward: { credits: 2000, xp: 1500, honor: 10 } },
+  { id: 'sys52', ch: 14, title: 'Rammangriff', text: 'Jackals rammen in gerader Linie. Raus zur Seite, sobald die Bahn erscheint.', goal: { type: 'dodge', kind: 'ram', count: 1 }, reward: { credits: 2000, xp: 1500, honor: 10 } },
+  { id: 'sys53', ch: 14, title: 'Abgebrochen', text: 'Eine Rakete oder ein schwerer Treffer bricht das Aufladen ab. Stopp einen Angriff, bevor er kommt.', goal: { type: 'interrupt', count: 1 }, key: 'R', reward: { credits: 2500, xp: 1500, tritium: 10, honor: 10 } },
+  { id: 'sys54', ch: 14, title: 'Tiefer', text: 'Weiter durch das zweite Tor. In Sektor 3 fliegt alles ab Stufe 6, bleib erst mal nah am Tor.', goal: { type: 'jump', sector: 3 }, key: 'J', reward: { credits: 3000, xp: 2000 } },
+  { id: 'sys55', ch: 14, title: 'Säure', text: 'Spiker spucken Säure aus der Ferne. Raus aus dem grünen Kreis, bevor er sich schließt.', goal: { type: 'dodge', kind: 'acid', count: 1 }, reward: { credits: 2000, xp: 1500, honor: 10 } },
+  { id: 'sys56', ch: 14, title: 'Spiker', text: 'Spiker halten Abstand und heilen hinter Asteroiden. Zerstöre zwei.', goal: { type: 'kill', target: 'spiker', count: 2 }, reward: { credits: 5000, xp: 3500, tritium: 30, honor: 20 } },
+  { id: 'sys57', ch: 14, title: 'Plünderer', text: 'Vultures klauen Wracks, auch deine, und ziehen einen Schildwall hoch. Schnapp dir einen, bevor er abhaut.', goal: { type: 'kill', target: 'vulture', count: 1 }, reward: { credits: 5000, xp: 3500, tritium: 30, honor: 20 } },
+  { id: 'sys58', ch: 14, title: 'Heimsprung', text: 'JMP bringt dich nach 8 Sekunden Ladezeit nach Hause, ganz ohne Tor. Leg JMP aus dem Arsenal auf die Leiste und spring.', goal: { type: 'extra', id: 'JMP', arrive: true }, key: 'JMP', reward: { credits: 1500, xp: 800, tritium: 25 } },
+  { id: 'sys59', ch: 15, title: 'Elite', text: 'Ein Elite Raider ist in deiner Nähe gemeldet: dreimal so viel Leben, Schaden und Beute. Zerstöre ihn.', goal: { type: 'kill', rank: 'elite', count: 1 }, spawn: { type: 'raider', rank: 'elite', dist: 1500 }, reward: { credits: 4000, xp: 2500, tritium: 30, honor: 25 } },
+  { id: 'sys60', ch: 15, title: 'Alpha', text: 'Alpha-Kontakt. Zehnfache Stärke und eine Sonderfähigkeit, lies sie im Fenster ZIEL, bevor du angreifst.', goal: { type: 'kill', rank: 'alpha', count: 1 }, spawn: { type: 'raider', rank: 'alpha', perk: 'summon', dist: 2000 }, reward: { credits: 8000, xp: 5000, tritium: 75, honor: 50 } },
+  { id: 'sys61', ch: 16, title: 'Konvoi', text: 'Ein Frachter wird angegriffen. Halt ihn am Leben, das bringt Ehre.', goal: { type: 'event', target: 'convoy' }, reward: { credits: 3000, xp: 2000, tritium: 15, honor: 20 } },
+  { id: 'sys62', ch: 16, title: 'Serie', text: 'Abschüsse kurz hintereinander geben Bonus auf Erfahrung, Ehre und Credits. Hol dir eine Serie von drei.', goal: { type: 'combo', count: 3 }, reward: { credits: 1500, xp: 1200, honor: 10 } },
+  { id: 'sys63', ch: 16, title: 'Rang', text: 'Aus Ehre und Erfahrung werden Rangpunkte. Öffne PILOT und sieh nach, wo du stehst.', goal: { type: 'window', target: ['pilot'] }, key: 'PILOT', reward: { credits: 500, xp: 300 } },
+  { id: 'sys64', ch: 17, title: 'Pilotenakte', text: 'Esc, dann ZUM HUB. In der Pilotenakte steht alles über dich.', goal: { type: 'window', target: ['hub:akte'] }, key: 'ESC', reward: { credits: 800, xp: 400 } },
+  { id: 'sys65', ch: 17, title: 'Ruhmeshalle', text: 'Die Ruhmeshalle zeigt die Besten deiner Fraktion, nach Ehre, Erfahrung und mehr. Such deinen Platz.', goal: { type: 'window', target: ['hub:ruhm'] }, reward: { credits: 800, xp: 400 } },
+  { id: 'sys66', ch: 17, title: 'Clan', text: 'Clans verbinden Piloten aus allen drei Fraktionen. Gründen und Beitreten geht ab Stufe 10, schau schon mal rein.', goal: { type: 'window', target: ['hub:clan'] }, reward: { credits: 800, xp: 400 } },
+  { id: 'sys67', ch: 17, title: 'Funkprotokoll', text: 'Im Funkprotokoll steht jede Meldung, die du bekommen hast. Lies nach: im Hub unter FUNK oder im Flug im Fenster FUNK.', goal: { type: 'window', target: ['hub:funk', 'comms'] }, reward: { credits: 500, xp: 300 } },
+  { id: 'sys68', ch: 17, title: 'Cockpit einstellen', text: 'Stell dir das Cockpit ein: Kamera, Kamerawackeln, Balken oder genaue Werte. Ändere eine Einstellung.', goal: { type: 'setting' }, reward: { credits: 800, xp: 400 } },
+  { id: 'sys69', ch: 18, title: 'Signal steht', text: 'Ausbildung abgeschlossen, ab hier fliegst du deine eigenen Wege. Erreiche Stufe 5, dann wartet Schiff 2 im Shop.', goal: { type: 'level', level: 5 }, reward: { credits: 5000, tritium: 150, honor: 30 } },
 ];
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
@@ -67,6 +91,7 @@ export class SystemSeries {
     this.bus = bus;
     this.cameraMode = cameraMode;
     this._brakeArmed = false;
+    this._spawned = null; this._pend = null; this._jmpArmed = false;
     const pr = world.profile;
     if (!pr.system || typeof pr.system !== 'object') pr.system = { mode: null, idx: 0, progress: 0, done: [], skipped: [] };
     const s = pr.system;
@@ -78,7 +103,7 @@ export class SystemSeries {
     this.offs = [
       bus.on('explode', (p) => {
         const e = world.entities.get(p.id);
-        if (e && e.kind === 'enemy') this._count('kill', e.type, 1);
+        if (e && e.kind === 'enemy') this._count('kill', e.type, 1, e);
       }),
       bus.on('shot', (p) => {
         if (!p.hit || p.drone || !world.player || p.from !== world.player.id) return;
@@ -93,7 +118,20 @@ export class SystemSeries {
       // Wrack: Beute mit Credits ohne Erfahrung/Erz/Munition (Auftragsbelohnungen tragen Erfahrung)
       bus.on('loot', (p) => { if (p && p.credits > 0 && !p.xp && !p.ore && !p.ammo) this._count('wreck', null, 1); }),
       bus.on('ability', (a) => this._ability(a)),
+      bus.on('formation', (f) => this._count('formation', f.id, 1)),
+      bus.on('combo', (c) => { if (!c.ended) this._count('combo', null, c.count); }),
+      bus.on('special', (sp) => this._special(sp)),
+      bus.on('damage', (d) => { if (d.id === 'player' && d.special && this._pend && d.special === this._pend.kind) this._pend.hit = true; }),
+      bus.on('sector', () => { if (this._jmpArmed) { this._jmpArmed = false; const g = this.current?.goal; if (g && g.type === 'extra' && g.arrive && this.state.mode === 'guided') this._add(1, 1); } }),
     ];
+    // Oberfläche (HUD-Fenster, Einstellungen) meldet sich über Fensterereignisse; im Hub schreibt der Hub direkt in state.seen
+    const onUi = (ev) => this.mark(ev.detail?.target);
+    const onSet = () => this.mark('setting');
+    const onSys = (ev) => { const a = ev.detail?.act; if (a === 'guide') this.choose('guided'); else if (a === 'direct') this.choose('direct'); else if (a === 'restart') this.restart(); };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ls:quest', onUi); window.addEventListener('ls:settings', onSet); window.addEventListener('ls:system', onSys);
+      this.offs.push(() => { window.removeEventListener('ls:quest', onUi); window.removeEventListener('ls:settings', onSet); window.removeEventListener('ls:system', onSys); });
+    }
     this._config = 1;
     this._wrap(world);
   }
@@ -102,7 +140,13 @@ export class SystemSeries {
   _wrap(world) {
     const ok = (r) => r && (typeof r === 'object' ? r.ok !== false : r !== false && r !== 0);
     const qp = world._questProgress.bind(world);
-    world._questProgress = (t, target, n) => { qp(t, target, n); if (t === 'crate') this._count('crate', null, n || 1); if (t === 'ore') this._count('ore', target, n || 1); };
+    world._questProgress = (t, target, n, ctx) => {
+      qp(t, target, n, ctx);
+      if (t === 'crate') this._count('crate', null, n || 1);
+      if (t === 'ore' || t === 'jump' || t === 'event') this._count(t, target, n || 1);
+    };
+    const extra = world.useExtra.bind(world);
+    world.useExtra = (id, arg) => { const r = extra(id, arg); if (r && id === 'JMP') this._jmpArmed = true; return r; };
     const buy = world.buy.bind(world);
     world.buy = (kind, id, n) => { const r = buy(kind, id, n); if (ok(r)) { this._count('buy', id, 1); if (kind === 'drone') this._count('drone', null, 1); } return r; };
     const sell = world.sellOre.bind(world);
@@ -132,7 +176,19 @@ export class SystemSeries {
     if (!q || this.state.mode !== 'guided') return;
     const w = this.world, p = w.player, g = q.goal;
     if (p && p.shieldMax) this._shieldFrac = (p.shield || 0) / p.shieldMax;
+    if (p && p.hpMax) this._hullFrac = (p.hp || 0) / p.hpMax;
+    const seen = this.state.seen || [];
+    if (g.type === 'level' && (w.profile.level || 1) >= g.level) { this._add(1, 1); return; }
+    if (g.type === 'window' && g.target.some((t) => seen.includes(t))) { this._add(1, 1); return; }
+    if (g.type === 'setting' && seen.includes('setting')) { this._add(1, 1); return; }
     if (!p || w.docked || w.playerDead) return;
+    this._t = (this._t || 0) + dt;
+    if (g.type === 'jump' && (w.sector?.index || 1) >= g.sector) { this._add(1, 1); return; }
+    if (q.spawn) this._spawnFor(q);
+    if (g.type === 'event' && this._evQuest !== q.id && this._t > (this._evRetry || 0)) {
+      if (w.startEvent(g.target)) this._evQuest = q.id; else this._evRetry = this._t + 5;
+    }
+    if (this._pend && this._t > this._pend.until) { const ok = !this._pend.hit; this._pend = null; if (ok && g.type === 'dodge') this._add(1, g.count); }
     const speed = p.speed || Math.hypot(p.vx || 0, p.vz || 0);
     switch (g.type) {
       case 'fly':
@@ -165,12 +221,45 @@ export class SystemSeries {
       if (g.hits && a.phase === 'fire' && (a.hits || 0) >= g.hits) this._add(1, 1);
       else if (g.combat && a.phase === 'use' && this._underAttack()) this._add(1, 1);
       else if (g.shieldBelow && a.phase === 'use' && (this._shieldFrac ?? 1) < g.shieldBelow) this._add(1, 1);
+      else if (g.hullBelow && a.phase === 'use' && (this._hullFrac ?? 1) < g.hullBelow) this._add(1, 1);
       return;
     }
     if (g.type !== 'extra' || a.id !== g.id) return;
     if (g.hits && a.phase === 'fire' && (a.hits || 0) >= g.hits) this._add(1, 1);
     else if (g.combat && a.phase === 'use' && this._underAttack()) this._add(1, 1);
     else if (g.strike && a.phase === 'end' && a.reason === 'Angriff') this._add(1, 1);
+  }
+
+  // Spezialangriff eines Gegners auf den Spieler: abgebrochen zählt für interrupt, ausgeführt und ohne Treffer für dodge
+  _special(sp) {
+    const q = this.current, w = this.world, p = w.player;
+    if (!q || this.state.mode !== 'guided' || sp.own || !p) return;
+    const e = w.entities.get(sp.id);
+    if (!e || e.kind !== 'enemy' || (e.targetId && e.targetId !== p.id)) return;
+    if (sp.cancelled) { this._count('interrupt', null, 1); return; }
+    if (q.goal.type === 'dodge' && sp.kind === q.goal.kind && !this._pend) this._pend = { kind: sp.kind, hit: false, until: (this._t || 0) + Math.max(0.6, sp.duration || 0) + 0.6 };
+  }
+
+  // Quest-Gegner (Elite/Alpha) in Reichweite bereitstellen; verschwindet er (Sektorwechsel), kommt ein neuer
+  _spawnFor(q) {
+    const w = this.world, p = w.player, sp = q.spawn;
+    if (this._spawned && w.entities.has(this._spawned)) return;
+    if (this._t < (this._spawnAt || 0)) return;
+    this._spawnAt = this._t + 3;
+    const a = Math.random() * Math.PI * 2;
+    const e = w.spawnTemp(sp.type, p.x + Math.cos(a) * sp.dist, p.z + Math.sin(a) * sp.dist);
+    w.applyRank(e, sp.rank, sp.perk || null);
+    if (sp.rank === 'alpha') e.perk = sp.perk || e.perk;
+    this._spawned = e.id;
+    w._msg?.(`SYSTEM · ${e.name} gemeldet, ${Math.round(sp.dist)} m entfernt.`, 'warn');
+  }
+
+  // Oberflächen-Signal (Fenster geöffnet, Hub-Bereich, Einstellung) merken; zählt sofort oder beim nächsten Flug
+  mark(tag) {
+    if (!tag) return;
+    const s = this.state;
+    if (!Array.isArray(s.seen)) s.seen = [];
+    if (!s.seen.includes(tag)) s.seen.push(tag);
   }
 
   _underAttack() {
@@ -194,18 +283,24 @@ export class SystemSeries {
     }
   }
 
-  _count(type, what, n) {
+  _count(type, what, n, ent = null) {
     const q = this.current;
     if (!q || this.state.mode !== 'guided' || q.goal.type !== type) return;
     const g = q.goal;
     if (type === 'kill' && g.target && g.target !== what) return;
+    if (type === 'kill' && g.rank && (!ent || ent.rank !== g.rank)) return;
+    if (type === 'kill' && g.formation && this.world.formation !== g.formation) return;
+    if (type === 'jump' && what < g.sector) return;
+    if (type === 'event' && g.target !== what) return;
+    if (type === 'formation' && g.id !== what) return;
+    if (type === 'combo') { if (n >= g.count) this._add(1, 1); return; }
     if (type === 'shoot' && g.ammo !== what) return;
     if (type === 'rocket' && !g.lock && g.rocket !== what) return;
     if (type === 'ore' && g.ore !== what) return;
     if (type === 'buy' && g.id !== what) return;
     if (type === 'config' && g.n !== what) return;
     // Einmalige Handlungen (Andocken, Verkaufen, Kaufen, Umbau, Drohne, Konfiguration): erledigt beim ersten Mal
-    if (['dock', 'sell', 'equip', 'drone', 'config', 'buy'].includes(type)) { this._add(1, 1); return; }
+    if (['dock', 'sell', 'equip', 'drone', 'config', 'buy', 'jump', 'event', 'formation'].includes(type)) { this._add(1, 1); return; }
     this._add(n, g.count);
   }
 

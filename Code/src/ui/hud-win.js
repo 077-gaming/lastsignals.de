@@ -120,6 +120,7 @@ export class HudWindows {
     }
     w.hidden = on;
     this._applyClasses(w);
+    if (!on) try { window.dispatchEvent(new CustomEvent('ls:quest', { detail: { target: id } })); } catch { /* alt */ }
     w.placed = false;
     if (on) { w.w = 0; w.h = 0; }
     this.layout();

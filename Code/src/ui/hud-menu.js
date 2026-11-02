@@ -2,6 +2,7 @@
 // Die Szene bleibt dahinter sichtbar. Werte werden nur bei offenem Menü und höchstens 4-mal pro Sekunde geschrieben.
 import { SHIPS, ENEMIES, AMMO } from '../core/data.js';
 import { TextSlot, ClassSlot, Bar, fmt } from './hud-parts.js';
+import { SYSTEM_QUESTS, SYSTEM_CHAPTERS } from '../sim/system-quests.js';
 
 const GROUP = { pirate: 'PIRAT', swarm: 'SCHWARM' };
 const BEH = { aggressive: 'AGGRESSIV', passive: 'PASSIV', opportunist: 'LAUERT', thief: 'PLÜNDERER', territorial: 'REVIER', stationary: 'STATIONÄR', nest: 'NEST' };
@@ -14,6 +15,21 @@ const TABS = [
   ['anzeige', '02', 'ANZEIGE'],
   ['steuerung', '03', 'STEUERUNG'],
   ['system', '04', 'SYSTEM'],
+  ['hilfe', '05', 'HILFE'],
+];
+
+const SPECIAL_NAME = { volley: 'Salve: Bodenbahn, zur Seite', ram: 'Rammstoß: gerade Bahn, ausweichen', leap: 'Sprung: kurz, Abstand halten', acid: 'Säure: grüner Kreis, raus' };
+
+// Kodex: Grundregeln, die im Spiel gelten (Stand Code, nicht Planung)
+const RULES = [
+  ['SICHERE ZONE', 'Rund um die Station wird nicht geschossen. Angedockt heilt die Hülle.'],
+  ['SCHILD UND HÜLLE', 'Der Schild fängt zuerst ab und lädt außerhalb des Kampfs nach. Fällt die Hülle auf null, ist das Schiff verloren.'],
+  ['REPARATUR', 'Nach dem Abschuss: 1 Station, 2 Portal, 3 an Ort und Stelle. Im Flug heilt FIX.'],
+  ['SPEZIALANGRIFFE', 'Leuchtet ein Gegner auf, lädt er. Eine Rakete oder ein schwerer Treffer bricht das ab.'],
+  ['ELITE UND ALPHA', 'Elite: dreifache Werte und Beute. Alpha: zehnfach, mit Sonderfähigkeit, ab Sektor 2.'],
+  ['SERIE', 'Abschüsse kurz hintereinander geben Bonus auf Erfahrung, Ehre und Credits.'],
+  ['SPRUNG', 'Tor auf 150 m anfliegen, dann J. JMP springt ohne Tor nach Hause.'],
+  ['EHRE UND RANG', 'Ehre gibt es für Gegner, Ereignisse und Konvois. Aus Ehre und Erfahrung entsteht der Rang.'],
 ];
 
 const CONTROLS = [
@@ -102,6 +118,19 @@ export function menuHtml(windows) {
         <div class="mp-wins">${wins}</div>
       </section>
       <section class="mp-pane" data-pane="steuerung"><div class="mp-ctrl">${ctrl}</div></section>
+      <section class="mp-pane" data-pane="hilfe">
+        <div class="mp-sec mp-sec-t">SYSTEM-REIHE<span class="hg-sp"></span><span class="mp-sec-n" data-r="sysstate"></span></div>
+        <div class="mp-sys" data-r="syslist"></div>
+        <div class="mp-pair">
+          <button class="ls-btn" type="button" data-act="sysguide" title="Taste G">FÜHRUNG AN</button>
+          <button class="ls-btn" type="button" data-act="sysdirect">FÜHRUNG AUS</button>
+          <button class="ls-btn" type="button" data-act="sysrestart" title="Belohnungen gibt es nur einmal je Quest">VON VORN</button>
+        </div>
+        <div class="mp-sec">KODEX · REGELN</div>
+        ${RULES.map(([t, d]) => `<div class="mp-kx"><b>${t}</b><span>${d}</span></div>`).join('')}
+        <div class="mp-sec">KODEX · GEGNER</div>
+        ${ENEMY_KEYS.map((k) => { const d = ENEMIES[k]; return `<div class="mp-kx"><b>${esc(String(d.name).toUpperCase())} <i class="ls-num">ST ${d.level}</i></b><span>${[GROUP[d.group], BEH[d.behavior]].filter(Boolean).join(' · ')}${d.ai && SPECIAL_NAME[d.ai.special] ? ' · ' + SPECIAL_NAME[d.ai.special] : ''}</span></div>`; }).join('')}
+      </section>
       <section class="mp-pane" data-pane="system">
         <div class="mp-sec">GRAFIK</div>
         ${row('BILDRATE', 'fps')}${row('AUFLÖSUNG', 'res')}${row('QUALITÄT', 'qual')}${row('BILDFLÄCHE', 'view')}
@@ -157,6 +186,20 @@ export class HudMenu {
     this._acc = 1;
   }
 
+  _renderHelp(p) {
+    const st = p.system || {}, done = st.done || [], skip = st.skipped || [];
+    const key = `${st.mode}|${done.length}|${skip.length}|${st.idx}`;
+    if (key === this._helpKey) return;
+    this._helpKey = key;
+    const cur = SYSTEM_QUESTS[st.idx | 0];
+    this.el.querySelector('[data-r="sysstate"]').textContent = `${done.length} / ${SYSTEM_QUESTS.length} · ${st.mode === 'guided' ? 'GEFÜHRT' : 'FREI'}`;
+    this.el.querySelector('[data-r="syslist"]').innerHTML = Object.entries(SYSTEM_CHAPTERS).map(([n, t]) => {
+      const qs = SYSTEM_QUESTS.filter((q) => q.ch === +n), d = qs.filter((q) => done.includes(q.id)).length;
+      const on = cur && cur.ch === +n;
+      return `<div class="mp-sysr${d === qs.length ? ' is-done' : ''}${on ? ' is-on' : ''}"><span class="ls-num">${String(n).padStart(2, '0')}</span><span>${esc(t)}${on ? ' · ' + esc(cur.title) : ''}</span><span class="hg-sp"></span><b class="ls-num">${d}/${qs.length}</b></div>`;
+    }).join('');
+  }
+
   setCalm(on, save = true) {
     this.calm = !!on;
     this.root.classList.toggle('hd-calm', this.calm);
@@ -187,6 +230,7 @@ export class HudMenu {
     r.deaths.set(info.deaths);
     r.ftime.set(info.ftime);
     if (this.tab === 'flug') this._renderFlight(w, p);
+    if (this.tab === 'hilfe') this._renderHelp(p);
     if (this.tab === 'system') {
       const perf = renderer && renderer._perf;
       r.fps.set(perf && perf.fps ? Math.round(perf.fps) + ' B/S' : '–');

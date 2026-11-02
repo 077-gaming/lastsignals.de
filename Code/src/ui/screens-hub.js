@@ -1321,6 +1321,7 @@ export async function hubScreen(root, profile, store) {
       for (const b of navBtns) { const on = b.dataset.sec === key; b.classList.toggle('is-on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); }
       current = key;
       lastSection = key;
+      if (P.system && key !== 'start') { const sn = P.system.seen || (P.system.seen = []); if (!sn.includes('hub:' + key)) { sn.push('hub:' + key); store?.save?.(P); } }
       center.dataset.sec = key;
     }
     detail = det;

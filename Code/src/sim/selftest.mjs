@@ -1237,6 +1237,21 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   go('sys42'); w.docked = true; pr.credits = 1e6; const r1 = w.buy('ammo', 'L1', 1); const notYet = !pr.system.done.includes('sys42'); w.buy('ammo', 'L2', 1);
   check('SYSTEM: Kauf-Quest zählt nur den richtigen Artikel', notYet && pr.system.done.includes('sys42'), JSON.stringify(r1).slice(0, 40));
   w.docked = false;
+  go('sys47'); bus.emit('formation', { id: 'turtle' }); const wrongF = !pr.system.done.includes('sys47'); bus.emit('formation', { id: 'ring' });
+  check('SYSTEM: Formations-Quest zählt nur Ring', wrongF && pr.system.done.includes('sys47'));
+  go('sys49'); w._questProgress('jump', 2, 1);
+  check('SYSTEM: Sprung nach Sektor 2 erkannt', pr.system.done.includes('sys49'));
+  go('sys59'); s.update(0.1); const el = [...w.entities.values()].find((e) => e.rank === 'elite' && e.temp);
+  const norm = [...w.entities.values()].find((e) => e.kind === 'enemy' && e.rank !== 'elite');
+  if (norm) bus.emit('explode', { id: norm.id }); const notNormal = !pr.system.done.includes('sys59');
+  if (el) bus.emit('explode', { id: el.id });
+  check('SYSTEM: Elite-Quest stellt Gegner bereit und zählt nur Elite', !!el && notNormal && pr.system.done.includes('sys59'));
+  go('sys62'); bus.emit('combo', { count: 2, ended: false }); const c2 = !pr.system.done.includes('sys62'); bus.emit('combo', { count: 3, ended: false });
+  check('SYSTEM: Serie ab drei', c2 && pr.system.done.includes('sys62'));
+  go('sys64'); s.mark('hub:ruhm'); s.update(0.1); const wrongHub = !pr.system.done.includes('sys64'); s.mark('hub:akte'); s.update(0.1);
+  check('SYSTEM: Hub-Bereich zählt beim nächsten Schritt', wrongHub && pr.system.done.includes('sys64'));
+  go('sys69'); pr.level = 4; s.update(0.1); const lv4 = !pr.system.done.includes('sys69'); pr.level = 5; s.update(0.1);
+  check('SYSTEM: Abschluss bei Stufe 5', lv4 && pr.system.done.includes('sys69') && s.finished);
   s.dispose();
 }
 

@@ -650,11 +650,11 @@
 .mp-rd b { font-family: var(--ls-display); font-weight: 400; font-size: 16px; letter-spacing: .1em; color: var(--hd-val); white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .mp-rd b.ls-num { font-family: var(--ls-digits); letter-spacing: .02em; }
 .mp-rd-wide b { color: var(--fx); font-size: 18px; }
-.mp-tabs { display: grid; grid-template-columns: repeat(4, 1fr); margin: 14px 16px 0; border-bottom: 1px solid var(--ls-line); flex-shrink: 0; }
+.mp-tabs { display: grid; grid-template-columns: repeat(5, 1fr); margin: 14px 16px 0; border-bottom: 1px solid var(--ls-line); flex-shrink: 0; }
 .mp-tab {
   appearance: none; border: 0; background: none; cursor: pointer; position: relative;
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 8px 7px;
-  font-family: var(--ls-display); font-size: 13px; letter-spacing: .14em; color: var(--hd-lab); text-align: left;
+  font-family: var(--ls-display); font-size: 12px; letter-spacing: .1em; color: var(--hd-lab); text-align: left; min-width: 0;
 }
 .mp-tab i { font-style: normal; font-family: var(--ls-mono); font-size: 10px; letter-spacing: 0; color: var(--hd-deco); }
 .mp-tab:hover { color: var(--ls-tx); background: rgba(255, 255, 255, .04); }
@@ -851,3 +851,13 @@
 /* Bordmenü offen: Flug-Coach und Auftragsmarker ausblenden (lagen sonst über dem Menü) */
 .hd.hd-menu ~ .hud-coach, .hd.hd-menu ~ .hud-qm { opacity: 0 !important; }
 .mp-foot .ls-btn.is-primary { grid-column: 1 / -1; }
+
+/* Bordmenü · HILFE: Stand der SYSTEM-Reihe und Kodex */
+.mp-sys { display: grid; gap: 1px; margin-bottom: 8px; }
+.mp-sysr { display: flex; align-items: center; gap: 8px; height: 22px; font-size: 12px; color: var(--hd-sub); border-bottom: 1px solid rgba(255, 255, 255, .04); }
+.mp-sysr .ls-num:first-child { width: 20px; opacity: .6; }
+.mp-sysr.is-done { opacity: .55; }
+.mp-sysr.is-on { color: var(--hd-text, #fff); box-shadow: inset 2px 0 0 var(--ls-accent, #ff8a2a); padding-left: 6px; }
+.mp-kx { display: grid; gap: 2px; padding: 6px 0; font-size: 12px; line-height: 1.4; color: var(--hd-sub); border-bottom: 1px solid rgba(255, 255, 255, .04); }
+.mp-kx b { font-size: 11px; letter-spacing: .08em; color: var(--hd-text, #fff); font-weight: 600; }
+.mp-kx b i { font-style: normal; opacity: .55; margin-left: 6px; }

@@ -6,7 +6,7 @@ import { SYSTEM_QUESTS, SYSTEM_CHAPTERS } from '../sim/system-quests.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
 // Ziele, die an der Station erledigt werden: Karte bleibt beim Andocken sichtbar
-const STATION_GOALS = ['sell', 'buy', 'equip', 'drone'];
+const STATION_GOALS = ['sell', 'buy', 'equip', 'drone', 'window', 'setting', 'level'];
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export class SystemGuide {
@@ -65,6 +65,10 @@ export class SystemGuide {
       const g = q.goal;
       const max = g.count || (g.type === 'fly' ? g.meters : 1);
       const prog = Math.min(max, st.progress || 0);
+      if (g.type === 'window') for (const t of g.target) {
+        const wEl = !t.startsWith('hub:') && document.querySelector(`[data-win="${t}"]`);
+        if (wEl && !wEl.classList.contains('is-off') && !wEl.classList.contains('is-min')) s.mark(t);
+      }
       let goalText = '';
       if (g.type === 'fly') goalText = `${fmt(prog)} / ${fmt(g.meters)} m geflogen${g.camera === 'chase' ? ' (Verfolgersicht)' : g.config ? ` (Konfiguration ${g.config})` : ''}`;
       else if (g.type === 'reach') {
@@ -73,7 +77,7 @@ export class SystemGuide {
         const ang = wp && p ? Math.atan2(wp.x - p.x, -(wp.z - p.z)) : 0;
         const dir = ['N', 'NO', 'O', 'SO', 'S', 'SW', 'W', 'NW'][((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
         goalText = `Wegpunkt ${fmt(Math.max(0, d - (wp?.r || 0)))} m · Richtung ${dir} (Karte)`;
-      } else if (g.type === 'kill') goalText = `${prog} / ${g.count} Abschüsse${g.target ? ' ' + g.target[0].toUpperCase() + g.target.slice(1) : ''}`;
+      } else if (g.type === 'kill') goalText = `${prog} / ${g.count} Abschüsse${g.target ? ' ' + g.target[0].toUpperCase() + g.target.slice(1) : g.rank ? ' ' + (g.rank === 'elite' ? 'Elite' : 'Alpha') : ''}${g.formation ? ' mit Swarm' : ''}`;
       else if (g.type === 'shoot') goalText = `${prog} / ${g.count} Treffer mit ${g.ammo}`;
       else if (g.type === 'brake') goalText = 'Auf über 150 m/s beschleunigen, dann anhalten';
       else if (g.type === 'camera') goalText = g.target === 'tactical' ? 'Taktische Ansicht einschalten' : 'Verfolgersicht einschalten';
@@ -85,7 +89,7 @@ export class SystemGuide {
       else if (g.type === 'place') goalText = `${prog} / ${g.count} Plätze auf Leiste ${g.bar} belegt`;
       else if (g.type === 'extra') goalText = g.hits ? `${g.id} mit mindestens ${g.hits} Gegner${g.hits > 1 ? 'n' : ''} im Wirkkreis zünden` : g.combat ? `${g.id} einsetzen, während du angegriffen wirst` : `Getarnt den Angriff eröffnen`;
       else if (g.type === 'mine') goalText = `${g.ids.join(' oder ')} zünden lassen`;
-      else if (g.type === 'tech') goalText = g.hits ? `${g.id} mit mindestens ${g.hits} Treffern` : g.combat ? `${g.id} im Kampf einsetzen` : `${g.id} bei Schild unter ${Math.round(g.shieldBelow * 100)} %`;
+      else if (g.type === 'tech') goalText = g.hullBelow ? `${g.id} bei Hülle unter ${Math.round(g.hullBelow * 100)} %` : g.hits ? `${g.id} mit mindestens ${g.hits} Treffern` : g.combat ? `${g.id} im Kampf einsetzen` : `${g.id} bei Schild unter ${Math.round(g.shieldBelow * 100)} %`;
       else if (g.type === 'config') goalText = `Auf Konfiguration ${g.n} umschalten`;
       else if (g.type === 'wreck') goalText = `${prog} / ${g.count} Wracks eingesammelt`;
       else if (g.type === 'crate') goalText = `${prog} / ${g.count} Frachtkisten`;
@@ -95,6 +99,15 @@ export class SystemGuide {
       else if (g.type === 'buy') goalText = `${g.id === 'ion' ? 'Ion Laser' : g.id} im Shop kaufen`;
       else if (g.type === 'equip') goalText = 'Im Hangar ein Teil umbauen';
       else if (g.type === 'drone') goalText = 'Eine Pioneer-Drohne kaufen';
+      else if (g.type === 'formation') goalText = `Formation ${g.id === 'ring' ? 'Ring' : g.id} wählen (Arsenal, FORMATION)`;
+      else if (g.type === 'jump') goalText = `Durch das Tor nach Sektor ${g.sector} springen (J)`;
+      else if (g.type === 'dodge') goalText = `${prog} / ${g.count} ${g.kind === 'volley' ? 'Salven' : g.kind === 'ram' ? 'Rammangriffe' : 'Säurewolken'} ausgewichen`;
+      else if (g.type === 'interrupt') goalText = 'Einen aufladenden Gegner mit Rakete oder schwerem Treffer stoppen';
+      else if (g.type === 'event') goalText = 'Den Frachter bis zum Ziel beschützen';
+      else if (g.type === 'combo') goalText = `Serie von ${g.count} Abschüssen`;
+      else if (g.type === 'window') goalText = g.target.map((t) => t.startsWith('hub:') ? `Hub: ${t.slice(4).toUpperCase()}` : `Fenster ${t === 'comms' ? 'FUNK' : t.toUpperCase()}`).join(' oder ') + ' öffnen';
+      else if (g.type === 'setting') goalText = 'Eine Einstellung ändern (Esc, ANZEIGE)';
+      else if (g.type === 'level') goalText = `Stufe ${g.level} erreichen`;
       const r = q.reward || {};
       const rew = [r.credits && `${fmt(r.credits)} Cr`, r.tritium && `${fmt(r.tritium)} T`, r.xp && `${fmt(r.xp)} EP`, r.honor && `${fmt(r.honor)} Ehre`].filter(Boolean).join(' · ');
       const no = SYSTEM_QUESTS.indexOf(q) + 1;

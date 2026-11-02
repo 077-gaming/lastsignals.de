@@ -20,3 +20,6 @@
 @media (max-width: 900px) { .lsg { top: auto; bottom: 120px; transform: none; } .lsg-card { width: 260px; } }
 
 .lsg.lsg-dock { visibility: visible; position: fixed; z-index: 10000; top: 168px; bottom: auto; left: 52px; transform: none; background: rgba(8, 11, 15, 0.96); }
+
+/* Bordmenü offen: Karte weicht */
+.hd-menu .lsg, .hd-menu ~ .lsg, .hd-menu ~ * .lsg { display: none; }
