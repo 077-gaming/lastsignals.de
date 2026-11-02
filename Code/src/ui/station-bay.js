@@ -11,12 +11,9 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ModelFactory } from '../render/models.js';
 
-// Echte Schiffsmodelle (GLB). Pflicht = liegt im Projekt; optional = wird nur geladen, wenn die Datei da ist.
-const GLB = [
-  ['ship:s1:saturn', '/models/saturn-starter.glb', true],
-  ['ship:s1:europa', '/models/europa-starter.glb', false],
-  ['ship:s1:eris', '/models/eris-starter.glb', false],
-];
+// Echte Schiffsmodelle (GLB) je Fraktion und Klasse: Startschiff Saturn sofort, alle anderen erst, wenn die Bucht
+// das Schiff zeigt (Schiffswerft blättert durch alle Klassen; jede Datei 0,7–3 MB).
+const shipFile = (faction, shipId) => `/models/${faction}-${shipId === 's1' ? 'starter' : 'schiff' + String(shipId).replace(/^s/, '')}.glb`;
 const BG = 0x06080c;
 const HAZE = 0x0a0d13;
 const FLOOR = -12;     // Hallenboden
@@ -290,20 +287,8 @@ export class HangarBay {
     // Laden läuft im Hintergrund; solange ein Modell unterwegs ist, zeigt die Station einen Plan-Umriss
     this.pending = new Set();
     const done = (k) => { this.pending.delete(k); this._key = ''; this._dirty = true; this.onChange && this.onChange(); };
-    for (const [k, u, must] of GLB) {
-      if (must) {
-        this.pending.add(k);
-        this.factory.registerGLB(k, u).then(() => done(k), () => done(k));
-      } else {
-        fetch(u, { method: 'HEAD' }).then((r) => {
-          const t = r.headers.get('content-type') || '';
-          if (!r.ok || t.includes('html')) return;
-          this.pending.add(k);
-          this.onChange && this.onChange();
-          this.factory.registerGLB(k, u).then(() => done(k), () => done(k));
-        }).catch(() => { /* kein Modell vorhanden */ });
-      }
-    }
+    this._done = done;
+    this._ensureModel('saturn', 's1');
 
     this.scene = new THREE.Scene();
     const pm = new THREE.PMREMGenerator(gl);
@@ -577,8 +562,18 @@ export class HangarBay {
   }
 
   // ---------- Schiff ----------
+  // Modell der gezeigten Klasse laden (einmal je Schlüssel), bis dahin zeigt die Bucht den Plan-Umriss
+  _ensureModel(faction, shipId) {
+    const k = `ship:${shipId}:${faction}`;
+    if (this.factory.glb.has(k) || this.pending.has(k) || (this._tried || (this._tried = new Set())).has(k)) return;
+    this._tried.add(k);
+    this.pending.add(k);
+    this.factory.registerGLB(k, shipFile(faction, shipId)).then(() => this._done(k), () => this._done(k));
+  }
+
   setShip(faction, shipId, loadout, locked) {
     if (!this.ok) return;
+    this._ensureModel(faction, shipId);
     const key = faction + '|' + shipId + '|' + JSON.stringify(loadout || {}) + '|' + (locked ? 1 : 0) + '|' + this.factory.version;
     if (key === this._key) return;
     this._key = key;
@@ -594,11 +589,14 @@ export class HangarBay {
     const layout = LAYOUT[shipId] || LAYOUT.s2;
     const k = s.placeholder ? layout.scale : 1;
     this.hps.laser.length = 0; this.hps.gen.length = 0;
+    // echte Modelle bringen ihre Anker mit (HP_Laser_01 …, HP_Gen_01 …): Punkt direkt am Anker; sonst Platzhalter-Lage
     for (const kind of ['laser', 'gen']) {
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 16; i++) {
         const o = new THREE.Object3D();
-        slotPos(kind, layout, i, o.position).multiplyScalar(k);
-        s.root.add(o);
+        const hp = s.placeholder ? null : s.hull.getObjectByName(`HP_${kind === 'laser' ? 'Laser' : 'Gen'}_${String(i + 1).padStart(2, '0')}`);
+        if (hp) hp.add(o);
+        else if (i < 8) { slotPos(kind, layout, i, o.position).multiplyScalar(k); s.root.add(o); }
+        else break;
         this.hps[kind].push(o);
       }
     }

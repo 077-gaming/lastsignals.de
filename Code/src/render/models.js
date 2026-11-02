@@ -531,11 +531,26 @@ async function glbLoader() {
   })();
   return _glbLoader;
 }
+// Normalen der Länge 0 (entartete Dreiecke nach dem Vereinfachen, z. B. Meshy-Schiffe 5–7) ergeben im Shader NaN;
+// der Bloom verschmiert ein einziges NaN-Pixel zu schwarzen Quadraten über dem halben Bild. Einmal je Datei ersetzen.
+function fixNormals(scene) {
+  scene.traverse((o) => {
+    const N = o.isMesh && o.geometry.attributes.normal;
+    if (!N) return;
+    let n = 0;
+    for (let i = 0; i < N.count; i++) {
+      const x = N.getX(i), y = N.getY(i), z = N.getZ(i);
+      if (!(x * x + y * y + z * z > 1e-4)) { N.setXYZ(i, 0, 1, 0); n++; }
+    }
+    if (n) N.needsUpdate = true;
+  });
+  return scene;
+}
 export function preloadGLB(url) {
   let p = GLB_CACHE.get(url);
   if (!p) {
     // bis zu 2 weitere Versuche mit Pause (kurze Serverfehler, z. B. 503 direkt nach einem Deploy, oder Funkloch)
-    const attempt = (left) => glbLoader().then((l) => l.loadAsync(url))
+    const attempt = (left) => glbLoader().then((l) => l.loadAsync(url)).then((g) => { fixNormals(g.scene); return g; })
       .catch((err) => (left > 0 ? new Promise((r) => setTimeout(r, 1500 * (3 - left))).then(() => attempt(left - 1)) : Promise.reject(err)));
     p = attempt(2);
     p.catch(() => GLB_CACHE.delete(url));

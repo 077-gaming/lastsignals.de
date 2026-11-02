@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><title>Einbauprüfung</title>
+<style>html,body{margin:0;background:#0b0d12;overflow:hidden}canvas{display:block}#i{position:fixed;left:8px;top:6px;color:#c8ccd4;font:12px/1.4 monospace;white-space:pre}</style></head>
+<body>
+<div id="i"></div>
+<script type="module">
+// Einbauprüfung (nur Entwicklung): baut Modelle über die Spiel-Fabrik (ModelFactory) – also mit Laser-, Generator-
+// und Triebwerksteilen an den Ankern – und zeigt sie aus festen Blickwinkeln. Werkzeug: tools/models/einbau.mjs.
+// window.__show({ kind: 'ship', f: 'europa', s: 's3', v: 'oben' }) · kind 'build' mit { reg: [[key, url, opts]], fn, args }
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { ModelFactory } from '/src/render/models.js';
+import { SHIPS } from '/src/core/data.js';
+
+const W = innerWidth, H = innerHeight;
+const gl = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+gl.setPixelRatio(1); gl.setSize(W, H);
+gl.toneMapping = THREE.ACESFilmicToneMapping; gl.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(gl.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0d12);
+scene.environment = new THREE.PMREMGenerator(gl).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.7;
+const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(-60, 120, -40);
+const rim = new THREE.DirectionalLight(0x9fc0ff, 1.0); rim.position.set(80, 30, 120);
+scene.add(key, rim, new THREE.HemisphereLight(0xbfd4ff, 0x20242c, 0.5));
+const cam = new THREE.PerspectiveCamera(32, W / H, 0.1, 20000);
+const F = new ModelFactory();
+window.__F = F;
+let holder = null;
+const file = (f, s) => `/models/${f}-${s === 's1' ? 'starter' : 'schiff' + s.slice(1)}.glb`;
+const LT = ['pulse', 'ion', 'plasma', 'gamma'];
+const DIRS = { oben: [0, 1, 0.0001], seite: [1, 0.05, 0], schraeg: [0.7, 0.55, 0.75], heck: [0, 0.25, 1], front: [0, 0.2, -1], unten: [0, -1, 0.0001], spiel: [0, 0.82, 0.57] };
+
+window.__show = async (o) => {
+  window.__ready = false;
+  if (holder) scene.remove(holder);
+  let m, info = '';
+  if (o.kind === 'ship') {
+    const k = `ship:${o.s}:${o.f}`;
+    if (!F.glb.has(k)) await F.registerGLB(k, file(o.f, o.s));
+    const S = SHIPS[o.s];
+    const lo = o.empty ? { lasers: [], gens: [] } : {
+      lasers: Array.from({ length: S.laserSlots }, (_, i) => LT[i % 4]),
+      gens: Array.from({ length: S.genSlots }, (_, i) => (i % 2 ? 'dr1' : 'sh1')),
+    };
+    m = F.buildShip(o.f, o.s, lo);
+    info = `${o.f} ${o.s} · Laser ${lo.lasers.length} · Gen ${lo.gens.length} · Triebwerke ${m.engines.length} · Platzhalter ${m.placeholder}`;
+  } else {
+    for (const [k, u, op] of o.reg || []) if (!F.glb.has(k)) await F.registerGLB(k, u, op || {});
+    m = F[o.fn](...(o.args || []));
+    if (o.scale) m.root.scale.setScalar(o.scale);
+    info = `${o.fn} ${JSON.stringify(o.args || [])}`;
+  }
+  holder = m.root;
+  scene.add(holder);
+  holder.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  holder.traverse((x) => { if (x.isMesh && !(x.material && x.material.isShaderMaterial)) { x.geometry.computeBoundingBox(); box.union(x.geometry.boundingBox.clone().applyMatrix4(x.matrixWorld)); } });
+  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
+  const d = new THREE.Vector3(...(DIRS[o.v] || DIRS.schraeg)).normalize();
+  cam.position.copy(c).addScaledVector(d, (r * 1.15) / Math.tan(16 * Math.PI / 180));
+  cam.up.set(0, 1, 0);
+  if (o.v === 'oben' || o.v === 'unten') cam.up.set(0, 0, -1); // Bug (−z) oben im Bild
+  cam.near = r * 0.02; cam.far = r * 40; cam.updateProjectionMatrix();
+  cam.lookAt(c);
+  const sz = box.getSize(new THREE.Vector3());
+  document.getElementById('i').textContent = `${info}\nAusdehnung ${sz.x.toFixed(1)} × ${sz.y.toFixed(1)} × ${sz.z.toFixed(1)} m (x · y · z) · Blick ${o.v}`;
+  gl.render(scene, cam);
+  await new Promise((r2) => requestAnimationFrame(r2));
+  gl.render(scene, cam);
+  window.__ready = true;
+  return { size: sz.toArray(), info };
+};
+window.__ready = true;
+</script>
+</body>
+</html>
