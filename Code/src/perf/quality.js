@@ -480,7 +480,7 @@ export class QualityGuard {
 }
 
 /**
- * 4K-Texturen für das eigene Schiff und den Hangar: in der Desktop-App (window.lsDesktop) oder auf ULTRA, nie auf
+ * 4K-Texturen für das eigene Schiff und den Hangar: in der Desktop-App (window.lsDesktop) ab HOCH oder auf ULTRA, nie auf
  * Handy/Tablet und nur, wenn der Chip 4096er-Texturen kann. Nur Entwicklung: ?hd=1 / ?hd=0 erzwingt.
  */
 export function hdTextures(q) {
@@ -492,5 +492,6 @@ export function hdTextures(q) {
   }
   const g = gpuInfo();
   if (g.mobile || g.tier === 'soft' || (g.maxTex && g.maxTex < 4096)) return false;
-  return !!window.lsDesktop || q >= 3;
+  // Desktop-App ab HOCH, Browser nur auf ULTRA (NIEDRIG/MITTEL nie: dort zählt der Grafikspeicher)
+  return q >= 3 || (!!window.lsDesktop && q >= 2);
 }

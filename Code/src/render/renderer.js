@@ -1739,6 +1739,8 @@ export class Renderer {
     const fac = e.faction || this.world?.profile?.faction || this.faction, sh = e.ship || this.world?.profile?.ship || 's1';
     const key = `ship:${sh}:${fac}`;
     if (key === this._mineKey) return;
+    // 4K-Stufe des alten Schiffs freigeben (Grafikspeicher, Bilddaten im Zwischenspeicher)
+    if (this._mineKey) this.factory.releaseShipHd(key);
     this._mineKey = key; this._mineUrl = MODEL_URL.get(key) || null;
     if (this._mineUrl && !this.factory.glb.has(key) && this._loadGLB) this._loadGLB(key, this._mineUrl, this._mineOpts(sh));
   }

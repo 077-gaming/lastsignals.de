@@ -579,6 +579,7 @@ export class StationUI {
           if (!this._offs.length || this.isOpen) return;
           if ((bay.pending.size > 0 || bay.isLoading(p.faction, p.ship)) && tries++ < 40) { setTimeout(() => idle(prep), 500); return; }
           try {
+            bay.own = p.faction + '|' + p.ship;
             bay.setShip(p.faction, p.ship, p.loadout, false);
             const cam = bay._camera();
             if (bay.gl.compileAsync) bay.gl.compileAsync(bay.scene, cam).catch(() => { /* nur Vorbereitung */ });
@@ -976,6 +977,7 @@ export class StationUI {
       this.body.querySelector('[data-r="bayhost"]').appendChild(bay.canvas);
       bay.setMode(this.view);
       this._layoutBay();
+      bay.own = p.faction + '|' + p.ship;
       bay.setShip(p.faction, p.ship, p.loadout, false);
       const dm = this.body.querySelector('[data-r="dims"]');
       if (dm) dm.textContent = loading ? 'L — · B —' : 'L ' + dec1(bay.dims.rl ?? bay.dims.l) + U + 'M × B ' + dec1(bay.dims.rb ?? bay.dims.b) + U + 'M';

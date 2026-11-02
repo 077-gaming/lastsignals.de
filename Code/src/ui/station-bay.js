@@ -309,6 +309,7 @@ export class HangarBay {
     const fill = new THREE.DirectionalLight(0xbfcde6, 0.45); fill.position.set(-90, -4, -60);
     const hemi = new THREE.HemisphereLight(0x2c3646, 0x050608, 0.5);
     this.lights.add(top, rim, fill, hemi);
+    this._lit = { top, rim, fill, env: 0.3 };
     this.scene.add(this.lights);
 
     this.env = new THREE.Group();
@@ -336,6 +337,9 @@ export class HangarBay {
     this.scene.add(this.plan);
 
     this.hps = { laser: [], gen: [] };
+    this.own = '';             // eigenes, aktives Schiff 'fraktion|sX' (nur dafür 4K)
+    this.orbit = null;         // nur Prüfwerkzeug: { yaw, pitch, dist } (Grad, Vielfaches des Radius) statt Heldenaufnahme
+    if (import.meta.env && import.meta.env.DEV) window.__lsBay = this;
     this.mode = 'werft';
     this.size = { w: 0, h: 0 };
     this.area = { cx: 0.5, cy: 0.5, w: 1, h: 1 };
@@ -565,27 +569,51 @@ export class HangarBay {
 
   // ---------- Schiff ----------
   // Modell der gezeigten Klasse laden (einmal je Schlüssel), bis dahin zeigt die Bucht den Plan-Umriss
-  _ensureModel(faction, shipId) {
-    const k = `ship:${shipId}:${faction}`;
-    if (this.factory.glb.has(k) || this.pending.has(k) || (this._tried || (this._tried = new Set())).has(k)) return;
-    this._tried.add(k);
-    this.pending.add(k);
-    // 4K-Stufe wie im Flug (ULTRA oder Desktop-App): Hangar ist die Nahaufnahme des eigenen Schiffs
+  // 4K-Stufe wie im Flug (ULTRA, Desktop-App ab HOCH), nur für das eigene, aktive Schiff (this.own), nie beim
+  // Durchblättern der Schiffswerft
+  _hdFor(faction, shipId) {
+    if (this.own !== faction + '|' + shipId) return null;
     let q = 2;
     try { q = qIndex(JSON.parse(localStorage.getItem('ls.settings') || '{}').quality) ?? 2; } catch { /* Standard HOCH */ }
-    const url = shipFile(faction, shipId);
-    this.factory.registerGLB(k, url, hdTextures(q) ? { hd: shipHdUrls(url, shipId) } : {}).then(() => this._done(k), () => this._done(k));
+    return hdTextures(q) ? shipHdUrls(shipFile(faction, shipId), shipId) : null;
+  }
+  _ensureModel(faction, shipId) {
+    const k = `ship:${shipId}:${faction}`;
+    const hd = this._hdFor(faction, shipId);
+    if (this.factory.glb.has(k)) {
+      // schon geladen: 4K nachrüsten (eigenes Schiff) bzw. fremde Schiffe ohne 4K lassen
+      if (hd && !this.factory.glb.get(k).userData.hdTex && !this.pending.has(k + ':hd')) {
+        this.pending.add(k + ':hd');
+        this.factory.setShipHd(k, hd).then(() => this._done(k + ':hd'), () => this._done(k + ':hd'));
+      }
+      return;
+    }
+    if (this.pending.has(k) || (this._tried || (this._tried = new Set())).has(k)) return;
+    this._tried.add(k);
+    this.pending.add(k);
+    this.factory.registerGLB(k, shipFile(faction, shipId), hd ? { hd } : {}).then(() => this._done(k), () => this._done(k));
+  }
+  /** 4K-Texturen freigeben: alle außer dem eigenen Schiff (keepOwn) oder alle (Hangar verlassen) */
+  releaseHd(keepOwn) {
+    if (!this.ok) return;
+    const [f, s] = (this.own || '|').split('|');
+    this.factory.releaseShipHd(keepOwn && f ? `ship:${s}:${f}` : null);
   }
 
   setShip(faction, shipId, loadout, locked) {
     if (!this.ok) return;
     this._ensureModel(faction, shipId);
+    this.releaseHd(true); // 4K nur für das eigene Schiff
     const key = faction + '|' + shipId + '|' + JSON.stringify(loadout || {}) + '|' + (locked ? 1 : 0) + '|' + this.factory.version;
     if (key === this._key) return;
     this._key = key;
     // Meshy-Laser/-Generatoren des Loadouts nachladen, danach neu aufbauen
     if (equipKeys(loadout).some((q) => !this.factory.glb.has(q))) this.factory.needEquip(loadout).then(() => { this._key = ''; this._dirty = true; this.onChange && this.onChange(); });
     this._buildEnv(faction);
+    // Belichtung je Lackierung: dunkle Rümpfe (Eris, Saturn-Dunkelmetall) bekommen mehr Kanten- und Umgebungslicht,
+    // damit Metall, Fugen und Kantenglanz lesbar sind; Europa (weiß/gold) bleibt, sonst brennt es aus
+    const LK = { europa: [1.5, 1.9, 0.45, 0.3], saturn: [1.6, 2.4, 0.6, 0.42], eris: [1.9, 3.1, 0.85, 0.62] }[faction] || [1.5, 1.9, 0.45, 0.3];
+    this._lit.top.intensity = LK[0]; this._lit.rim.intensity = LK[1]; this._lit.fill.intensity = LK[2]; this._lit.env = LK[3];
     this._clear(this.shipRoot);
     this._clear(this.plan);
     const s = this.factory.buildShip(faction, shipId, loadout || { lasers: [], gens: [] });
@@ -923,6 +951,19 @@ export class HangarBay {
     const vt = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
     const ht = vt * aspect;
     const d = Math.max(R / (ht * fit.w), R / (vt * fit.h)) * (this.mode === 'studio' ? 0.9 : 0.8);
+    if (this.orbit) {
+      // Prüfwerkzeug: Umlauf um den Rumpf (Gierwinkel 0 = von vorn/Bug, 90 = Steuerbord, Neigung + = von oben)
+      const o = this.orbit, R0 = this._sph.radius, cc = this._sph.center;
+      const yw = THREE.MathUtils.degToRad(o.yaw), pt = THREE.MathUtils.degToRad(o.pitch), dd = R0 * (o.dist || 1);
+      cam.position.set(cc.x - Math.cos(pt) * Math.cos(yw) * dd, cc.y + Math.sin(pt) * dd, cc.z + Math.cos(pt) * Math.sin(yw) * dd);
+      cam.up.set(0, 1, 0);
+      cam.lookAt(cc.x + (o.dx || 0) * R0, cc.y + (o.dy || 0) * R0, cc.z + (o.dz || 0) * R0);
+      cam.near = Math.max(0.1, dd * 0.02);
+      cam.clearViewOffset();
+      cam.updateProjectionMatrix();
+      return cam;
+    }
+    if (cam.near !== 1) cam.near = 1;
     if (this.mode === 'studio') {
       cam.position.set(c.x - 0.62 * d, c.y + 0.3 * d, c.z - 0.7 * d);
       cam.lookAt(c.x, c.y - R * 0.04, c.z);
@@ -960,10 +1001,11 @@ export class HangarBay {
     this.fit.visible = this.fit.visible && !this.hideShip;
     this.shadow.visible = !plan && !studio && !this.hideShip;
     this.vignette.visible = !plan && !studio;
+    if (this.orbit && this.orbit.clean) { this.env.visible = this.gear.visible = this.fit.visible = this.shadow.visible = this.vignette.visible = false; }
     this.lights.visible = !plan;
     this.plan.visible = plan;
     this.scene.fog = plan || studio ? null : this.fog || null;
-    this.scene.environmentIntensity = studio ? 0.55 : 0.3;
+    this.scene.environmentIntensity = studio ? Math.max(0.55, this._lit.env * 1.4) : this._lit.env;
     this.gl.setClearColor(BG, plan || studio ? 0 : 1);
     this._cam = this._camera();
     this.gl.render(this.scene, this._cam);
@@ -1001,6 +1043,7 @@ export class HangarBay {
   stop() {
     cancelAnimationFrame(this._raf);
     this._raf = 0;
+    this.releaseHd(false); // Hangar verlassen: 4K-Texturen freigeben (beim nächsten Öffnen neu geladen)
   }
 
   // Standbild für das Datenblatt im Shop: freigestellt in Dreiviertelansicht (einmal je Schiff)
