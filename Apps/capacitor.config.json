@@ -1,0 +1,22 @@
+{
+  "appId": "de.lastsignals.spiel",
+  "appName": "LAST SIGNALS",
+  "webDir": "www",
+  "backgroundColor": "#000000",
+  "loggingBehavior": "debug",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#000000",
+    "allowsLinkPreview": false
+  },
+  "android": {
+    "backgroundColor": "#000000",
+    "allowMixedContent": false,
+    "captureInput": false
+  }
+}
