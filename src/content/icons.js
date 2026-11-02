@@ -22,6 +22,15 @@ export const ICONS = {
   events: svg('<path d="M3.5 5.5h17v15h-17zM3.5 9.5h17"/><path d="M8 3v4M16 3v4"/><path d="M12 12.5v3.2l2.2 1.4"/>'),
   fair: svg('<path d="M12 3.5v17M7 20.5h10"/><path d="M4 7.5h16"/><path d="M4 7.5 1.8 13h4.4zM20 7.5 17.8 13h4.4z"/><path d="M1.8 13a2.2 2.2 0 0 0 4.4 0M17.8 13a2.2 2.2 0 0 0 4.4 0"/>'),
 
+  // Plattformen (Download-Seite): neutrale Geräte-Piktogramme, keine Markenlogos
+  pfMac: svg('<path d="M6.5 4.5H19v11H5V6z"/><path d="M2.5 18.5h19l-1.2 1.8H3.7z"/><path d="M10.5 18.5h3" stroke-opacity=".55"/><path d="M8 12.5l2.5-3 2 2 3-3.5" stroke-opacity=".55"/>'),
+  pfWindows: svg('<path d="M4.5 3.5H21v13H3V5z"/><path d="M12 16.5v4M8.5 20.5h7"/><path d="M6.5 7h7v6h-7zM6.5 8.8h7" stroke-opacity=".7"/><path d="M15.5 9.5h3M15.5 12h3" stroke-opacity=".45"/>'),
+  pfPhone: svg('<path d="M9 2.5h8.5V19L15 21.5H6.5V5z"/><path d="M10.5 5h3"/><path d="M10.5 18.5h3" stroke-opacity=".55"/>'),
+  pfTablet: svg('<path d="M6 2.5h14.5V19L18 21.5H3.5V5z"/><path d="M11.5 5h.01" stroke-width="2"/><path d="M10 18.5h4" stroke-opacity=".55"/>'),
+  pfAndroid: svg('<path d="M9 2.5h8.5V19L15 21.5H6.5V5z"/><path d="M9.6 9.6 12 8.2l2.4 1.4v2.8L12 13.8l-2.4-1.4z"/><path d="M9.6 9.6 12 11l2.4-1.4M12 11v2.8" stroke-opacity=".7"/><path d="M10.5 18.5h3" stroke-opacity=".55"/>'),
+  pfBrowser: svg('<path d="M4.5 3.5H21v15.5L19 21H3V5z"/><path d="M3 7.5h18"/><path d="M5.5 5.5h.01M7.8 5.5h.01" stroke-width="1.8"/><circle cx="12" cy="14" r="4.2"/><path d="M7.8 14h8.4M12 9.8c-1.8 1.4-1.8 7 0 8.4M12 9.8c1.8 1.4 1.8 7 0 8.4" stroke-opacity=".7"/>'),
+  download: svg('<path d="M12 3.5v11M7 10l5 5 5-5"/><path d="M4 16.5v4h16v-4"/>'),
+
   // Bedienung
   out: svg('<path d="M9 5h10v10M19 5 5.5 18.5"/>'),
   down: svg('<path d="M12 4v15M6 13l6 6 6-6"/>'),

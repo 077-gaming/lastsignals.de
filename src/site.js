@@ -16,6 +16,8 @@ export const PAGES = [
   { id: 'en-home', lang: 'en', file: 'en/index.html', path: '/en/', canon: '/', alt: 'de-home' },
   { id: 'de-news', lang: 'de', file: 'news/index.html', path: '/news/', canon: '/news/', alt: 'en-news' },
   { id: 'en-news', lang: 'en', file: 'en/news/index.html', path: '/en/news/', canon: '/news/', alt: 'de-news' },
+  { id: 'de-download', lang: 'de', file: 'download/index.html', path: '/download/', canon: '/download/', alt: 'en-download' },
+  { id: 'en-download', lang: 'en', file: 'en/download/index.html', path: '/en/download/', canon: '/download/', alt: 'de-download' },
   { id: 'de-wiki', lang: 'de', file: 'wiki/index.html', path: '/wiki/', canon: '/wiki/', alt: 'en-wiki' },
   { id: 'en-wiki', lang: 'en', file: 'en/wiki/index.html', path: '/en/wiki/', canon: '/wiki/', alt: 'de-wiki' },
   { id: 'de-hall', lang: 'de', file: 'ruhmeshalle/index.html', path: '/ruhmeshalle/', canon: '/ruhmeshalle/', alt: 'en-hall' },
@@ -33,8 +35,8 @@ export const pathOf = (id) => pageById(id)?.path || '/';
 
 // Unterseiten je Sprache (Kopfleiste, Fußzeile)
 export const PAGE_IDS = {
-  de: { home: 'de-home', news: 'de-news', wiki: 'de-wiki', hall: 'de-hall', imprint: 'de-impressum', privacy: 'de-datenschutz' },
-  en: { home: 'en-home', news: 'en-news', wiki: 'en-wiki', hall: 'en-hall', imprint: 'en-imprint', privacy: 'en-privacy' },
+  de: { home: 'de-home', download: 'de-download', news: 'de-news', wiki: 'de-wiki', hall: 'de-hall', imprint: 'de-impressum', privacy: 'de-datenschutz' },
+  en: { home: 'en-home', download: 'en-download', news: 'en-news', wiki: 'en-wiki', hall: 'en-hall', imprint: 'en-imprint', privacy: 'en-privacy' },
 };
 
 // Wie Links ausgegeben werden. 'dev': Pfade dieser Website (Englisch unter /en/).

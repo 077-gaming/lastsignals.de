@@ -1,0 +1,10 @@
+# Erzeugt von bauen.sh, nicht ins Repository
+www/
+out/
+node_modules/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+ios/App/build/
+ios/DerivedData/

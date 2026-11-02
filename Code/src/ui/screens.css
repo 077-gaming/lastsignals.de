@@ -1023,6 +1023,7 @@ body.in-game .sc-stage { display: none; }
   color: var(--ls-tx-2); font-family: var(--ls-display); font-size: 17px; letter-spacing: .16em; text-align: left;
   transition: background-color .1s, color .1s;
 }
+.hb-nv[hidden] { display: none; } /* z. B. „App installieren“ in der App bzw. installierten Web-App */
 .hb-nv::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; background: var(--fx); transform: scaleY(0); transition: transform .14s var(--ls-ease); }
 .hb-nv-ic {
   --c: 6px; flex: none; width: 46px; height: 40px; display: grid; place-items: center;

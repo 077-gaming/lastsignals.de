@@ -1529,5 +1529,17 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('MP: kein Schaden an zerstörtem Schiff', wB.pvpDamage(10, false, 'x') === false);
 }
 
+// ---- App-Hüllen (Apps/): Erkennung Mac-/Windows-App / Capacitor / Browser ----
+{
+  const { appShellOf } = await import('../core/shell.js');
+  check('App-Hülle: Browser ohne Kennung', appShellOf({ protocol: 'https:' }) === '');
+  check('App-Hülle: Mac-App über window.lsDesktop', appShellOf({ desktop: { platform: 'mac', version: '1.0.0' }, protocol: 'app:' }) === 'desktop');
+  check('App-Hülle: Windows-App über window.lsDesktop', appShellOf({ desktop: { platform: 'windows', version: '1.0.0' }, protocol: 'app:' }) === 'desktop');
+  check('App-Hülle: Capacitor nativ', appShellOf({ capacitor: { isNativePlatform: () => true }, protocol: 'https:' }) === 'capacitor');
+  check('App-Hülle: Capacitor-Web zählt nicht', appShellOf({ capacitor: { isNativePlatform: () => false }, protocol: 'https:' }) === '');
+  check('App-Hülle: iOS-Schema capacitor:', appShellOf({ protocol: 'capacitor:' }) === 'capacitor');
+  check('App-Hülle: App-Build-Kennung', appShellOf({ flag: '1', protocol: 'https:' }) === 'capacitor');
+}
+
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');
 process.exit(failed ? 1 : 0);

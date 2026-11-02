@@ -1,0 +1,25 @@
+{
+  "name": "last-signals-apps",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LAST SIGNALS als App-Dateien zum Testen: Mac und Windows (Electron), iPhone/iPad und Android (Capacitor)",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "web": "node web.mjs",
+    "mac": "node desktop/packen.mjs",
+    "windows": "node desktop/packen-windows.mjs",
+    "start": "electron .",
+    "sync": "npx cap sync",
+    "test:mac": "node tests/mac.mjs",
+    "test:windows": "node tests/windows.mjs",
+    "alle": "bash bauen.sh"
+  },
+  "devDependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3",
+    "@electron/packager": "20.3.0",
+    "electron": "45.2.1"
+  }
+}

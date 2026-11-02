@@ -82,6 +82,9 @@ const hallEl = document.querySelector('[data-hall]');
 if (hallEl) import('./hall.js').then((m) => m.initHall(hallEl)).catch(() => {});
 near(fm, () => import('./visuals/formations.js').then((m) => m.initFormations(fm)));
 
+// ---------- Download-Seite: passende Kachel für dieses Gerät ----------
+if (document.querySelector('[data-dl-grid]')) import('./download.js').then((m) => m.initDownloads());
+
 // ---------- Live-Status (ehrlich: Testphase, bis der Spielserver läuft) ----------
 getStatus().then((s) => {
   const el = document.querySelector('[data-live]');

@@ -194,6 +194,7 @@ class Stage {
     this.mode = 'boot';
     this.faction = 'neutral';
     this.shipKey = '';
+    this._modeSeq = 0; // zählt setMode-Aufrufe (siehe prepare)
     this.sets = new Map();
     this.view = { X: 0, Y: 0, tw: 0.5, th: 0.5 };   // freier Bildbereich (in tan-Einheiten)
     this.yaw = -2.35; this.yawVel = 0; this.dragging = false;
@@ -500,15 +501,22 @@ class Stage {
    */
   async prepare(o = {}, onStep = null) {
     if (!this._init()) return false;
+    const seq = this._modeSeq;
+    // Ausdrückliche Heimat (z. B. Hub) ersetzt einen älteren, noch offenen Wechselwunsch (setFaction aus Anmeldung
+    // oder Fraktionswahl); sonst schaltet der nach dem Aufbau auf die alte Heimat um (Hub ohne Station und Schiff).
+    if (o.faction !== undefined) this.want = null;
     while (this.busy) await nextFrame();
+    // Wurde die Ansicht inzwischen umgestellt (setMode, z. B. Fraktionswahl → Hub), gilt deren Modus: ein älterer,
+    // noch wartender Aufbau darf sie nicht zurückdrehen (sonst Hub ohne Station und Schiff, v. a. auf langsamen Geräten).
+    if (o.mode && seq !== this._modeSeq) o = { ...o, mode: undefined };
     this.busy = true;
-    try { return await this._prepare(o, onStep); } finally {
+    try { return await this._prepare(o, onStep, seq); } finally {
       this.busy = false;
       if (this.want && this.want !== this.faction) this._switch(); else this.want = null;
     }
   }
 
-  async _prepare(o, onStep) {
+  async _prepare(o, onStep, seq = this._modeSeq) {
     this._applyQuality();
     const f = o.faction !== undefined ? (o.faction && SETS[o.faction] ? o.faction : 'neutral') : this.faction;
     const mode = o.mode || this.mode;
@@ -534,6 +542,7 @@ class Stage {
       try { await this.gl.compileAsync(this.objects, this.camera, this.scene); } catch { /* übersetzt beim ersten Bild */ }
     }
     await tick('SHADER');
+    if (o.mode && seq !== this._modeSeq) o = { ...o, mode: undefined }; // während des Aufbaus umgestellt
     this.show(o);
     onStep?.('BEREIT', 1);
     return true;
@@ -627,7 +636,7 @@ class Stage {
     }
   }
 
-  setMode(m) { if (this.ok && SHOTS[m]) { this.mode = m; } }
+  setMode(m) { if (this.ok && SHOTS[m]) { this.mode = m; this._modeSeq++; } }
 
   setShip(shipId, loadout) { this.shipId = shipId; this.loadout = loadout; }
 

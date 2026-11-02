@@ -9,6 +9,7 @@ import { LINKS, LINK_ORDER, linkUrl } from '../links.js';
 import { SITE, PAGES, PAGE_IDS, pageById, canonical, href, setLinkMode } from '../site.js';
 import { frame, visSystem, visShips, visLasers, visDrones, visDepth, visWormholes, visBosses, visWar, visMonitor, whTable, warTable, FX } from './visuals.js';
 import { legal } from './legal.js';
+import { RELEASE, FILES, PLATFORMS, releaseUrl, releasePage, fileSize } from './downloads.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const pad = (n) => String(n).padStart(2, '0');
@@ -92,7 +93,7 @@ function head(page, t) {
 function pageTitle(page, t) {
   const k = page.id.replace(/^(de|en)-/, '');
   const de = page.lang === 'de';
-  return ({ impressum: 'Impressum', imprint: 'Imprint', datenschutz: 'Datenschutz', privacy: 'Privacy', news: t.news.title, wiki: t.wiki.title, hall: t.hall.title })[k]
+  return ({ impressum: 'Impressum', imprint: 'Imprint', datenschutz: 'Datenschutz', privacy: 'Privacy', news: t.news.title, wiki: t.wiki.title, hall: t.hall.title, download: t.download.title })[k]
     || (page.id === 'not-found' ? t.nf.title : (de ? 'Startseite' : 'Home'));
 }
 
@@ -110,7 +111,7 @@ function header(page, t) {
   const h = t.hdr;
   const alt = page.alt ? pageById(page.alt) : pageById(lang === 'de' ? 'en-home' : 'de-home');
   const cur = page.id.replace(/^(de|en)-/, '');
-  const pageNav = ['wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}"${cur === k ? ' aria-current="page"' : ''}>${esc(t.pages[k])}</a></li>`).join('');
+  const pageNav = ['download', 'wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}"${cur === k ? ' aria-current="page"' : ''}>${esc(t.pages[k])}</a></li>`).join('');
   const play = SITE.status === 'live'
     ? `<a class="ls-btn is-primary is-gold hdr-play" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(h.play)}</span></a>`
     : `<span class="ls-btn hdr-play is-locked" aria-disabled="true" title="${esc(t.hero.playState)}">${ICONS.lock}<span>${esc(h.play)}</span><em>${esc(h.playLocked)}</em></span>`;
@@ -135,7 +136,7 @@ function header(page, t) {
       <div class="menu-side">
         <div class="menu-meta"><span class="live"><i aria-hidden="true"></i><b>${esc(h.statusTest)}</b></span><a class="ls-btn" href="${chapterHref(page, t, 'founder')}">${ICONS.user}<span>${esc(h.signIn)}</span></a></div>
         <span class="ls-label">${lang === 'de' ? 'Seiten' : 'Pages'}</span>
-        <ul class="menu-pages">${['wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}">${esc(t.pages[k])}</a></li>`).join('')}</ul>
+        <ul class="menu-pages">${['download', 'wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}">${esc(t.pages[k])}</a></li>`).join('')}</ul>
         <span class="ls-label">${esc(t.footer.channels)}</span>
         <ul class="soc soc-rows">${socials(t, 'row')}</ul>
         <a class="ls-btn" href="${ALT(alt)}" hreflang="${alt.lang}" lang="${alt.lang}">${esc(t.ui.langOther)}</a>
@@ -155,7 +156,7 @@ function footer(page, t) {
       <nav class="ftr-col" aria-label="${esc(t.hdr.chapters)}"><span class="ls-label">${esc(t.hdr.chapters)}</span><ul>${t.chapters.map(([k, , l]) => `<li><a href="${chapterHref(page, t, k)}">${esc(l)}</a></li>`).join('')}</ul></nav>
       <div class="ftr-col"><span class="ls-label">${esc(t.footer.channels)}</span><ul class="soc soc-rows">${socials(t, 'row')}</ul></div>
       <nav class="ftr-col" aria-label="${esc(t.footer.legal)}"><span class="ls-label">${lang === 'de' ? 'Seiten' : 'Pages'}</span><ul>
-        ${['wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}">${esc(t.pages[k])}</a></li>`).join('')}
+        ${['download', 'wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}">${esc(t.pages[k])}</a></li>`).join('')}
         <li><a href="${P(lang, 'imprint')}">${esc(t.footer.imprint[0])}</a></li>
         <li><a href="${P(lang, 'privacy')}">${esc(t.footer.privacy[0])}</a></li>
         <li><a href="${ALT(alt)}" hreflang="${alt.lang}" lang="${alt.lang}">${esc(t.ui.langOther)}</a></li>
@@ -227,6 +228,7 @@ function hero(t) {
     <p class="hero-sub">${esc(h.sub)}</p>
     <div class="hero-cta">
       ${live ? play : `<a class="ls-btn is-primary is-big" href="#${t.ids.founder}" data-click>${ICONS.signal}${esc(h.reserve)}</a>`}
+      <a class="ls-btn is-big hero-apps" href="${P(t.lang, 'download')}" data-click>${ICONS.download}${esc(h.apps)}</a>
       ${live ? '' : `<div class="play-slot">${play.replace('is-primary ', '')}<span class="play-state"><i aria-hidden="true"></i>${esc(h.playState)}</span></div>`}
     </div>
     ${live ? `<p class="hero-trust">${esc(h.trust)}</p><a class="hero-alt" href="#${t.ids.founder}" data-click>${esc(h.reserve)} →</a>` : ''}
@@ -625,6 +627,59 @@ function hallBody(page, t) {
   </div>`);
 }
 
+// ---------- Download ----------
+const extOf = (key) => FILES[key].file.split('.').pop().toUpperCase();
+function dlTile(p, i, t) {
+  const d = t.download;
+  const x = d.platforms[p.id];
+  const lang = t.lang;
+  const isWeb = !!p.web;
+  const mainHref = isWeb ? SITE.play : releaseUrl(p.main);
+  const mainSize = isWeb ? d.noDownload : fileSize(p.main, lang);
+  const sizeCell = isWeb && p.alt.length ? `${d.noDownload} / .ipa ${fileSize(p.alt[0], lang)}` : mainSize;
+  const verCell = isWeb && !p.alt.length ? SITE.version : RELEASE.version;
+  const mainMeta = isWeb ? '' : `${extOf(p.main)} · ${mainSize}`;
+  const mainLabel = isWeb ? (p.id === 'browser' ? t.hdr.play : d.open) : d.download;
+  const mainBtn = `<a class="ls-btn is-primary is-big dl-main" href="${esc(mainHref)}"${isWeb ? '' : ` data-file="${esc(FILES[p.main].file)}"`} data-click>${isWeb ? ICONS.play : ICONS.download}<span>${esc(mainLabel)}</span>${mainMeta ? `<em class="ls-num">${esc(mainMeta)}</em>` : ''}</a>`;
+  const alts = p.alt.length ? `<ul class="dl-alts">${p.alt.map((k) => `<li><a class="dl-alt" href="${esc(releaseUrl(k))}" data-file="${esc(FILES[k].file)}">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(extOf(k))} · ${esc(fileSize(k, lang))}</em></a></li>`).join('')}</ul>` : '';
+  const state = isWeb && !p.alt.length ? d.stateWeb : p.id === 'iphone' || p.id === 'ipad' ? `${d.stateWeb} / .ipa: ${d.sideload}` : d.stateTest;
+  return `<li class="dl-item" data-dl="${p.id}" id="dl-${p.id}">
+    <article class="dl ls-panel" aria-labelledby="dl-${p.id}-h">
+      <div class="ls-head"><span class="ls-code">DL·${pad(i + 1)}</span><span class="ls-title">${esc(x.name)}</span><span class="ls-spacer"></span><span class="dl-yours" data-dl-yours hidden>${esc(d.yours)}</span></div>
+      <div class="dl-in">
+        <div class="dl-top"><span class="dl-ico">${ICONS[p.icon]}</span><div><h2 id="dl-${p.id}-h">${esc(x.name)}</h2><p class="dl-sub">${esc(x.main)}</p></div></div>
+        <dl class="dl-meta">
+          <div><dt>${esc(d.version)}</dt><dd class="ls-num">${esc(verCell)}</dd></div>
+          <div><dt>${esc(d.size)}</dt><dd class="ls-num">${esc(sizeCell)}</dd></div>
+          <div><dt>${esc(d.req)}</dt><dd>${esc(x.req)}</dd></div>
+          <div><dt>${esc(d.state)}</dt><dd>${esc(state)}</dd></div>
+        </dl>
+        <div class="dl-act">${mainBtn}</div>
+        ${alts ? `<p class="ls-label dl-more-l">${esc(p.id === 'iphone' || p.id === 'ipad' ? `${d.more} · ${d.sideload}` : d.more)}</p>${alts}` : ''}
+        ${more(d.install, `<ol class="dl-steps">${x.steps.map((st) => `<li>${esc(st)}</li>`).join('')}</ol>`, 'dl-how')}
+      </div>
+      <span class="ls-corners" aria-hidden="true"></span>
+    </article>
+  </li>`;
+}
+
+function downloadBody(page, t) {
+  const d = t.download;
+  return subShell(page, t, d.kicker, d.title, d.lede, `<div class="dl-rec ls-panel" data-dl-rec hidden aria-live="polite">
+      <div class="ls-head"><span class="ls-code">DL·00</span><span class="ls-title">${esc(d.recommended)}</span></div>
+      <div class="dl-rec-in"><p class="dl-rec-t"><span class="ls-label">${esc(d.detected)}</span><b data-dl-rec-name></b></p><div class="dl-rec-act" data-dl-rec-act></div></div>
+      <span class="ls-corners" aria-hidden="true"></span>
+    </div>
+    <p class="dl-unknown" data-dl-unknown hidden>${esc(d.unknown)}</p>
+    <ul class="dl-grid" data-dl-grid>${PLATFORMS.map((p, i) => dlTile(p, i, t)).join('')}</ul>
+    <aside class="dl-note ls-panel" aria-labelledby="dl-note-h">
+      <div class="ls-head"><span class="ls-code">DL·INF</span><span class="ls-title" id="dl-note-h">${esc(d.noteHead)}</span></div>
+      <ul class="dl-notes">${d.notes.map((n) => `<li>${esc(n.replace('{v}', RELEASE.version))}</li>`).join('')}</ul>
+      <p class="dl-release"><a class="ls-btn" href="${esc(releasePage())}" target="_blank" rel="noopener noreferrer">${esc(d.release)}${ICONS.out}<span class="sr"> (${esc(t.ui.newTab)})</span></a></p>
+      <span class="ls-corners" aria-hidden="true"></span>
+    </aside>`);
+}
+
 function legalBody(page, t) {
   const L = legal(page.id, FLAGS);
   return `<div class="sub-bg" aria-hidden="true"></div>
@@ -664,6 +719,7 @@ export function renderPage(id, { mode = 'dev', reservationOpen = false, oauth = 
     : k === 'news' ? newsBody(page, t)
       : k === 'wiki' ? wikiBody(page, t)
         : k === 'hall' ? hallBody(page, t)
+          : k === 'download' ? downloadBody(page, t)
           : page.id === 'not-found' ? notFoundBody(page, t) : legalBody(page, t);
   return `<!doctype html>
 <html lang="${page.lang}" data-page="${page.id}">

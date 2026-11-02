@@ -1,12 +1,15 @@
 // „App installieren“: Spiel ohne Browserleiste wie eine eigene App starten (weniger Fehlbedienung durch Browser-Tasten).
 // Chrome/Edge: echter Installationsdialog (beforeinstallprompt). Safari (iPad, Mac): kein Dialog möglich, daher eine
 // kurze Anleitung (iPad: Teilen → Zum Home-Bildschirm; Mac: Ablage → Zum Dock hinzufügen).
+// In den App-Hüllen (Apps/: Mac, iPhone/iPad, Android) kein Service Worker und kein Installieren-Knopf.
+import { appShell } from '../core/shell.js';
+
 let deferred = null;
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !appShell()) {
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; });
   if ('serviceWorker' in navigator && !import.meta.env.DEV) navigator.serviceWorker.register('/play/sw.js', { scope: '/play/' }).catch(() => {});
 }
-export const isInstalled = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
+export const isInstalled = () => !!appShell() || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
 
 export function installHelp() {
   const ua = navigator.userAgent;

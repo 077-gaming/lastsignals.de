@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LAST SIGNALS</string>
+    <string name="title_activity_main">LAST SIGNALS</string>
+    <string name="package_name">de.lastsignals.spiel</string>
+    <string name="custom_url_scheme">de.lastsignals.spiel</string>
+</resources>
