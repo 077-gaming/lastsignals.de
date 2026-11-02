@@ -232,6 +232,8 @@ export class Account {
    */
   async push(profile, opts = {}) {
     if (!profile || !this.linked(profile.callsign)) return { skipped: 'not-linked' };
+    // Lokaler Pilot gleichen Namens aus einer anderen Fraktion gehört nicht zum Konto: nie hochladen (Abgleich klärt)
+    if (profile.faction !== this.pilot.faction) return { skipped: 'faction' };
     if (this.pending && !opts.force) return { skipped: 'pending' };
     if (this._busy) { this._again = { profile, opts }; return this._busy; }
     this._busy = this._push(profile, opts).finally(() => {
@@ -251,7 +253,11 @@ export class Account {
     if (!pl.ok) { this._setStatus('too-big', errorText({ code: 'too-big' })); this._emit('notice', { kind: 'warn', text: errorText({ code: 'too-big' }) }); return { tooBig: true, bytes: pl.bytes }; }
     this._setStatus('saving');
     let r;
-    try { r = await this.api.save(pl.args); } catch (e) { return this._failed(cs, e); }
+    try { r = await this.api.save(pl.args); } catch (e) {
+      // Erstes Sichern gleichzeitig mit einem anderen Gerät: Zeile existiert jetzt → als Versionskonflikt behandeln
+      if ((e && e.code) === '23505' && !opts.raced) return this._push(profile, { ...opts, base: 0, always: true, raced: true });
+      return this._failed(cs, e);
+    }
     if (!r.conflict) {
       this._setMeta(cs, { version: r.version, hash: h, at: this.now(), dirty: false });
       this._setStatus('ok', 'GESICHERT');
@@ -294,6 +300,10 @@ export class Account {
   /** Beim Verlassen der Seite: best effort ohne Warten (fetch keepalive). */
   pushLeave(profile) {
     if (!profile || !this.linked(profile.callsign) || this.pending || !this.session) return false;
+    if (profile.faction !== this.pilot.faction) return false;
+    // Läuft gerade ein Sichern, würde ein zweites mit derselben Version einen falschen Konflikt („anderes Gerät“)
+    // auslösen. Bleibt etwas offen, merkt der nächste Abgleich den geänderten Stand (Prüfsumme) und sichert nach.
+    if (this._busy) return false;
     const m = this.meta(profile.callsign);
     const h = hashOf(profile);
     if (m && m.hash === h && !m.dirty) return false;

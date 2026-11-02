@@ -1423,6 +1423,26 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Lokaler Pilot gleichen Namens, andere Fraktion → nachfragen, nie hochladen', planC.decision === 'ask' && planC.mismatch);
   const pc = await devC.applyPlan(planC, 'local');
   check('Andere Fraktion: neuer Pilot im Konto, alter lokal gesichert', pc.faction === 'eris' && devC.lastBackup('Vexa')?.data?.faction === 'europa');
+  const foreign = newProfile('Vexa', 'europa'); foreign.level = 30; foreign.xp = 99999;
+  const rForeign = await devC.push(foreign);
+  check('Pilot gleichen Namens aus anderer Fraktion wird nie hochgeladen (auch nicht über „Ohne Konto spielen“)',
+    rForeign.skipped === 'faction' && devC.pushLeave(foreign) === false && (await api.loadSave(devC.pilot.id)).data.faction === 'eris');
+  // Verlassen während eines laufenden Sicherns: kein zweiter Aufruf mit derselben Version (sonst falscher Konflikt)
+  const busyP = devC.local.get('Vexa'); busyP.credits += 3; devC.local.save(busyP);
+  const inFlight = devC.push(devC.local.get('Vexa'));
+  const leaveSent = devC.pushLeave(devC.local.get('Vexa'));
+  const rBusy = await inFlight;
+  check('Verlassen während laufendem Sichern: kein Doppelsenden, kein falscher Konflikt', leaveSent === false && rBusy.ok && !devC.pending);
+  // Erstes Sichern zweier Geräte gleichzeitig (Datenbank meldet doppelten Eintrag): als Konflikt behandeln, nicht „Rufname vergeben“
+  {
+    let first = true;
+    const raceApi = { ...api, async save(a) { if (first) { first = false; await api.save({ ...a, p_data: { ...a.p_data, credits: (a.p_data.credits || 0) + 1 } }); throw { code: '23505', message: 'duplicate key value violates unique constraint "pilot_saves_pkey"' }; } return api.save(a); } };
+    const devD = new Account({ api: raceApi, local: memStore(), kv: kvMap(), client: 'test-d' });
+    await devD.init();
+    const pD = devD.local.get('Vexa') || newProfile('Vexa', 'eris'); pD.level = 40; pD.xp = 1; devD.local.save(pD);
+    const rD = await devD.push(devD.local.get('Vexa'));
+    check('Gleichzeitiges erstes Sichern: doppelter Eintrag wird als Versionskonflikt gelöst', rD.ok && (await api.loadSave(devC.pilot.id)).data.level === 40);
+  }
   const hof = await devC.hall(null, 'xp', 10);
   check('Ruhmeshalle (Attrappe): sortiert nach Erfahrung', hof.length === 2 && hof[0].callsign === 'Kora' && hof[0].xp >= hof[1].xp);
   await devC.logout();

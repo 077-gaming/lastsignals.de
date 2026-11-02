@@ -71,6 +71,9 @@ Beim Sichern mit `conflict` (`decideConflict`): Server-Stand laden und vergleich
 - **Eigener Stand hat mehr Fortschritt** → auf der neuen Server-Version aufbauen und überschreiben; Hinweis, dass ein anderes Gerät inzwischen gesichert hatte.
 - **Gleicher Fortschritt, andere Daten** → Spieler wählt (Dialog „Anderes Gerät war neuer“).
 - Solange ein Konflikt offen ist, wird nicht weiter gesichert.
+- Ein lokaler Pilot, dessen Fraktion nicht zum Konto passt, wird nie gesichert – auch nicht, wenn der Rufname des Kontos über „Ohne Konto spielen“ eingegeben wird (dann läuft derselbe Abgleich wie nach der Anmeldung).
+- Erstes Sichern zweier Geräte gleichzeitig (Datenbank meldet doppelten Eintrag) → wird wie ein Versionskonflikt behandelt.
+- Beim Verlassen der Seite wird nicht zusätzlich gesendet, solange ein normales Sichern läuft (sonst gleiche Version zweimal → falscher Konflikt). Der nächste Abgleich erkennt den geänderten Stand an der Prüfsumme.
 
 ## Ruhmeshalle
 
@@ -84,6 +87,7 @@ Beim Sichern mit `conflict` (`decideConflict`): Server-Stand laden und vergleich
 - Ein Konto hat genau einen Piloten. Weitere lokale Piloten bleiben lokal.
 - Bestätigungs- und Passwort-Mails kommen vom Supabase-Standardversand (begrenzte Menge je Stunde), bis ein eigener Mailserver eingetragen ist.
 - Weiterleitung nach dem Passwort-Link: `https://lastsignals.de/play/` muss in Supabase erlaubt sein (Authentication → URL Configuration, z. B. `https://lastsignals.de/**`). Sonst landet der Link auf der Hauptseite, die ihn an `/play/` weitergibt.
+- Ersetzte Stände liegen nur als Sicherung im Browser (`ls.cloud.backup.<rufname>`, jeweils der letzte); eine Schaltfläche zum Zurückholen gibt es noch nicht.
 - Konto löschen gibt es im Spiel noch nicht (Supabase-Dashboard oder später Website-Profil).
 
 ## Code und Tests
@@ -94,4 +98,4 @@ Beim Sichern mit `conflict` (`decideConflict`): Server-Stand laden und vergleich
 - `Code/src/net/supa.js` – ein gemeinsamer Supabase-Client (auch für den Koop-Funk).
 - `Code/src/ui/account-ui.js`, `account-flow.js`, `account.css` – Dialoge, Standwahl, Ruhmeshalle, Ablauf.
 - Selbsttest (`cd Code && npm test`): Abgleichregeln, Konflikte zwischen zwei Geräten, offline/nachsichern, Rufname vergeben, andere Fraktion, Größe, Fehlertexte.
-- Browser-Test ohne echte Konten: `http://localhost:5173/?konto=attrappe` (nur Entwicklungsserver). Vorbelegt `test@attrappe.local` / `geheim123`; Hilfen in der Konsole: `__lsMock.confirm(email)`, `__lsMock.bump(rufname, ep, stufen)` (anderes Gerät), `__lsMock.offline(true|false)`, `__lsMock.reset()`.
+- Browser-Test ohne echte Konten: `http://localhost:5173/?konto=attrappe` (nur Entwicklungsserver). Vorbelegt `test@attrappe.local` / `geheim123`; Hilfen in der Konsole (Port je nach Start, z. B. 5194): `__lsMock.confirm(email)`, `__lsMock.bump(rufname, ep, stufen)` (anderes Gerät), `__lsMock.offline(true|false)`, `__lsMock.reset()`.

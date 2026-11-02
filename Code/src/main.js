@@ -234,14 +234,15 @@ function playSession(profile, opts = {}) {
     window.addEventListener('pagehide', onPageHide);
 
     // Konto: Server-Stand sichern beim Andocken und alle 2 min im Flug; ein anderes Gerät war neuer → zur Station
-    let cloudT = 0, offAccount = () => { }, offDock = () => { };
+    let cloudT = 0, conflictT = 0, offAccount = () => { }, offDock = () => { };
     if (cloud) {
       offDock = bus.on('docked', () => { world.saveNow(); cloud.push(world.profile); });
       cloudT = setInterval(() => { if (!document.hidden && !cloud.pending) cloud.push(world.profile); }, CLOUD_EVERY * 1000);
       offAccount = cloud.on((type) => {
         if (type !== 'conflict') return;
         bus.emit('message', { kind: 'warn', title: 'KONTO', text: 'Ein anderes Gerät hat einen neueren Spielstand gesichert. Rückkehr zur Station, dort wird abgeglichen.' });
-        setTimeout(() => bus.emit('toHub'), 3000);
+        clearTimeout(conflictT);
+        conflictT = setTimeout(() => { if (running) bus.emit('toHub'); }, 3000);
       });
     }
 
@@ -254,7 +255,7 @@ function playSession(profile, opts = {}) {
       window.removeEventListener('beforeunload', saveOnLeave);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', onPageHide);
-      clearInterval(cloudT); offAccount(); offDock();
+      clearInterval(cloudT); clearTimeout(conflictT); offAccount(); offDock();
       window.removeEventListener('ls:store', onStore);
       input.dispose(); touch.dispose(); if (coop) coop.stop();
       audio.dispose();
@@ -344,8 +345,10 @@ async function main() {
     const { callsign } = login;
     const release = await lockPilot(callsign);
     if (!release) { notice(`Pilot ${callsign.toUpperCase()} ist bereits in einem anderen Tab aktiv. Dort weiterspielen oder den Tab schließen.`); continue; }
-    // Kontopilot: Server-Stand laden und mit dem lokalen Stand abgleichen (fragt, wenn beide gelten könnten)
-    if (login.account && account && account.linked(callsign)) await linkPilot(account, store);
+    // Kontopilot: Server-Stand laden und mit dem lokalen Stand abgleichen (fragt, wenn beide gelten könnten).
+    // Auch wenn der Rufname des Kontos über „Ohne Konto spielen“ eingegeben wurde: sonst würde ein lokaler Pilot
+    // gleichen Namens (evtl. andere Fraktion) ohne Abgleich auf den Server geschrieben.
+    if (account && account.linked(callsign)) await linkPilot(account, store);
     let profile = store.get(callsign);
     if (!profile) {
       const factionId = await factionSelect(screensRoot);
