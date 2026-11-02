@@ -1352,8 +1352,24 @@ export class ModelFactory {
     root.add(spin);
     const g = this._glb('freighter');
     const engines = [];
-    if (g) { g.scale.setScalar(g.userData.glbScale ?? 180 / (g.userData.glbLen || 180)); spin.add(g); }
-    else {
+    if (g) {
+      g.scale.setScalar(g.userData.glbScale ?? 180 / (g.userData.glbLen || 180));
+      spin.add(g);
+      // Meshy-Frachter: vier Düsen im Heck (2 × 2), Abgas und Positionslichter wie beim prozeduralen Frachter
+      spin.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(g), w = b.max.x - b.min.x, h = b.max.y - b.min.y, cy = (b.min.y + b.max.y) / 2;
+      const tg = this.trailGeo(), tm = this.trailMat(0xffb070), sm = this.sprite(0xffb070, 1.2);
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const hp = new THREE.Object3D(); hp.position.set(sx * w * 0.16, cy + sy * h * 0.14, b.max.z - 2); spin.add(hp);
+        const glow = new THREE.Sprite(sm); glow.scale.setScalar(13); hp.add(glow);
+        const trail = new THREE.Mesh(tg, tm); trail.scale.set(7, 7, 34); hp.add(trail);
+        engines.push({ hp, glow, trail, size: 1.6 });
+      }
+      const N = this.navMats();
+      for (const [x, y, z, m, sc] of [[b.min.x - 1, cy, 0, N.red, 5], [b.max.x + 1, cy, 0, N.green, 5], [0, b.max.y + 2, b.min.z + 20, N.white, 4], [0, b.max.y, b.max.z - 8, N.white, 4]]) {
+        const sp = new THREE.Sprite(m); sp.position.set(x, y, z); sp.scale.setScalar(sc); spin.add(sp);
+      }
+    } else {
       const v = seed % 3;
       const geos = this.geo('freighter:' + v, () => {
         const R = rng(911 + v * 37);

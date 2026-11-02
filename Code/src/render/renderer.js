@@ -72,38 +72,19 @@ if (typeof window !== 'undefined') {
   }, { timeout: 2500 });
 }
 
-// Optionale Modelle: werden nur geladen, wenn die Datei in public/models liegt (sonst bleibt das prozedurale Modell)
-// Aufbereitete Meshy-Gegner zeigen schon mit dem Bug nach −z (werkzeug/stationen.mjs, Drehung beim Aufbereiten)
+// Zusatzmodelle (Schlüssel → Datei, Optionen). Geladen wird erst, was die Szene braucht (_need beim Anlegen einer
+// Ansicht): Gegner, Station, Tor, Requisiten des aktuellen Sektors; tiefe Gegner erst in ihren Sektoren. Bis dahin
+// zeigt die Ansicht das prozedurale Modell und baut sich nach dem Laden neu auf (v.gk). Aufbereitete Meshy-Modelle
+// zeigen schon mit dem Bug nach −z (NEG_Z), Ausrüstungsteile nach glTF-Standard +z.
 const NEG_Z = { forward: '-z' };
-const OPTIONAL_MODELS = [
-  ['station:europa', '/models/station-europa.glb'],
-  ['station:saturn', '/models/station-saturn.glb'],
-  ['station:eris', '/models/station-eris.glb'],
-  ['enemy:vulture', '/models/enemy-vulture.glb'], // Meshy-Modell, aufbereitet 02.11.2026
-  // Meshy-Hauptreihe S01–S05, S07, S08 als Piraten der tiefen Sektoren (aufbereitet 02.11.2026: Bug nach −z, Länge 2, WebP)
-  ['enemy:corsair', '/models/enemy-corsair.glb', NEG_Z],
-  ['enemy:boarder', '/models/enemy-boarder.glb', NEG_Z],
-  ['enemy:merc', '/models/enemy-merc.glb', NEG_Z],
-  ['enemy:stalker', '/models/enemy-stalker.glb', NEG_Z],
-  ['enemy:colossus', '/models/enemy-colossus.glb', NEG_Z],
-  ['enemy:hunter', '/models/enemy-hunter.glb', NEG_Z],
-  ['enemy:dread', '/models/enemy-dread.glb', NEG_Z],
-  // weitere Meshy-Modelle (aufbereitet 02.11.2026): Stealth-Infiltrator, Siege-Bomber, Außenposten, Larva (groß als Sternenwal)
-  ['enemy:jammer', '/models/enemy-jammer.glb', NEG_Z],
-  ['enemy:minelayer', '/models/enemy-minelayer.glb', NEG_Z],
-  ['enemy:werft', '/models/enemy-werft.glb', NEG_Z],
-  ['enemy:wal', '/models/enemy-wal.glb', NEG_Z],
-  ['enemy:queen', '/models/enemy-queen.glb', NEG_Z],
-  // Grundgegner der Sektoren 1–3 aus Meshy (Heavy Enforcer, Jackal, Larva, Spiker); Schwarm-Varianten als eingefärbte Kopien
-  ['enemy:raider', '/models/enemy-raider.glb', NEG_Z],
-  ['enemy:jackal', '/models/enemy-jackal.glb', NEG_Z],
-  ['enemy:larva', '/models/enemy-wal.glb', NEG_Z],
-  ['enemy:spiker', '/models/enemy-queen.glb', NEG_Z],
-  ['enemy:spitter', '/models/enemy-queen.glb', { forward: '-z', tint: 0xc8ff8a }],
-  ['enemy:breeder', '/models/enemy-wal.glb', { forward: '-z', tint: 0xffe6a0 }],
-  ['enemy:symbiont', '/models/enemy-wal.glb', { forward: '-z', tint: 0x8affe0 }],
-  ['enemy:tender', '/models/enemy-wal.glb', { forward: '-z', tint: 0xfff3a0 }],
-];
+const EXTRA_MODELS = {
+  'station:europa': ['/models/station-europa.glb'],
+  'station:saturn': ['/models/station-saturn.glb'],
+  'station:eris': ['/models/station-eris.glb'],
+  nest: ['/models/enemy-nest.glb', NEG_Z],
+  freighter: ['/models/freighter.glb', NEG_Z],
+};
+for (const t of Object.keys(ENEMIES)) if (t !== 'nest') EXTRA_MODELS['enemy:' + t] = [`/models/enemy-${t}.glb`, NEG_Z];
 
 const PITCH = 55 * Math.PI / 180;
 const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
@@ -394,6 +375,7 @@ export class Renderer {
     if (!world) return;
     this.faction = sectorFaction(world);
     if (!this._modelsQueued) { this._modelsQueued = true; this._queueModels(world); }
+    this._needSector(world);
     this._shadowAt = null;
     this.env.build(world, this.lights, this.quality, this.rect.width * this.basePR, this.rect.height * this.basePR);
     this.output.uniforms.uFlare.value = this.env.flareStrength;
@@ -485,13 +467,24 @@ export class Renderer {
     // Drohnen (nur eigenes Fraktions-Set, nur geflogene Stufen) gehören dazu: auch sie nie sichtbar nachladen
     const drones = this.drones.setup(fac, world.drones || world.profile?.drones);
     this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl) : Promise.resolve(), drones]);
-    for (const [key, url, opts] of OPTIONAL_MODELS) {
-      fetch(url, { method: 'HEAD' }).then((r) => {
-        const t = r.headers.get('content-type') || '';
-        if (r.ok && !t.includes('html') && !this._disposed) return this.factory.registerGLB(key, url, opts);
-        return null;
-      }).catch(() => { /* kein Modell vorhanden */ });
-    }
+  }
+
+  /** Gegner des Sektors (auch noch nicht erschienene, Ereignis-Piraten, Brut) gleich beim Sektoraufbau anfordern */
+  _needSector(world) {
+    const sec = world.sector || {};
+    const types = new Set([...(sec.spawns || []).map((s) => s.type), ...(sec.eventPirates || [])]);
+    for (const t of [...types]) { const b = ENEMIES[t]?.brood?.type; if (b) types.add(b); }
+    for (const t of types) this._need('enemy:' + t);
+  }
+
+  /** Zusatzmodell anfordern (einmal je Schlüssel; fehlt die Datei, bleibt das prozedurale Modell) */
+  _need(key) {
+    const M = EXTRA_MODELS[key];
+    if (!M || !this._loadGLB || this.factory.glb.has(key)) return;
+    const T = this._needT || (this._needT = new Set());
+    if (T.has(key)) return;
+    T.add(key);
+    this._loadGLB(key, M[0], M[1]);
   }
 
   // Alles vorab vorbereiten, was sonst beim ersten Auftreten ruckelt: Ansichten aller vorhandenen Entities,
@@ -607,6 +600,9 @@ export class Renderer {
       if (W.entities) W.entities.forEach((e) => { if (e.kind === 'station') has = true; });
       if (has) probe = this.factory.buildStation(this.faction, 0);
     }
+    else if (key.startsWith('enemy:')) probe = this.factory.buildEnemy(key.slice(6));
+    else if (key === 'nest') probe = this.factory.buildNest(0);
+    else if (key === 'freighter') probe = this.factory.buildFreighter(0);
     if (!probe) return; // für diese Sitzung nicht sichtbar: nichts vorbereiten (spart Grafikspeicher)
     const root = probe.root;
     root.position.set(this.camTarget.x, 0, this.camTarget.z);
@@ -678,7 +674,9 @@ export class Renderer {
       const fac = e.faction || this.world?.profile?.faction || this.faction, sh = e.ship || this.world?.profile?.ship || 's1';
       v.gk = [`ship:${sh}:${fac}`, `ship:${sh}`];
     } else if (e.kind === 'station') v.gk = [`station:${this.faction}`, 'station'];
-    if (v.gk) v.ver = f.keyVer(v.gk[0], v.gk[1]);
+    else if (e.kind === 'enemy') v.gk = [e.type === 'nest' ? 'nest' : 'enemy:' + e.type];
+    else if (e.kind === 'nest' || e.kind === 'freighter') v.gk = [e.kind];
+    if (v.gk) { for (const k of v.gk) this._need(k); v.ver = f.keyVer(v.gk[0], v.gk[1]); }
     switch (e.kind) {
       case 'player': {
         const fac = e.faction || this.world?.profile?.faction || this.faction;
