@@ -1320,7 +1320,36 @@ export class ModelFactory {
     body.add(spin); body.add(outer);
     const g = this._glb('portal');
     const col = 0x6ad8ff;
-    if (g) { spin.add(g); return { root, spin, outer, layers: null }; }
+    if (g) {
+      // Meshy-Ring behalten; der Schacht darunter (bis −197 m) stand in der Verfolgersicht als dunkle Trommel vor dem
+      // Tor → im Vertex-Shader auf ein Achtel gestaucht (kurzer Kragen unter der Flugebene), Wirbel wieder sichtbar
+      g.traverse((o) => {
+        if (!o.isMesh) return;
+        const L = Array.isArray(o.material) ? o.material : [o.material];
+        o.material = L.map((m) => this.mat('portal:glb:' + m.uuid, () => {
+          const c = m.clone();
+          c.onBeforeCompile = (sh) => {
+            // in Weltlage stauchen (die Meshy-Datei ist quantisiert: Knoten-Versatz/-Maßstab, lokales y ≠ Torhöhe);
+            // das Tor steht auf y = 0 und dreht nur um die Hochachse
+            sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+              { float wy = (modelMatrix * vec4(transformed, 1.0)).y;
+                if (wy < 0.0) transformed += inverse(mat3(modelMatrix)) * vec3(0.0, wy * -0.88, 0.0); }`);
+          };
+          c.customProgramCacheKey = () => 'portalShaft';
+          return c;
+        }));
+        if (o.material.length === 1) o.material = o.material[0];
+      });
+      spin.add(g);
+      const layers = [];
+      const disc = this.geo('portal:disc', () => new THREE.CircleGeometry(1, 96).rotateX(-PI / 2));
+      for (let i = 0; i < 3; i++) {
+        const L = new THREE.Mesh(disc, this.portalSwirlMat(col, i));
+        L.position.y = 2 - i * 9; L.scale.setScalar(112 - i * 22); L.renderOrder = 2 - i;
+        body.add(L); layers.push(L);
+      }
+      return { root, spin, outer, layers };
+    }
     const metal = this.std('portal:metal', { color: 0x40434a, metal: 0.8, rough: 0.46, env: 0.7, panel: 0.14, lines: 0.5, rim: 0.1 });
     const dark = this.std('portal:dark', { color: 0x1c1d22, metal: 0.8, rough: 0.48, env: 0.7, panel: 0.22, lines: 0.45 });
     const geos = this.geo('portal:v4', portalGeometry);
