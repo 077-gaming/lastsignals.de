@@ -1950,7 +1950,9 @@ export class Renderer {
     // Browser, den Weichzeichner über die ganze Fläche neu zu rechnen (angedockt vorher 25–40 Bilder/s).
     if (W && W.docked) {
       const settled = this._dockK >= 1 && this._intro.done;
-      if ((this.frame & (settled ? 31 : 3)) !== 0) return;
+      // Neue Leinwandgröße (adaptive Auflösung, Fenster) leert die Leinwand: dann sofort zeichnen, sonst bliebe sie
+      // bis zum nächsten gezeichneten Bild (bis 0,5 s) schwarz
+      if (!this._mustDraw && (this.frame & (settled ? 31 : 3)) !== 0) return;
     }
     this._introStep();
     // Sektorsprung: solange die neuen Shader parallel übersetzen, bleibt das letzte Bild (Sprungblitz) stehen
@@ -1962,6 +1964,7 @@ export class Renderer {
     if (!this._useComposer()) G.render(this.scene, cam);
     else this.composer.render(dt);
     this.gpuTimer.end();
+    this._mustDraw = false;
     const S = this.stats;
     S.gpu = this.gpuTimer.gpu; S.calls = G.info.render.calls; S.tris = G.info.render.triangles;
     S.pr = this._ipr; S.opr = this._opr; S.up = this._upscaling; S.scale = this.scale; S.w = this.canvas.width; S.h = this.canvas.height;
@@ -2001,6 +2004,8 @@ export class Renderer {
       P.last = now; P.winStart = now; P.frames = 0; return; // Pause/verstecktes Fenster: nicht werten
     }
     P.last = now;
+    // Stehendes Bild beim Sektorsprung: nicht werten und nicht umschalten (neue Leinwandgröße hieße schwarzes Bild)
+    if (this._hold) { P.winStart = now; P.frames = 0; return; }
     if (P.warm > 0) { P.warm -= dt; P.winStart = now; P.frames = 0; return; }
     P.frames++;
     const span = now - P.winStart;
@@ -2098,6 +2103,7 @@ export class Renderer {
     this._bloomScale = Math.min(this._bloomCap ?? 1, ipr >= 1.5 ? 0.5 : ipr > 1.15 ? 0.7 : 1);
     this.gl.setPixelRatio(opr);
     this.gl.setSize(w, h, false);
+    this._mustDraw = true; // Leinwand ist jetzt leer: im selben Bild neu zeichnen (auch angedockt)
     this.composer._pixelRatio = ipr; // EffectComposer.setPixelRatio ruft setSize ohnehin auf
     this.composer.setSize(w, h);
     this.chain.passes.up.setOutputSize(this.canvas.width, this.canvas.height);

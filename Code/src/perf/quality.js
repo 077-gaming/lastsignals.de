@@ -324,9 +324,11 @@ export function decideQuality(gpu, probe, cpuMs, w = window.innerWidth, h = wind
 /** Gilt die gespeicherte Stufe als automatisch (keine eigene Wahl)? */
 export function isAutoQuality() {
   const raw = readJSON(SET_KEY), qa = readJSON(AUTO_KEY);
+  // Einzelne Grafikwerte selbst eingestellt (BENUTZERDEFINIERT) oder EXTREM: eigene Wahl, hat Vorrang. Vor der
+  // Namensprüfung: Q_INDEX kennt nur die vier Browser-Stufen, EXTREM galt sonst als unbekannt = automatisch
+  // und wurde beim Start mit ULTRA überschrieben.
+  if (raw && (hasOwnPreset(raw) || raw.quality === 'extreme')) return false;
   if (!raw || qIndex(raw.quality) === null) return true;
-  // Einzelne Grafikwerte selbst eingestellt (BENUTZERDEFINIERT) oder EXTREM: eigene Wahl, hat Vorrang
-  if (hasOwnPreset(raw) || raw.quality === 'extreme') return false;
   if (raw.qualityAuto === true) return true;
   if (qa && qa.quality === raw.quality) return true;
   // Übergang: vor der automatischen Wahl gespeicherte Standardstufe (HOCH bzw. ULTRA) gilt nicht als eigene Wahl
