@@ -75,6 +75,9 @@ if (clockEl) { const tick = () => { clockEl.textContent = new Date().toISOString
 const fm = document.querySelector('[data-formations]');
 near(fm, () => import('./visuals/formations.js').then((m) => m.initFormations(fm)));
 
+// ---------- Download-Seite: passende Kachel für dieses Gerät ----------
+if (document.querySelector('[data-dl-grid]')) import('./download.js').then((m) => m.initDownloads());
+
 // ---------- Live-Status (ehrlich: Testphase, bis der Spielserver läuft) ----------
 getStatus().then((s) => {
   const el = document.querySelector('[data-live]');

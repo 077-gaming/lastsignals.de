@@ -52,3 +52,7 @@ Aufbau ist okay und macht schon Spaß. **Die Animationen gefallen nicht:** sie m
 ## Rückmeldung Toni: so einfach wie die alte DarkOrbit-Seite (30.10.2026)
 
 Die alte Seite war einfach und übersichtlich, man wollte überall draufdrücken. Bei uns ist zu viel überall. Daher: Hauptaktion sofort sichtbar (Jetzt spielen / Rufname sichern), pro Kapitel genau eine klare Überschrift, ein starkes Bild bzw. eine Szene und ein kurzer Satz, wenige große Klickflächen statt vieler kleiner Infos, Details erst auf Klick. Ruhe zwischen den Kapiteln, keine Datenwände.
+
+## Download-Seite (02.11.2026)
+
+Eigene Seite `/download/` bzw. `/en/download/` (Navigation, Knopf „Apps & Download“ auf der Startseite): Kacheln für macOS, Windows, iPhone, iPad, Android und „Im Browser spielen“ mit neutralen Geräte-Symbolen (keine Markenlogos), Version, Größe, Voraussetzung, aufklappbarer Installationshinweis. Die Geräteerkennung hebt die passende Kachel hervor und zeigt oben die Empfehlung. Ehrlich gekennzeichnet: Testversion, unsigniert, iPhone/iPad nur per Sideloading, dafür als einfacher Weg die Web-App („Zum Home-Bildschirm“). Version, Release-Tag, Dateinamen und Größen stehen nur in `src/content/downloads.js` (Größen: `node Apps/download-groessen.mjs`).

@@ -43,7 +43,7 @@ export const CH = {
       ['silence', '01', 'Die Große Stille'], ['factions', '02', 'Wähle deine Seite'], ['why', '03', 'Warum LAST SIGNALS'],
       ['hangar', '04', 'Schiffe & Ausrüstung'], ['system', '05', 'Das Sonnensystem'], ['founder', '06', 'Gründungspilot'], ['community', '07', 'Gemeinschaft'],
     ],
-    pages: { wiki: 'Wiki', news: 'News', hall: 'Ruhmeshalle' },
+    pages: { download: 'Download', wiki: 'Wiki', news: 'News', hall: 'Ruhmeshalle' },
     hdr: {
       play: 'Jetzt spielen', playLocked: 'Testphase', signIn: 'Anmelden', profile: 'Profil', signOut: 'Abmelden',
       status: 'Status', statusTest: 'Testphase', statusOnline: 'Server online', statusOffline: 'Server offline', pilots: 'Piloten im All', next: 'Nächstes Event',
@@ -57,7 +57,7 @@ export const CH = {
     hero: {
       kicker: 'Übertragung 2391 · Inneres Sonnensystem',
       lead: 'Die Erde schweigt. Drei Mächte kämpfen um das, was von der Menschheit übrig ist.',
-      play: 'Jetzt losfliegen', playState: 'Öffentliche Testversion 0.1', reserve: 'Rufnamen als Gründungspilot sichern',
+      play: 'Jetzt losfliegen', apps: 'Apps & Download', playState: 'Öffentliche Testversion 0.1', reserve: 'Rufnamen als Gründungspilot sichern',
       head: 'Die Erde schweigt. <em>Du nicht.</em>',
       sub: 'Kostenloses Weltraum-MMO im Browser. Wähle eine von drei Mächten, rüste dein Schiff, erobere das Sonnensystem.',
       trust: 'Kostenlos · Kein Download · In Sekunden im Cockpit',
@@ -197,7 +197,7 @@ export const CH = {
       ['silence', '01', 'The Great Silence'], ['factions', '02', 'Choose your side'], ['why', '03', 'Why LAST SIGNALS'],
       ['hangar', '04', 'Ships & gear'], ['system', '05', 'The solar system'], ['founder', '06', 'Founding pilot'], ['community', '07', 'Community'],
     ],
-    pages: { wiki: 'Wiki', news: 'News', hall: 'Hall of Fame' },
+    pages: { download: 'Download', wiki: 'Wiki', news: 'News', hall: 'Hall of Fame' },
     hdr: {
       play: 'Play now', playLocked: 'In testing', signIn: 'Sign in', profile: 'Profile', signOut: 'Sign out',
       status: 'Status', statusTest: 'In testing', statusOnline: 'Server online', statusOffline: 'Server offline', pilots: 'Pilots in space', next: 'Next event',
@@ -211,7 +211,7 @@ export const CH = {
     hero: {
       kicker: 'Transmission 2391 · Inner solar system',
       lead: 'Earth has gone silent. Three powers fight over what is left of humanity.',
-      play: 'Launch now', playState: 'Public test version 0.1', reserve: 'Claim your callsign as a founding pilot',
+      play: 'Launch now', apps: 'Apps & download', playState: 'Public test version 0.1', reserve: 'Claim your callsign as a founding pilot',
       head: 'Earth went silent. <em>You won’t.</em>',
       sub: 'A free space MMO in your browser. Pick one of three powers, gear up your ship, conquer the solar system.',
       trust: 'Free · No download · In the cockpit in seconds',
