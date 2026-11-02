@@ -7,6 +7,7 @@ import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { SystemSeries } from './sim/system-quests.js';
 import { Contracts } from './sim/contracts.js';
+import { STORY_QUESTS, STORY_CHAPTERS } from './sim/story.js';
 import { SystemGuide } from './ui/hud-guide.js';
 import { StationUI } from './ui/station.js';
 import { HudTouch } from './ui/hud-touch.js';
@@ -105,7 +106,9 @@ function playSession(profile, opts = {}) {
     const station = new StationUI(hudRoot, bus, world);
     // SYSTEM-Reihe (optionale Einführung, Planung/QUESTS_SYSTEM.md)
     const series = new SystemSeries(world, bus, () => renderer.cameraMode);
-    const guide = new SystemGuide(hudRoot, series, world);
+    // Hauptgeschichte Kapitel 1: gleiche Mechanik, eigener Stand; läuft, sobald die Einführung nicht mehr führt
+    const story = new SystemSeries(world, bus, () => renderer.cameraMode, { quests: STORY_QUESTS, chapters: STORY_CHAPTERS, key: 'story', label: 'FUNK', mode: 'guided' });
+    const guide = new SystemGuide(hudRoot, series, world, story);
     const contracts = new Contracts(world, bus); // Tages- und Wochenaufträge
     const input = new Input(canvas, world, renderer, bus);
     const touch = new HudTouch(hudRoot, world, renderer, input); // iPad/Tablet: Joystick, Knöpfe, Zielanzeige
@@ -204,6 +207,7 @@ function playSession(profile, opts = {}) {
       perfHud.frame(dt, t1 - t0);
       hud.update(dt);
       series.update(dt);
+      if (!series.active && series.state.mode != null) story.update(dt);
       contracts.update(dt);
       guide.render();
       audio.update();
@@ -234,6 +238,7 @@ function playSession(profile, opts = {}) {
       input.dispose(); touch.dispose(); if (coop) coop.stop();
       audio.dispose();
       series.dispose();
+      story.dispose();
       guide.dispose();
       hud.dispose();
       hudRoot.innerHTML = '';

@@ -2,7 +2,6 @@
 // ersten Flug eines neuen Piloten die Wahl „Geführter Einstieg“ oder „Direkt spielen“. Taste G blendet die
 // Karte ein und aus bzw. setzt die Reihe fort. Bausteine aus theme.css (Planung/UI_STIL.md).
 import './hud-guide.css';
-import { SYSTEM_QUESTS, SYSTEM_CHAPTERS } from '../sim/system-quests.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
 // Ziele, die an der Station erledigt werden: Karte bleibt beim Andocken sichtbar
@@ -10,8 +9,9 @@ const STATION_GOALS = ['sell', 'buy', 'equip', 'drone', 'window', 'setting', 'le
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export class SystemGuide {
-  constructor(root, series, world) {
+  constructor(root, series, world, story = null) {
     this.series = series;
+    this.story = story;
     this.world = world;
     this.el = document.createElement('div');
     this.el.className = 'lsg';
@@ -19,9 +19,10 @@ export class SystemGuide {
     this._key = '';
     this._onKey = (e) => {
       if (e.code !== 'KeyG' || e.repeat || e.target?.closest?.('input, textarea')) return;
-      const s = series.state;
-      if (s.mode !== 'guided' && !series.finished) series.choose('guided');
-      else if (s.mode === 'guided') series.choose('direct');
+      // G gilt für die Einführung, solange sie nicht fertig ist, danach für die Geschichte
+      const t = !series.finished || !story || story.finished ? series : story, s = t.state;
+      if (s.mode !== 'guided' && !t.finished) t.choose('guided');
+      else if (s.mode === 'guided') t.choose('direct');
       this.render(true);
     };
     window.addEventListener('keydown', this._onKey);
@@ -29,9 +30,10 @@ export class SystemGuide {
       const b = e.target.closest('[data-act]');
       if (!b) return;
       const act = b.dataset.act;
+      const t = this._shown || series;
       if (act === 'guided' || act === 'direct') series.choose(act);
-      else if (act === 'skip') series.skip();
-      else if (act === 'hide') series.choose('direct');
+      else if (act === 'skip') t.skip();
+      else if (act === 'hide') t.choose('direct');
       this.render(true);
     });
     this.render(true);
@@ -43,7 +45,9 @@ export class SystemGuide {
     const now = performance.now();
     if (!force && now - (this._t || 0) < 200) return;
     this._t = now;
-    const s = this.series, st = s.state, w = this.world;
+    const sys = this.series, sy = sys.state, w = this.world;
+    // Einführung hat Vorrang (Wahl offen oder geführt); sonst die Geschichte, wenn sie läuft
+    const s = this._shown = (sy.mode == null || (sy.mode === 'guided' && !sys.finished) || !this.story) ? sys : this.story, st = s.state;
     if (st.mode === 'guided' && !s.finished) s.reportUi(this._ui());
     let key, html;
     if (st.mode == null) {
@@ -110,13 +114,13 @@ export class SystemGuide {
       else if (g.type === 'level') goalText = `Stufe ${g.level} erreichen`;
       const r = q.reward || {};
       const rew = [r.credits && `${fmt(r.credits)} Cr`, r.tritium && `${fmt(r.tritium)} T`, r.xp && `${fmt(r.xp)} EP`, r.honor && `${fmt(r.honor)} Ehre`].filter(Boolean).join(' · ');
-      const no = SYSTEM_QUESTS.indexOf(q) + 1;
+      const no = s.quests.indexOf(q) + 1;
       const pct = Math.round((prog / max) * 100);
       // Segmentierter Balken (10 Segmente)
       const seg = Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(pct / 10) ? 'on' : ''}"></i>`).join('');
       key = `${q.id}|${goalText}|${pct}`;
       html = `<div class="lsg-card ls-panel"><span class="ls-corners"></span>
-        <div class="ls-head"><span class="ls-code">SYSTEM · ${String(no).padStart(2, '0')}/${SYSTEM_QUESTS.length}</span><span class="ls-title">${esc(SYSTEM_CHAPTERS[q.ch] || '')}</span><span class="ls-spacer"></span>${q.key ? `<span class="ls-key">${esc(q.key)}</span>` : ''}</div>
+        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${q.key ? `<span class="ls-key">${esc(q.key)}</span>` : ''}</div>
         <div class="lsg-body">
           <div class="lsg-title">${esc(q.title)}</div>
           <p class="lsg-text">${esc(q.text)}</p>

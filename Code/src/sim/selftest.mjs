@@ -1255,6 +1255,20 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   s.dispose();
 }
 
+// ---- Storykapitel 1 über die Mechanik der SYSTEM-Reihe ----
+{
+  const { SystemSeries } = await import('./system-quests.js');
+  const { STORY_QUESTS, STORY_CHAPTERS } = await import('./story.js');
+  const pr = newProfile('Erzähler', 'europa'), bus = makeBus(), w = new World(pr, bus, { seed: 71 });
+  const st = new SystemSeries(w, bus, () => 'chase', { quests: STORY_QUESTS, chapters: STORY_CHAPTERS, key: 'story', label: 'FUNK', mode: 'guided' });
+  check('Story: eigener Stand, sofort geführt, SYSTEM-Stand unberührt', pr.story.mode === 'guided' && st.current.id === 'hs01-1' && !pr.system);
+  w._questProgress('event', 'convoy', 1);
+  bus.emit('docked', {});
+  const wp = st.waypoint(); w.player.x = wp.x; w.player.z = wp.z; st.update(0.1);
+  check('Story: Konvoi, Andocken, Peilung nacheinander', pr.story.done.join() === 'hs01-1,hs01-2,hs01-3' && st.current.id === 'hs01-4');
+  st.dispose();
+}
+
 // ---- Tiefe Sektoren 4–8, neue Gegner, Bosse, Tages- und Wochenaufträge ----
 {
   const { sectorsFor, ENEMIES: EN } = await import('../core/data.js');

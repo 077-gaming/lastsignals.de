@@ -86,20 +86,26 @@ const fmt = (n) => Math.round(n).toLocaleString('de-DE');
 
 export class SystemSeries {
   // cameraMode: Funktion, die 'chase' oder 'tactical' liefert (Grafik), damit die Simulation die Ansicht nicht kennt
-  constructor(world, bus, cameraMode = () => 'chase') {
+  // opts: quests/chapters (eigene Reihe, z. B. Storykapitel), key (Stand in profile[key]), label (Funkzeile, Karte),
+  //       mode (Startmodus für neue Stände, z. B. 'guided' ohne Wahl)
+  constructor(world, bus, cameraMode = () => 'chase', opts = {}) {
+    this.quests = opts.quests || SYSTEM_QUESTS;
+    this.chapters = opts.chapters || SYSTEM_CHAPTERS;
+    this.key = opts.key || 'system';
+    this.label = opts.label || 'SYSTEM';
     this.world = world;
     this.bus = bus;
     this.cameraMode = cameraMode;
     this._brakeArmed = false;
     this._spawned = null; this._pend = null; this._jmpArmed = false;
     const pr = world.profile;
-    if (!pr.system || typeof pr.system !== 'object') pr.system = { mode: null, idx: 0, progress: 0, done: [], skipped: [] };
-    const s = pr.system;
+    if (!pr[this.key] || typeof pr[this.key] !== 'object') pr[this.key] = { mode: opts.mode || null, idx: 0, progress: 0, done: [], skipped: [] };
+    const s = pr[this.key];
     if (!Array.isArray(s.done)) s.done = [];
     if (!Array.isArray(s.skipped)) s.skipped = [];
-    s.idx = Math.max(0, Math.min(SYSTEM_QUESTS.length, s.idx | 0));
+    s.idx = Math.max(0, Math.min(this.quests.length, s.idx | 0));
     // Erfahrene Spielstände: Reihe liegt bereit, führt aber nicht von selbst
-    if (s.mode == null && ((pr.level || 1) > 1 || (pr.xp || 0) > 0)) s.mode = 'direct';
+    if (s.mode == null && ((pr.level || 1) > 1 || (pr.xp || 0) > 0)) s.mode = opts.mode || 'direct';
     this.offs = [
       bus.on('explode', (p) => {
         const e = world.entities.get(p.id);
@@ -128,7 +134,7 @@ export class SystemSeries {
     const onUi = (ev) => this.mark(ev.detail?.target);
     const onSet = () => this.mark('setting');
     const onSys = (ev) => { const a = ev.detail?.act; if (a === 'guide') this.choose('guided'); else if (a === 'direct') this.choose('direct'); else if (a === 'restart') this.restart(); };
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && this.key === 'system') {
       window.addEventListener('ls:quest', onUi); window.addEventListener('ls:settings', onSet); window.addEventListener('ls:system', onSys);
       this.offs.push(() => { window.removeEventListener('ls:quest', onUi); window.removeEventListener('ls:settings', onSet); window.removeEventListener('ls:system', onSys); });
     }
@@ -157,9 +163,9 @@ export class SystemSeries {
     world.setConfig = (n) => { const r = cfg(n); if (ok(r)) { this._config = n; this._count('config', n, 1); } return r; };
   }
 
-  get state() { return this.world.profile.system; }
-  get current() { return SYSTEM_QUESTS[this.state.idx] || null; }
-  get finished() { return this.state.idx >= SYSTEM_QUESTS.length; }
+  get state() { return this.world.profile[this.key]; }
+  get current() { return this.quests[this.state.idx] || null; }
+  get finished() { return this.state.idx >= this.quests.length; }
   get active() { return this.state.mode === 'guided' && !this.finished; }
 
   choose(mode) { this.state.mode = mode; this.world.save?.(); this.bus.emit('system', { kind: 'mode', mode }); }
@@ -322,7 +328,8 @@ export class SystemSeries {
     if (r.xp && w._addXp) w._addXp(r.xp);
     this.state.done.push(q.id);
     this._next();
-    w._msg?.(`SYSTEM · ${q.title} erledigt. ${parts.join(', ')}.`, 'quest');
+    w._msg?.(`${this.label} · ${q.title} erledigt. ${parts.join(', ')}.`, 'quest');
+    if (q.after) w._msg?.(q.after, 'info');
     w._emitProfile?.();
     w.save?.();
     this.bus.emit('system', { kind: 'done', quest: q });
@@ -350,7 +357,7 @@ export class SystemSeries {
     s.progress = 0;
     this._brakeArmed = false;
     // Bereits erledigte Quests (nach Neustart der Reihe) überspringen, damit es keine doppelten Belohnungen gibt
-    while (s.idx < SYSTEM_QUESTS.length && s.done.includes(SYSTEM_QUESTS[s.idx].id)) s.idx++;
+    while (s.idx < this.quests.length && s.done.includes(this.quests[s.idx].id)) s.idx++;
   }
 
   dispose() { for (const off of this.offs) off(); }
