@@ -7,7 +7,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { CameraLookPass } from './post.js';
 import { BloomPass } from './bloom.js';
 import { FACTIONS, SHIPS, ENEMIES } from '../core/data.js';
-import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, preloadGLB } from './models.js';
+import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, EQUIP_URL, equipKeys, preloadGLB } from './models.js';
 import { store } from '../core/store.js';
 import { JumpMarker } from './marker.js';
 import { Environment, sectorFaction } from './environment.js';
@@ -55,9 +55,10 @@ const MODEL_URL = new Map(MODELS.map(([k, u]) => [k, u]));
 
 /** Eigenes Schiffsmodell schon vor dem Flug laden (z. B. in der Startsequenz): beim ersten Bild steht dann das
  *  echte Modell bereit, es gibt keinen sichtbaren Wechsel vom Platzhalter. Gibt ein Promise zurück (nie Fehler). */
-export function preloadShip(faction, ship = 's1', drones = null) {
+export function preloadShip(faction, ship = 's1', drones = null, loadout = null) {
   const url = MODEL_URL.get(`ship:${ship || 's1'}:${faction}`);
   if (drones) preloadDrones(faction, drones); // eigene Drohnen gleich mit (nur Fraktions-Set, nur geflogene Stufen)
+  for (const k of equipKeys(loadout)) preloadGLB(EQUIP_URL[k]).catch(() => null); // Laser/Generatoren des Loadouts
   return url ? preloadGLB(url).then(() => true, () => false) : Promise.resolve(false);
 }
 // Gleich nach dem Laden der Seite (im Leerlauf): Schiff des zuletzt gespielten Piloten vorladen
@@ -67,7 +68,7 @@ if (typeof window !== 'undefined') {
     try {
       const cs = store.lastCallsign();
       const pr = cs ? store.get(cs) : null;
-      if (pr && pr.faction) preloadShip(pr.faction, pr.ship, pr.drones);
+      if (pr && pr.faction) preloadShip(pr.faction, pr.ship, pr.drones, pr.loadout);
     } catch { /* egal */ }
   }, { timeout: 2500 });
 }
