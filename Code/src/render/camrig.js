@@ -54,7 +54,7 @@ export class CameraRig {
     this.cockpit = s.cockpit;              // Cockpit = Verfolger-Steuerung aus dem Pilotenplatz
     this.kc = this.kcRaw = s.cockpit ? 1 : 0;
     this.cockpitFov = s.cockpitFov;
-    this.lookYaw = 0; this.lookPitch = 0; this.looking = false; // freies Umsehen im Cockpit (mittlere Maustaste)
+    this.lookYaw = 0; this.lookPitch = 0; this.looking = false; // Umsehen: Cockpit (mittlere Maustaste, rechter Stick), Verfolger (rechter Stick)
     this._apply(s);
     this.trauma = 0;                       // 0..1, Quadrat bestimmt die Stärke
     this.kick = new THREE.Vector3();       // Stoß-Feder (Welt-Versatz in m)
@@ -162,12 +162,14 @@ export class CameraRig {
     if (!this._yawInit || this.reset) { this.yaw = yawWant; this._yawInit = true; }
     // weiches Nachdrehen: bei schneller Kurve hängt die Kamera sichtbar hinterher (Gewicht)
     this.yaw += wrap(yawWant - this.yaw) * (1 - Math.exp(-dt * (2.6 + 1.2 * ck)));
-    const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
+    // Umsehen (Controller, rechter Stick): Kamera kreist um das Schiff, federt beim Loslassen zurück (step)
+    const lk = 1 - this.kc, yv = this.yaw + this.lookYaw * lk;
+    const fx = -Math.sin(yv), fz = -Math.cos(yv);
     const r = Math.max(14, pv.vr);
     // Abstand: Grundabstand × Zoom, beim Beschleunigen etwas zurück, bei Tempo etwas weiter, im Kampf weiter
     const accK = Math.max(-0.6, Math.min(1, this.accel / ((maxSpeed || 320) * 0.45)));
     const D = r * CH_DIST * this.zoom * (1 + 0.08 * n + 0.1 * accK * this.motion + 0.16 * ck);
-    const elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck;
+    const elev = Math.max(0.03, Math.min(1.15, CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck - this.lookPitch * 0.8 * lk));
     const ox = -fx * D * Math.cos(elev), oz = -fz * D * Math.cos(elev), oy = D * Math.sin(elev) + r * 0.3;
     // Federung: Kamera-Versatz folgt kritisch gedämpft (keine Schwingung, nur Nachziehen)
     if (this.reset) { this.pos.set(ox, oy, oz); this.posV.set(0, 0, 0); this._pitch = null; }
@@ -208,7 +210,7 @@ export class CameraRig {
     const d = dt / BLEND_T;
     this.kRaw = want > this.kRaw ? Math.min(want, this.kRaw + d) : Math.max(want, this.kRaw - d);
     this.k = smooth(this.kRaw);
-    if (!this.looking || !this.cockpit) { const k = 1 - Math.exp(-dt * 5); this.lookYaw -= this.lookYaw * k; this.lookPitch -= this.lookPitch * k; }
+    if (!this.looking) { const k = 1 - Math.exp(-dt * 5); this.lookYaw -= this.lookYaw * k; this.lookPitch -= this.lookPitch * k; }
     const wc = this.cockpit ? 1 : 0;
     this.kcRaw = wc > this.kcRaw ? Math.min(wc, this.kcRaw + d) : Math.max(wc, this.kcRaw - d);
     this.kc = smooth(this.kcRaw);

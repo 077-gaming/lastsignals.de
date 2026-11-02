@@ -5,6 +5,7 @@ import { TextSlot, ClassSlot, Bar, fmt } from './hud-parts.js';
 import { SYSTEM_QUESTS, SYSTEM_CHAPTERS } from '../sim/system-quests.js';
 import { contractTitle } from '../sim/contracts.js';
 import { STORY_QUESTS } from '../sim/story.js';
+import { padTable, paintPadKeys, padStatus } from './pad-map.js';
 
 const GROUP = { pirate: 'PIRAT', swarm: 'SCHWARM' };
 const BEH = { aggressive: 'AGGRESSIV', passive: 'PASSIV', opportunist: 'LAUERT', thief: 'PLÜNDERER', territorial: 'REVIER', stationary: 'STATIONÄR', nest: 'NEST' };
@@ -123,7 +124,8 @@ export function menuHtml(windows) {
         <div class="mp-sec">FENSTER</div>
         <div class="mp-wins">${wins}</div>
       </section>
-      <section class="mp-pane" data-pane="steuerung"><div class="mp-ctrl">${ctrl}</div></section>
+      <section class="mp-pane" data-pane="steuerung"><div class="mp-ctl-wrap"><div class="mp-ctrl">${ctrl}</div>
+        <div class="mp-padsec"><div class="mp-sec mp-sec-t">CONTROLLER<span class="hg-sp"></span><span class="mp-sec-n gp-st" data-r="padst"></span></div>${padTable()}</div></div></section>
       <section class="mp-pane" data-pane="hilfe">
         <div class="mp-sec mp-sec-t">AUFTRÄGE · TAG UND WOCHE<span class="hg-sp"></span><span class="mp-sec-n">TÄGLICH NEU · WOCHE AB MONTAG</span></div>
         <div class="mp-sys" data-r="contracts"></div>
@@ -184,6 +186,16 @@ export class HudMenu {
     for (const n of el.querySelectorAll('[data-mc]')) {
       this.ct[n.dataset.mc] = { n: 0, d: Infinity, cnt: new TextSlot(n.querySelector('[data-n]')), dist: new TextSlot(n.querySelector('[data-d]')), zero: new ClassSlot(n, 'is-zero') };
     }
+    // Controller-Belegung: Symbole der Bauart, Status; bei Wechsel neu beschriften
+    const padPaint = () => {
+      if (!el.isConnected) { window.removeEventListener('ls:inputmode', padPaint); window.removeEventListener('ls:pad', padPaint); return; }
+      paintPadKeys(el);
+      const st = el.querySelector('[data-r="padst"]');
+      if (st) { st.textContent = padStatus(); st.classList.toggle('on', padStatus() !== 'KEIN CONTROLLER'); }
+    };
+    padPaint();
+    window.addEventListener('ls:inputmode', padPaint);
+    window.addEventListener('ls:pad', padPaint);
     let calm = false;
     try { calm = localStorage.getItem(CALM_KEY) === '1'; } catch { /* privater Modus */ }
     this.setCalm(calm, false);

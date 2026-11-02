@@ -8,6 +8,7 @@
 //   wenden), linke Maustaste gedrückt halten = fliegen, solange gedrückt. Linksklick auf Gegner = Ziel,
 //   Doppelklick = Ziel + Angriff, Klick auf Kiste/Wrack/Tor/Station = hinfliegen.
 // Taktische Kamera: Linksklick = hinfliegen (gedrückt halten = folgen), WASD/Pfeile bildbezogen (W = Bild oben).
+// Controller: input/padflight.js setzt this.pad (Sticks, Trigger) und ruft die Befehle unten (attack, rocket, context …).
 const AMMO_KEYS = { Digit1: 'L1', Digit2: 'L2', Digit3: 'L3', Digit4: 'L4', Digit5: 'SAB' };
 const STEER_KEYS = {
   KeyW: [0, -1], ArrowUp: [0, -1],
@@ -35,6 +36,7 @@ export class Input {
     this.lastClick = { t: 0, id: null };
     this.steer = new Set();
     this.touches = new Map(); this.primary = null; this.pinch = 0; // Touch: Finger, Lenk-Finger, Pinch-Abstand
+    this.pad = null;            // Controller-Zustand (input/padflight.js): { active, lx, ly, lt, rt, sens }
 
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -163,34 +165,15 @@ export class Input {
     if (w.playerDead) return;
     switch (e.code) {
       // Strg: Angriff auf das anvisierte Ziel an/aus; ohne Ziel wird der nächste Gegner gewählt und angegriffen
-      case 'ControlLeft': case 'ControlRight': {
-        e.preventDefault();
-        if (w.docked) break;
-        if (!w.player.attacking && !w.player.targetId) { const n = this.nearestEnemy(); if (n) w.setTarget(n.id); }
-        w.toggleAttack();
-        break;
-      }
-      case 'Space': e.preventDefault(); if (!w.docked) w.fireRocket(); break;
-      case 'KeyH': if (!w.docked) { this.cruise = false; this.mouseDown = false; w.autoHome(); } break;
+      case 'ControlLeft': case 'ControlRight': e.preventDefault(); this.attack(); break;
+      case 'Space': e.preventDefault(); this.rocket(); break;
+      case 'KeyH': this.home(); break;
       case 'KeyB': if (!w.docked) this.bus.emit('remoteShop', {}); break; // Fernhandel (Hub-Shop im Flug)
       case 'Digit6': if (!w.docked) w.fireSal(); break;
-      case 'KeyR': if (!w.docked) w.fireRocket(); break;
+      case 'KeyR': this.rocket(); break;
       case 'KeyJ': if (!w.docked) w.tryJump(); break;
       case 'KeyE': if (w.docked) w.undock(); else w.dock(); break;
-      case 'KeyV': {
-        if (w.docked || !this.renderer.toggleCamera) break;
-        const m = this.renderer.toggleCamera();
-        this.cruise = false;
-        this.bus.emit('message', {
-          kind: 'info',
-          text: m === 'cockpit'
-            ? 'Kamera: Cockpit – Steuerung wie Verfolger, Instrumente auf der Konsole (V wechselt).'
-            : m === 'chase'
-            ? 'Kamera: Verfolger – Maus lenkt, W Schub, S bremsen, Klick wählt Gegner (V wechselt).'
-            : 'Kamera: Taktisch – Klick fliegt hin, WASD bildbezogen (V wechselt).',
-        });
-        break;
-      }
+      case 'KeyV': this.toggleCamera(); break;
       case 'Tab': {
         e.preventDefault();
         const t = this.nearestEnemy(true);
@@ -200,6 +183,97 @@ export class Input {
       default:
         if (AMMO_KEYS[e.code]) w.selectAmmo(AMMO_KEYS[e.code]);
     }
+  }
+
+  // ---------- Befehle (Tastatur, Touch-Knöpfe und Controller nutzen dieselben Wege) ----------
+  /** Angriff an/aus; ohne Ziel wird der nächste Gegner gewählt */
+  attack() {
+    const w = this.world;
+    if (w.docked || w.playerDead) return;
+    if (!w.player.attacking && !w.player.targetId) { const n = this.nearestEnemy(); if (n) w.setTarget(n.id); }
+    w.toggleAttack();
+  }
+  rocket() { const w = this.world; if (!w.docked && !w.playerDead) return w.fireRocket(); return false; }
+  home() { const w = this.world; if (w.docked || w.playerDead) return; this.cruise = false; this.mouseDown = false; w.autoHome(); }
+  /** Kamera: Verfolger → Cockpit → Taktisch */
+  toggleCamera() {
+    const w = this.world;
+    if (w.docked || !this.renderer.toggleCamera) return;
+    const m = this.renderer.toggleCamera();
+    this.cruise = false;
+    const pd = this.pad && this.pad.active;
+    this.bus.emit('message', {
+      kind: 'info',
+      text: pd
+        ? (m === 'cockpit' ? 'Kamera: Cockpit – linker Stick lenkt, rechter Stick sieht sich um (R3 wechselt).'
+          : m === 'chase' ? 'Kamera: Verfolger – linker Stick lenkt, RT Schub, LT bremsen (R3 wechselt).'
+            : 'Kamera: Taktisch – linker Stick fliegt bildbezogen, rechter Stick zoomt (R3 wechselt).')
+        : m === 'cockpit'
+          ? 'Kamera: Cockpit – Steuerung wie Verfolger, Instrumente auf der Konsole (V wechselt).'
+          : m === 'chase'
+            ? 'Kamera: Verfolger – Maus lenkt, W Schub, S bremsen, Klick wählt Gegner (V wechselt).'
+            : 'Kamera: Taktisch – Klick fliegt hin, WASD bildbezogen (V wechselt).',
+    });
+  }
+  /** Ziele der Reihe nach: dir +1 = nächstes, −1 = voriges; ohne Ziel der nächste Gegner. Die Reihenfolge (nach
+   *  Entfernung) bleibt 4 s nach dem letzten Wechsel fest, damit vor/zurück trotz fliegender Gegner zusammenpassen. */
+  cycleTarget(dir) {
+    const w = this.world, p = w.player;
+    if (w.docked || w.playerDead || !p) return;
+    const now = performance.now();
+    let list = null;
+    const c = this._cycle;
+    if (c && now - c.t < 4000 && c.ids.includes(p.targetId)) {
+      list = c.ids.map((id) => w.entities.get(id)).filter((e) => e && e.alive);
+      if (list.length < 2) list = null;
+    }
+    if (!list) {
+      list = [];
+      // wie Tab: Gegner und fremde Spieler, solange PvP zwischen beiden gilt (Mehrspieler)
+      for (const ent of w.entities.values()) if (ent.alive && (ent.kind === 'enemy' || (ent.kind === 'player' && ent.pvpOk))) list.push(ent);
+      list.sort((a, b) => ((a.x - p.x) ** 2 + (a.z - p.z) ** 2) - ((b.x - p.x) ** 2 + (b.z - p.z) ** 2));
+    }
+    if (!list.length) return;
+    const i = list.findIndex((e) => e.id === p.targetId);
+    const n = i < 0 ? list[0] : list[((i + dir) % list.length + list.length) % list.length];
+    this._cycle = { ids: list.map((e) => e.id), t: now };
+    if (n && n.id !== p.targetId) w.setTarget(n.id);
+  }
+  /** Abbrechen: Angriff aus, dann Ziel lösen, dann Kurs/Autopilot/Dauerschub beenden */
+  cancel() {
+    const w = this.world, p = w.player;
+    if (w.docked || w.playerDead || !p) return;
+    if (p.attacking) { w.toggleAttack(); return; }
+    if (p.targetId) { w.setTarget(null); return; }
+    this.cruise = false; this.mouseDown = false;
+    w.stopMove();
+  }
+  /** Kontext (wie E/J): Andocken in der sicheren Zone, Springen am Tor, sonst nächste Beute anfliegen */
+  context() {
+    const w = this.world, p = w.player;
+    if (w.playerDead || !p) return;
+    if (w.docked) { w.undock(); return; }
+    if (w.station && w.inSafeZone) { w.dock(); return; }
+    if (w.nearPortal) { w.tryJump(); return; }
+    const l = this.nearestLoot(1500);
+    if (l) {
+      this.cruise = false;
+      w.moveTo(l.x, l.z);
+      this.bus.emit('message', { kind: 'info', text: `Kurs auf ${l.label} (${Math.round(l.d / 10) * 10} m).` });
+      return;
+    }
+    w.dock(); // Hinweis der Welt (sichere Zone / keine Station)
+  }
+  nearestLoot(max) {
+    const w = this.world, p = w.player;
+    let best = null, bd = max * max;
+    const t = w.time, full = (w.cargoMax || 0) - (w.cargoUsed || 0) <= 0;
+    const test = (o, label) => { const d = (o.x - p.x) ** 2 + (o.z - p.z) ** 2; if (d < bd) { bd = d; best = { x: o.x, z: o.z, label, d: 0 }; } };
+    for (const o of w.wrecks || []) if (o && (o.owner === 'player' || !(t < o.protectedUntil))) test(o, 'Wrack');
+    for (const o of w.crates || []) if (o && o.alive) test(o, 'Frachtkiste');
+    if (!full) for (const o of w.ores || []) if (o && o.alive) test(o, 'Erz');
+    if (best) best.d = Math.sqrt(bd);
+    return best;
   }
 
   onKeyUp(e) { this.steer.delete(e.code); }
@@ -212,6 +286,22 @@ export class Input {
     if (w.docked || w.playerDead || !w.player) { this.cruise = false; return; }
     if (this.chase) { this.chaseUpdate(dt); return; }
     this.cruise = false;
+    // Controller (taktisch): linker Stick fliegt bildbezogen (oben = Bild oben), LT bremst
+    const pd = this.pad && this.pad.active ? this.pad : null;
+    if (pd) {
+      if (pd.lt > 0.3) { if (!this._padBrake) w.stopMove(); this._padBrake = true; return; }
+      this._padBrake = false;
+      const m = Math.hypot(pd.lx, pd.ly);
+      if (m > 0.02) {
+        this.steerTimer -= dt;
+        if (this.steerTimer <= 0) {
+          this.steerTimer = STEER_EVERY;
+          const d = this.throttleDist(Math.min(1, m * pd.sens));
+          w.moveTo(w.player.x + (pd.lx / m) * d, w.player.z + (pd.ly / m) * d);
+        }
+        return;
+      }
+    }
     if (this.steer.size) {
       let dx = 0, dz = 0;
       for (const code of this.steer) { dx += STEER_KEYS[code][0]; dz += STEER_KEYS[code][1]; }
@@ -231,7 +321,16 @@ export class Input {
     }
   }
 
-  // Verfolger: Maus lenkt, W/S Schub, A/D seitlich ziehen bzw. im Stand wenden
+  /** Stufenloser Schub (Controller-Trigger): so weit voraus zielen, dass die Simulation genau den Anteil f des
+   *  Höchsttempos anstrebt (world._movePlayer: Wunschtempo = √(0,81 · vmax · (Abstand − 15))). f ≥ 0,97 = voll. */
+  throttleDist(f) {
+    if (f >= 0.97) return AHEAD;
+    const vmax = this.world._speed || 300;
+    return Math.min(AHEAD, 26 + (f * f * vmax) / 0.81);
+  }
+
+  // Verfolger: Maus lenkt, W/S Schub, A/D seitlich ziehen bzw. im Stand wenden.
+  // Controller: linker Stick lenkt wie die Maus (gleiche Kurve über steerHeading), RT Schub stufenlos, LT bremst.
   chaseUpdate(dt) {
     const w = this.world, p = w.player;
     let turn = 0, fw = false, back = false;
@@ -241,20 +340,34 @@ export class Input {
       else turn -= STEER_KEYS[code][0]; // A = links (+), D = rechts (−)
     }
     if (back) return; // bremst (stopMove beim Drücken)
+    const pd = this.pad && this.pad.active ? this.pad : null;
+    if (pd && pd.lt > 0.3) { if (!this._padBrake) { this.cruise = false; w.stopMove(); } this._padBrake = true; return; }
+    this._padBrake = false;
     this.steerTimer -= dt;
     if (this.steerTimer > 0) return;
     this.steerTimer = STEER_EVERY;
-    const thrust = this.cruise || fw || this.mouseDown;
+    const pf = pd ? pd.rt : 0;
+    const full = this.cruise || fw || this.mouseDown;
+    const thrust = full || pf > 0.04;
     const rot = p.rot || 0;
+    const sx = pd ? Math.max(-1, Math.min(1, pd.lx * pd.sens)) : 0;
     if (!thrust) {
-      // ohne Schub: A/D wendet auf der Stelle (kurzer Zielpunkt seitlich voraus)
-      if (turn) { const a = rot + turn * 1.25; w.moveTo(p.x - Math.sin(a) * 160, p.z - Math.cos(a) * 160); }
+      // ohne Schub: A/D (bzw. Stick) wendet auf der Stelle (kurzer Zielpunkt seitlich voraus)
+      const t = turn - sx;
+      if (t) { const a = rot + Math.max(-1.5, Math.min(1.5, t)) * 1.25; w.moveTo(p.x - Math.sin(a) * 160, p.z - Math.cos(a) * 160); }
       return;
     }
-    // Zeiger über einem HUD-Fenster: Kurs halten (nicht lenken, während man etwas anklickt)
-    let h = this.mouseOnCanvas && this.renderer.steerHeading ? this.renderer.steerHeading(this.mouseX, this.mouseY) : rot;
+    let h;
+    if (pd && this.renderer.steerHeading && this.renderer.rect) {
+      const R = this.renderer.rect;
+      h = this.renderer.steerHeading(R.left + (sx + 1) * 0.5 * R.width);
+    } else {
+      // Zeiger über einem HUD-Fenster: Kurs halten (nicht lenken, während man etwas anklickt)
+      h = this.mouseOnCanvas && this.renderer.steerHeading ? this.renderer.steerHeading(this.mouseX, this.mouseY) : rot;
+    }
     h += turn * 0.9;
-    w.moveTo(p.x - Math.sin(h) * AHEAD, p.z - Math.cos(h) * AHEAD);
+    const d = full ? AHEAD : this.throttleDist(pf);
+    w.moveTo(p.x - Math.sin(h) * d, p.z - Math.cos(h) * d);
   }
 
   dispose() {

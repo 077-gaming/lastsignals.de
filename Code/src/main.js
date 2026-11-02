@@ -14,6 +14,10 @@ import { HudTouch } from './ui/hud-touch.js';
 import { Coop } from './net/coop.js';
 import { Multiplayer } from './net/mp.js';
 import { Input } from './input.js';
+import { PadFlight } from './input/padflight.js';
+import './input/padnav.js';      // Controller: Menü-Navigation überall (Titel, Hub, Station, Dialoge)
+import './input/padglyph.js';    // Controller: Tastenhinweise tauschen
+import './input/pad.css';
 import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
 import { PerfHud } from './perf/perfhud.js';
 import { autoQuality, isAutoQuality, storeAutoQuality, raiseCap, QualityGuard, Q_NAMES, Q_LABEL } from './perf/quality.js';
@@ -120,9 +124,10 @@ function playSession(profile, opts = {}) {
     const contracts = new Contracts(world, bus); // Tages- und Wochenaufträge
     const input = new Input(canvas, world, renderer, bus);
     const touch = new HudTouch(hudRoot, world, renderer, input); // iPad/Tablet: Joystick, Knöpfe, Zielanzeige
+    const padFlight = new PadFlight(input, hud, bus); // Controller im Flug (Planung/CONTROLLER.md)
     const audio = new AudioSystem(bus, world, renderer);
     audio.start();
-    if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio, series, mp }; // nur Entwicklung: Test-Pilot (tools/playtest)
+    if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio, series, mp, input, padFlight }; // nur Entwicklung: Test-Pilot (tools/playtest)
 
     // Dauerhaft unter 50 Bilder/s: eine Stufe tiefer, mit kurzer Meldung. Automatische Wahl → gespeichert,
     // eigene Wahl → nur für diese Sitzung (die Einstellung im Hub bleibt, wie der Spieler sie gesetzt hat).
@@ -262,7 +267,7 @@ function playSession(profile, opts = {}) {
       window.removeEventListener('pagehide', onPageHide);
       clearInterval(cloudT); clearTimeout(conflictT); offAccount(); offDock();
       window.removeEventListener('ls:store', onStore);
-      input.dispose(); touch.dispose(); if (world.coop) world.coop.stop(); if (mp) mp.dispose();
+      padFlight.dispose(); input.dispose(); touch.dispose(); if (world.coop) world.coop.stop(); if (mp) mp.dispose();
       audio.dispose();
       series.dispose();
       story.dispose();

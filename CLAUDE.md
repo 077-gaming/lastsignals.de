@@ -27,6 +27,7 @@
 - Modelle: eigenes Schiff, Laser/Generatoren des Loadouts und Drohnen vor dem Flug; Gegner, Station, Tor, Requisiten und Ausrüstung erst, wenn der Sektor sie braucht (`EXTRA_MODELS`/`_need` in `render/renderer.js`), Meshy-Requisiten mit LOD-Stufe (`-lod1.glb`).
 - Konto und Server-Spielstand: `Planung/KONTEN.md` (`src/net/account*.js`, `src/ui/account-*.js`); Browser-Test ohne echte Konten mit `?konto=attrappe`.
 - Kamera: V wechselt Verfolger → Cockpit → Taktisch (`render/camrig.js`); Cockpit ist eine eigene Ebene (`render/cockpit.js`).
+- Controller (Gamepad-API): `src/input/` (gamepad, padflight, padnav, padglyph), Belegung und Regeln in `Planung/CONTROLLER.md`. Prüfung ohne Controller: `cd Code && node tools/playtest/controller.mjs --url <dev-url>`.
 
 ## Regeln
 

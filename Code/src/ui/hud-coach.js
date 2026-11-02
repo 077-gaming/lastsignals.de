@@ -3,6 +3,7 @@
 // Fortschritt im Profil (profile.tut = Anzahl erledigter Schritte), damit der Coach nie zweimal erscheint.
 // Erfahrene Piloten (Stufe > 1 oder schon Abschüsse) sehen ihn nie.
 import './hud-coach.css';
+import { glyph, padMode } from '../input/padglyph.js';
 
 const STEPS = [
   { key: 'fly', title: 'FLIEGEN', text: 'Maus zeigt die Richtung · <kbd>W</kbd> Schub · <kbd>S</kbd> bremsen · Linke Maustaste halten = fliegen' },
@@ -18,6 +19,14 @@ const TOUCH = {
   loot: 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · drüberfliegen · Knopf <b>HEIM</b> = Autopilot zur Station',
 };
 if (typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1)) for (const s of STEPS) if (TOUCH[s.key]) s.text = TOUCH[s.key];
+// Controller (sobald benutzt): gleiche Schritte, Symbole der jeweiligen Bauart
+const k = (n) => `<kbd>${glyph(n)}</kbd>`;
+const PAD = {
+  fly: () => `<b>Linker Stick</b> lenkt · ${k('RT')} Schub · ${k('LT')} bremsen · ${k('L3')} Dauerschub · rechter Stick: umsehen`,
+  target: () => `${k('RB')} wählt den nächsten Gegner · ${k('LB')} den vorigen`,
+  attack: () => `${k('A')} = Angriff an, aus · ${k('X')} = Rakete · in der sicheren Zone sind Waffen gesperrt`,
+  loot: () => `Zerstörte Gegner hinterlassen ein Wrack mit Credits · drüberfliegen oder ${k('Y')} fliegt hin · ${k('Y')} halten = Autopilot zur Station`,
+};
 
 export class HudCoach {
   constructor(root, bus, world) {
@@ -30,6 +39,8 @@ export class HudCoach {
     this.i = pr.tut;
     this.offs = [];
     if (this.i >= STEPS.length) return;
+    this._onMode = () => { if (this.el && this.el.classList.contains('on') && !this.el.classList.contains('done')) this._show(); };
+    window.addEventListener('ls:inputmode', this._onMode);
     this.el = document.createElement('div');
     this.el.className = 'hud-coach';
     this.el.setAttribute('role', 'status');
@@ -48,7 +59,8 @@ export class HudCoach {
   _show() {
     const s = STEPS[this.i];
     if (!s || !this.el) return;
-    this.el.innerHTML = `<span class="hc-step">${this.i + 1}/${STEPS.length}</span><b>${s.title}</b><span class="hc-text">${s.text}</span>`;
+    const text = padMode() && PAD[s.key] ? PAD[s.key]() : s.text;
+    this.el.innerHTML = `<span class="hc-step">${this.i + 1}/${STEPS.length}</span><b>${s.title}</b><span class="hc-text">${text}</span>`;
     this.el.classList.remove('done');
     this.el.classList.add('on');
   }
@@ -90,6 +102,7 @@ export class HudCoach {
 
   dispose() {
     clearTimeout(this._t);
+    if (this._onMode) window.removeEventListener('ls:inputmode', this._onMode);
     for (const off of this.offs) off();
     this.offs.length = 0;
     this.el?.remove();

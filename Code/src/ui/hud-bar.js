@@ -210,6 +210,8 @@ export class HudBar {
 
     this._renderBar();
     this._renderTab();
+    this.padSel = 0;
+    this.slots[0].el.classList.add('gp-sel');
 
     // Eingaben
     this._onDown = (e) => this._down(e);
@@ -255,6 +257,19 @@ export class HudBar {
     this.cur = n;
     this._renderBar();
     this._save();
+  }
+
+  /** Controller: Platz der aktuellen Leiste wählen (Steuerkreuz links/rechts), sichtbar nur im Controller-Modus */
+  padMove(d) {
+    this.padSel = ((((this.padSel | 0) + d) % SLOTS) + SLOTS) % SLOTS;
+    for (let i = 0; i < SLOTS; i++) this.slots[i].el.classList.toggle('gp-sel', i === this.padSel);
+    const it = this.slots[this.padSel].it;
+    this.hud._pushMsg({ text: `PLATZ ${this.padSel + 1} · ${it ? it.name : 'LEER'}`, kind: 'info', terse: true });
+  }
+  /** Controller: gewählten Platz auslösen (RB + A) */
+  padFire() {
+    if (this.padSel == null) { this.padSel = 0; this.padMove(0); }
+    this.activate(this.padSel);
   }
 
   togglePalette(force) {
