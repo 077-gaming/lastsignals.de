@@ -6,6 +6,8 @@ import { SYSTEM_QUESTS, SYSTEM_CHAPTERS } from '../sim/system-quests.js';
 import { contractTitle } from '../sim/contracts.js';
 import { STORY_QUESTS } from '../sim/story.js';
 import { padTable, paintPadKeys, padStatus } from './pad-map.js';
+import { gfxPanelHtml } from './gfx-panel.js';
+import { TIER_LABEL } from '../engine/settings.js';
 
 const GROUP = { pirate: 'PIRAT', swarm: 'SCHWARM' };
 const BEH = { aggressive: 'AGGRESSIV', passive: 'PASSIV', opportunist: 'LAUERT', thief: 'PLÜNDERER', territorial: 'REVIER', stationary: 'STATIONÄR', nest: 'NEST' };
@@ -111,6 +113,8 @@ export function menuHtml(windows) {
         <div class="mp-win"><span class="mp-wt">COCKPIT-SICHTFELD</span><span class="hg-sp"></span><button class="mp-sw mp-step" type="button" data-act="ckfov" data-d="-5" aria-label="Sichtfeld kleiner"><i>−</i></button><b class="ls-num mp-fov" data-r="ckfov">74°</b><button class="mp-sw mp-step" type="button" data-act="ckfov" data-d="5" aria-label="Sichtfeld größer"><i>+</i></button></div>
         <div class="mp-crow"><span class="ls-key">V</span><span>Verfolger · Cockpit · Taktisch</span></div>
         <div class="mp-crow"><span class="ls-key">MMB</span><span>Im Cockpit halten: umsehen</span></div>
+        <div class="mp-sec">GRAFIK</div>
+        ${gfxPanelHtml(true)}
         <div class="mp-sec">LAYOUT</div>
         <div class="mp-pair">
           <button class="ls-btn" type="button" data-act="lock" data-r="lockbtn">LAYOUT SPERREN</button>
@@ -271,7 +275,8 @@ export class HudMenu {
       r.fps.set(perf && perf.fps ? Math.round(perf.fps) + ' B/S' : '–');
       const sc = renderer && typeof renderer.scale === 'number' ? renderer.scale : 1;
       r.res.set(Math.round(sc * 100) + ' %');
-      r.qual.set(renderer && renderer.lowQuality ? 'REDUZIERT' : 'VOLL');
+      const st = renderer && renderer.stats;
+      r.qual.set(st ? (TIER_LABEL[st.tier ?? st.quality] || '–') + (st.custom ? ' · EIGEN' : '') + (renderer.lowQuality ? ' · REDUZIERT' : '') : '–');
       r.view.set(window.innerWidth + ' × ' + window.innerHeight);
       r.store.set(info.store);
     }

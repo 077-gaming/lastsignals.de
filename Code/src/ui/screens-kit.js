@@ -54,9 +54,12 @@ export function rankOf(level) { return RANKS[rankIndex(level)]; }
 
 // ---------------------------------------------------------------- Einstellungen (localStorage 'ls.settings')
 
+import { cleanGfx, cleanTier } from '../engine/settings.js';
+import { detectCaps } from '../engine/caps.js';
+
 export const SETTINGS_KEY = 'ls.settings';
 export const SETTINGS_DEFAULT = Object.freeze({ quality: 'high', hudScale: 1, hubScale: 1, reducedMotion: false, master: 0.8, sfx: 0.9, music: 0.5 });
-const QUALITIES = ['ultra', 'high', 'medium', 'low'];
+const QUALITIES = ['extreme', 'ultra', 'high', 'medium', 'low']; // EXTREM nur in der Desktop-App (engine/settings.js)
 // Einstellungsstand: ab 2 gibt es ULTRA. Ältere Stände mit HOCH (damals höchste Stufe) werden auf starken
 // Rechnern auf ULTRA gehoben, eine bewusst gewählte niedrigere Stufe bleibt.
 const SETTINGS_REV = 2;
@@ -87,10 +90,14 @@ export const SETTING_CHOICES = { quality: QUALITIES, hudScale: HUD_SCALES, hubSc
 export function loadSettings() {
   let raw = null;
   try { raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null'); } catch { raw = null; }
-  const s = { ...SETTINGS_DEFAULT, quality: strongDevice() ? 'ultra' : 'high' };
+  const caps = detectCaps();
+  // Standard: Touch-Geräte MITTEL, starke Rechner ULTRA, sonst HOCH (die automatische Wahl misst danach genauer)
+  const s = { ...SETTINGS_DEFAULT, quality: caps.touch ? 'medium' : strongDevice() ? 'ultra' : 'high', gfx: {} };
   if (raw && typeof raw === 'object') {
     const old = raw.rev !== SETTINGS_REV;
-    if (QUALITIES.includes(raw.quality) && !(old && raw.quality === 'high')) s.quality = raw.quality;
+    if (QUALITIES.includes(raw.quality) && !(old && raw.quality === 'high')) s.quality = cleanTier(raw.quality, caps);
+    // Grafik-Einstellungen im Einzelnen (Abweichungen von der Stufe, engine/settings.js)
+    s.gfx = cleanGfx(raw.gfx, caps);
     const hs = Number(raw.hudScale);
     if (hs >= 0.7 && hs <= 1.6) s.hudScale = hs;
     const hb = Number(raw.hubScale);
@@ -125,6 +132,8 @@ export function saveSettings(s) {
 let settingsCache = null;
 export function settings() { if (!settingsCache) { settingsCache = loadSettings(); applySettings(settingsCache); } return settingsCache; }
 export function setSetting(key, value) { const s = { ...settings(), [key]: value }; settingsCache = s; saveSettings(s); return s; }
+/** Mehrere Werte auf einmal (ein Speichern, ein Ereignis) */
+export function setSettings(patch) { const s = { ...settings(), ...patch }; settingsCache = s; saveSettings(s); return s; }
 
 export const reduced = () =>
   settings().reducedMotion || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);

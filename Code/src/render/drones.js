@@ -8,7 +8,7 @@
 // (DroneFleet.ready, Renderer wartet wie beim eigenen Schiff), danach nie sichtbares Umschalten.
 import * as THREE from 'three';
 import { FACTIONS } from '../core/data.js';
-import { preloadGLB } from './models.js';
+import { preloadGLB, applyAnisotropy } from './models.js';
 
 const MAX = 10;                    // 8 kaufbare Plätze + Cassini (9) + Juno (10)
 const TAU = Math.PI * 2;
@@ -180,6 +180,7 @@ export class DroneFleet {
 
   _build(v, gltf) {
     const root = gltf.scene;
+    try { applyAnisotropy(root); } catch { /* egal */ } // aktueller Grafikwert (Vorlage evtl. früher geladen)
     root.updateMatrixWorld(true);
     const flip = new THREE.Matrix4().makeRotationY(Math.PI); // glTF-Bug +z → Spiel-Bug −z
     const k = this.scale * (TYPE_SCALE[v.type] || 1);

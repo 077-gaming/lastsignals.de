@@ -15,6 +15,7 @@ import {
 } from './screens-kit.js';
 import { sectorMap, ENEMY_CODE } from './screens-map.js';
 import { stage } from './screens-stage.js';
+import { gfxPanelHtml, gfxHandle } from './gfx-panel.js';
 import { register, killsOf, CLANS } from './screens-roster.js';
 import { World } from '../sim/world.js';
 import { Bus } from '../core/events.js';
@@ -809,9 +810,12 @@ function einstView(P, ctx) {
     <div class="st-c">
       ${kontoSection(P, ctx && ctx.account)}
       <section class="ak-sec">
+        ${sub('GX', 'GRAFIK', '<span class="ls-label">LIVE IM FLUG</span>')}
+        ${gfxPanelHtml(false)}
+      </section>
+      <section class="ak-sec">
         ${sub('GR', 'DARSTELLUNG', '<span class="ls-label" data-saved>BEREIT</span>')}
         <div class="mc-set st-set">
-          ${setRow('GRAFIKQUALITÄT', Q_DESC[s.quality], seg('quality', [['ultra', 'ULTRA'], ['high', 'HOCH'], ['medium', 'MITTEL'], ['low', 'NIEDRIG']], s.quality), 'data-qdesc')}
           ${setRow('BEWEGUNG REDUZIEREN', 'Kein Flackern, kein Sternenflug, Szene steht.', seg('reducedMotion', [[false, 'AUS'], [true, 'AN']], s.reducedMotion))}
         </div>
       </section>
@@ -1588,6 +1592,8 @@ export async function hubScreen(root, profile, store, account = null) {
       if (e.target.closest('[data-back]')) { back(); return; }
       const ac = e.target.closest('[data-acc]');
       if (ac && body.contains(ac)) { accountAct(ac.dataset.acc); return; }
+      const gx = gfxHandle(e.target); // GRAFIK-Bereich (ui/gfx-panel.js)
+      if (gx) { if (gx.tierChanged) stage.show({}); return; }
       const b = e.target.closest('[data-set]');
       if (b) { onSetting(b); return; }
       if (e.target.closest('[data-hudreset]')) {

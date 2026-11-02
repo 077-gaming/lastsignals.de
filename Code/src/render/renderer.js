@@ -3,7 +3,6 @@
 // feste Lichtanzahl, adaptive Auflösung (0.6 … 1.0 der gedeckelten Pixeldichte).
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { CameraLookPass } from './post.js';
 import { BloomPass } from './bloom.js';
 import { FACTIONS, SHIPS, ENEMIES } from '../core/data.js';
@@ -23,6 +22,8 @@ import { Telegraph } from './telegraph.js';
 import { StationLife } from './stationlife.js';
 import { SpeedDust } from './speeddust.js';
 import { DroneFleet, preloadDrones } from './drones.js';
+import { buildFlightChain, sceneTarget, separateDepth, currentGfx, resolveGfx, readStoredSettings, gfxSignature, detectCaps, TIERS } from '../engine/index.js';
+import { setModelAnisotropy, applyAnisotropy } from './models.js';
 
 // Echte Modelle (GLB) je Schlüssel. Alles andere bleibt Platzhalter.
 const MODELS = [
@@ -127,7 +128,6 @@ const ZOOM_MIN = 230, ZOOM_MAX = 3400, ZOOM_START = 520;
 const TAN_H = Math.tan(FOV * Math.PI / 360);
 const SAFE_R = 400, PORTAL_R = 148;
 // Hub speichert englische Werte. Ultra = 3 (volle Pixeldichte, feinerer Himmel), alles ab 2 wie „hoch“.
-const QUALITY = { niedrig: 0, mittel: 1, hoch: 2, ultra: 3, low: 0, medium: 1, high: 2 };
 // Pixeldichte-Obergrenze und kleinster Auflösungsfaktor der adaptiven Auflösung je Stufe (niedrig … ultra)
 // HOCH 1,75 statt 2: auf Retina kaum sichtbar, spart ≈ 23 % Bildpunkte (Kampf unter 8 ms auf Apple-Chips); ULTRA bleibt 2
 // PR_CAP kommt aus perf/quality.js (eine Quelle für Messung und Darstellung)
@@ -136,11 +136,17 @@ const SCALE_MIN = [0.7, 0.65, 0.6, 0.75];
 // Viertel der Pixel), sonst reicht selbst NIEDRIG auf 1080p nicht für 50 Bilder/s
 const SCALE_MIN_WEAK = [0.5, 0.55, 0.6, 0.75];
 function readQuality() {
-  try {
-    const s = JSON.parse(localStorage.getItem('ls.settings') || '{}');
-    return QUALITY[s && s.quality] ?? 2;
-  } catch { return 2; }
+  try { return Math.min(3, currentGfx().tier); } catch { return 2; }
 }
+// Sonnenschatten je Einstellung: Kartengröße, Filter, halbe Kantenlänge des Schattenbereichs (m), Weichheit (nur PCF)
+const SHADOWS = {
+  off: null,
+  low: { size: 1024, type: THREE.PCFShadowMap, ext: 400, radius: 1 },
+  high: { size: 2048, type: THREE.PCFSoftShadowMap, ext: 400, radius: 2.5 },
+  ultra: { size: 4096, type: THREE.PCFSoftShadowMap, ext: 520, radius: 3 },
+};
+// Auflösung der Himmelsspiegelung (Breite des Rundumbilds; PMREM-Würfel = Breite / 4)
+const REFLECT_RES = { low: 512, high: 1024, ultra: 2048 };
 const MAX_PR = 2;
 // Grafikzeit-Grenze je Stufe (ms, gemessen mit Zeitabfrage), nur HOCH: Ziel „Kampf unter 8 ms je Bild“ auf dem Mac
 const GPU_CAP = [0, 0, 7.6, 0];
@@ -209,7 +215,13 @@ export class Renderer {
     this._fov = this.camera.fov; this._tanH = Math.tan(this._fov * Math.PI / 360); this._viewD = ZOOM_START;
     this.hints = renderHints();     // Chip-Klasse und Vorhersage aus der automatischen Qualitätswahl
     this.qCap = 3;                  // Obergrenze für diese Sitzung (Absicherung im Flug bei eigener Wahl)
-    this.quality = readQuality();
+    this.caps = detectCaps();       // Fähigkeiten (engine/caps.js)
+    this.gfx = this._readGfx();     // wirksame Grafikwerte (engine/settings.js)
+    this.quality = Math.min(3, this.gfx.tier);
+    this.fpsCap = this.gfx.v.fpsCap; // Bildratenbegrenzung (main.js lässt Bilder aus; Absicherungen rechnen damit)
+    this._fovChase = this.gfx.v.fovChase;
+    this._farK = this.gfx.v.viewDist / 100;
+    this._ipr = 1; this._opr = 1; this._upscaling = false; this._post = true;
     this._qCheck = 0;
 
     this.lights = {
@@ -272,25 +284,23 @@ export class Renderer {
     this.cpuBound = false; // Prozessor bremst (nicht die Grafik): Auflösung bleibt, die Absicherung senkt die Stufe
     this.rect = { left: 0, top: 0, width: 1, height: 1 };
 
-    // Kein MSAA auf dem HalfFloat-Ziel: ANGLE/Metal zeichnet dort bei Pixeldichte 1 nur Schwarz.
-    // Kanten glättet der Kamera-Durchgang (FXAA), sobald die Pixeldichte unter 1,5 liegt.
-    const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 0 });
-    this.composer = new EffectComposer(gl, rt);
-    this.renderPass = new RenderPass(this.scene, this.camera);
+    // Kein MSAA auf dem HalfFloat-Ziel: ANGLE/Metal zeichnet dort bei Pixeldichte 1 nur Schwarz (erneut geprüft
+    // 02.11.2026, engine/caps.js). Kanten glätten FXAA (im Kamera-Durchgang) oder SMAA (eigener Baustein).
+    // Das Szenenziel trägt eine Tiefentextur: die Umgebungsverdeckung liest sie.
+    this.composer = new EffectComposer(gl, sceneTarget());
+    separateDepth(this.composer);
     this.bloom = new BloomPass(0.5, 0.55, 0.92);
     this.output = new CameraLookPass();
     this.output.bloom = this.bloom;
-    this.composer.addPass(this.renderPass);
     // Cockpit: eigene Ebene nach der Welt, Tiefenpuffer gelöscht (eigener Tiefenbereich), Nachleuchten wirkt mit
     this.cockpit = new Cockpit();
-    this.cockpitPass = new RenderPass(this.cockpit.scene, this.cockpit.camera);
-    this.cockpitPass.clear = false;
-    this.cockpitPass.clearDepth = true;
+    // Kette aus Bausteinen (engine/pipeline.js): Szene → AO → Cockpit → Nachleuchten → Kamera-Look → SMAA → LS-Hochskalierung
+    this.chain = buildFlightChain(this.composer, { scene: this.scene, camera: this.camera, cockpit: this.cockpit, bloom: this.bloom, look: this.output });
+    this.renderPass = this.chain.passes.renderPass;
+    this.cockpitPass = this.chain.passes.cockpitPass;
     this.cockpitPass.enabled = false;
-    this.composer.addPass(this.cockpitPass);
+    this._cockpitOn = false;
     this.camera.layers.enable(PLAYER_LAYER);
-    this.composer.addPass(this.bloom);
-    this.composer.addPass(this.output);
     // Bloom ist weich: auf Retina-Dichte reicht ein Viertel der Pixel (spart ≈ 6 ms Grafikzeit pro Bild)
     this._bloomScale = 1;
     const bloomSize = this.bloom.setSize.bind(this.bloom);
@@ -327,6 +337,9 @@ export class Renderer {
     this._staleCb = (v, id) => { if (v.stamp !== this.frame) this._removeView(id); };
     this._onResize = () => this.resize();
     window.addEventListener('resize', this._onResize);
+    // Einstellungen geändert (Hub, Bordmenü): im nächsten Bild übernehmen
+    this._onSettings = () => { this._qCheck = 0; };
+    window.addEventListener('ls:settings', this._onSettings);
     this.resize();
     this._applyQuality();
     if (import.meta.env && import.meta.env.DEV) window.__lsRenderer = this; // nur Entwicklungsserver: Messungen
@@ -334,31 +347,102 @@ export class Renderer {
 
   // Qualitätsstufe aus den Einstellungen (hoch | mittel | niedrig)
   _applyQuality() {
-    const q = this.quality;
-    this.gl.shadowMap.enabled = q >= 2;
+    const q = this.quality, g = this.gfx.v;
+    this._applyShadowCfg(g.shadows);
     this.lights.sun.castShadow = false;
     this._shadowAt = null;
-    this.bloom.enabled = q >= 1;
-    this.bloom.strength = q >= 2 ? 0.5 : 0.42;
+    // Nachleuchten: Stärke der Stufe × Einstellung (0 % = Baustein aus)
+    this.bloom.strength = (q >= 2 ? 0.5 : 0.42) * g.bloom / 100;
     // Schwache Grafik auf MITTEL: Nachleuchten in halber Auflösung und ohne breitesten Schleier
     this._bloomCap = q <= 1 && this.hints.weak ? 0.5 : 1;
     this.bloom.setLevels(q <= 1 && this.hints.weak ? 4 : 5);
     this.output.setQuality(q);
     this.effects.setQuality(q);
+    this.effects.density = g.particles / 100;
+    this._farK = g.viewDist / 100;
+    this._fovChase = g.fovChase;
+    this.fpsCap = g.fpsCap;
+    this.env.reflectRes = REFLECT_RES[g.reflections] || 512;
+    this._applyAniso();
     // Pixeldichte der Stufe (ultra/hoch 2, mittel 1,5, niedrig 1): Puffer neu anlegen, falls sich etwas ändert
     if (this._sized) { this._sized = false; this.resize(); }
+    this._updateChain();
   }
+
+  /** Wirksame Grafikwerte; bei einer Sitzungs-Obergrenze (Absicherung) gilt die Voreinstellung der tieferen Stufe */
+  _readGfx() {
+    const raw = readStoredSettings();
+    let r = resolveGfx(raw, this.caps);
+    if (this.qCap < 3 && r.tier > this.qCap) r = resolveGfx({ ...raw, quality: TIERS[this.qCap] }, this.caps);
+    r.sig = gfxSignature(r);
+    return r;
+  }
+
+  // Schattenkarte: Größe, Filter, Bereich. Neuer Filter/an-aus übersetzt die beleuchteten Materialien neu.
+  _applyShadowCfg(key) {
+    const cfg = SHADOWS[key] || null, G = this.gl.shadowMap, S = this.lights.sun.shadow;
+    const was = G.enabled ? G.type + ':' + S.mapSize.x : 'off';
+    G.enabled = !!cfg;
+    if (cfg) {
+      G.type = cfg.type;
+      if (S.mapSize.x !== cfg.size) { S.mapSize.set(cfg.size, cfg.size); if (S.map) { S.map.dispose(); S.map = null; } }
+      S.camera.left = -cfg.ext; S.camera.right = cfg.ext; S.camera.top = cfg.ext; S.camera.bottom = -cfg.ext;
+      S.radius = cfg.radius;
+      S.camera.updateProjectionMatrix();
+    }
+    const now = G.enabled ? G.type + ':' + S.mapSize.x : 'off';
+    if (was !== now && this._shadowCfgOnce) this.scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) if (m) m.needsUpdate = true; });
+    this._shadowCfgOnce = true;
+    G.needsUpdate = true;
+  }
+
+  // Anisotrope Filterung: neue Modell-Texturen bekommen sie beim Laden, vorhandene hier (nur geänderte laden neu hoch)
+  _applyAniso() {
+    const a = Math.max(1, Math.min(this.gfx.v.aniso, this.caps.maxAniso || 1));
+    setModelAnisotropy(a);
+    if (this._aniso === a) return;
+    this._aniso = a;
+    applyAnisotropy(this.scene, a);
+  }
+
+  /** Kette schalten: welche Bausteine laufen, ob überhaupt nachbearbeitet wird */
+  _updateChain() {
+    const g = this.gfx.v;
+    // Nachbearbeitung nötig? NIEDRIG ohne Effekte zeichnet direkt (wie bisher), sonst läuft die Kette
+    this._post = this.quality >= 1 || g.bloom > 0 || g.ao !== 'off' || g.aa !== 'off' || g.sharpen > 0
+      || g.grain || g.vignette || g.chroma || (g.upscale === 'ls' && this._ipr < this.basePR * 0.97);
+    // dpr: Szenendichte OHNE adaptive Auflösung – AUTO-Kantenglättung soll nicht mit jedem Regelschritt umschalten
+    // (Umschalten übersetzt Shader: Hänger)
+    this.chain.update({ g, q: this.quality, cockpit: this._cockpitOn, upscale: this._upscaling, dpr: this.basePR * g.renderScale / 100 });
+  }
+  /** Läuft die Nachbearbeitungskette (sonst zeichnet die Szene direkt auf die Leinwand)? */
+  _useComposer() { return !this.lowQuality && this._post; }
+  /** Untergrenze der Bildrate, ab der die Absicherungen eingreifen (Begrenzer: knapp unter dem Ziel) */
+  fpsFloor() { return this.fpsCap > 0 ? Math.min(50, this.fpsCap * 0.85) : 50; }
 
   _minScale() { return (this.hints.weak ? SCALE_MIN_WEAK : SCALE_MIN)[this.quality] ?? 0.6; }
   /** Adaptive Auflösung am Boden (für die Absicherung im Flug: erst Auflösung, dann Stufe senken) */
   atFloor() { return this.scale <= this._minScale() + 0.001; }
   /** Effektive Stufe: gespeicherte Wahl, begrenzt durch die Sitzungs-Obergrenze */
   _wantQuality() { return Math.min(readQuality(), this.qCap); }
+  /** Grafikwerte neu lesen und anwenden: Szene neu aufbauen nur, wenn Stufe, Schatten oder Spiegelung sich ändern */
+  _syncGfx() {
+    const prev = this.gfx, next = this._readGfx();
+    if (next.sig === prev.sig) return;
+    this.gfx = next;
+    const q = Math.min(3, next.tier, this.qCap);
+    const rebuild = q !== this.quality || prev.v.shadows !== next.v.shadows || prev.v.reflections !== next.v.reflections;
+    this.quality = q;
+    this._applyQuality();
+    if (rebuild) {
+      this.scale = Math.min(this.scale, 1); this._perf.lowCount = 0;
+      if (this.world) this.setWorld(this.world);
+    }
+  }
   /** Sitzungs-Obergrenze setzen (Absicherung im Flug); baut bei Änderung neu auf */
   setQualityCap(q) {
     this.qCap = Math.max(0, Math.min(3, q | 0));
-    const want = this._wantQuality();
-    if (want !== this.quality) { this.quality = want; this._applyQuality(); if (this.world) this.setWorld(this.world); }
+    this._syncGfx();
   }
   // Start-Auflösung aus der Vorhersage der Qualitätswahl: passt die Stufe bei voller Auflösung nicht ins Budget,
   // gleich mit passender Auflösung beginnen (statt die ersten Sekunden ruckelnd herunterzuregeln)
@@ -411,7 +495,7 @@ export class Renderer {
     // Schattenzustand je Sitzung fest (Qualität „hoch“): wechselte er zwischen Sektoren mit und ohne Station, übersetzte
     // three.js beim Sprung alle ≈ 120 beleuchteten Materialien neu (0,4–1,4 s Hänger). Ohne Station bleibt die
     // Schattenkarte leer (nichts wirft Schatten), sie wird nur einmal gezeichnet.
-    this._shadowOn = this.quality >= 2;
+    this._shadowOn = !!SHADOWS[this.gfx.v.shadows];
     this.lights.sun.castShadow = this._shadowOn;
     // Erster Aufbau der Sitzung: alles sofort (hinter der unsichtbaren Leinwand). Jeder weitere (Sektorsprung,
     // Qualitätswechsel): Shader parallel übersetzen, ohne den Hauptthread anzuhalten (vorher 0,6–1,4 s Hänger).
@@ -434,7 +518,7 @@ export class Renderer {
     const px = world.player ? world.player.x || 0 : 0, pz = world.player ? world.player.z || 0 : 0;
     cam.position.set(px, d * SIN_P, pz + d * COS_P); cam.lookAt(px, 0, pz); cam.updateMatrixWorld();
     const gl = this.gl, prevRT = gl.getRenderTarget();
-    const useComposer = !(this.lowQuality || this.quality === 0);
+    const useComposer = this._useComposer();
     const H = this._hold = { t0: performance.now(), phase: 'compile', ready: false };
     try {
       try { this.env.planets.warmPrograms(); } catch (err) { console.warn('Planeten-Vorübersetzen', err); }
@@ -459,7 +543,7 @@ export class Renderer {
       H.phase = 'draw';
       const t = performance.now();
       const gl = this.gl, prev = gl.getRenderTarget();
-      const useComposer = !(this.lowQuality || this.quality === 0);
+      const useComposer = this._useComposer();
       if (useComposer && !this._prepRT) this._prepRT = new THREE.WebGLRenderTarget(8, 8, { type: THREE.HalfFloatType, samples: 0 });
       const eqVis = this.env.sky.bgEq.visible;
       this.env.sky.bgEq.visible = true;
@@ -580,7 +664,7 @@ export class Renderer {
     const cam = this.camera, d = this.targetDist;
     cam.position.set(px, d * SIN_P, pz + d * COS_P); cam.lookAt(px, 0, pz); cam.updateMatrixWorld();
     const prevRT = this.gl.getRenderTarget();
-    const useComposer = !(this.lowQuality || this.quality === 0);
+    const useComposer = this._useComposer();
     const gl = this.gl;
     try {
       // Back-Shader der Planetenoberflächen (sonst übersetzt der erste Streifen je Typ mitten im Flug)
@@ -658,7 +742,7 @@ export class Renderer {
     root.position.set(this.camTarget.x, 0, this.camTarget.z);
     root.updateMatrixWorld(true);
     const gl = this.gl;
-    const useComposer = !(this.lowQuality || this.quality === 0);
+    const useComposer = this._useComposer();
     const prev = gl.getRenderTarget();
     let wait = null;
     try {
@@ -675,8 +759,10 @@ export class Renderer {
         if (m.uniforms) for (const k in m.uniforms) { const v = m.uniforms[k].value; if (v && v.isTexture) tex.add(v); }
       }
     });
+    const an = this._aniso || 1;
     for (const t of tex) {
       if (this._disposed) return;
+      if (!t.isRenderTargetTexture && !t.isDataTexture && t.anisotropy !== an) { t.anisotropy = an; if (t.image) t.needsUpdate = true; } // vor dem Hochladen
       try { gl.initTexture(t); } catch { /* egal */ }
       await new Promise((r) => setTimeout(r, 16));
     }
@@ -691,7 +777,7 @@ export class Renderer {
     const Q = this._prepQ;
     this._prepQ = null;
     const gl = this.gl, prev = gl.getRenderTarget();
-    const useComposer = !(this.lowQuality || this.quality === 0);
+    const useComposer = this._useComposer();
     if (useComposer && !this._prepRT) this._prepRT = new THREE.WebGLRenderTarget(8, 8, { type: THREE.HalfFloatType, samples: 0 });
     for (const q of Q) this.scene.add(q.root);
     try {
@@ -915,7 +1001,7 @@ export class Renderer {
     // Verfolger-Kamera sieht bis zum Horizont: kleine Objekte weit weg nicht zeichnen (spart Aufrufe und Dreiecke;
     // auf 5 km ist ein Gegner kaum ein Bildpunkt). Station, Tore, Frachter und große Brocken bleiben.
     if (this._farCull && v.kind !== 'player' && v.kind !== 'station' && v.kind !== 'portal' && v.kind !== 'freighter') {
-      const dx = v.rx - this._camX, dz = v.rz - this._camZ, lim = v.kind === 'asteroid' ? 9000 : 5200;
+      const dx = v.rx - this._camX, dz = v.rz - this._camZ, lim = (v.kind === 'asteroid' ? 9000 : 5200) * this._farK;
       if (dx * dx + dz * dz > lim * lim) { root.visible = false; return; }
     }
     root.visible = true;
@@ -1558,6 +1644,7 @@ export class Renderer {
   _cockpitFrame(dt, W, pv, fov) {
     const kc = this.rig.kc, on = kc > 0.5 && !!pv && !!W?.player && !W.docked;
     this.cockpitPass.enabled = on;
+    if (on !== this._cockpitOn) { this._cockpitOn = on; this._updateChain(); } // Verdeckung: eigener Durchgang statt im Look
     this.camera.layers[on ? 'disable' : 'enable'](PLAYER_LAYER);
     if (!on) return;
     const p = W.player, rig = this.rig;
@@ -1725,7 +1812,7 @@ export class Renderer {
   // Meter pro Bildschirmpixel in der Bildmitte (für Effekte mit Mindestgröße am Bildschirm)
   metersPerPixel() { return (2 * this._viewD * this._tanH) / Math.max(1, this.rect.height); }
   _updatePointScale() {
-    const pr = this.gl.getPixelRatio(), h = this.rect.height;
+    const pr = this._ipr, h = this.rect.height;
     this._pointScale = (h * pr) / (2 * this._tanH);
     this.effects.setPointScale(this._pointScale, pr);
     this.factory.uPointScale.value = this._pointScale;
@@ -1779,12 +1866,7 @@ export class Renderer {
     if (nowMs - this._qCheck > 1000) {
       this._qCheck = nowMs;
       this.rig.refresh(); // Kamerawahl, „Kamerawackeln aus“, „Bewegung reduzieren“
-      const q = this._wantQuality();
-      if (q !== this.quality) {
-        this.quality = q; this._applyQuality();
-        this.scale = Math.min(this.scale, 1); this._perf.lowCount = 0;
-        if (this.world) this.setWorld(this.world);
-      }
+      this._syncGfx();    // Grafik-Einstellungen (Stufe, Bausteine, Schatten …)
     }
     this.time += dt;
     this.frame++;
@@ -1882,7 +1964,7 @@ export class Renderer {
       const Hh = Math.max(1, this.rect.height), freeTop = Math.max(40, HF.top), freeBot = Hh - Math.max(0, HF.bottom);
       const shipPx = freeTop + Math.max(80, freeBot - freeTop) * 0.6;
       const shipY = Math.max(-0.4, Math.min(0.3, 1 - 2 * shipPx / Hh));
-      const tanC = Math.tan((FOV_CHASE + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * Math.PI / 360);
+      const tanC = Math.tan((this._fovChase + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * Math.PI / 360);
       rig.chasePose(dt, pv, e, hostile ? cv : null, hostile ? this.combatK : 0, pv.maxSpeed, shipY, tanC);
       _cp.lerp(rig._outPos, K); _cl.lerp(rig._outLook, K);
       viewD = d + (rig._outPos.distanceTo(_v.set(pv.rx, 0, pv.rz)) - d) * K;
@@ -1898,7 +1980,7 @@ export class Renderer {
     cam.lookAt(_cl);
     if (K > 0.001) cam.rotateZ((-(pv ? pv.bank : 0) * (0.16 + 0.34 * rig.kc) + rig.shakeRoll(this.time) * (1 - 0.6 * rig.kc)) * K);
     // Sichtfeld: Kick bei hohem Tempo und Nachbrenner (Taktik nur leicht)
-    let fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (FOV_CHASE - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K
+    let fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (this._fovChase - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K
       - (rig.firePunch || 0) * (0.6 + 1.4 * K); // Schuss: kurzes Heranrücken (negativer FOV-Puls)
     fov += ((rig.cockpitFov || FOV_COCKPIT) + 6 * rig.fovKick * rig.motion - fov) * rig.kc;
     this._cockpitFrame(dt, W, pv, fov);
@@ -1947,7 +2029,7 @@ export class Renderer {
     this.env.chaseK = this.rig.k;
     // Blicklicht folgt der Kamera (von leicht oben), Ziel ist der Blickpunkt
     { const L = this.lights.view; L.position.copy(cam.position); L.position.y += 60; L.target.position.copy(_cl); L.target.updateMatrixWorld(); L.intensity = 0.8 * (0.4 + 0.6 * this.rig.k); }
-    if (W) this.env.update(cam, this.gl.getPixelRatio(), this._pointScale, this.time, this.camTarget, dt);
+    if (W) this.env.update(cam, this._ipr, this._pointScale, this.time, this.camTarget, dt);
     // Sprungtor-Linse im Kamera-Durchgang (nächstes Tor im Bild)
     const OU = this.output.uniforms;
     let lensK = 0;
@@ -2009,7 +2091,9 @@ export class Renderer {
     // Browser, den Weichzeichner über die ganze Fläche neu zu rechnen (angedockt vorher 25–40 Bilder/s).
     if (W && W.docked) {
       const settled = this._dockK >= 1 && this._intro.done;
-      if ((this.frame & (settled ? 31 : 3)) !== 0) return;
+      // Neue Leinwandgröße (adaptive Auflösung, Fenster) leert die Leinwand: dann sofort zeichnen, sonst bliebe sie
+      // bis zum nächsten gezeichneten Bild (bis 0,5 s) schwarz
+      if (!this._mustDraw && (this.frame & (settled ? 31 : 3)) !== 0) return;
     }
     this._introStep();
     // Sektorsprung: solange die neuen Shader parallel übersetzen, bleibt das letzte Bild (Sprungblitz) stehen
@@ -2018,13 +2102,15 @@ export class Renderer {
     if (this._prepQ) this._drawPrep();
     G.info.reset();
     this.gpuTimer.begin();
-    if (this.lowQuality || this.quality === 0) G.render(this.scene, cam);
+    if (!this._useComposer()) G.render(this.scene, cam);
     else this.composer.render(dt);
     this.gpuTimer.end();
+    this._mustDraw = false;
     const S = this.stats;
     S.gpu = this.gpuTimer.gpu; S.calls = G.info.render.calls; S.tris = G.info.render.triangles;
-    S.pr = G.getPixelRatio(); S.scale = this.scale; S.w = this.canvas.width; S.h = this.canvas.height;
-    S.quality = this.quality; S.low = this.lowQuality;
+    S.pr = this._ipr; S.opr = this._opr; S.up = this._upscaling; S.scale = this.scale; S.w = this.canvas.width; S.h = this.canvas.height;
+    S.sw = this.composer.readBuffer.width; S.sh = this.composer.readBuffer.height; S.post = this._useComposer();
+    S.quality = this.quality; S.tier = this.gfx.tier; S.custom = this.gfx.custom; S.low = this.lowQuality;
     this._perf.cpu += (performance.now() - _t0 - this._perf.cpu) * 0.1; // Prozessorzeit je Bild (geglättet)
   }
 
@@ -2059,6 +2145,8 @@ export class Renderer {
       P.last = now; P.winStart = now; P.frames = 0; return; // Pause/verstecktes Fenster: nicht werten
     }
     P.last = now;
+    // Stehendes Bild beim Sektorsprung: nicht werten und nicht umschalten (neue Leinwandgröße hieße schwarzes Bild)
+    if (this._hold) { P.winStart = now; P.frames = 0; return; }
     if (P.warm > 0) { P.warm -= dt; P.winStart = now; P.frames = 0; return; }
     P.frames++;
     const span = now - P.winStart;
@@ -2074,8 +2162,10 @@ export class Renderer {
     // Fester Boden: unter 50 Bilder/s immer herunterregeln (auch wenn es nie schneller war, z. B. schwacher
     // Laptop mit gleichmäßig 35 Bildern/s), hoch nur ab 55. Ausnahme: Browser drosselt fest auf ≈ 30 (Energiesparen).
     const throttled = fps > 28 && fps < 32 && P.cpu < 8;
-    if (fps < 50 && !throttled) slow = true;
-    if (fps < 55) fast = false;
+    // Mit Bildratenbegrenzung gilt das Ziel des Begrenzers statt fester 50/55 Bilder/s
+    const floorFps = this.fpsFloor();
+    if (fps < floorFps && !throttled) slow = true;
+    if (fps < Math.min(55, (this.fpsCap || 1000) * 0.95)) fast = false;
     // Prozessor-Engpass: Bildrate niedrig, die Grafikkarte braucht aber nur einen kleinen Teil des Bildbudgets
     // (bei mindestens 60 Bildern/s). Auflösung senken brächte nur Unschärfe – die Absicherung im Flug senkt
     // stattdessen die Stufe (Partikel, Lichter). Ohne GPU-Zeitmessung nur, wenn Simulation/Oberfläche außerhalb
@@ -2137,17 +2227,29 @@ export class Renderer {
   /** Arbeitszeit des ganzen Bildes (ms, Prozessor: Simulation, Grafik, Oberfläche) aus der Spielschleife */
   noteWork(ms) { const P = this._perf; P.work += (ms - P.work) * 0.1; }
 
+  // Pixeldichten: Szene (intern) = Stufe × adaptive Auflösung × Auflösungsskalierung. Ausgabe (Leinwand) = Stufe,
+  // wenn die LS-Hochskalierung hochrechnet; bei Supersampling höchstens die Bildschirmdichte; sonst wie die Szene
+  // (der Browser streckt die Leinwand, wie bisher).
   _applyPR() {
-    const pr = this.basePR * this.scale;
-    this._bloomScale = Math.min(this._bloomCap ?? 1, pr >= 1.5 ? 0.5 : pr > 1.15 ? 0.7 : 1);
-    const w = this.rect.width, h = this.rect.height;
-    this.gl.setPixelRatio(pr);
+    const g = this.gfx.v, w = this.rect.width, h = this.rect.height;
+    const dpr = window.devicePixelRatio || 1;
+    let ipr = this.basePR * this.scale * g.renderScale / 100;
+    ipr = Math.max(0.25, Math.min(ipr, 4, (this.caps.maxTex || 8192) / Math.max(w, h)));
+    this._ipr = ipr;
+    this._updateChain(); // _post hängt vom Hochrechnen ab
+    const post = this._post;
+    const up = post && g.upscale === 'ls' && ipr < this.basePR * 0.97;
+    const opr = up ? this.basePR : post && ipr > this.basePR ? Math.min(ipr, Math.max(this.basePR, dpr)) : ipr;
+    this._opr = opr; this._upscaling = up;
+    this._bloomScale = Math.min(this._bloomCap ?? 1, ipr >= 1.5 ? 0.5 : ipr > 1.15 ? 0.7 : 1);
+    this.gl.setPixelRatio(opr);
     this.gl.setSize(w, h, false);
-    this.composer.setPixelRatio(pr);
+    this._mustDraw = true; // Leinwand ist jetzt leer: im selben Bild neu zeichnen (auch angedockt)
+    this.composer._pixelRatio = ipr; // EffectComposer.setPixelRatio ruft setSize ohnehin auf
     this.composer.setSize(w, h);
+    this.chain.passes.up.setOutputSize(this.canvas.width, this.canvas.height);
     this.cockpit.setSize(w, h);
-    // EffectComposer ruft setSize der Durchgänge mit Pufferpixeln auf; FXAA nur ohne Retina-Dichte
-    this.output.setFxaa(pr < 1.5);
+    this._updateChain();
     this._updatePointScale();
   }
 
@@ -2289,6 +2391,7 @@ export class Renderer {
     for (const off of this._offs) off();
     this._offs.length = 0;
     window.removeEventListener('resize', this._onResize);
+    window.removeEventListener('ls:settings', this._onSettings);
     this.views.forEach((v, id) => this._removeView(id));
     this.jumpMarker.dispose();
     this.env.dispose(false);
@@ -2302,9 +2405,9 @@ export class Renderer {
     this.selInner.geometry.dispose(); this.selInner.material.dispose();
     this.factory.dispose();
     disposeTextures();
-    this.composer.renderTarget1.dispose(); this.composer.renderTarget2.dispose();
+    for (const rt of [this.composer.renderTarget1, this.composer.renderTarget2]) { rt.depthTexture?.dispose(); rt.dispose(); }
     this.cockpit.dispose();
-    this.bloom.dispose(); this.output.dispose?.();
+    this.chain.dispose(); // alle Bausteine (Nachleuchten, Kamera-Look, AO, SMAA, Hochskalierung)
     this.gpuTimer.dispose();
     this.gl.dispose();
     try { this.gl.forceContextLoss(); } catch { /* egal */ } // Leinwand wird verworfen → GPU-Speicher sofort frei

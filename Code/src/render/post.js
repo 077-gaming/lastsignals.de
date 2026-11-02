@@ -25,6 +25,31 @@ uniform vec3 uSunCol;
 uniform vec2 uLensC, uLensR; uniform float uLensK;   // Sprungtor: Gravitationslinse (Mitte, Halbachsen in Bildkoordinaten)
 uniform vec2 uTexel;          // 1 / Puffergröße (FXAA)
 uniform vec2 uHeatA, uHeatB; uniform float uHeatW, uHeatK;   // Hitzeflimmern hinter den Düsen (Strecke im Bild)
+#ifdef USE_AO
+// Umgebungsverdeckung (engine/passes/ao.js) hier eingerechnet: halbe Auflösung, R = Verdeckung, G = Abstand (m)
+uniform sampler2D tAO, tAODepth;
+uniform vec2 uAoSize;
+uniform vec4 uAoP;            // nah, fern, Stärke, Ausblend-Entfernung
+float lsAo(vec2 uv, float lum) {
+  float d = texture2D(tAODepth, uv).r;
+  if (d >= 1.0) return 1.0;
+  float z = (uAoP.x * uAoP.y) / (uAoP.y - d * (uAoP.y - uAoP.x));
+  vec2 t = 1.0 / uAoSize;
+  vec2 q = uv * uAoSize - 0.5;
+  vec2 f = fract(q);
+  vec2 b0 = (floor(q) + 0.5) * t;
+  vec2 a = texture2D(tAO, b0).rg, b = texture2D(tAO, b0 + vec2(t.x, 0.0)).rg;
+  vec2 c = texture2D(tAO, b0 + vec2(0.0, t.y)).rg, e = texture2D(tAO, b0 + t).rg;
+  float tol = max(0.3, z * 0.01);
+  vec4 wz = 1.0 / (1e-3 + abs(vec4(a.g, b.g, c.g, e.g) - z) / tol);
+  vec4 wb = vec4((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y), (1.0 - f.x) * f.y, f.x * f.y);
+  vec4 w = wz * wb * step(0.001, vec4(a.g, b.g, c.g, e.g));
+  float ws = dot(w, vec4(1.0));
+  float ao = ws > 1e-5 ? dot(w, vec4(a.r, b.r, c.r, e.r)) / ws : 1.0;
+  if (!(ao >= 0.0 && ao <= 1.0)) ao = 1.0;
+  return mix(1.0, ao, uAoP.z * (1.0 - smoothstep(uAoP.w * 0.6, uAoP.w, z)) * (1.0 - smoothstep(0.9, 2.5, lum)));
+}
+#endif
 #include <tonemapping_pars_fragment>
 #include <colorspace_pars_fragment>
 varying vec2 vUv;
@@ -117,6 +142,9 @@ void main() {
   #endif
   #endif
 
+  #ifdef USE_AO
+    c *= lsAo(uvL, dot(c, vec3(0.2126, 0.7152, 0.0722)));
+  #endif
   #ifdef USE_BLOOM
     c += texture2D(tBloom, uvL).rgb * uBloomK;
   #endif
@@ -186,17 +214,29 @@ export class CameraLookPass extends Pass {
       uLensC: { value: new THREE.Vector2(0.5, 0.5) }, uLensR: { value: new THREE.Vector2(0.1, 0.1) }, uLensK: { value: 0 },
       uTexel: { value: new THREE.Vector2(1 / 1024, 1 / 1024) },
       uHeatA: { value: new THREE.Vector2() }, uHeatB: { value: new THREE.Vector2() }, uHeatW: { value: 0.01 }, uHeatK: { value: 0 },
+      tAO: { value: null }, tAODepth: { value: null }, uAoSize: { value: new THREE.Vector2(4, 4) }, uAoP: { value: new THREE.Vector4(1, 1000, 0, 1) },
     };
     this.material = new THREE.RawShaderMaterial({ uniforms: this.uniforms, vertexShader: VS, fragmentShader: FS, depthTest: false, depthWrite: false });
     this.fsQuad = new FullScreenQuad(this.material);
     this._key = '';
     this.quality = 2;
     this.fxaa = false;
+    this.grain = true; this.ca = true; this.vig = true; // Einzelschalter (Grafik-Einstellungen), wirken ab MITTEL
+    this.vigBase = this.uniforms.uVig.value;
     this.bloom = null; // BloomPass (bloom.js): Ergebnis wird hier addiert
   }
 
   setQuality(q) { this.quality = q; this._key = ''; }
-  setFxaa(on) { if (on !== this.fxaa) { this.fxaa = on; this._key = ''; } }
+  /** Umgebungsverdeckung einrechnen (AoPass mit fold) oder null */
+  setAo(ao) { if ((ao || null) !== (this.ao || null)) { this.ao = ao || null; this._key = ''; } }
+  setFxaa(on) { on = !!on; if (on !== this.fxaa) { this.fxaa = on; this._key = ''; } }
+  /** Filmkorn, Vignette, Farbsaum einzeln (engine/settings.js) */
+  setEffects(grain, vig, ca) {
+    grain = !!grain; ca = !!ca; vig = !!vig;
+    if (grain !== this.grain || ca !== this.ca) { this.grain = grain; this.ca = ca; this._key = ''; }
+    if (vig !== this.vig) { if (this.vig) this.vigBase = this.uniforms.uVig.value; this.vig = vig; }
+    this.uniforms.uVig.value = vig ? this.vigBase : 0;
+  }
   setSize(w, h) { this.uniforms.uTexel.value.set(1 / Math.max(1, w), 1 / Math.max(1, h)); }
 
   render(renderer, writeBuffer, readBuffer) {
@@ -205,17 +245,28 @@ export class CameraLookPass extends Pass {
     u.toneMappingExposure.value = renderer.toneMappingExposure;
     const bloom = !!(this.bloom && this.bloom.enabled);
     if (bloom) { u.tBloom.value = this.bloom.texture; u.uBloomK.value = this.bloom.strength; }
-    const key = renderer.toneMapping + ':' + this.quality + ':' + (u.uFlare.value > 0) + ':' + this.fxaa + ':' + bloom + ':' + !!this.legacy;
+    // Verdeckung eingerechnet, solange der AO-Baustein läuft; mit Cockpit-Ebene (eigener AO-Durchgang) Stärke 0 –
+    // so bleibt der Shader gleich und der Wechsel Verfolger ↔ Cockpit übersetzt nichts neu
+    const ao = !!(this.ao && this.ao.enabled && this.ao.depth);
+    if (ao) {
+      const A = this.ao, cam = A.camera;
+      u.tAO.value = A.texture; u.tAODepth.value = readBuffer.depthTexture || A.depth;
+      u.uAoSize.value.set(A.rtB.width, A.rtB.height);
+      u.uAoP.value.set(cam.near, cam.far, A.fold ? A.strength : 0, A.fade);
+    }
+    const key = renderer.toneMapping + ':' + this.quality + ':' + (u.uFlare.value > 0) + ':' + this.fxaa + ':' + bloom + ':' + !!this.legacy + ':' + this.grain + ':' + this.ca + ':' + ao;
     if (key !== this._key) {
       this._key = key;
       const d = {};
       if (renderer.toneMapping === THREE.ACESFilmicToneMapping) d.ACES_FILMIC_TONE_MAPPING = '';
       else if (renderer.toneMapping === THREE.AgXToneMapping) d.AGX_TONE_MAPPING = '';
       else if (renderer.toneMapping === THREE.NeutralToneMapping) d.NEUTRAL_TONE_MAPPING = '';
-      if (this.quality >= 1) { d.USE_GRAIN = ''; d.USE_CA = ''; }
+      if (this.quality >= 1 && this.grain) d.USE_GRAIN = '';
+      if (this.quality >= 1 && this.ca) d.USE_CA = '';
       if (this.quality >= 2 && u.uFlare.value > 0) d.USE_FLARE = '';
       if (this.fxaa) d.USE_FXAA = '';
       if (bloom) d.USE_BLOOM = '';
+      if (ao) d.USE_AO = '';
       if (this.legacy) d.LS_CA_FULL = ''; // nur Messungen (Vorher/Nachher)
       this.material.defines = d;
       this.material.needsUpdate = true;

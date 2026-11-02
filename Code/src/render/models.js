@@ -548,11 +548,38 @@ function fixNormals(scene) {
   });
   return scene;
 }
+// Anisotrope Filterung der Modell-Texturen (Grafik-Einstellung): neue GLB-Texturen bekommen den Wert vor dem
+// ersten Hochladen, vorhandene setzt applyAnisotropy (nur geänderte werden neu hochgeladen).
+let MODEL_ANISO = 4;
+export function setModelAnisotropy(n) { MODEL_ANISO = Math.max(1, n | 0); }
+const TEX_KEYS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'bumpMap', 'alphaMap', 'clearcoatNormalMap', 'clearcoatMap', 'specularIntensityMap', 'sheenColorMap'];
+/** Anisotropie aller Oberflächen-Texturen unter root setzen; Liefert die Zahl geänderter Texturen. */
+export function applyAnisotropy(root, n = MODEL_ANISO) {
+  let k = 0;
+  const seen = new Set();
+  root.traverse((o) => {
+    for (const m of [].concat(o.material || [])) {
+      if (!m || seen.has(m)) continue;
+      seen.add(m);
+      for (const key of TEX_KEYS) {
+        const t = m[key];
+        if (!t || !t.isTexture || t.isRenderTargetTexture || t.isDataTexture || t.anisotropy === n) continue;
+        t.anisotropy = n;
+        // schon hochgeladen (Bild vorhanden): neu hochladen, sonst gilt der Wert beim ersten Hochladen
+        if (t.image && t.version > 0) t.needsUpdate = true;
+        k++;
+      }
+    }
+  });
+  return k;
+}
+
 export function preloadGLB(url) {
   let p = GLB_CACHE.get(url);
   if (!p) {
     // bis zu 2 weitere Versuche mit Pause (kurze Serverfehler, z. B. 503 direkt nach einem Deploy, oder Funkloch)
-    const attempt = (left) => glbLoader().then((l) => l.loadAsync(url)).then((g) => { fixNormals(g.scene); return g; })
+    const attempt = (left) => glbLoader().then((l) => l.loadAsync(url))
+      .then((g) => { fixNormals(g.scene); try { applyAnisotropy(g.scene, MODEL_ANISO); } catch { /* egal */ } return g; })
       .catch((err) => (left > 0 ? new Promise((r) => setTimeout(r, 1500 * (3 - left))).then(() => attempt(left - 1)) : Promise.reject(err)));
     p = attempt(2);
     p.catch(() => GLB_CACHE.delete(url));
@@ -679,6 +706,9 @@ export class ModelFactory {
     // Vorlage bleibt unberührt im Zwischenspeicher (Geometrien/Materialien geteilt, je Grafik-Engine neu hochgeladen)
     const src = gltf.scene.clone(true);
     src.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+    // Anisotropie nach aktuellem Grafikwert: Die Vorlage im Zwischenspeicher kann mit einem älteren Wert geladen sein
+    // (z. B. vor dem Flug); Texturen sind mit der Vorlage geteilt, nur abweichende werden neu hochgeladen
+    try { applyAnisotropy(src); } catch { /* egal */ }
     // Spielerschiffe: Klarlack über der Lackierung (Glanzkante im Sonnen- und Kantenlicht), Umgebungslicht etwas stärker.
     // Nur eigene Schiffe (wenige Teile im Bild); Materialien je Modell einmal ersetzt, Vorlage im Zwischenspeicher bleibt.
     // Farbvariante desselben Modells (z. B. Schwarm-Kreaturen): Materialien kopieren, dann einfärben

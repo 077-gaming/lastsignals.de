@@ -196,6 +196,7 @@ export class Environment {
     this._vel = new THREE.Vector2();
     this._lastC = null;
     this.quality = 2;
+    this.reflectRes = 512; // Breite der Himmelsspiegelung (Renderer setzt sie aus den Grafik-Einstellungen)
     this.sys = SYSTEMS.europa;
   }
 
@@ -252,7 +253,7 @@ export class Environment {
     lights.hemi.intensity = S.hemi[2];
 
     // Spiegel-Umgebung aus demselben Himmel
-    const eq = this.sky.bakeEquirect(this.sunDir);
+    const eq = this.sky.bakeEquirect(this.sunDir, this.reflectRes || 512);
     const pm = new THREE.PMREMGenerator(this.gl);
     this.envRT = pm.fromEquirectangular(eq.texture);
     pm.dispose(); eq.dispose();

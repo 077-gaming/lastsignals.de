@@ -1,6 +1,6 @@
 // Feste Vergleichsansichten für Vorher/Nachher (nur Entwicklung, braucht laufenden Dev-Server und Google Chrome).
 // Aufruf: node tools/bilder/ansichten.mjs <ausgabeordner> [basis-url]
-// Gleiche Fenstergröße (960×600, Pixeldichte 1), gleiche Wartezeit, gleicher Einstieg je Ansicht.
+// Gleiche Fenstergröße (960×600, Pixeldichte 1; DPR=2 für Retina), gleiche Wartezeit, gleicher Einstieg je Ansicht.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -11,6 +11,8 @@ const extra = process.argv[4] || ''; // z. B. '&tm=agx&exp=1.1' (nur Entwicklung
 const size = (process.argv[5] || '960x600').split('x').map(Number);
 const quality = process.env.Q || ''; // NIEDRIG…ULTRA erzwingen: Q=low|medium|high|ultra
 const hud = process.env.HUD === '1';  // Standard: HUD ausgeblendet, damit nur die Grafik verglichen wird
+const dpr = Number(process.env.DPR) || 1; // Pixeldichte (DPR=2 wie ein Retina-Mac)
+const fixed = process.env.FEST === '1'; // adaptive Auflösung vor dem Messen auf 100 % festhalten (Vergleich gleicher Pixelzahl)
 // [Name, Adresse, Wartezeit, Vorbereitung im Spiel (nach dem Laden, vor dem Messen)]
 const VIEWS = [
   ['station-europa', '/?dev=dock&f=europa', 9000],
@@ -65,7 +67,7 @@ const browser = await chromium.launch({
 const report = [];
 for (const [name, url, wait, , vopt] of VIEWS) {
   if (process.env.ONLY && !process.env.ONLY.split(',').includes(name)) continue;
-  const ctx = await browser.newContext({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1 });
+  const ctx = await browser.newContext({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: dpr });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
@@ -83,6 +85,8 @@ for (const [name, url, wait, , vopt] of VIEWS) {
   if (!hud && !vopt?.hud) await page.addStyleTag({ content: '#hud{display:none!important}' });
   await page.waitForTimeout(3000);
   // Kurzer Messwert aus dem Renderer, falls die Test-Schnittstelle da ist
+  if (fixed) await page.evaluate(() => { const R = window.__ls?.renderer; if (R) { R._perf.warm = 1e9; if (R.scale !== 1) { R.scale = 1; R._applyPR(); } } }).catch(() => {});
+  if (fixed) await page.waitForTimeout(1500);
   const info = await page.evaluate(async () => {
     const R = window.__ls?.renderer, r = R?.gl;
     const i = r && r.info ? r.info.render : null;
@@ -92,7 +96,7 @@ for (const [name, url, wait, , vopt] of VIEWS) {
     t.sort((a, b) => a - b);
     return i ? { calls: i.calls, triangles: i.triangles, geo: r.info.memory.geometries, tex: r.info.memory.textures,
       ms: +(t.reduce((a, b) => a + b, 0) / t.length).toFixed(2), p95: +t[Math.floor(t.length * 0.95)].toFixed(2),
-      gpu: R.stats?.gpuOk ? +R.stats.gpu.toFixed(2) : null, fcalls: R.stats?.calls, ftris: R.stats?.tris, q: R.quality, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null } : null;
+      gpu: R.stats?.gpuOk ? +R.stats.gpu.toFixed(2) : null, fcalls: R.stats?.calls, ftris: R.stats?.tris, q: R.quality, sc: +(R.scale || 1).toFixed(2), pr: R.stats?.pr ? +R.stats.pr.toFixed(2) : null, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null } : null;
   }).catch(() => null);
   await page.screenshot({ path: path.join(out, name + '.png') });
   report.push({ name, url, wait, errors: errors.slice(0, 5), info });

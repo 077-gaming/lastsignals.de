@@ -21,7 +21,7 @@ const TAN = Math.tan(FOV * Math.PI / 360);
 const D2R = Math.PI / 180;
 const MODELS = [['ship:s1:saturn', '/models/saturn-starter.glb']];
 // Grafikstufen: ULTRA 3 · HOCH 2 · MITTEL 1 · NIEDRIG 0
-export const QUALITY_LEVEL = { ultra: 3, high: 2, medium: 1, low: 0 };
+export const QUALITY_LEVEL = { extreme: 3, ultra: 3, high: 2, medium: 1, low: 0 };
 
 /**
  * Himmel der Menü-Bühne: ab ULTRA feiner gebacken (0,75 statt 0,5 der Bildauflösung) und mit einer zweiten,

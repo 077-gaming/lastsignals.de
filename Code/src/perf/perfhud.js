@@ -3,7 +3,7 @@
 import './perfhud.css';
 import { isAutoQuality, gpuInfo } from './quality.js';
 
-const Q_NAME = ['NIEDRIG', 'MITTEL', 'HOCH', 'ULTRA'];
+const Q_NAME = ['NIEDRIG', 'MITTEL', 'HOCH', 'ULTRA', 'EXTREM'];
 
 export class PerfHud {
   constructor(renderer) {
@@ -20,7 +20,8 @@ export class PerfHud {
     window.addEventListener('keydown', this._onKey);
   }
 
-  setRenderer(r) { this.renderer = r; }
+  // ohne Flug-Grafik (Hub) bleibt die Anzeige verborgen, auch wenn sie eingeschaltet ist
+  setRenderer(r) { this.renderer = r; if (this.el) this.el.hidden = !(this.on && r); }
 
   toggle(v = !this.on) {
     this.on = v;
@@ -32,7 +33,7 @@ export class PerfHud {
       this.dl = el.querySelector('dl');
       document.body.appendChild(el);
     }
-    if (this.el) this.el.hidden = !v;
+    if (this.el) this.el.hidden = !(v && this.renderer);
     if (v) this._paint();
   }
 
@@ -52,15 +53,19 @@ export class PerfHud {
     const s = r.stats || {};
     const gpu = s.gpuOk ? s.gpu.toFixed(2) + ' ms' : 'n. v.';
     const res = `${(s.pr || 1).toFixed(2)}× · ${Math.round((s.scale || 1) * 100)} %`;
+    const tier = s.tier ?? s.quality;
     const rows = [
       ['BILDER/S', this.fps.toFixed(0)],
+      ['BILDZEIT', (this.fps > 0 ? 1000 / this.fps : 0).toFixed(2) + ' ms'],
       ['CPU', this.cpu.toFixed(2) + ' ms'],
       ['GPU', gpu],
       ['AUFRUFE', String(s.calls ?? 0)],
       ['DREIECKE', fmtK(s.tris ?? 0)],
       ['AUFLÖSUNG', res],
-      ['PUFFER', `${s.w || 0}×${s.h || 0}`],
-      ['QUALITÄT', (Q_NAME[s.quality] || '?') + (isAutoQuality() ? ' · AUTO' : '') + (s.low ? ' · OHNE BLOOM' : '')],
+      ['SZENE', s.post ? `${s.sw || 0}×${s.sh || 0}` : `${s.w || 0}×${s.h || 0}`],
+      ['AUSGABE', `${s.w || 0}×${s.h || 0}` + (s.up ? ' · LS' : '')],
+      ['KETTE', s.post ? (r.chain ? r.chain.describe() : '–') : 'DIREKT'],
+      ['QUALITÄT', (Q_NAME[tier] || '?') + (s.custom ? ' · EIGEN' : isAutoQuality() ? ' · AUTO' : '') + (s.low ? ' · OHNE BLOOM' : '')],
       ['CHIP', chipName()],
     ];
     let h = '';
