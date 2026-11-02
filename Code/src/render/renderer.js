@@ -502,6 +502,15 @@ export class Renderer {
     if (this._outpostKey) this._need(this._outpostKey);
     // Asteroidenfelder zeigen die großen Brocken als Meshy-Formen (fields.js tauscht sie nach dem Laden ein)
     if ((this.env.fields?.fields || sec.fields || []).some((F) => F.type === 'asteroids')) for (const k of ['asteroid', 'asteroid:2']) { this._need(k); this._need(k + ':lod1'); }
+    // Requisiten des Sektors gestaffelt vorladen (Entpacken läuft im Hauptthread: einzeln, nicht erst beim Auftauchen
+    // mitten im Kampf); Ereignis-Modelle (Frachter, Nest, Wrack) zuletzt
+    const later = ['portal', 'asteroid:3', 'asteroid:3:lod1'];
+    if (sec.crates) later.push('crate', 'crate:lod1');
+    for (const o of Object.keys(sec.ore || {})) later.push('ore:' + o, `ore:${o}:lod1`);
+    later.push('wreck', 'wreck:lod1', 'freighter', 'nest');
+    clearTimeout(this._laterT);
+    const step = (i) => { if (this._disposed || i >= later.length) return; this._need(later[i]); this._laterT = setTimeout(() => step(i + 1), 400); };
+    this._laterT = setTimeout(() => step(0), 1500);
   }
 
   /** Zusatzmodell anfordern (einmal je Schlüssel; fehlt die Datei, bleibt das prozedurale Modell) */
@@ -1711,11 +1720,12 @@ export class Renderer {
     this.speedDust.setPointScale(this._pointScale);
   }
 
-  /** Alle Schiffsmodelle laden (Hangar-Vorschau, Test-Pilot-Modellprüfung). Im Flug lädt nur das eigene Schiff. */
+  /** Alle Schiffs- und Gegnermodelle laden (nur Test-Pilot-Modellprüfung). Im Flug lädt nur, was der Sektor braucht. */
   loadAllModels() {
     if (!this._loadGLB) return;
     let i = 0;
     for (const [key, url] of MODELS) if (!this.factory.glb.has(key)) setTimeout(() => this._loadGLB(key, url), 200 * i++);
+    for (const key in EXTRA_MODELS) if (key.startsWith('enemy:')) setTimeout(() => this._need(key), 200 * i++);
   }
   /** Schiff gewechselt (Kauf): dessen Modell laden, falls noch nicht da */
   _ensureMine(e) {

@@ -713,7 +713,9 @@
       V3 = R.camera.position.constructor; M4 = R.camera.matrixWorld.constructor;
       // alle Schiffs-GLBs geladen? (werden gestaffelt bis ≈ 20 s nach Start nachgeladen)
       const factions = ['europa', 'saturn', 'eris'], ships = ['s1', 's2'];
-      await waitFor(() => factions.every((f) => ships.every((s) => F.glb.has(`ship:${s}:${f}`))), 25000);
+      R.loadAllModels?.(); // Gegnermodelle laden sonst erst in ihren Sektoren
+      const eTypes = Object.keys(DATA.ENEMIES).filter((t) => t !== 'nest');
+      await waitFor(() => factions.every((f) => ships.every((s) => F.glb.has(`ship:${s}:${f}`))) && eTypes.every((t) => F.glb.has('enemy:' + t)), 40000);
       const loadoutFor = (s) => (s === 's2' ? { lasers: ['pulse', 'ion', 'plasma', 'gamma'], gens: ['sh1', 'dr1', 'sh1'] } : { lasers: ['pulse', 'ion'], gens: ['sh1', 'dr1'] });
       // statisch: jedes Modell einzeln (GLB und Platzhalter)
       for (const f of factions) for (const s of ships) {

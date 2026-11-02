@@ -15,7 +15,8 @@
 - Spiel für /play/ bauen: `cd Code && npx vite build --base=/play/`, dann `dist/index.html` und `dist/assets/` nach `public/play/`, `dist/fonts/` nach `public/play/fonts/`. `VITE_ALLOWED_CALLSIGNS` nie setzen (Spiel ist öffentlich).
 - Website: `npm ci && npm run build` (Port 5180 dev, 5181 Vorschau)
 - Test-Pilot: `cd Code && node tools/playtest/spielen.mjs --minuten 2 --fraktion alle` (Dev-Server und Google Chrome nötig)
-- Vergleichsansichten: `cd Code && Q=high node tools/bilder/ansichten.mjs <ordner> [basis-url]` (HUD aus, 9 feste Ansichten inkl. Kampf und Cockpit, Bildzeit/Draw Calls/Dreiecke/Speicher in `bericht.json`; `ONLY=name,name` für eine Auswahl, `HUD=1` mit HUD)
+- Vergleichsansichten: `cd Code && Q=high node tools/bilder/ansichten.mjs <ordner> [basis-url]` (HUD aus, 15 feste Ansichten inkl. Kampf, Cockpit, Hangar, Asteroidenfeld und Sprungtor, Bildzeit/Draw Calls/Dreiecke/Speicher in `bericht.json`; `ONLY=name,name` für eine Auswahl, `HUD=1` mit HUD)
+- Einbauprüfung der Modelle über die Spiel-Fabrik (mit Lasern/Generatoren an den Ankern): `cd Code && node tools/models/einbau.mjs schiffe <ordner>`
 - Textprüfung: `node Code/tools/texte/floskeln.mjs`
 
 ## Spielsysteme (Kurzüberblick)
@@ -23,6 +24,7 @@
 - SYSTEM-Reihe: `src/sim/system-quests.js` (69 Quests, Kapitel 1–18), Karte `src/ui/hud-guide.js`, Stand im Bordmenü (Esc) unter HILFE.
 - Tages- und Wochenaufträge: `src/sim/contracts.js` (UTC-Tag, ISO-Woche, fester Zufall je Pilot).
 - Sektoren 1–8 je Fraktion: `sectorsFor()` in `data.js`; tiefe Gegner nutzen `look` (Grundform eines vorhandenen Typs), Eigenheiten `brood`, `regen`, `jam`, Bosse mit `boss`/`respawn`.
+- Modelle: eigenes Schiff, Laser/Generatoren des Loadouts und Drohnen vor dem Flug; Gegner, Station, Tor, Requisiten und Ausrüstung erst, wenn der Sektor sie braucht (`EXTRA_MODELS`/`_need` in `render/renderer.js`), Meshy-Requisiten mit LOD-Stufe (`-lod1.glb`).
 - Kamera: V wechselt Verfolger → Cockpit → Taktisch (`render/camrig.js`); Cockpit ist eine eigene Ebene (`render/cockpit.js`).
 
 ## Regeln
