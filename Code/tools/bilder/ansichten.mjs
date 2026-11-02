@@ -22,6 +22,13 @@ const VIEWS = [
   ['schiff-nah', '/?dev=game&f=europa', 10000, 'nah'],
   ['kampf-saturn', '/?dev=game&f=saturn', 10000, 'kampf'],
   ['cockpit-eris', '/?dev=game&f=eris', 10000, 'cockpit'],
+  // Ergänzung Meshy-Einbau: Hangar, Asteroidenfeld, Sprungtor, großes Schiff, Schwarm-Kampf
+  ['hangar-saturn', '/?dev=hub&f=saturn', 9000, 'hangar', { hud: true }],
+  ['bucht-europa', '/?dev=dock&f=europa', 9000, 'bucht', { hud: true }],
+  ['feld-europa', '/?dev=game&f=europa', 10000, 'feld'],
+  ['tor-saturn', '/?dev=game&f=saturn', 10000, 'tor'],
+  ['schiff5-eris', '/?dev=game&f=eris', 12000, 'schiff5'],
+  ['kampf-schwarm', '/?dev=game&f=europa', 10000, 'schwarm'],
 ];
 // Fester Ablauf je Vorbereitung (gleiche Lage, gleicher Kurs, gleiche Gegnerzahl)
 const PREP = {
@@ -29,6 +36,22 @@ const PREP = {
   kampf: () => {
     const w = __ls.world; w.player.x += 1400; w.player.rot = 0.6;
     for (let i = 0; i < 3; i++) { const e = w.spawnTemp('raider', w.player.x - Math.sin(0.6) * (420 + i * 60) + (i - 1) * 90, w.player.z - Math.cos(0.6) * (420 + i * 60)); w.provoke(e); if (!i) w.setTarget(e.id); }
+    w.toggleAttack();
+  },
+  hangar: () => { document.querySelector('[data-nav] [data-sec="hangar"]')?.click(); },
+  bucht: () => { document.querySelector('[data-act="tab"][data-tab="hangar"]')?.click(); },
+  feld: () => {
+    const w = __ls.world, r = __ls.renderer, F = (r.env.fields?.fields || []).find((f) => f.type === 'asteroids');
+    if (F) { w.player.x = F.x + F.r * 0.15; w.player.z = F.z + F.r * 0.1; } w.player.rot = 0.8;
+  },
+  tor: () => {
+    const w = __ls.world; let P = null; w.entities.forEach((e) => { if (e.kind === 'portal' && !P) P = e; });
+    if (P) { w.player.x = P.x + 210; w.player.z = P.z + 210; w.player.rot = Math.PI / 4; }
+  },
+  schiff5: () => { const w = __ls.world, r = __ls.renderer; w.player.x += 900; w.player.rot = 2.4; w.player.ship = 's5'; w.profile.ship = 's5'; r._playerDirty = true; r.rig.zoom = 0.8; },
+  schwarm: () => {
+    const w = __ls.world; w.player.x += 1400; w.player.rot = 0.6;
+    ['larva', 'spiker', 'larva'].forEach((t, i) => { const e = w.spawnTemp(t, w.player.x - Math.sin(0.6) * (380 + i * 60) + (i - 1) * 90, w.player.z - Math.cos(0.6) * (380 + i * 60)); w.provoke(e); if (!i) w.setTarget(e.id); });
     w.toggleAttack();
   },
   cockpit: () => { const w = __ls.world, r = __ls.renderer; w.player.x += 900; w.player.rot = 1.2; for (let i = 0; i < 3 && r.viewMode !== 'cockpit'; i++) r.toggleCamera(); },
@@ -40,7 +63,7 @@ const browser = await chromium.launch({
   args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'],
 });
 const report = [];
-for (const [name, url, wait] of VIEWS) {
+for (const [name, url, wait, , vopt] of VIEWS) {
   if (process.env.ONLY && !process.env.ONLY.split(',').includes(name)) continue;
   const ctx = await browser.newContext({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
@@ -56,8 +79,8 @@ for (const [name, url, wait] of VIEWS) {
   }, quality);
   await page.goto(base + url + extra);
   await page.waitForTimeout(wait - 3000);
-  await page.evaluate((prep) => { __ls.series?.choose('direct'); if (prep) (0, eval)(`(${prep})()`); }, VIEWS.find((v) => v[0] === name)[3] ? PREP[VIEWS.find((v) => v[0] === name)[3]].toString() : '').catch((e) => errors.push(String(e)));
-  if (!hud) await page.addStyleTag({ content: '#hud{display:none!important}' });
+  await page.evaluate((prep) => { window.__ls?.series?.choose('direct'); if (prep) (0, eval)(`(${prep})()`); }, VIEWS.find((v) => v[0] === name)[3] ? PREP[VIEWS.find((v) => v[0] === name)[3]].toString() : '').catch((e) => errors.push(String(e)));
+  if (!hud && !vopt?.hud) await page.addStyleTag({ content: '#hud{display:none!important}' });
   await page.waitForTimeout(3000);
   // Kurzer Messwert aus dem Renderer, falls die Test-Schnittstelle da ist
   const info = await page.evaluate(async () => {
