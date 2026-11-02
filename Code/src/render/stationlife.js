@@ -257,6 +257,9 @@ export class StationLife {
 
   _buildFreighters() {
     const n = this.q >= 2 ? 2 : this.q === 1 ? 1 : 0;
+    if (this.freighters) for (const fr of this.freighters) this.gh.remove(fr.m.root);
+    // Frachter-Modell (Meshy) lädt meist erst nach der Station: Stand merken, update() baut dann neu auf
+    this._frVer = this.f.glbKeyVers?.freighter || 0;
     this.freighters = [];
     for (let i = 0; i < n; i++) {
       const m = this.f.buildFreighter(i + 3);
@@ -300,6 +303,7 @@ export class StationLife {
     const far = (v.rx - ct.x) ** 2 + (v.rz - ct.z) ** 2 > 4200 * 4200;
     this.g.visible = !far; this.gh.visible = !far;
     if (far) return;
+    if (this.freighters && (this.f.glbKeyVers?.freighter || 0) !== this._frVer) this._buildFreighters();
     const P = W && W.player;
     // Anflug: Leitlichter ab 900 m, voll in der sicheren Zone; angedockt ruhig hell
     let want = 0;
