@@ -15,6 +15,42 @@ function panelTex(w, h) {
   return { c, g: c.getContext('2d'), t };
 }
 
+// Verkleidung der Kanzel (Konsole, Seitenwände): lackiertes Blech mit Plattenfugen, Schrauben, Griffleisten und
+// kleinen Schaltern, damit die Flächen im 4K-Cockpit nicht als schwarze Platten stehen. Einmal je Seite gezeichnet.
+let _trimTex = null;
+function trimTexture() {
+  if (_trimTex) return _trimTex;
+  const W = 512, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = '#4a515c'; g.fillRect(0, 0, W, H);
+  // Platten mit leicht verschiedenem Ton, dunkle Fugen, helle Oberkante
+  const cols = [0, 140, 300, 512], rows = [0, 110, 250, 390, 512];
+  for (let i = 0; i < cols.length - 1; i++) for (let j = 0; j < rows.length - 1; j++) {
+    const x = cols[i], y = rows[j], w = cols[i + 1] - x, h = rows[j + 1] - y, t = 70 + Math.floor(rnd() * 16);
+    g.fillStyle = `rgb(${t},${t + 6},${t + 16})`; g.fillRect(x + 2, y + 2, w - 4, h - 4);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(x + 2, y + 2, w - 4, 2);
+    g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(x, y, w, 2); g.fillRect(x, y, 2, h);
+    g.fillStyle = '#9aa2ad';
+    for (const [sx, sy] of [[x + 9, y + 9], [x + w - 11, y + 9], [x + 9, y + h - 11], [x + w - 11, y + h - 11]]) { g.beginPath(); g.arc(sx, sy, 2.6, 0, Math.PI * 2); g.fill(); }
+  }
+  // Abnutzung: feine helle Kratzer, dunkle Flecken
+  for (let i = 0; i < 260; i++) { g.strokeStyle = `rgba(255,255,255,${0.03 + rnd() * 0.05})`; g.beginPath(); const x = rnd() * W, y = rnd() * H; g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 30, y + (rnd() - 0.5) * 8); g.stroke(); }
+  for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(0,0,0,${0.05 + rnd() * 0.08})`; g.beginPath(); g.arc(rnd() * W, rnd() * H, 4 + rnd() * 18, 0, Math.PI * 2); g.fill(); }
+  // Schalterfelder und Griffleiste
+  for (let k = 0; k < 3; k++) {
+    const x0 = 160 + k * 46, y0 = 130;
+    g.fillStyle = '#22262d'; g.fillRect(x0, y0, 38, 90);
+    for (let r = 0; r < 4; r++) { g.fillStyle = r === 1 && k === 1 ? '#ffb15a' : (r === 3 ? '#5ad1ff' : '#6b727d'); g.fillRect(x0 + 8, y0 + 8 + r * 20, 22, 10); }
+  }
+  g.fillStyle = '#2a2e35'; g.fillRect(20, 420, 470, 22); g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(20, 420, 470, 3);
+  for (let x = 30; x < 480; x += 24) { g.fillStyle = (x / 24) % 2 < 1 ? '#c9a23a' : '#1b1d22'; g.fillRect(x, 460, 12, 26); }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  _trimTex = t;
+  return t;
+}
+
 export class Cockpit {
   constructor() {
     this.scene = new THREE.Scene();
@@ -23,8 +59,11 @@ export class Cockpit {
     this._acc = 1;
     this._accent = new THREE.Color(0xff8a2a);
 
-    const metal = new THREE.MeshStandardMaterial({ color: 0x1b1e24, metalness: 0.75, roughness: 0.42 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x0c0e12, metalness: 0.4, roughness: 0.7 });
+    // ohne Umgebungskarte wird stark metallisches Material schwarz: Verkleidung als lackiertes Blech (wenig Metall)
+    const metal = new THREE.MeshStandardMaterial({ color: 0x5a6270, metalness: 0.45, roughness: 0.5 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x24282f, metalness: 0.2, roughness: 0.65 });
+    const trim = new THREE.MeshStandardMaterial({ map: trimTexture(), color: 0xc0c6d0, metalness: 0.3, roughness: 0.55 });
+    const trimSide = trim.clone(); trimSide.map = trimTexture().clone(); trimSide.map.repeat.set(2.2, 0.8); trimSide.map.needsUpdate = true;
     this.glowMat = new THREE.MeshBasicMaterial({ color: 0xff8a2a, toneMapped: false });
     const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => {
       const m = new THREE.Mesh(geo, mat);
@@ -41,12 +80,22 @@ export class Cockpit {
     };
 
     // Konsole: schräge Fläche unten, Vorderkante mit Leuchtleiste in Fraktionsfarbe
-    add(new THREE.BoxGeometry(3.2, 0.1, 1.1), dark, 0, -0.66, -1.05, 0.32);
+    add(new THREE.BoxGeometry(3.2, 0.1, 1.1), trim, 0, -0.66, -1.05, 0.32);
     add(new THREE.BoxGeometry(3.2, 0.36, 0.08), metal, 0, -0.62, -1.56);
+    // Unterbau unter der Konsole (Blick nach unten: Verkleidung statt Leere)
+    add(new THREE.BoxGeometry(3.3, 0.7, 1.5), trimSide, 0, -1.12, -0.9);
     add(new THREE.BoxGeometry(3.0, 0.016, 0.02), this.glowMat, 0, -0.45, -1.6);
     // Seitenkonsolen
-    add(new THREE.BoxGeometry(0.5, 0.5, 1.6), metal, -1.55, -0.72, -0.7, 0, 0.12);
-    add(new THREE.BoxGeometry(0.5, 0.5, 1.6), metal, 1.55, -0.72, -0.7, 0, -0.12);
+    // Seitenkonsolen bis hinter den Sitz und Kanzelwände: beim seitlichen Umsehen endet nichts als schwarze Platte
+    add(new THREE.BoxGeometry(0.5, 0.5, 2.8), trimSide, -1.55, -0.72, -0.2, 0, 0.06);
+    add(new THREE.BoxGeometry(0.5, 0.5, 2.8), trimSide, 1.55, -0.72, -0.2, 0, -0.06);
+    add(new THREE.BoxGeometry(0.1, 0.62, 3.0), trimSide, -1.86, -0.4, -0.2, 0, 0.06, -0.12);
+    add(new THREE.BoxGeometry(0.1, 0.62, 3.0), trimSide, 1.86, -0.4, -0.2, 0, -0.06, 0.12);
+    // Kanzelsims mit Leuchtleiste in Fraktionsfarbe
+    add(new THREE.BoxGeometry(0.16, 0.05, 2.9), metal, -1.78, -0.08, -0.2, 0, 0.06);
+    add(new THREE.BoxGeometry(0.16, 0.05, 2.9), metal, 1.78, -0.08, -0.2, 0, -0.06);
+    add(new THREE.BoxGeometry(0.012, 0.012, 2.6), this.glowMat, -1.69, -0.05, -0.25, 0, 0.06);
+    add(new THREE.BoxGeometry(0.012, 0.012, 2.6), this.glowMat, 1.69, -0.05, -0.25, 0, -0.06);
     // Kanzelrahmen: zwei Säulen, Dachbogen, schmale Mittelstrebe oben
     strut(-1.45, -0.45, -1.55, -1.05, 0.95, -1.75, 0.09);
     strut(1.45, -0.45, -1.55, 1.05, 0.95, -1.75, 0.09);
@@ -70,8 +119,8 @@ export class Cockpit {
 
     // Konsole so hoch, dass die Instrumente über den unteren HUD-Fenstern liegen
     for (const o of this.scene.children) if (o.isMesh && o.position.y < -0.3) o.position.y += 0.22;
-    this.scene.add(new THREE.HemisphereLight(0x8090a8, 0x0a0b0e, 0.9));
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
+    this.scene.add(new THREE.HemisphereLight(0x8592a8, 0x1a1c22, 1.25));
+    const key = new THREE.DirectionalLight(0xffffff, 1.6);
     key.position.set(0.4, 1, 0.6);
     this.scene.add(key);
     this.glow = new THREE.PointLight(0xff8a2a, 1.2, 3, 2);
