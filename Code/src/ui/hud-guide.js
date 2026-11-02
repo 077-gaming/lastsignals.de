@@ -5,6 +5,8 @@ import './hud-guide.css';
 import { SYSTEM_QUESTS, SYSTEM_CHAPTERS } from '../sim/system-quests.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
+// Ziele, die an der Station erledigt werden: Karte bleibt beim Andocken sichtbar
+const STATION_GOALS = ['sell', 'buy', 'equip', 'drone'];
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export class SystemGuide {
@@ -55,7 +57,7 @@ export class SystemGuide {
             <button class="ls-btn" data-act="direct">Direkt spielen</button>
           </div>
         </div></div>`;
-    } else if (st.mode !== 'guided' || s.finished || w.docked) {
+    } else if (st.mode !== 'guided' || s.finished || (w.docked && !STATION_GOALS.includes(s.current.goal.type))) {
       key = 'off';
       html = '';
     } else {
@@ -64,7 +66,7 @@ export class SystemGuide {
       const max = g.count || (g.type === 'fly' ? g.meters : 1);
       const prog = Math.min(max, st.progress || 0);
       let goalText = '';
-      if (g.type === 'fly') goalText = `${fmt(prog)} / ${fmt(g.meters)} m geflogen${g.camera === 'chase' ? ' (Verfolgersicht)' : ''}`;
+      if (g.type === 'fly') goalText = `${fmt(prog)} / ${fmt(g.meters)} m geflogen${g.camera === 'chase' ? ' (Verfolgersicht)' : g.config ? ` (Konfiguration ${g.config})` : ''}`;
       else if (g.type === 'reach') {
         const wp = s.waypoint(), p = w.player;
         const d = wp && p ? Math.hypot(wp.x - p.x, wp.z - p.z) : 0;
@@ -83,6 +85,16 @@ export class SystemGuide {
       else if (g.type === 'place') goalText = `${prog} / ${g.count} Plätze auf Leiste ${g.bar} belegt`;
       else if (g.type === 'extra') goalText = g.hits ? `${g.id} mit mindestens ${g.hits} Gegner${g.hits > 1 ? 'n' : ''} im Wirkkreis zünden` : g.combat ? `${g.id} einsetzen, während du angegriffen wirst` : `Getarnt den Angriff eröffnen`;
       else if (g.type === 'mine') goalText = `${g.ids.join(' oder ')} zünden lassen`;
+      else if (g.type === 'tech') goalText = g.hits ? `${g.id} mit mindestens ${g.hits} Treffern` : g.combat ? `${g.id} im Kampf einsetzen` : `${g.id} bei Schild unter ${Math.round(g.shieldBelow * 100)} %`;
+      else if (g.type === 'config') goalText = `Auf Konfiguration ${g.n} umschalten`;
+      else if (g.type === 'wreck') goalText = `${prog} / ${g.count} Wracks eingesammelt`;
+      else if (g.type === 'crate') goalText = `${prog} / ${g.count} Frachtkisten`;
+      else if (g.type === 'ore') goalText = `${fmt(prog)} / ${g.count} ${g.ore === 'nickel' ? 'Nickel' : g.ore === 'cobalt' ? 'Cobalt' : g.ore}`;
+      else if (g.type === 'dock') goalText = 'An der Station andocken (E)';
+      else if (g.type === 'sell') goalText = 'Erz im Reiter ERZ verkaufen';
+      else if (g.type === 'buy') goalText = `${g.id === 'ion' ? 'Ion Laser' : g.id} im Shop kaufen`;
+      else if (g.type === 'equip') goalText = 'Im Hangar ein Teil umbauen';
+      else if (g.type === 'drone') goalText = 'Eine Pioneer-Drohne kaufen';
       const r = q.reward || {};
       const rew = [r.credits && `${fmt(r.credits)} Cr`, r.tritium && `${fmt(r.tritium)} T`, r.xp && `${fmt(r.xp)} EP`, r.honor && `${fmt(r.honor)} Ehre`].filter(Boolean).join(' · ');
       const no = SYSTEM_QUESTS.indexOf(q) + 1;
@@ -105,6 +117,7 @@ export class SystemGuide {
     if (!force && key === this._key) return;
     this._key = key;
     this.el.innerHTML = html;
+    this.el.classList.toggle('lsg-dock', !!w.docked);
   }
 
   // Zustand der Schnellleiste für die SYSTEM-Reihe (Planung/SCHNITTSTELLEN.md: 'ls.hud.bar')

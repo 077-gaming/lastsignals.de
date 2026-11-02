@@ -1224,7 +1224,19 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('SYSTEM: Minen-Quest zählt nur den richtigen Minentyp', wrongMine && pr.system.done.includes('sys27'));
   go('sys29'); bus.emit('ability', { id: 'TRN', kind: 'extra', phase: 'end', reason: 'Zeit' }); const timeOut = !pr.system.done.includes('sys29');
   bus.emit('ability', { id: 'TRN', kind: 'extra', phase: 'end', reason: 'Angriff' });
-  check('SYSTEM: Tarnangriff erkannt, Ablaufen zählt nicht', timeOut && pr.system.done.includes('sys29') && s.finished);
+  check('SYSTEM: Tarnangriff erkannt, Ablaufen zählt nicht', timeOut && pr.system.done.includes('sys29') && s.current.id === 'sys30');
+  // Kapitel 7–11: Techs, Konfiguration, Beute, Erz, Station (über umhüllte Weltfunktionen)
+  go('sys30'); bus.emit('ability', { id: 'ARC', kind: 'tech', phase: 'fire', hits: 2 }); const arc2 = !pr.system.done.includes('sys30');
+  bus.emit('ability', { id: 'ARC', kind: 'tech', phase: 'fire', hits: 3 });
+  check('SYSTEM: ARC zählt erst ab drei Treffern', arc2 && pr.system.done.includes('sys30'));
+  go('sys36'); for (let i = 0; i < 3; i++) bus.emit('loot', { credits: 400, tritium: 1, xp: 0, honor: 0, ammo: null, ore: null });
+  bus.emit('loot', { credits: 5000, xp: 2000, ore: null, ammo: null });
+  check('SYSTEM: drei Wracks zählen, Auftragslohn nicht', pr.system.done.includes('sys36'));
+  go('sys38'); w._questProgress('ore', 'cobalt', 15); const wrongOre = !pr.system.done.includes('sys38'); w._questProgress('ore', 'nickel', 20);
+  check('SYSTEM: Erz-Quest zählt nur die richtige Sorte', wrongOre && pr.system.done.includes('sys38'));
+  go('sys42'); w.docked = true; pr.credits = 1e6; const r1 = w.buy('ammo', 'L1', 1); const notYet = !pr.system.done.includes('sys42'); w.buy('ammo', 'L2', 1);
+  check('SYSTEM: Kauf-Quest zählt nur den richtigen Artikel', notYet && pr.system.done.includes('sys42'), JSON.stringify(r1).slice(0, 40));
+  w.docked = false;
   s.dispose();
 }
 

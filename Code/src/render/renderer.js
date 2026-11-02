@@ -76,7 +76,6 @@ const OPTIONAL_MODELS = [
   ['station:europa', '/models/station-europa.glb'],
   ['station:saturn', '/models/station-saturn.glb'],
   ['station:eris', '/models/station-eris.glb'],
-  ['enemy:raider', '/models/enemy-raider.glb'], // Meshy-Modell (31.10.2026)
   ['enemy:vulture', '/models/enemy-vulture.glb'], // Meshy-Modell, aufbereitet 02.11.2026
 ];
 

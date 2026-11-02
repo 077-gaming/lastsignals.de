@@ -3,7 +3,7 @@
 // und fortsetzen. Zustand im Profil: profile.system = { mode, idx, progress, done[], skipped[] }.
 //   mode: 'guided' (Karte führt aktiv) | 'direct' (Reihe liegt bereit, nichts wird eingeblendet) | null (noch nicht gewählt)
 
-export const SYSTEM_CHAPTERS = { 1: 'Fliegen', 2: 'Zielen und Angreifen', 3: 'Munition 1–6', 4: 'Raketen', 5: 'Schnellleiste', 6: 'Extras und Minen' };
+export const SYSTEM_CHAPTERS = { 1: 'Fliegen', 2: 'Zielen und Angreifen', 3: 'Munition 1–6', 4: 'Raketen', 5: 'Schnellleiste', 6: 'Extras und Minen', 7: 'Techs', 8: 'Konfigurationen', 9: 'Beute', 10: 'Erz', 11: 'Station' };
 
 // Ziele: fly {meters, camera?}, brake {fromSpeed}, camera {target}, reach {dx, dz, r} (relativ zur Station),
 // target {}, attack {}, kill {target?, count}, shoot {ammo, count}, rocket {rocket, count}, arsenal {},
@@ -40,6 +40,22 @@ export const SYSTEM_QUESTS = [
   { id: 'sys27', ch: 6, title: 'Sprengmine', text: 'Minen fallen hinter dem Heck und sind nach einer Sekunde scharf. Zieh einen Verfolger drüber.', goal: { type: 'mine', ids: ['SPM'], count: 1 }, key: 'SPM', reward: { credits: 1000, xp: 600 } },
   { id: 'sys28', ch: 6, title: 'Bremsen und Stören', text: 'BRM bremst auf halbes Tempo, STM nimmt 4 Sekunden die Zielerfassung. Lass eine davon zünden.', goal: { type: 'mine', ids: ['BRM', 'STM'], count: 1 }, key: 'BRM', reward: { credits: 1000, xp: 600 } },
   { id: 'sys29', ch: 6, title: 'Aus dem Nichts', text: 'TRN geht erst nach 5 Sekunden ohne Kampf, dein erster Schuss deckt dich auf. Tarn dich und eröffne so den Angriff.', goal: { type: 'extra', id: 'TRN', strike: true }, key: 'TRN', reward: { credits: 1500, xp: 800, tritium: 25 } },
+  { id: 'sys30', ch: 7, title: 'Kettenblitz', text: 'ARC springt von Ziel zu Ziel, bis zu fünf. Zünde ihn, wenn mindestens drei Gegner nah beieinander sind.', goal: { type: 'tech', id: 'ARC', hits: 3 }, key: 'ARC', reward: { credits: 2000, xp: 1000, honor: 5 } },
+  { id: 'sys31', ch: 7, title: 'Zielsperre', text: 'Mit LCK trifft 15 Sekunden lang jede Rakete, auch ausweichende Ziele. Drei Raketentreffer unter Zielsperre.', goal: { type: 'rocket', lock: true, count: 3 }, key: 'LCK', reward: { credits: 1500, xp: 1000, tritium: 15 } },
+  { id: 'sys32', ch: 7, title: 'Energie saugen', text: 'VMP: 10 Sekunden lang heilt ein Teil deines Laserschadens die Hülle. Nimm es mitten im Kampf.', goal: { type: 'tech', id: 'VMP', combat: true }, key: 'VMP', reward: { credits: 1500, xp: 800 } },
+  { id: 'sys33', ch: 7, title: 'Reserveschild', text: 'RSV füllt den Schild sofort. Warte, bis er unter 30 Prozent ist.', goal: { type: 'tech', id: 'RSV', shieldBelow: 0.3 }, key: 'RSV', reward: { credits: 1500, xp: 800, tritium: 30 } },
+  { id: 'sys34', ch: 8, title: 'Mehr Schild', text: 'Dein Schiff hat drei Konfigurationen. Konfiguration 2 fährt zwei Schildgeneratoren. Schalte um, im Arsenal unter KONFIGURATION.', goal: { type: 'config', n: 2 }, key: 'KONF 2', reward: { credits: 800, xp: 500 } },
+  { id: 'sys35', ch: 8, title: 'Mehr Tempo', text: 'Konfiguration 3 fährt zwei Antriebe. Schalte um und flieg 2 Kilometer. Danach zurück auf 1, wenn du kämpfen willst.', goal: { type: 'fly', meters: 2000, config: 3 }, key: 'KONF 3', reward: { credits: 800, xp: 500 } },
+  { id: 'sys36', ch: 9, title: 'Wracks', text: 'Jeder Abschuss hinterlässt ein Wrack mit Credits und etwas Tritium. Kurz gehört es nur dir. Flieg über drei.', goal: { type: 'wreck', count: 3 }, reward: { credits: 1000, xp: 600 } },
+  { id: 'sys37', ch: 9, title: 'Frachtkisten', text: 'Frachtkisten treiben überall, der Inhalt ist Zufall. Manchmal ist es eine Piratenfalle. Sammle drei.', goal: { type: 'crate', count: 3 }, reward: { credits: 1000, xp: 600, tritium: 10 } },
+  { id: 'sys38', ch: 10, title: 'Nickel', text: 'Die grauen Brocken sind Nickel. Flieg dicht ran, dann landet es im Laderaum. 20 Einheiten.', goal: { type: 'ore', ore: 'nickel', count: 20 }, reward: { credits: 1000, xp: 600 } },
+  { id: 'sys39', ch: 10, title: 'Cobalt', text: 'Blau ist Cobalt und doppelt so viel wert. 10 Einheiten. Wie viel noch passt, steht im Fenster SCHIFF.', goal: { type: 'ore', ore: 'cobalt', count: 10 }, reward: { credits: 1500, xp: 600 } },
+  { id: 'sys40', ch: 11, title: 'Andocken', text: 'Zurück zur Station. In der sicheren Zone dockst du mit E an. Dort heilt die Hülle von selbst.', goal: { type: 'dock' }, key: 'E', reward: { credits: 800, xp: 400 } },
+  { id: 'sys41', ch: 11, title: 'Erz verkaufen', text: 'Reiter ERZ: verkauf deine Ladung.', goal: { type: 'sell' }, key: 'ERZ', reward: { credits: 500, xp: 300 } },
+  { id: 'sys42', ch: 11, title: 'Nachschub', text: 'Im Shop gibt es Munition in Packungen. Hol dir eine Packung L2.', goal: { type: 'buy', id: 'L2' }, key: 'SHOP', reward: { credits: 800, xp: 300 } },
+  { id: 'sys43', ch: 11, title: 'Ion Laser', text: 'Der Ion Laser macht mehr Schaden als der Pulse Laser. Kauf einen, er kommt auf einen freien oder den schwächsten Platz.', goal: { type: 'buy', id: 'ion' }, key: 'SHOP', reward: { credits: 3000, xp: 1200 } },
+  { id: 'sys44', ch: 11, title: 'Umbau', text: 'Im Hangar baust du Laser und Generatoren um: mehr Schild oder mehr Tempo. Bau ein Teil um.', goal: { type: 'equip' }, key: 'HANGAR', reward: { credits: 1000, xp: 600 } },
+  { id: 'sys45', ch: 11, title: 'Erste eigene Drohne', text: 'Drohnen fliegen mit dir und tragen je einen Laser oder Schildgenerator. Kauf eine Pioneer.', goal: { type: 'drone' }, key: 'SHOP', reward: { credits: 2000, xp: 800 } },
 ];
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
@@ -68,9 +84,33 @@ export class SystemSeries {
         if (!p.hit || p.drone || !world.player || p.from !== world.player.id) return;
         this._count('shoot', p.ammo, 1);
       }),
-      bus.on('rocketHit', (p) => this._count('rocket', p.rocket, 1)),
+      bus.on('rocketHit', (p) => {
+        const q = this.current;
+        if (q && q.goal.type === 'rocket' && q.goal.lock) { if (world.abilities?.LCK?.activeFor > 0) this._count('rocket', null, 1); }
+        else this._count('rocket', p.rocket, 1);
+      }),
+      bus.on('docked', () => this._count('dock', null, 1)),
+      // Wrack: Beute mit Credits ohne Erfahrung/Erz/Munition (Auftragsbelohnungen tragen Erfahrung)
+      bus.on('loot', (p) => { if (p && p.credits > 0 && !p.xp && !p.ore && !p.ammo) this._count('wreck', null, 1); }),
       bus.on('ability', (a) => this._ability(a)),
     ];
+    this._config = 1;
+    this._wrap(world);
+  }
+
+  // Spielaktionen ohne eigenes Ereignis: Weltfunktionen schlank umhüllen (nur Erfolg zählt)
+  _wrap(world) {
+    const ok = (r) => r && (typeof r === 'object' ? r.ok !== false : r !== false && r !== 0);
+    const qp = world._questProgress.bind(world);
+    world._questProgress = (t, target, n) => { qp(t, target, n); if (t === 'crate') this._count('crate', null, n || 1); if (t === 'ore') this._count('ore', target, n || 1); };
+    const buy = world.buy.bind(world);
+    world.buy = (kind, id, n) => { const r = buy(kind, id, n); if (ok(r)) { this._count('buy', id, 1); if (kind === 'drone') this._count('drone', null, 1); } return r; };
+    const sell = world.sellOre.bind(world);
+    world.sellOre = () => { const r = sell(); if (r > 0) this._count('sell', null, 1); return r; };
+    const equip = world.equip.bind(world);
+    world.equip = (...a) => { const r = equip(...a); if (ok(r)) this._count('equip', null, 1); return r; };
+    const cfg = world.setConfig.bind(world);
+    world.setConfig = (n) => { const r = cfg(n); if (ok(r)) { this._config = n; this._count('config', n, 1); } return r; };
   }
 
   get state() { return this.world.profile.system; }
@@ -91,11 +131,13 @@ export class SystemSeries {
     const q = this.current;
     if (!q || this.state.mode !== 'guided') return;
     const w = this.world, p = w.player, g = q.goal;
+    if (p && p.shieldMax) this._shieldFrac = (p.shield || 0) / p.shieldMax;
     if (!p || w.docked || w.playerDead) return;
     const speed = p.speed || Math.hypot(p.vx || 0, p.vz || 0);
     switch (g.type) {
       case 'fly':
         if (g.camera && this.cameraMode() !== g.camera) return;
+        if (g.config && this._config !== g.config) return;
         this._add(speed * dt, g.meters);
         break;
       case 'brake':
@@ -119,6 +161,12 @@ export class SystemSeries {
     if (!q || this.state.mode !== 'guided') return;
     const g = q.goal;
     if (g.type === 'mine' && a.kind === 'mine' && a.phase === 'fire' && g.ids.includes(a.id)) this._add(1, g.count);
+    if (g.type === 'tech' && a.kind === 'tech' && a.id === g.id) {
+      if (g.hits && a.phase === 'fire' && (a.hits || 0) >= g.hits) this._add(1, 1);
+      else if (g.combat && a.phase === 'use' && this._underAttack()) this._add(1, 1);
+      else if (g.shieldBelow && a.phase === 'use' && (this._shieldFrac ?? 1) < g.shieldBelow) this._add(1, 1);
+      return;
+    }
     if (g.type !== 'extra' || a.id !== g.id) return;
     if (g.hits && a.phase === 'fire' && (a.hits || 0) >= g.hits) this._add(1, 1);
     else if (g.combat && a.phase === 'use' && this._underAttack()) this._add(1, 1);
@@ -149,11 +197,18 @@ export class SystemSeries {
   _count(type, what, n) {
     const q = this.current;
     if (!q || this.state.mode !== 'guided' || q.goal.type !== type) return;
-    if (type === 'kill' && q.goal.target && q.goal.target !== what) return;
-    if (type === 'shoot' && q.goal.ammo !== what) return;
-    if (type === 'rocket' && q.goal.rocket !== what) return;
-    this._add(n, q.goal.count);
+    const g = q.goal;
+    if (type === 'kill' && g.target && g.target !== what) return;
+    if (type === 'shoot' && g.ammo !== what) return;
+    if (type === 'rocket' && !g.lock && g.rocket !== what) return;
+    if (type === 'ore' && g.ore !== what) return;
+    if (type === 'buy' && g.id !== what) return;
+    if (type === 'config' && g.n !== what) return;
+    // Einmalige Handlungen (Andocken, Verkaufen, Kaufen, Umbau, Drohne, Konfiguration): erledigt beim ersten Mal
+    if (['dock', 'sell', 'equip', 'drone', 'config', 'buy'].includes(type)) { this._add(1, 1); return; }
+    this._add(n, g.count);
   }
+
 
   _add(n, max) {
     const s = this.state;
