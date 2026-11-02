@@ -332,6 +332,20 @@ export class HudMap {
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         ctx.fillRect(x - 1, z - 1, 2, 2);
         break;
+      case 'player': {
+        // fremde Piloten (Mehrspieler) und Koop-Partner: kleiner Pfeil in Flugrichtung; Farbe aus mp.js
+        // (Rot = PvP-Ziel, Weiß = eigene Fraktion, Blau = andere Fraktion), Koop-Partner in Fraktionsfarbe
+        if (e.id === 'player') break;
+        const r = e.rot || 0, fx = -Math.sin(r), fz = -Math.cos(r);
+        ctx.fillStyle = e.mapColor || (e.type === 'ally' ? '#7dffb0' : C_NEUTRAL);
+        ctx.beginPath();
+        ctx.moveTo(x + fx * 5, z + fz * 5);
+        ctx.lineTo(x - fx * 3 + fz * 3.2, z - fz * 3 - fx * 3.2);
+        ctx.lineTo(x - fx * 3 - fz * 3.2, z - fz * 3 + fx * 3.2);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
       default: break;
     }
   }

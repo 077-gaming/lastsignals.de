@@ -79,7 +79,7 @@ export class Input {
     const hit = this.renderer.pick(e.clientX, e.clientY);
     if (hit && hit.kind === 'entity') {
       const ent = this.world.entities.get(hit.id);
-      if (ent && ent.kind === 'enemy') {
+      if (ent && (ent.kind === 'enemy' || (ent.kind === 'player' && ent.pvpOk))) { // fremde Spieler nur bei PvP
         const now = performance.now();
         const dbl = this.lastClick.id === ent.id && now - this.lastClick.t < 350;
         this.lastClick = { t: now, id: ent.id };
@@ -134,11 +134,12 @@ export class Input {
     this.renderer.setZoom(e.deltaY);
   }
 
-  nearestEnemy() {
+  /** players: auch fremde Spieler mit PvP (nur Tab, nicht Strg ohne Ziel – kein versehentlicher Angriff) */
+  nearestEnemy(players = false) {
     const p = this.world.player;
     let best = null, bestD = Infinity;
     for (const ent of this.world.entities.values()) {
-      if (ent.kind !== 'enemy' || !ent.alive) continue;
+      if (!ent.alive || !(ent.kind === 'enemy' || (players && ent.kind === 'player' && ent.pvpOk))) continue;
       const dx = ent.x - p.x, dz = ent.z - p.z;
       const d = dx * dx + dz * dz;
       if (d < bestD && ent.id !== p.targetId) { bestD = d; best = ent; }
@@ -192,7 +193,7 @@ export class Input {
       }
       case 'Tab': {
         e.preventDefault();
-        const t = this.nearestEnemy();
+        const t = this.nearestEnemy(true);
         if (t) w.setTarget(t.id);
         break;
       }

@@ -291,7 +291,7 @@ export class HudMid {
     if (id !== this._tId) {
       this._tId = id;
       const def = e.kind === 'enemy' ? ENEMIES[e.type] : null;
-      const kc = def ? 'is-enemy' : e.kind === 'crate' ? 'is-crate' : 'is-neutral';
+      const kc = def || e.pvpOk ? 'is-enemy' : e.kind === 'crate' ? 'is-crate' : 'is-neutral';
       if (kc !== this._kindCls) {
         if (this._kindCls) { this.tgt.classList.remove(this._kindCls); this.arr.classList.remove(this._kindCls); }
         this.tgt.classList.add(kc); this.arr.classList.add(kc);
@@ -310,7 +310,7 @@ export class HudMid {
     const atk = !!(pl.attacking && pl.targetId === id);
     const out = dist > PLAYER_RANGE;
     this.sAtk.set(atk);
-    this.sOut.set(out && e.kind === 'enemy');
+    this.sOut.set(out && (e.kind === 'enemy' || !!e.pvpOk));
     const dq = Math.round(dist / 10);
 
     const inView = t.visible && tx > 0 && tx < W && ty > 0 && ty < H;
@@ -352,7 +352,7 @@ export class HudMid {
       }
       let st = '';
       if (this._flash > 0) st = this._flashText;
-      else if (out && e.kind === 'enemy') st = 'AUSSER REICHWEITE';
+      else if (out && (e.kind === 'enemy' || e.pvpOk)) st = 'AUSSER REICHWEITE';
       else if (atk) st = 'ANGRIFF';
       this.sSt.set(st);
       this.sFlash.set(this._flash > 0);
@@ -431,6 +431,16 @@ export class HudMid {
         if (!e || e.alive === false || e.targetId !== 'player' || !e.attacking) continue;
         const d = (e.x - pl.x) * (e.x - pl.x) + (e.z - pl.z) * (e.z - pl.z);
         // sortiert einfügen, nur die nächsten THREATS behalten
+        let j = n < THREATS ? n++ : THREATS;
+        if (j === THREATS) { if (d >= cd[THREATS - 1]) continue; j = THREATS - 1; }
+        while (j > 0 && cd[j - 1] > d) { cand[j] = cand[j - 1]; cd[j] = cd[j - 1]; j--; }
+        cand[j] = e; cd[j] = d;
+      }
+      // Mehrspieler: fremde Piloten, die mich im PvP gerade beschießen
+      if (w.mp) for (const R of w.mp.remotes.values()) {
+        const e = R.ent;
+        if (!e || e.alive === false || e.targetId !== 'player' || !e.attacking || !e.pvpOk) continue;
+        const d = (e.x - pl.x) * (e.x - pl.x) + (e.z - pl.z) * (e.z - pl.z);
         let j = n < THREATS ? n++ : THREATS;
         if (j === THREATS) { if (d >= cd[THREATS - 1]) continue; j = THREATS - 1; }
         while (j > 0 && cd[j - 1] > d) { cand[j] = cand[j - 1]; cd[j] = cd[j - 1]; j--; }

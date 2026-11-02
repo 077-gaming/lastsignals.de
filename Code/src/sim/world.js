@@ -614,7 +614,8 @@ export class World {
   }
 
   _validTarget(tgt) {
-    return tgt && tgt.alive && tgt.kind === 'enemy' && this.entities.get(tgt.id) === tgt;
+    // fremde Spieler (Mehrspieler) nur, wenn PvP für beide gilt (mp.js setzt pvpOk je Bild)
+    return tgt && tgt.alive && (tgt.kind === 'enemy' || (tgt.kind === 'player' && tgt.pvpOk === true)) && this.entities.get(tgt.id) === tgt;
   }
 
   _updateLasers(dt, tgt) {
@@ -756,6 +757,14 @@ export class World {
 
   /** Schaden am Gegner. dx/dz = Einschlagrichtung, hx/hz = Trefferpunkt (für 'damage'). */
   _hitEnemy(e, dmg, shieldOnly, crit, dx = 0, dz = 0, hx = e.x, hz = e.z, rocket = false) {
+    // PvP: fremder Spieler – der Getroffene rechnet den Schaden selbst (mp.js), hier nur melden und anzeigen
+    if (e.kind === 'player') {
+      if (this.mp && e.pvpOk) this.mp.hit(e, dmg, shieldOnly, crit, rocket);
+      this._lastCombat = this.time;
+      this.bus.emit('damage', { id: e.id, hull: Math.round(dmg), shield: 0, x: e.x, z: e.z, crit, dx, dz, hx, hz, from: this._hitFrom || 'player' });
+      this._hitFrom = null;
+      return;
+    }
     // Koop-Gast: Schaden rechnet der Gastgeber (eine Wahrheit für beide), hier nur melden und anzeigen
     if (this.coop && this.coop.guest && !this.coop.applying) {
       this.coop.hit(e, dmg, shieldOnly);
@@ -826,7 +835,7 @@ export class World {
 
   /** Gegner wurde angegriffen: er wehrt sich, sein Rudel und Rudel gleicher Typen im Umkreis kommen dazu. */
   _provoke(e) {
-    if (!e.alive) return;
+    if (!e.alive || e.kind === 'player') return; // fremde Spieler haben keine KI
     const wasCalm = !e.provoked;
     this._aggro(e);
     if (!wasCalm) return;
@@ -854,6 +863,22 @@ export class World {
 
   /** Für events.js */
   provoke(e) { this._provoke(e); }
+
+  /**
+   * PvP-Treffer eines fremden Spielers am eigenen Schiff (mp.js hat Regeln, Entfernung und Rate geprüft).
+   * Der Getroffene entscheidet: Schutzzeit, sichere Zone und SOS gelten wie gegen Gegner.
+   * → false (nicht angewendet), true (angewendet) oder 'dead' (Schiff dadurch zerstört)
+   */
+  pvpDamage(dmg, shieldOnly, from, dx = 0, dz = 0) {
+    const p = this.player;
+    if (!this.playerTargetable() || !(dmg > 0)) return false;
+    if (sosAbsorb(this, dmg)) return false;
+    applyDamage(p, dmg, !!shieldOnly, HIT);
+    this._lastHit = this.time; this._lastCombat = this.time;
+    this.bus.emit('damage', { id: 'player', hull: HIT.hull, shield: HIT.shield, x: p.x, z: p.z, crit: false, dx, dz, hx: p.x, hz: p.z, from, pvp: true });
+    if (p.hp <= 0) { this._playerDie(); return 'dead'; }
+    return true;
+  }
 
   playerTargetable() {
     const p = this.player;
@@ -1266,7 +1291,7 @@ export class World {
       if (r.t > 0) continue;
       r.active = false;
       const e = this.entities.get(r.targetId);
-      if (e && e.alive && e.kind === 'enemy') {
+      if (e && e.alive && (e.kind === 'enemy' || (e.kind === 'player' && e.pvpOk))) {
         const p = this.player;
         let dx = e.x - p.x, dz = e.z - p.z;
         const d = Math.sqrt(dx * dx + dz * dz) || 1;
@@ -1493,7 +1518,7 @@ export class World {
     if (id == null) { p.targetId = null; p.attacking = false; return; }
     if (id === p.targetId) return;
     const e = this.entities.get(id);
-    if (!e || !e.alive || e.kind !== 'enemy') return;
+    if (!e || !e.alive || (e.kind !== 'enemy' && !(e.kind === 'player' && e.pvpOk))) return;
     p.targetId = id;
     p.attacking = false;
   }

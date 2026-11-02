@@ -12,6 +12,7 @@ import { SystemGuide } from './ui/hud-guide.js';
 import { StationUI } from './ui/station.js';
 import { HudTouch } from './ui/hud-touch.js';
 import { Coop } from './net/coop.js';
+import { Multiplayer } from './net/mp.js';
 import { Input } from './input.js';
 import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
 import { PerfHud } from './perf/perfhud.js';
@@ -73,7 +74,10 @@ function playSession(profile, opts = {}) {
     let coopCfg = null;
     try { coopCfg = JSON.parse(sessionStorage.getItem('ls.coop') || 'null'); } catch { coopCfg = null; }
     const world = new World(profile, bus, coopCfg && coopCfg.role === 'guest' ? { coopFaction: coopCfg.faction, coopSector: coopCfg.sector } : {});
-    const coop = coopCfg ? new Coop(world, bus, coopCfg) : null;
+    if (coopCfg) new Coop(world, bus, coopCfg); // trägt sich als world.coop ein (Einladung im Flug startet ihn später)
+    // Mehrspieler: gemeinsame Sektoren, Chat, Einladung, PvP (Realtime, ohne Datenbank). ?mp=0 schaltet ab.
+    let mp = null;
+    if (new URLSearchParams(location.search).get('mp') !== '0') { try { mp = new Multiplayer(world, bus); } catch (err) { console.warn('Mehrspieler aus', err); } }
     if (opts.dock && world.sector.station) {
       world.player.x = world.sector.station.x + 120;
       world.player.z = world.sector.station.z + 120;
@@ -118,7 +122,7 @@ function playSession(profile, opts = {}) {
     const touch = new HudTouch(hudRoot, world, renderer, input); // iPad/Tablet: Joystick, Knöpfe, Zielanzeige
     const audio = new AudioSystem(bus, world, renderer);
     audio.start();
-    if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio, series }; // nur Entwicklung: Test-Pilot (tools/playtest)
+    if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio, series, mp }; // nur Entwicklung: Test-Pilot (tools/playtest)
 
     // Dauerhaft unter 50 Bilder/s: eine Stufe tiefer, mit kurzer Meldung. Automatische Wahl → gespeichert,
     // eigene Wahl → nur für diese Sitzung (die Einstellung im Hub bleibt, wie der Spieler sie gesetzt hat).
@@ -202,7 +206,8 @@ function playSession(profile, opts = {}) {
       // Vorher rechnete main.js zusätzlich mit eigenem Akkumulator: bis zu 15 Schritte je Bild auf schwachen Geräten.
       // Hit-Stop: nach einem Abschuss steht die Simulation kurz still (Bild läuft weiter) – gibt Kills Gewicht
       if (hitStop > 0) { hitStop -= dt; world.update(0); } else world.update(dt);
-      if (coop) coop.update(dt);
+      if (world.coop) world.coop.update(dt);
+      if (mp) mp.update(dt);
       acc = world._acc;
       const t0 = performance.now();
       if (DEV_LAG) { const e = t0 + DEV_LAG; while (performance.now() < e) { /* künstliche Last */ } }
@@ -257,7 +262,7 @@ function playSession(profile, opts = {}) {
       window.removeEventListener('pagehide', onPageHide);
       clearInterval(cloudT); clearTimeout(conflictT); offAccount(); offDock();
       window.removeEventListener('ls:store', onStore);
-      input.dispose(); touch.dispose(); if (coop) coop.stop();
+      input.dispose(); touch.dispose(); if (world.coop) world.coop.stop(); if (mp) mp.dispose();
       audio.dispose();
       series.dispose();
       story.dispose();
@@ -282,7 +287,7 @@ const DEV = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
 async function devStart() {
   const mode = DEV.get('dev');
   const faction = DEV.get('f') || 'saturn';
-  const callsign = 'Dev-' + faction;
+  const callsign = (DEV.get('cs') || '').replace(/[^\w-]/g, '').slice(0, 16) || 'Dev-' + faction; // &cs=Name: eigener Testpilot (Mehrspieler-Test)
   let profile = store.get(callsign) || store.create(callsign, faction);
   if (mode === 'hub') {
     for (;;) {

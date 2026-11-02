@@ -6,7 +6,9 @@
 // Beide sehen das andere Schiff (Entity 'ally', wird wie ein Spielerschiff gezeichnet).
 // Grenzen: Ereignisse, Kisten und Erz sind je Spieler getrennt; Gegner auf der Seite des Gastgebers zielen nur auf ihn.
 import { VARIANTS } from '../core/data.js';
-import { sb } from './supa.js'; // gemeinsamer Client (öffentlicher Schlüssel, eine Auth-Instanz für Konto und Koop)
+import { sb } from './supa.js'; // gemeinsamer Client (öffentlicher Schlüssel, eine Auth-Instanz für Konto, Koop und Mehrspieler)
+
+export { sb }; // Mehrspieler (mp.js) nutzt denselben Client und damit dieselbe Websocket-Verbindung
 
 const RATE = 1 / 8;
 const CREDIT = 20; // so lange nach dem letzten eigenen Treffer zählt ein Abschuss für den Gast (s)
@@ -37,6 +39,7 @@ export class Coop {
     this.ch.on('broadcast', { event: 'snap' }, ({ payload }) => this.guest && this._onSnap(payload));
     this.ch.on('broadcast', { event: 'g' }, ({ payload }) => this.host && this._onGuest(payload));
     this.ch.on('broadcast', { event: 'hit' }, ({ payload }) => this.host && this._onHit(payload));
+    this.ch.on('broadcast', { event: 'bye' }, () => this._onBye());
     this.ch.subscribe((s) => { if (s === 'SUBSCRIBED') this._msg(this.host ? `Koop-Raum ${this.code} offen. Gib deinem Mitspieler den Code ${this.code}.` : `Koop: verbunden mit Raum ${this.code}.`); });
   }
 
@@ -117,5 +120,18 @@ export class Coop {
     this.applying = false;
   }
 
-  stop() { try { sb().removeChannel(this.ch); } catch { /* egal */ } if (this.world.coop === this) this.world.coop = null; this.world.entities.delete('ally'); }
+  // Mitspieler hat den Koop beendet (Flug beendet, Koop verlassen): sofort aufräumen statt 6 s zu warten
+  _onBye() {
+    if (this.ally) { this.world.entities.delete('ally'); this.bus.emit('despawn', { id: 'ally' }); this.ally = null; this._msg('Mitspieler hat den Koop verlassen.'); }
+  }
+
+  stop() {
+    this._send('bye', {});
+    const ch = this.ch;
+    // kurz warten, damit das Abschiedssignal noch rausgeht
+    setTimeout(() => { try { sb().removeChannel(ch); } catch { /* egal */ } }, 150);
+    if (this.world.coop === this) this.world.coop = null;
+    if (this.world.entities.get('ally')) { this.world.entities.delete('ally'); this.bus.emit('despawn', { id: 'ally' }); }
+    this.ally = null;
+  }
 }

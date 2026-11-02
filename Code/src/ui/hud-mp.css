@@ -1,0 +1,135 @@
+/* Mehrspieler im Flug-HUD: CHAT, PILOTEN, Namensschilder (Bildsprache: Planung/UI_STIL.md – Anschnitte,
+   keine Rundungen über 2 px, monochrom, Farbe nur mit Funktion: Fraktion, PvP rot). */
+
+/* ---------- COM·10 Chat ---------- */
+.hw[data-win="chat"] { width: 300px; }
+.hw[data-win="chat"] .hw-body { padding: 0 10px 8px; }
+.mc-tabs { display: flex; gap: 0; margin: 0 -10px 6px; border-bottom: 1px solid var(--ls-line); }
+.mc-tab {
+  appearance: none; border: 0; background: none; cursor: pointer; pointer-events: auto;
+  flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 26px; padding: 0 6px;
+  font-family: var(--ls-display); font-size: 12px; letter-spacing: .16em; color: var(--hd-lab);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.mc-tab:hover { color: var(--ls-tx); background: rgba(255, 255, 255, .04); }
+.mc-tab.on { color: var(--ls-tx); border-bottom-color: var(--fx); }
+.mc-un { font-style: normal; font-size: 10px; color: #000; background: var(--fx); padding: 0 3px; line-height: 13px; }
+.mc-un:empty { display: none; }
+.mc-log {
+  display: flex; flex-direction: column; gap: 2px;
+  height: 132px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .25) transparent;
+  user-select: text; -webkit-user-select: text; pointer-events: auto;
+}
+.mc-m { position: relative; display: block; padding: 1px 0; font-size: 13px; line-height: 1.35; color: var(--hd-val); overflow-wrap: anywhere; }
+.mc-t { font-family: var(--ls-mono); font-size: 10px; color: var(--hd-deco); margin-right: 6px; }
+.mc-cs { font-family: var(--ls-display); font-weight: 400; font-size: 13px; letter-spacing: .08em; color: var(--c, var(--ls-tx)); margin-right: 6px; }
+.mc-cs::after { content: ":"; color: var(--hd-deco); }
+.mc-m.is-self .mc-x { color: var(--hd-sub); }
+.mc-m.is-sys .mc-cs { color: var(--hd-deco); }
+.mc-m.is-sys .mc-x { color: var(--hd-sub); font-size: 12px; }
+.mc-m.is-hint .mc-x { color: var(--hd-deco); }
+.mc-mu {
+  position: absolute; right: 0; top: 1px; display: none;
+  appearance: none; border: 1px solid var(--ls-line-2); background: rgba(6, 9, 13, .95); cursor: pointer;
+  height: 16px; padding: 0 5px; font-family: var(--ls-display); font-size: 10px; letter-spacing: .14em; color: var(--hd-sub);
+}
+.mc-m:hover .mc-mu { display: block; }
+.mc-mu:hover { color: var(--ls-danger); border-color: var(--ls-danger); }
+.mc-in {
+  display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0 0 0 6px; height: 28px;
+  border: 1px solid var(--ls-line); background: rgba(0, 0, 0, .35); cursor: text;
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+.mc-in:focus-within { border-color: var(--fx); }
+.mc-k { flex-shrink: 0; font-size: 9px; height: 16px; color: var(--hd-lab); }
+.mc-in:focus-within .mc-k { display: none; }
+.mc-field {
+  flex: 1 1 auto; min-width: 0; height: 100%; border: 0; outline: 0; background: none; padding: 0;
+  font: 13px var(--ls-text); color: var(--ls-tx); pointer-events: auto; user-select: text; -webkit-user-select: text;
+}
+.mc-field::placeholder { color: var(--hd-deco); }
+.mc-cnt { flex-shrink: 0; font-size: 10px; color: var(--hd-deco); padding-right: 6px; }
+.mc-st { min-height: 0; font-family: var(--ls-mono); font-size: 11px; color: var(--ls-warn); }
+.mc-st:not(:empty) { margin-top: 4px; }
+
+/* ---------- NET·11 Piloten ---------- */
+.hw[data-win="players"] { width: 340px; }
+.hw[data-win="players"] .hw-body { padding: 6px 10px 8px; }
+.mpl-list { display: flex; flex-direction: column; max-height: 210px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; pointer-events: auto; }
+.mpl-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+.mpl-row:last-child { border-bottom: 0; }
+.mpl-fx { width: 3px; height: 14px; flex-shrink: 0; background: var(--ls-tx); }
+.mpl-cs { font-family: var(--ls-display); font-weight: 400; font-size: 14px; letter-spacing: .08em; color: var(--hd-val); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpl-lv { font-size: 11px; color: var(--hd-sub); }
+.mpl-tag { font-family: var(--ls-display); font-size: 11px; letter-spacing: .14em; color: var(--hd-lab); }
+.mpl-tag:empty { display: none; }
+.mpl-row.is-pvp .mpl-tag { color: var(--ls-danger); }
+.mpl-row.is-pvp .mpl-cs { color: #ff8a80; }
+.mpl-row.is-coop .mpl-tag { color: var(--ls-loot); }
+.mpl-row.is-muted .mpl-cs { color: var(--hd-deco); text-decoration: line-through; }
+.mpl-d { font-size: 11px; color: var(--hd-sub); }
+.mpl-acts { display: flex; gap: 4px; width: 100%; padding-left: 11px; }
+.mpl-b {
+  --c: 4px;
+  appearance: none; border: 0; cursor: pointer; pointer-events: auto;
+  display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 8px;
+  font-family: var(--ls-display); font-size: 11px; letter-spacing: .14em; color: var(--hd-sub);
+  background:
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) top / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) bottom / 100% 1px no-repeat,
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) left / 1px 100% no-repeat,
+    linear-gradient(var(--ls-line-2), var(--ls-line-2)) right / 1px 100% no-repeat,
+    rgba(255, 255, 255, .03);
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+.mpl-b:hover { color: var(--ls-tx); background-color: rgba(255, 255, 255, .1); }
+.mpl-b[disabled] { opacity: .4; cursor: default; }
+.mpl-b[hidden] { display: none; }
+.mpl-b.is-fx { background-color: var(--fx); color: #000; }
+.mpl-tg { color: var(--ls-danger); }
+.mpl-empty { padding: 4px 0 6px; font-size: 12px; color: var(--hd-lab); }
+.mpl-empty[hidden] { display: none; }
+.mpl-inv:empty { display: none; }
+.mpl-ir {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px; margin: 0 0 6px;
+  border: 1px solid color-mix(in srgb, var(--fx) 60%, transparent); background: color-mix(in srgb, var(--fx) 10%, transparent);
+  animation: mpl-blink 1.2s steps(2, end) 2;
+}
+@keyframes mpl-blink { 50% { border-color: var(--fx); } }
+.mpl-it { font-family: var(--ls-display); font-size: 11px; letter-spacing: .16em; color: var(--fx); }
+.mpl-ir b { font-family: var(--ls-display); font-weight: 400; font-size: 14px; letter-spacing: .08em; color: var(--c, var(--ls-tx)); }
+.mpl-il { font-size: 10px; color: var(--hd-lab); }
+.mpl-foot { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--ls-line); }
+.mpl-pvp b { font-weight: 400; color: var(--hd-deco); }
+.mpl-pvp.is-on b { color: var(--ls-danger); }
+.mpl-net { font-family: var(--ls-mono); font-size: 10px; color: var(--hd-lab); letter-spacing: .04em; }
+.mpl-foot .mpl-b[hidden] { display: none; }
+
+/* ---------- Namensschilder ---------- */
+.mpn-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.hd-docked .mpn-layer, .hd-dead .mpn-layer { display: none; }
+.mpn {
+  position: absolute; left: 0; top: 0; display: none; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: center;
+  padding: 2px 6px 3px; max-width: 180px; white-space: nowrap;
+  border-left: 2px solid var(--c, var(--ls-tx)); background: rgba(6, 9, 13, .62);
+  will-change: transform;
+}
+.mpn.on { display: flex; }
+.mpn-n { font-family: var(--ls-display); font-size: 13px; letter-spacing: .1em; color: var(--ls-tx); overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.mpn-l { font-size: 10px; color: var(--hd-sub); }
+.mpn-b { display: block; flex-basis: 100%; height: 2px; background: rgba(255, 255, 255, .18); }
+.mpn-b > i { display: block; height: 100%; background: var(--ls-tx); transform-origin: 0 50%; }
+.mpn.is-pvp { border-left-color: var(--ls-danger); }
+.mpn.is-pvp .mpn-n { color: #ff8a80; }
+.mpn.is-pvp .mpn-b > i { background: var(--ls-danger); }
+.mpn.is-ally .mpn-l { color: var(--ls-loot); }
+.mp-unmute { height: 22px; padding: 0 10px; font-size: 11px; margin-left: 8px; }
+.mp-sw[data-act="mppvp"] i:first-child { color: #000; background: var(--ls-tx); }
+.mp-sw[data-act="mppvp"] i:last-child { color: var(--hd-deco); background: none; }
+.mp-sw.is-on[data-act="mppvp"] i:first-child { color: var(--hd-deco); background: none; }
+.mp-sw.is-on[data-act="mppvp"] i:last-child { color: #000; background: var(--ls-danger); }
