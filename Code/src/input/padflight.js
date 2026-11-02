@@ -24,6 +24,7 @@ export class PadFlight {
     this._yHome = false; this._rbChord = false; this._rbLast = 0;
     this._look = false;
     pad.flight = (p, dt) => this.frame(p, dt);
+    pad.flightOff = () => this._release();
     this.offs = [
       bus.on('damage', (e) => {
         const pl = input.world.player;
@@ -124,6 +125,7 @@ export class PadFlight {
 
   dispose() {
     if (pad.flight) pad.flight = null;
+    pad.flightOff = null;
     this._release();
     this.input.pad = null;
     for (const off of this.offs) off();

@@ -41,7 +41,10 @@ function initScript(id) {
       vibrationActuator: { type: 'dual-rumble', playEffect: (t, p) => { g.effects.push({ t, ...p }); return Promise.resolve('complete'); } },
     };
   };
-  Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => (window.__gp.connected ? [mk(), null, null, null] : [null, null, null, null]) });
+  // zweiter Controller (Wechselprüfung): window.__gp2 = { buttons, axes, connected }
+  window.__gp2 = { buttons: new Array(17).fill(0), axes: [0, 0, 0, 0], connected: false, id: 'Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)' };
+  const mk2 = () => { const g = window.__gp2; return { id: g.id, index: 1, connected: true, mapping: 'standard', timestamp: performance.now(), axes: g.axes.slice(), buttons: g.buttons.map((v) => ({ pressed: v > 0.5, touched: v > 0, value: v })) }; };
+  Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [window.__gp.connected ? mk() : null, window.__gp2.connected ? mk2() : null, null, null] });
   window.__gpConnect = () => { window.__gp.connected = true; const e = new Event('gamepadconnected'); e.gamepad = mk(); window.dispatchEvent(e); };
   window.__gpDisconnect = () => { window.__gp.connected = false; const e = new Event('gamepaddisconnected'); window.dispatchEvent(e); };
 }
@@ -342,9 +345,21 @@ async function main() {
   await page.keyboard.press('Escape');
   check('Tastatur Esc öffnet Bordmenü', await W(() => window.__ls.hud._menuOpen === true));
   await page.keyboard.press('Escape');
-  // An- und Abstecken
+  // Zweiter Controller: Wechsel nach Stillstand, dabei keine Loslass-Befehle (Y = Andocken, RB = Zielwechsel)
+  await W(() => { const w = window.__ls.world, st = w.station; const p = w.player; p.x = st.x + 160; p.z = st.z + 160; p.vx = p.vz = 0; p.fs = 0; p.hasMove = false; w.setTarget(null); window.__ls.padFlight._yHome = false; });
+  await ev(() => { window.__gp2.connected = true; window.dispatchEvent(new Event('gamepadconnected')); });
+  await press('X'); await sleep(2800);
+  await ev(() => { window.__gp2.buttons[4] = 1; }); await sleep(120); await ev(() => { window.__gp2.buttons[4] = 0; }); await sleep(200);
+  check('Zweiter Controller übernimmt nach Stillstand (PlayStation-Kennung)', await W(() => window.__pad.index === 1 && window.__pad.style === 'ps'));
+  check('Wechsel löst kein Andocken (Y) und keinen Zielwechsel (RB) aus', await W(() => window.__ls.world.docked === false && window.__ls.world.player.targetId == null));
+  await ev(() => { window.__gp2.connected = false; window.dispatchEvent(new Event('gamepaddisconnected')); }); await sleep(200);
+  await press('A'); await press('A'); // Controller 1 wieder aktiv, Angriff an und aus
+  // An- und Abstecken mitten im Flug: RT und Stick gehalten → danach kein Schub/Lenken mehr vom Controller
+  await setBtn(B.RT, 1); await setAxes([1, 0, 0, 0]); await sleep(600);
   await ev(() => window.__gpDisconnect()); await sleep(300);
   check('Abstecken ohne Fehler', await W(() => window.__pad.connected === 0 && window.__pad.index === -1));
+  check('Abstecken mitten im Flug: Controller-Schub und Lenkung genullt', await W(() => { const s = window.__ls.input.pad; return !s.active && s.rt === 0 && s.lx === 0; }));
+  await setBtn(B.RT, 0); await setAxes([0, 0, 0, 0]);
   await ev(() => window.__gpConnect()); await sleep(200);
   await press('A'); await sleep(150);
   check('Wieder anstecken: Controller aktiv', await W(() => window.__pad.index === 0 && window.__pad.mode === 'pad'));

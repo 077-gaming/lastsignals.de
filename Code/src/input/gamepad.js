@@ -83,8 +83,9 @@ class Pad {
     this.flight = null;       // (pad, dt) => true, wenn die Flugsteuerung den Controller in diesem Bild nutzt
     this.nav = null;          // (pad, dt, entered) Menü-Navigation
     this.navOff = null;       // Fokusrahmen ausblenden, wenn der Flug übernimmt
+    this.flightOff = null;    // Flugzustand nullen (Abstecken: sonst bliebe der letzte Schub/Lenkausschlag stehen)
     this.owner = '';
-    this._raf = 0; this._t = 0; this._idle = 0;
+    this._raf = 0; this._t = 0; this._idle = 0; this._fresh = false;
     this._rumbleUntil = 0; this._rumbleMag = 0;
     this._mm = 0; this._mmT = 0;
     this._frame = (now) => this.frame(now);
@@ -143,7 +144,9 @@ class Pad {
     const n = this._count(this._list());
     if (n > 0 && !this._raf) { this._t = 0; this._raf = requestAnimationFrame(this._frame); }
   }
+  _flightOff() { if (this.flightOff) { try { this.flightOff(); } catch (err) { console.error('Controller (Flug aus)', err); } } }
   _drop() {
+    this._flightOff();
     this.index = -1; this.id = '';
     this.ax.fill(0); this.lt = this.rt = 0; this.down.fill(0); this.prev.fill(0); this.held.fill(0);
     this.setMode('kb');
@@ -164,7 +167,7 @@ class Pad {
     this._t = now;
     const pads = this._list();
     const n = this._count(pads);
-    if (!n) { if (this.index >= 0) this._drop(); if (this.navOff) this.navOff(); this.owner = ''; return; }
+    if (!n) { if (this.index >= 0) this._drop(); if (this.navOff) this.navOff(); this._flightOff(); this.owner = ''; return; }
     const set = padSettings();
     const dead = set.dead;
     let g = this.index >= 0 ? pads[this.index] : null;
@@ -176,8 +179,9 @@ class Pad {
       for (const c of pads) {
         if (!c || c.connected === false || c === g) continue;
         if (this._busy(c, dead)) {
-          // Wechsel von einem anderen Controller: dort gehaltene Tasten nicht als neuen Druck werten
-          if (g) this.down.fill(1); else this.down.fill(0);
+          // Wechsel von einem anderen Controller: Tasten des neuen nicht als Druck werten und die des alten nicht als
+          // Loslassen (sonst lösten Y/RB beim Wechsel Andocken bzw. Zielwechsel aus); ohne bisherigen zählt der Druck
+          if (g) this._fresh = true; else this.down.fill(0);
           g = c; this.index = c.index; this.id = c.id || ''; this.style = styleOf(this.id); this._idle = 0;
           try { window.dispatchEvent(new CustomEvent('ls:pad', { detail: { connected: n, id: this.id, style: this.style } })); } catch { /* alt */ }
           if (this.mode === 'pad') { document.documentElement.dataset.pad = this.style; window.dispatchEvent(new CustomEvent('ls:inputmode', { detail: { mode: 'pad', style: this.style } })); }
@@ -185,7 +189,7 @@ class Pad {
         }
       }
     }
-    if (g) this._read(g, dt, dead);
+    if (g) this._read(g, dt, dead); else this._flightOff();
     // Besitzer: Flug zuerst, sonst Menü
     let owner = 'nav';
     if (g && this.flight) { try { if (this.flight(this, dt)) owner = 'flight'; } catch (err) { console.error('Controller (Flug)', err); } }
@@ -207,6 +211,7 @@ class Pad {
       this.held[i] = d ? this.held[i] + dt : 0;
       if (d && i !== BTN.HOME) any = true;
     }
+    if (this._fresh) { this._fresh = false; this.prev.set(this.down); this.held.fill(0); }
     const kl = stick(this.ax, 0, a[0], a[1], dead);
     const kr = stick(this.ax, 2, a[2], a[3], dead);
     this.lt = std && b[BTN.LT] ? trig(b[BTN.LT].value || (b[BTN.LT].pressed ? 1 : 0)) : 0;
