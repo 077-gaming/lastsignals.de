@@ -18,6 +18,6 @@
 .hud-coach kbd { display: inline-block; min-width: 1.6em; padding: 0 5px; margin: 0 1px; border: 1px solid var(--ls-line-2, rgba(255,255,255,.32));
   font-family: var(--ls-mono); font-size: 12px; line-height: 1.5; text-align: center; color: #fff; background: rgba(255,255,255,.06); }
 .hud-coach.done > b { color: var(--fx); }
-.hud-coach.done > b::after { content: ' ✓'; }
+.hud-coach.done > b::after { content: ' · OK'; }
 @media (prefers-reduced-motion: reduce) { .hud-coach { transition: none; } }
 .hud-coach .hc-text b { color: #fff; font-weight: 600; }
