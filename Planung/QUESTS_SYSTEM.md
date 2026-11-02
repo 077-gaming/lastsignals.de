@@ -317,3 +317,7 @@ Regeln: Zeiger blendet sich nach Fortschritt kurz aus und bei Stillstand von 8 s
 - Preis der Pioneer-Drohne (Annahme bis 10.000 Credits). Bis Drohnen kommen, wird sys47 übersprungen und nachgereicht.
 - Wracks einsammeln liegt nach deiner Liste in Kapitel 9. Weil jeder Abschuss ab Kapitel 2 ein Wrack hinterlässt, könnte sys36 auch direkt hinter sys10.
 - Reparatur nach einem Abschuss lässt sich nicht erzwingen. Die Reihe erklärt sie im Funk (sys45), die Übung ist FIX (sys48). `repair` zählt aber auch die echte Reparatur, falls man vorher abgeschossen wird.
+
+## Umsetzungsstand (02.11.2026)
+
+Kapitel 1–3 (sys01–sys18) sind als optionale Einführung eingebaut: `Code/src/sim/system-quests.js` (Logik, Belohnung, Überspringen, Fortsetzen, kein doppelter Lohn), `Code/src/ui/hud-guide.js` (Wahl „Geführter Einstieg“ oder „Direkt spielen“, Karte mit Ziel und Fortschritt, Taste G). Abweichungen vom Entwurf: sys05/sys07 nutzen Wegpunkte relativ zur Station mit Richtungsangabe in der Karte statt Weltmarker; sys07 führt zu einem festen Punkt statt zum Asteroidenfeld. Übersprungene Quests geben keine Belohnung (Entscheidung offen). Kapitel 4–18 folgen.

@@ -1176,5 +1176,39 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   }
 }
 
+// SYSTEM-Reihe (optionale Einführung): Wahl, Fortschritt, Belohnung, Überspringen, kein doppelter Lohn
+{
+  const { SystemSeries, SYSTEM_QUESTS } = await import('./system-quests.js');
+  const bus = makeBus(); const pr = newProfile('Lehrling', 'europa');
+  const w = new World(pr, bus, { seed: 91 }); w.player.x = 0; w.player.z = 0; w.update(1 / 60);
+  let cam = 'chase';
+  const s = new SystemSeries(w, bus, () => cam);
+  check('SYSTEM: neuer Pilot muss wählen, nichts läuft vorher', pr.system.mode === null && (s.update(1), pr.system.progress === 0));
+  s.choose('guided');
+  const c0 = pr.credits;
+  w.player.speed = 200; for (let i = 0; i < 120; i++) s.update(1 / 60); // 2 s × 200 m/s = 400 m
+  check('SYSTEM: 300 m fliegen schließt sys01 ab und zahlt 500 Credits', pr.system.done.includes('sys01') && pr.credits === c0 + 500 && s.current.id === 'sys02', `${pr.credits - c0} Cr`);
+  cam = 'tactical'; const before = pr.system.progress; w.player.speed = 300; for (let i = 0; i < 60; i++) s.update(1 / 60);
+  check('SYSTEM: Fliegen in der falschen Ansicht zählt nicht', pr.system.progress === before, `${before} → ${pr.system.progress}`);
+  s.skip();
+  check('SYSTEM: Überspringen ohne Belohnung', pr.system.skipped.includes('sys02') && s.current.id === 'sys03');
+  w.player.speed = 200; s.update(0.1); w.player.speed = 2; s.update(0.1);
+  check('SYSTEM: Vollbremsung aus Fahrt erkannt', pr.system.done.includes('sys03'));
+  s.update(0.1); // sys04: Ansicht ist taktisch
+  check('SYSTEM: Ansichtswechsel erkannt', pr.system.done.includes('sys04'));
+  const xp0 = pr.xp, cr0 = pr.credits;
+  s.restart(); w.player.speed = 200; for (let i = 0; i < 120; i++) s.update(1 / 60);
+  check('SYSTEM: Neustart der Reihe zahlt erledigte Quests nicht doppelt', pr.credits === cr0 && pr.xp === xp0 && s.current.id === 'sys02', s.current.id);
+  // Abschuss zählt über das Explode-Ereignis
+  pr.system.idx = SYSTEM_QUESTS.findIndex((q) => q.id === 'sys10'); pr.system.progress = 0;
+  const e = w.enemies[0];
+  bus.emit('explode', { id: e.id, x: e.x, z: e.z, size: 1 });
+  check('SYSTEM: Abschuss zählt für „Erster Abschuss“', pr.system.done.includes('sys10'));
+  const pr2 = newProfile('Veteran', 'saturn'); pr2.level = 4; pr2.xp = 90000;
+  const s2 = new SystemSeries(new World(pr2, makeBus(), { seed: 92 }), makeBus());
+  check('SYSTEM: erfahrener Spielstand wird nicht geführt', pr2.system.mode === 'direct' && !s2.active);
+  s.dispose();
+}
+
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');
 process.exit(failed ? 1 : 0);

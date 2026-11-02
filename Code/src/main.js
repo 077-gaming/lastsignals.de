@@ -5,6 +5,8 @@ import { bootSequence, loginScreen, factionSelect, hubScreen, launchSequence } f
 import { World } from './sim/world.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
+import { SystemSeries } from './sim/system-quests.js';
+import { SystemGuide } from './ui/hud-guide.js';
 import { StationUI } from './ui/station.js';
 import { HudTouch } from './ui/hud-touch.js';
 import { Coop } from './net/coop.js';
@@ -100,11 +102,14 @@ function playSession(profile, opts = {}) {
     const hud = new Hud(hudRoot, bus, world);
     hud.setRenderer(renderer);
     const station = new StationUI(hudRoot, bus, world);
+    // SYSTEM-Reihe (optionale Einführung, Planung/QUESTS_SYSTEM.md)
+    const series = new SystemSeries(world, bus, () => renderer.cameraMode);
+    const guide = new SystemGuide(hudRoot, series, world);
     const input = new Input(canvas, world, renderer, bus);
     const touch = new HudTouch(hudRoot, world, renderer, input); // iPad/Tablet: Joystick, Knöpfe, Zielanzeige
     const audio = new AudioSystem(bus, world, renderer);
     audio.start();
-    if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio }; // nur Entwicklung: Test-Pilot (tools/playtest)
+    if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio, series }; // nur Entwicklung: Test-Pilot (tools/playtest)
 
     // Dauerhaft unter 50 Bilder/s: eine Stufe tiefer, mit kurzer Meldung. Automatische Wahl → gespeichert,
     // eigene Wahl → nur für diese Sitzung (die Einstellung im Hub bleibt, wie der Spieler sie gesetzt hat).
@@ -196,6 +201,8 @@ function playSession(profile, opts = {}) {
       const t1 = performance.now();
       perfHud.frame(dt, t1 - t0);
       hud.update(dt);
+      series.update(dt);
+      guide.render();
       audio.update();
       guard.frame(dt, performance.now() - t0, renderer, world);
       renderer.noteWork(performance.now() - tf);
@@ -223,6 +230,8 @@ function playSession(profile, opts = {}) {
       window.removeEventListener('ls:store', onStore);
       input.dispose(); touch.dispose(); if (coop) coop.stop();
       audio.dispose();
+      series.dispose();
+      guide.dispose();
       hud.dispose();
       hudRoot.innerHTML = '';
       document.body.classList.remove('in-game');

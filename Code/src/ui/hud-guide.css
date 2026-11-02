@@ -1,0 +1,20 @@
+/* SYSTEM-Karte: links mittig, schmal, nach UI_STIL (angeschnittene Ecken, Haarlinien, keine Rundungen) */
+.lsg { position: absolute; left: 16px; top: 50%; transform: translateY(-40%); z-index: 30; pointer-events: none; }
+.lsg-card { width: 300px; pointer-events: auto; background-color: var(--ls-panel); }
+.lsg-choice { width: 340px; }
+.lsg-body { padding: 10px 12px 12px; display: grid; gap: 8px; }
+.lsg-title { font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .12em; font-size: 15px; color: var(--ls-tx); }
+.lsg-text { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ls-tx-2); }
+.lsg-goal { font-size: 13px; color: var(--fx); }
+.lsg-seg { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; height: 5px; }
+.lsg-seg i { background: rgba(255, 255, 255, .12); }
+.lsg-seg i.on { background: var(--fx); }
+.lsg-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lsg-foot { gap: 10px; }
+.lsg-row .ls-spacer { flex: 1; }
+.lsg-link {
+  appearance: none; border: 0; background: none; padding: 2px 0; cursor: pointer;
+  font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .14em; font-size: 11px; color: var(--ls-tx-3);
+}
+.lsg-link:hover, .lsg-link:focus-visible { color: var(--ls-tx); outline: none; }
+@media (max-width: 900px) { .lsg { top: auto; bottom: 120px; transform: none; } .lsg-card { width: 260px; } }
