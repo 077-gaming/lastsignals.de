@@ -42,6 +42,7 @@ export class SystemGuide {
     if (!force && now - (this._t || 0) < 200) return;
     this._t = now;
     const s = this.series, st = s.state, w = this.world;
+    if (st.mode === 'guided' && !s.finished) s.reportUi(this._ui());
     let key, html;
     if (st.mode == null) {
       key = 'choice';
@@ -76,6 +77,12 @@ export class SystemGuide {
       else if (g.type === 'camera') goalText = g.target === 'tactical' ? 'Taktische Ansicht einschalten' : 'Verfolgersicht einschalten';
       else if (g.type === 'target') goalText = 'Einen Gegner erfassen';
       else if (g.type === 'attack') goalText = 'Angriff auf das erfasste Ziel starten';
+      else if (g.type === 'rocket') goalText = `${prog} / ${g.count} Treffer mit ${g.rocket}`;
+      else if (g.type === 'arsenal') goalText = 'ARSENAL an der Schnellleiste öffnen';
+      else if (g.type === 'bar') goalText = `Auf Leiste ${g.bar} umschalten`;
+      else if (g.type === 'place') goalText = `${prog} / ${g.count} Plätze auf Leiste ${g.bar} belegt`;
+      else if (g.type === 'extra') goalText = g.hits ? `${g.id} mit mindestens ${g.hits} Gegner${g.hits > 1 ? 'n' : ''} im Wirkkreis zünden` : g.combat ? `${g.id} einsetzen, während du angegriffen wirst` : `Getarnt den Angriff eröffnen`;
+      else if (g.type === 'mine') goalText = `${g.ids.join(' oder ')} zünden lassen`;
       const r = q.reward || {};
       const rew = [r.credits && `${fmt(r.credits)} Cr`, r.tritium && `${fmt(r.tritium)} T`, r.xp && `${fmt(r.xp)} EP`, r.honor && `${fmt(r.honor)} Ehre`].filter(Boolean).join(' · ');
       const no = SYSTEM_QUESTS.indexOf(q) + 1;
@@ -98,6 +105,17 @@ export class SystemGuide {
     if (!force && key === this._key) return;
     this._key = key;
     this.el.innerHTML = html;
+  }
+
+  // Zustand der Schnellleiste für die SYSTEM-Reihe (Planung/SCHNITTSTELLEN.md: 'ls.hud.bar')
+  _ui() {
+    let bar = 1, filled = [];
+    try {
+      const b = JSON.parse(localStorage.getItem('ls.hud.bar') || 'null');
+      if (b && Array.isArray(b.bars)) { bar = (b.cur | 0) + 1; filled = b.bars.map((row) => (row || []).filter(Boolean).length); }
+    } catch { /* privater Modus */ }
+    const ed = document.querySelector('[data-q="edit"]');
+    return { arsenalOpen: !!ed && ed.getAttribute('aria-pressed') === 'true', bar, filled };
   }
 
   dispose() {

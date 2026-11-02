@@ -1207,6 +1207,24 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   const pr2 = newProfile('Veteran', 'saturn'); pr2.level = 4; pr2.xp = 90000;
   const s2 = new SystemSeries(new World(pr2, makeBus(), { seed: 92 }), makeBus());
   check('SYSTEM: erfahrener Spielstand wird nicht geführt', pr2.system.mode === 'direct' && !s2.active);
+  const go = (id) => { pr.system.idx = SYSTEM_QUESTS.findIndex((q) => q.id === id); pr.system.progress = 0; };
+  go('sys19'); for (let i = 0; i < 3; i++) bus.emit('rocketHit', { to: 'x', rocket: 'R1' }); bus.emit('rocketHit', { to: 'x', rocket: 'R3' });
+  check('SYSTEM: Raketentreffer zählen nur mit der richtigen Rakete', pr.system.done.includes('sys19') && s.current.id === 'sys20');
+  s.reportUi({ arsenalOpen: true, bar: 1, filled: [6, 0] });
+  check('SYSTEM: Arsenal geöffnet erkannt', pr.system.done.includes('sys20'));
+  s.reportUi({ arsenalOpen: true, bar: 2, filled: [6, 0] }); s.reportUi({ arsenalOpen: true, bar: 2, filled: [6, 0] }); // Leiste umgeschaltet, dann Ausgangswert
+  s.reportUi({ arsenalOpen: true, bar: 2, filled: [6, 1] }); s.reportUi({ arsenalOpen: true, bar: 2, filled: [6, 3] });
+  const mid = pr.system.progress; s.reportUi({ arsenalOpen: true, bar: 2, filled: [6, 4] });
+  check('SYSTEM: Leiste 2 und neu belegte Plätze zählen ab Start der Quest', pr.system.done.includes('sys21') && mid === 3 && pr.system.done.includes('sys22'), `Zwischenstand ${mid}`);
+  go('sys24'); bus.emit('ability', { id: 'EMP', kind: 'extra', phase: 'fire', hits: 0 }); const empNone = !pr.system.done.includes('sys24');
+  bus.emit('ability', { id: 'EMP', kind: 'extra', phase: 'fire', hits: 2 });
+  check('SYSTEM: EMP zählt nur mit Gegner im Wirkkreis', empNone && pr.system.done.includes('sys24'));
+  go('sys27'); bus.emit('ability', { id: 'BRM', kind: 'mine', phase: 'fire', hits: 1 }); const wrongMine = !pr.system.done.includes('sys27');
+  bus.emit('ability', { id: 'SPM', kind: 'mine', phase: 'fire', hits: 1 });
+  check('SYSTEM: Minen-Quest zählt nur den richtigen Minentyp', wrongMine && pr.system.done.includes('sys27'));
+  go('sys29'); bus.emit('ability', { id: 'TRN', kind: 'extra', phase: 'end', reason: 'Zeit' }); const timeOut = !pr.system.done.includes('sys29');
+  bus.emit('ability', { id: 'TRN', kind: 'extra', phase: 'end', reason: 'Angriff' });
+  check('SYSTEM: Tarnangriff erkannt, Ablaufen zählt nicht', timeOut && pr.system.done.includes('sys29') && s.finished);
   s.dispose();
 }
 

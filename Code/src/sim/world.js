@@ -1253,7 +1253,10 @@ export class World {
         } else if (!rocketHits(this, e)) {
           this.bus.emit('rocketMiss', { to: e.id, rocket: R.name, x: e.x, z: e.z, blocked: false });
           this._msg(`${R.name} verfehlt: ${e.name} ist ausgewichen. (LCK lässt jede Rakete treffen.)`, 'info', 'rocketMiss', 2);
-        } else this._hitEnemy(e, R.damage, false, false, dx / d, dz / d, e.x - dx / d * e.radius * 0.7, e.z - dz / d * e.radius * 0.7, true);
+        } else {
+          this._hitEnemy(e, R.damage, false, false, dx / d, dz / d, e.x - dx / d * e.radius * 0.7, e.z - dz / d * e.radius * 0.7, true);
+          this.bus.emit('rocketHit', { to: e.id, rocket: r.rocket });
+        }
       }
     }
   }
