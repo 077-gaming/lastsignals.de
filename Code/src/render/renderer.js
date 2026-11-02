@@ -86,6 +86,12 @@ const OPTIONAL_MODELS = [
   ['enemy:colossus', '/models/enemy-colossus.glb'],
   ['enemy:hunter', '/models/enemy-hunter.glb'],
   ['enemy:dread', '/models/enemy-dread.glb'],
+  // weitere Meshy-Modelle (aufbereitet 02.11.2026): Stealth-Infiltrator, Siege-Bomber, Außenposten, Larva (groß als Sternenwal)
+  ['enemy:jammer', '/models/enemy-jammer.glb'],
+  ['enemy:minelayer', '/models/enemy-minelayer.glb'],
+  ['enemy:werft', '/models/enemy-werft.glb'],
+  ['enemy:wal', '/models/enemy-wal.glb'],
+  ['enemy:queen', '/models/enemy-queen.glb'],
 ];
 
 const PITCH = 55 * Math.PI / 180;
