@@ -77,6 +77,12 @@ const setV = (page, scope, k, v) => gx(page, scope, `[data-gfx="set"][data-k="${
   check('Hub: Kantenglättung FXAA als Abweichung gespeichert', s.gfx && s.gfx.aa === 'fxaa', JSON.stringify(s.gfx));
   const custom = await page.$eval('.st [data-gx] [data-gx-saved]', (e) => e.textContent);
   check('Hub: Wahl heißt BENUTZERDEFINIERT', /BENUTZERDEFINIERT|GESPEICHERT/.test(custom), custom);
+  // Tastatur/Controller: Fokus bleibt nach dem Neuzeichnen auf demselben Knopf
+  await page.focus('.st [data-gx] [data-gfx="set"][data-k="aa"][data-v="smaa"]');
+  await page.keyboard.press('Enter');
+  await sleep(200);
+  const foc = await page.evaluate(() => { const a = document.activeElement; return a && a.dataset ? `${a.dataset.gfx}:${a.dataset.k}:${a.dataset.v}` : ''; });
+  check('Fokus bleibt nach Auswahl auf dem Knopf (Controller/Tastatur)', foc === 'set:aa:smaa', foc);
   // Controller-Einstellung im selben Bildschirm bleibt bedienbar
   const pad = page.locator('.st [data-set="pad.sens"][data-v="1.3"], .st [data-set="pad.sens"]').first();
   if (await pad.count()) { await pad.click().catch(() => {}); }
@@ -106,12 +112,17 @@ const setV = (page, scope, k, v) => gx(page, scope, `[data-gfx="set"][data-k="${
   const R = () => fp.evaluate(() => {
     const r = window.__ls.renderer, g = r.gfx.v, S = r.lights.sun.shadow;
     let tex = 0, texN = 0, meshy = 0;
+    const bad = [];
     const seen = new Set();
     r.scene.traverse((o) => {
       for (const m of [].concat(o.material || [])) {
         if (!m || seen.has(m)) continue; seen.add(m);
         const t = m.map;
-        if (t && t.isTexture && !t.isRenderTargetTexture && !t.isDataTexture && t.image && (t.image.width || t.image.videoWidth)) { texN++; if (t.anisotropy === r._aniso) tex++; }
+        if (t && t.isTexture && !t.isRenderTargetTexture && !t.isDataTexture && t.image && (t.image.width || t.image.videoWidth)) {
+          texN++;
+          if (t.anisotropy === r._aniso) tex++;
+          else if (bad.length < 4) { let q = o; const path = []; while (q && path.length < 4) { path.push(q.name || q.type); q = q.parent; } bad.push(`${path.join('<')} ${t.anisotropy}×`); }
+        }
       }
     });
     meshy = r.factory && r.factory.glb ? r.factory.glb.size : 0;
@@ -119,7 +130,7 @@ const setV = (page, scope, k, v) => gx(page, scope, `[data-gfx="set"][data-k="${
       tier: r.gfx.tier, quality: r.quality, custom: r.gfx.custom, aa: g.aa, ao: g.ao, aniso: r._aniso, shadows: g.shadows,
       shadowOn: r.gl.shadowMap.enabled, shadowSize: S.mapSize.x, chain: r.chain.describe(), post: r._post,
       ipr: r._ipr, opr: r._opr, basePR: r.basePR, up: r._upscaling, renderScale: g.renderScale, fpsCap: r.fpsCap,
-      texOk: tex, texN, glb: meshy,
+      texOk: tex, texN, glb: meshy, bad,
     };
   });
   let st = await R();
@@ -127,7 +138,7 @@ const setV = (page, scope, k, v) => gx(page, scope, `[data-gfx="set"][data-k="${
   check('EXTREM im Flug: Schatten 4096', st.shadowOn && st.shadowSize === 4096, String(st.shadowSize));
   check('EXTREM im Flug: Umgebungsverdeckung VOLL in der Kette', st.ao === 'ultra' && /AO/i.test(st.chain), st.chain);
   check('EXTREM im Flug: SMAA in der Kette', st.aa === 'smaa' && /SMAA/.test(st.chain), st.chain);
-  check('EXTREM im Flug: 16× Anisotropie an allen Modell-Texturen', st.aniso >= 8 && st.texN > 0 && st.texOk === st.texN, `${st.texOk}/${st.texN} bei ${st.aniso}×, ${st.glb} GLB`);
+  check('EXTREM im Flug: 16× Anisotropie an allen Modell-Texturen', st.aniso >= 8 && st.texN > 0 && st.texOk === st.texN, `${st.texOk}/${st.texN} bei ${st.aniso}×, ${st.glb} GLB${st.bad.length ? ' · ' + st.bad.join(', ') : ''}`);
 
   // Bordmenü öffnen
   await fp.mouse.click(720, 450).catch(() => {});
@@ -152,7 +163,7 @@ const setV = (page, scope, k, v) => gx(page, scope, `[data-gfx="set"][data-k="${
   await setV(fp, M, 'aniso', '2');
   await sleep(400);
   st = await R();
-  check('Bordmenü: Anisotropie 2× an allen Modell-Texturen (Meshy-Ladeweg)', st.aniso === 2 && st.texOk === st.texN && st.texN > 0, `${st.texOk}/${st.texN}`);
+  check('Bordmenü: Anisotropie 2× an allen Modell-Texturen (Meshy-Ladeweg)', st.aniso === 2 && st.texOk === st.texN && st.texN > 0, `${st.texOk}/${st.texN}${st.bad.length ? ' · ' + st.bad.join(', ') : ''}`);
   // neu nachgeladenes Modell (Ladeweg _need) bekommt den aktuellen Wert
   const late = await fp.evaluate(async () => {
     const r = window.__ls.renderer;

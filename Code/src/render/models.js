@@ -553,7 +553,20 @@ function fixNormals(scene) {
 let MODEL_ANISO = 4;
 export function setModelAnisotropy(n) { MODEL_ANISO = Math.max(1, n | 0); }
 const TEX_KEYS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'bumpMap', 'alphaMap', 'clearcoatNormalMap', 'clearcoatMap', 'specularIntensityMap', 'sheenColorMap'];
-/** Anisotropie aller Oberflächen-Texturen unter root setzen; Liefert die Zahl geänderter Texturen. */
+/** Anisotropie der Oberflächen-Texturen eines Materials setzen; liefert die Zahl geänderter Texturen. */
+function anisoMaterial(m, n) {
+  let k = 0;
+  for (const key of TEX_KEYS) {
+    const t = m[key];
+    if (!t || !t.isTexture || t.isRenderTargetTexture || t.isDataTexture || t.anisotropy === n) continue;
+    t.anisotropy = n;
+    // schon hochgeladen (Bild vorhanden): neu hochladen, sonst gilt der Wert beim ersten Hochladen
+    if (t.image && t.version > 0) t.needsUpdate = true;
+    k++;
+  }
+  return k;
+}
+/** Anisotropie aller Oberflächen-Texturen unter root setzen; liefert die Zahl geänderter Texturen. */
 export function applyAnisotropy(root, n = MODEL_ANISO) {
   let k = 0;
   const seen = new Set();
@@ -561,14 +574,7 @@ export function applyAnisotropy(root, n = MODEL_ANISO) {
     for (const m of [].concat(o.material || [])) {
       if (!m || seen.has(m)) continue;
       seen.add(m);
-      for (const key of TEX_KEYS) {
-        const t = m[key];
-        if (!t || !t.isTexture || t.isRenderTargetTexture || t.isDataTexture || t.anisotropy === n) continue;
-        t.anisotropy = n;
-        // schon hochgeladen (Bild vorhanden): neu hochladen, sonst gilt der Wert beim ersten Hochladen
-        if (t.image && t.version > 0) t.needsUpdate = true;
-        k++;
-      }
+      k += anisoMaterial(m, n);
     }
   });
   return k;
@@ -619,7 +625,12 @@ export class ModelFactory {
   }
 
   geo(key, make) { let g = this.geos.get(key); if (!g) { g = make(); this.geos.set(key, g); } return g; }
-  mat(key, make) { let m = this.mats.get(key); if (!m) { m = make(); this.mats.set(key, m); } return m; }
+  // Neue Materialien der Fabrik (auch prozedurale Texturen wie Schriftzüge) bekommen die gewählte Anisotropie
+  mat(key, make) {
+    let m = this.mats.get(key);
+    if (!m) { m = make(); this.mats.set(key, m); if (m && m.isMaterial) anisoMaterial(m, MODEL_ANISO); }
+    return m;
+  }
 
   // o: color, metal, rough, emissive, ei, flat, env, ao (Vertex-Kontaktschatten, Standard an),
   //    panel (Platten je Meter → Rumpfdetail), lines, grime, wear, tilt, rim, win/winX/winY/winCol/winK/winFill,

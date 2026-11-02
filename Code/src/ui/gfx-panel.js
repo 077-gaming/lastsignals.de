@@ -114,7 +114,19 @@ export function gfxPanelHtml(compact = false) {
   return `<div class="gx${compact ? ' is-compact' : ''}" data-gx data-compact="${compact ? 1 : 0}">${inner(compact)}</div>`;
 }
 
-function redraw(root) { root.innerHTML = inner(root.dataset.compact === '1'); }
+// Neu zeichnen und den Fokus auf denselben Knopf zurücksetzen (Controller-/Tastaturbedienung verliert sonst die
+// Stelle; ein jetzt gesperrter Stufenknopf gibt den Fokus an den anderen Knopf derselben Zeile)
+function redraw(root) {
+  const a = document.activeElement;
+  const was = a && root.contains(a) && a.dataset ? { g: a.dataset.gfx, k: a.dataset.k || '', v: a.dataset.v || '', d: a.dataset.d || '' } : null;
+  root.innerHTML = inner(root.dataset.compact === '1');
+  if (!was) return;
+  const q = (s) => root.querySelector(s);
+  let el = q(`[data-gfx="${was.g}"]${was.k ? `[data-k="${was.k}"]` : ''}${was.v ? `[data-v="${CSS.escape(was.v)}"]` : ''}${was.d ? `[data-d="${was.d}"]` : ''}`);
+  if (el && el.disabled && was.k) el = q(`[data-gfx="step"][data-k="${was.k}"]:not([disabled])`);
+  if (!el && was.g === 'preset') el = q('[data-gfx="preset"].on');
+  if (el) try { el.focus({ preventScroll: true }); } catch { /* egal */ }
+}
 
 /**
  * Klick in einem GRAFIK-Bereich auswerten (Hub und Bordmenü leiten [data-gfx] hierher). Liefert
