@@ -75,6 +75,7 @@ if (typeof window !== 'undefined') {
 // Optionale Modelle: werden nur geladen, wenn die Datei in public/models liegt (sonst bleibt das prozedurale Modell)
 // Aufbereitete Meshy-Gegner zeigen schon mit dem Bug nach −z (werkzeug/stationen.mjs, Drehung beim Aufbereiten)
 const NEG_Z = { forward: '-z' };
+const MESHY_HULL = { s3: '/models/enemy-merc.glb', s4: '/models/enemy-stalker.glb', s5: '/models/enemy-colossus.glb', s6: '/models/enemy-corsair.glb', s7: '/models/enemy-hunter.glb', s8: '/models/enemy-dread.glb' };
 const OPTIONAL_MODELS = [
   ['station:europa', '/models/station-europa.glb'],
   ['station:saturn', '/models/station-saturn.glb'],
@@ -476,15 +477,18 @@ export class Renderer {
     const fac = world.player?.faction || world.profile?.faction || this.faction;
     const ship = world.player?.ship || world.profile?.ship || 's1';
     const mine = `ship:${ship}:${fac}`;
-    const load = (key, url) => (this._disposed ? Promise.resolve() : this.factory.registerGLB(key, url).catch((err) => console.warn('Modell nicht geladen:', key, err)));
+    const load = (key, url, opts) => (this._disposed ? Promise.resolve() : this.factory.registerGLB(key, url, opts).catch((err) => console.warn('Modell nicht geladen:', key, err)));
     // Nur das eigene Schiff: fremde Schiffe zeigt der Flug nie (jedes weitere Einlesen kostete 10–30 ms Hauptthread
     // mitten im Flug). Nach einem Schiffskauf lädt _ensureMine() das neue Modell nach.
     this._loadGLB = load;
     this._mineKey = mine; this._mineUrl = MODEL_URL.get(mine) || null;
+    // Nur Entwicklung: ?rumpf=meshy zeigt die Meshy-Hauptreihe als eigenes Schiff 3–8 (Entscheidungsvorlage, nicht live)
+    let mineOpts;
+    if (import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('rumpf') === 'meshy' && MESHY_HULL[ship]) { this._mineUrl = MESHY_HULL[ship]; mineOpts = { forward: '-z' }; }
     // ownModelReady: main.js zeigt den Flug erst danach (kein sichtbarer Wechsel vom Platzhalter)
     // Drohnen (nur eigenes Fraktions-Set, nur geflogene Stufen) gehören dazu: auch sie nie sichtbar nachladen
     const drones = this.drones.setup(fac, world.drones || world.profile?.drones);
-    this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl) : Promise.resolve(), drones]);
+    this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl, mineOpts) : Promise.resolve(), drones]);
     for (const [key, url, opts] of OPTIONAL_MODELS) {
       fetch(url, { method: 'HEAD' }).then((r) => {
         const t = r.headers.get('content-type') || '';
@@ -1606,7 +1610,9 @@ export class Renderer {
     const key = `ship:${sh}:${fac}`;
     if (key === this._mineKey) return;
     this._mineKey = key; this._mineUrl = MODEL_URL.get(key) || null;
-    if (this._mineUrl && !this.factory.glb.has(key) && this._loadGLB) this._loadGLB(key, this._mineUrl);
+    let opts;
+    if (import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('rumpf') === 'meshy' && MESHY_HULL[sh]) { this._mineUrl = MESHY_HULL[sh]; opts = { forward: '-z' }; }
+    if (this._mineUrl && !this.factory.glb.has(key) && this._loadGLB) this._loadGLB(key, this._mineUrl, opts);
   }
   /** Eigenes Schiff fertig (echtes Modell geladen und vorbereitet oder keins vorhanden) */
   _mineReady() {
