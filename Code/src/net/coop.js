@@ -13,7 +13,8 @@ const KEY = 'sb_publishable_7bAvG-sHZiTgXmMI_-Oqgg_gMFC5Pnc'; // öffentlicher S
 const RATE = 1 / 8;
 const CREDIT = 20; // so lange nach dem letzten eigenen Treffer zählt ein Abschuss für den Gast (s)
 let client = null;
-const sb = () => client || (client = createClient(URL, KEY, { realtime: { params: { eventsPerSecond: 30 } } }));
+/** Gemeinsamer Supabase-Client (eine Websocket-Verbindung für Koop und Mehrspieler, nur Realtime). */
+export const sb = () => client || (client = createClient(URL, KEY, { realtime: { params: { eventsPerSecond: 30 } } }));
 
 export const newCode = () => String(1000 + Math.floor(Math.random() * 9000));
 
@@ -41,6 +42,7 @@ export class Coop {
     this.ch.on('broadcast', { event: 'snap' }, ({ payload }) => this.guest && this._onSnap(payload));
     this.ch.on('broadcast', { event: 'g' }, ({ payload }) => this.host && this._onGuest(payload));
     this.ch.on('broadcast', { event: 'hit' }, ({ payload }) => this.host && this._onHit(payload));
+    this.ch.on('broadcast', { event: 'bye' }, () => this._onBye());
     this.ch.subscribe((s) => { if (s === 'SUBSCRIBED') this._msg(this.host ? `Koop-Raum ${this.code} offen. Gib deinem Mitspieler den Code ${this.code}.` : `Koop: verbunden mit Raum ${this.code}.`); });
   }
 
@@ -121,5 +123,18 @@ export class Coop {
     this.applying = false;
   }
 
-  stop() { try { sb().removeChannel(this.ch); } catch { /* egal */ } if (this.world.coop === this) this.world.coop = null; this.world.entities.delete('ally'); }
+  // Mitspieler hat den Koop beendet (Flug beendet, Koop verlassen): sofort aufräumen statt 6 s zu warten
+  _onBye() {
+    if (this.ally) { this.world.entities.delete('ally'); this.bus.emit('despawn', { id: 'ally' }); this.ally = null; this._msg('Mitspieler hat den Koop verlassen.'); }
+  }
+
+  stop() {
+    this._send('bye', {});
+    const ch = this.ch;
+    // kurz warten, damit das Abschiedssignal noch rausgeht
+    setTimeout(() => { try { sb().removeChannel(ch); } catch { /* egal */ } }, 150);
+    if (this.world.coop === this) this.world.coop = null;
+    if (this.world.entities.get('ally')) { this.world.entities.delete('ally'); this.bus.emit('despawn', { id: 'ally' }); }
+    this.ally = null;
+  }
 }

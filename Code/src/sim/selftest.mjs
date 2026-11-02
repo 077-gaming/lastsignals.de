@@ -1312,5 +1312,78 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Neuer Tag: neue Tagesaufträge, Woche bleibt', pr2.contracts.day === '2026-11-03' && !pr2.contracts.daily.some((c) => c.done) && pr2.contracts.week === '2026-W45');
 }
 
+
+// ───────── Mehrspieler: reine Logik (net/mp-core.js) und PvP-Anbindung der Welt ─────────
+{
+  const M = await import('../net/mp-core.js');
+  const secs = sectorsFor('saturn'), secsE = sectorsFor('eris');
+  check('MP: Heimat je Fraktion eigener Kanal', M.sectorChannel(secs['SA-1']) !== M.sectorChannel(secsE['ER-1']));
+  check('MP: ab Sektor 2 gemeinsamer Raum aller Fraktionen', M.sectorChannel(secs['SA-3']) === M.sectorChannel(secsE['ER-3']) && M.sectorChannel(secs['SA-2']) !== M.sectorChannel(secs['SA-3']));
+  check('MP: gleicher Index = gleiche Karte (Tore, Größe)', JSON.stringify(secs['SA-4'].portals.map((o) => [o.x, o.z])) === JSON.stringify(secsE['ER-4'].portals.map((o) => [o.x, o.z])) && secs['SA-4'].size === secsE['ER-4'].size);
+  const pk = M.packState({ x: 123.6, z: -40.2, rot: 7, crs: -7, spd: 311.4, hull: 0.504, shield: 1.4, flags: 5, tgt: 'e12' });
+  const up = M.unpackState(pk);
+  check('MP: Zustand gerundet und zurück', pk[0] === 124 && pk[1] === -40 && Math.abs(up.rot - M.wrapAngle(7)) < 0.006 && pk[5] === 50 && pk[6] === 100 && up.tgt === 'e12' && up.flags === 5);
+  check('MP: kaputter Zustand wird verworfen', M.unpackState([NaN, 0, 0, 0, 0, 0, 0, 0]) === null && M.unpackState('x') === null && M.unpackState([1e9, 0, 0, 0, 0, 0, 0, 0]) === null);
+  check('MP: nur bei Änderung senden', !M.stateChanged(pk, M.packState({ x: 123.9, z: -40.4, rot: 7, crs: -7, spd: 311, hull: 0.5, shield: 1, flags: 5, tgt: 'e12' })) && M.stateChanged(pk, M.packState({ x: 126, z: -40, rot: 7, crs: -7, spd: 311, hull: 0.5, shield: 1, flags: 5, tgt: 'e12' })));
+  // Interpolation: 9 Hz, gleichmäßige Bewegung 300 m/s → Darstellung liegt ≈ Verzögerung zurück, ohne Sprünge
+  const ip = new M.Interp(0.13, 0.25);
+  const lat = 0.08;
+  for (let i = 0; i < 10; i++) { const t = i / 9; ip.push(t + 100, { x: t * 300, z: 0, rot: 0, crs: 0, spd: 300 }, t + lat); }
+  const o = {};
+  const now = 9 / 9 + lat;
+  ip.sample(now, o);
+  check('MP: Interpolation läuft ≈ 130 ms hinterher', Math.abs(o.x - (1 - 0.13) * 300) < 3, `x=${o.x.toFixed(1)}`);
+  let maxStep = 0, px = null;
+  for (let k = 0; k < 30; k++) { ip.sample(now - 0.3 + k * 0.01, o); if (px !== null) maxStep = Math.max(maxStep, Math.abs(o.x - px)); px = o.x; }
+  check('MP: Interpolation ohne Sprünge', maxStep < 4.5, `max ${maxStep.toFixed(2)} m je 10 ms`);
+  ip.sample(now + 2, o);
+  check('MP: Vorhersage begrenzt (≤ 250 ms)', o.extra <= 0.25 + 1e-9 && Math.abs(o.x - (300 + 0.25 * 300)) < 1, `x=${o.x.toFixed(1)}`);
+  check('MP: veraltete Pakete abgelehnt', ip.push(100.2, { x: 0, z: 0, rot: 0, crs: 0, spd: 0 }, now) === false);
+  const ip2 = new M.Interp(0.13, 0.25);
+  ip2.push(5, { x: 0, z: 0, rot: 3.1, crs: 0, spd: 0 }, 5); ip2.push(5.1, { x: 0, z: 0, rot: -3.1, crs: 0, spd: 0 }, 5.1);
+  ip2.sample(5.1 + 0.13 - 0.05, o);
+  check('MP: Winkel über ±180° kurz interpoliert', Math.abs(Math.abs(o.rot) - Math.PI) < 0.1, `rot=${o.rot.toFixed(2)}`);
+  // Chat
+  check('MP: Chat kürzt auf 200 Zeichen und entfernt Steuerzeichen', Array.from(M.cleanText('x'.repeat(260))).length === 200 && M.cleanText('a\u0000b c‮  d ') === 'a b c d');
+  check('MP: HTML wird escaped', M.escapeHtml('<img src=x onerror="a()">&\'') === '&lt;img src=x onerror=&quot;a()&quot;&gt;&amp;&#39;');
+  check('MP: Wortfilter ersetzt, lässt Harmloses stehen', M.filterWords('du Arschl0ch!') === 'du *********!' && M.filterWords('Skyship fick dich') === 'Skyship **** ****' && M.filterWords('Mongolei und Spastik') === 'Mongolei und Spastik');
+  const rl = new M.RateLimit(4, 8, 0.7);
+  const res = [0, 0.3, 1, 2, 3, 4, 5].map((t) => rl.take(t) === 0);
+  check('MP: Ratenbegrenzung (Abstand und 4 je 8 s)', JSON.stringify(res) === JSON.stringify([true, false, true, true, true, false, false]) && rl.take(8.1) === 0);
+  // PvP-Regeln
+  const A = { pvp: true, fac: 'saturn', zone: true, coop: '' }, B = { pvp: true, fac: 'eris', zone: true, coop: '' };
+  check('MP: PvP zwischen Fraktionen mit PvP an', M.canAttack(A, B) && M.canAttack(B, A));
+  check('MP: kein PvP bei aus, gleicher Fraktion, Schutz oder Koop', !M.canAttack(A, { ...B, pvp: false }) && !M.canAttack(A, { ...B, fac: 'saturn' }) && !M.canAttack(A, { ...B, zone: false }) && !M.canAttack({ ...A, coop: '1234' }, { ...B, coop: '1234' }));
+  check('MP: Zone erst ab Sektor 2, nicht in sicherer Zone/angedockt/Ankunftsschutz', !M.zoneOk({ sectorIndex: 1 }) && M.zoneOk({ sectorIndex: 2 }) && !M.zoneOk({ sectorIndex: 3, safe: true }) && !M.zoneOk({ sectorIndex: 3, docked: true }) && !M.zoneOk({ sectorIndex: 3, protectedNow: true }));
+  check('MP: Treffer begrenzt', M.clampHit(-5) === 0 && M.clampHit(NaN) === 0 && M.clampHit(1e9) === M.PVP_MAX_HIT && M.clampHit(312.4) === 312);
+  check('MP: Ehre steigt mit Stufe des Opfers, wenig gegen viel Schwächere', M.pvpHonor(20, 20) > M.pvpHonor(5, 5) && M.pvpHonor(2, 30) < M.pvpHonor(2, 2) && M.pvpHonor(1, 1) > 0);
+  check('MP: Sitzungskennung', M.validSid(M.newSid()) && !M.validSid('ABC') && !M.validSid('<script>'));
+  // Welt: fremder Spieler als PvP-Ziel, Treffer gehen an mp.hit statt an die Gegner-Logik, Opfer wendet Schaden an
+  const prA = newProfile('Schuetze', 'saturn'); prA.sector = 'SA-2';
+  const wA = new World(prA, makeBus(), { seed: 71 });
+  const hits = [];
+  wA.mp = { hit: (e, d, s) => hits.push([e.id, d, s]) };
+  const rp = { id: 'rp:abcdefgh', kind: 'player', type: 'remote', name: 'Ziel', alive: true, x: wA.player.x + 200, z: wA.player.z, vx: 0, vz: 0, radius: 20, hp: 1000, hpMax: 1000, shield: 0, shieldMax: 0, pvpOk: false };
+  wA.entities.set(rp.id, rp);
+  wA.setTarget(rp.id);
+  check('MP: fremder Spieler ohne PvP nicht anwählbar', wA.player.targetId !== rp.id && !wA._validTarget(rp));
+  rp.pvpOk = true;
+  wA.setTarget(rp.id);
+  check('MP: fremder Spieler mit PvP anwählbar', wA.player.targetId === rp.id && wA._validTarget(rp));
+  wA._hitEnemy(rp, 250, false, false);
+  check('MP: Treffer geht als Meldung raus, Ziel bleibt unberührt (Opfer entscheidet)', hits.length === 1 && hits[0][1] === 250 && rp.hp === 1000);
+  wA._provoke(rp);
+  check('MP: fremder Spieler wird nicht „provoziert“', rp.provoked === undefined);
+  const prB = newProfile('Opfer', 'eris'); prB.sector = 'ER-2';
+  const busB = makeBus(), wB = new World(prB, busB, { seed: 72 });
+  wB._invulnUntil = 0;
+  const hp0 = wB.player.hp + wB.player.shield;
+  const r1 = wB.pvpDamage(300, false, 'rp:abcdefgh', 1, 0);
+  check('MP: Opfer wendet PvP-Schaden selbst an', r1 === true && wB.player.hp + wB.player.shield === hp0 - 300 && busB.count.damage >= 1);
+  const r2 = wB.pvpDamage(1e6, false, 'rp:abcdefgh', 1, 0);
+  check('MP: tödlicher PvP-Treffer meldet Abschuss', r2 === 'dead' && !wB.player.alive);
+  check('MP: kein Schaden an zerstörtem Schiff', wB.pvpDamage(10, false, 'x') === false);
+}
+
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');
 process.exit(failed ? 1 : 0);

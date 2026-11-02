@@ -1679,7 +1679,7 @@ export class Renderer {
       const ctid = e.targetId;
       const cv = ctid !== null && ctid !== undefined ? this.views.get(ctid) : null;
       let cdx = 0, cdz = 0, combat = 0;
-      if (cv && HOSTILE[cv.kind] && cv.root.visible && e.alive !== false && !W.docked) {
+      if (cv && (HOSTILE[cv.kind] || this._pvpPick(ctid)) && cv.root.visible && e.alive !== false && !W.docked) {
         cdx = cv.rx - pv.rx; cdz = cv.rz - pv.rz;
         const sep = Math.hypot(cdx, cdz);
         if (sep < 1500 && (e.attacking || sep < 750)) combat = 1;
@@ -1740,7 +1740,7 @@ export class Renderer {
     if (K > 0.001 && pv && W && W.player) {
       const e = W.player, tid = e.targetId;
       const cv = tid !== null && tid !== undefined ? this.views.get(tid) : null;
-      const hostile = cv && HOSTILE[cv.kind] && cv.root.visible && e.alive !== false && !W.docked;
+      const hostile = cv && (HOSTILE[cv.kind] || this._pvpPick(tid)) && cv.root.visible && e.alive !== false && !W.docked;
       // Schiff im freien Bildbereich (zwischen oberen und unteren HUD-Fenstern), etwas unter dessen Mitte
       const Hh = Math.max(1, this.rect.height), freeTop = Math.max(40, HF.top), freeBot = Hh - Math.max(0, HF.bottom);
       const shipPx = freeTop + Math.max(80, freeBot - freeTop) * 0.6;
@@ -1797,9 +1797,10 @@ export class Renderer {
       this.sel.scale.setScalar(r);
       this.sel.position.set(tv.rx, tv.kind === 'station' ? -8 : -3, tv.rz);
       this.sel.rotation.y = this.time * 0.6;
-      if (this._selKind !== tv.kind) {
-        this._selKind = tv.kind;
-        const hex = HOSTILE[tv.kind] ? 0xff4a3a : tv.kind === 'crate' ? 0xffd36a : tv.kind === 'freighter' ? 0xffb070 : 0x9fe8ff;
+      const sk = tv.kind === 'player' ? (this._pvpPick(tid) ? 'pvp' : 'player') : tv.kind;
+      if (this._selKind !== sk) {
+        this._selKind = sk;
+        const hex = HOSTILE[tv.kind] || sk === 'pvp' ? 0xff4a3a : tv.kind === 'crate' ? 0xffd36a : tv.kind === 'freighter' ? 0xffb070 : 0x9fe8ff;
         this.selMat.uniforms.uColor.value.setHex(hex).multiplyScalar(2.2);
         this.selInner.material.uniforms.uColor.value.setHex(hex).multiplyScalar(1.5);
       }
@@ -2092,7 +2093,7 @@ export class Renderer {
     const kpx = R.height / (2 * this._tanH);
     cam.getWorldDirection(_h);
     this.views.forEach((v, id) => {
-      if (!PICK_KINDS[v.kind] || !v.root.visible || v.kind === 'player') return;
+      if (!v.root.visible || !(PICK_KINDS[v.kind] || this._pvpPick(id))) return;
       const dx = v.rx - cam.position.x, dy = 2 - cam.position.y, dz = v.rz - cam.position.z;
       const depth = dx * _h.x + dy * _h.y + dz * _h.z;
       if (depth < 30) return;
@@ -2106,6 +2107,13 @@ export class Renderer {
       if (score < bestScore) { bestScore = score; best = id; }
     });
     return best;
+  }
+
+  // Mehrspieler: fremdes Schiff ist nur anwählbar, solange PvP zwischen beiden gilt (mp.js setzt pvpOk)
+  _pvpPick(id) {
+    if (typeof id !== 'string' || !id.startsWith('rp:')) return false;
+    const e = this.world?.entities?.get(id);
+    return !!(e && e.pvpOk);
   }
 
   pick(clientX, clientY) {
@@ -2122,7 +2130,7 @@ export class Renderer {
     const tol = 40 * mpp;
     let best = null, bestScore = Infinity;
     this.views.forEach((v, id) => {
-      if (!PICK_KINDS[v.kind] || !v.root.visible) return;
+      if (!v.root.visible || !(PICK_KINDS[v.kind] || this._pvpPick(id))) return;
       const d = Math.hypot(v.rx - _w.x, v.rz - _w.z);
       const r = v.kind === 'station' ? 200 : v.vr;
       if (d > r + tol) return;
