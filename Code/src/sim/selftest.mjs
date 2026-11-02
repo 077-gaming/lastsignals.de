@@ -1312,5 +1312,16 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Neuer Tag: neue Tagesaufträge, Woche bleibt', pr2.contracts.day === '2026-11-03' && !pr2.contracts.daily.some((c) => c.done) && pr2.contracts.week === '2026-W45');
 }
 
+// ---- App-Hüllen (Apps/): Erkennung Mac-App / Capacitor / Browser ----
+{
+  const { appShellOf } = await import('../core/shell.js');
+  check('App-Hülle: Browser ohne Kennung', appShellOf({ protocol: 'https:' }) === '');
+  check('App-Hülle: Mac-App über window.lsDesktop', appShellOf({ desktop: { platform: 'mac', version: '1.0.0' }, protocol: 'app:' }) === 'desktop');
+  check('App-Hülle: Capacitor nativ', appShellOf({ capacitor: { isNativePlatform: () => true }, protocol: 'https:' }) === 'capacitor');
+  check('App-Hülle: Capacitor-Web zählt nicht', appShellOf({ capacitor: { isNativePlatform: () => false }, protocol: 'https:' }) === '');
+  check('App-Hülle: iOS-Schema capacitor:', appShellOf({ protocol: 'capacitor:' }) === 'capacitor');
+  check('App-Hülle: App-Build-Kennung', appShellOf({ flag: '1', protocol: 'https:' }) === 'capacitor');
+}
+
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');
 process.exit(failed ? 1 : 0);
