@@ -32,12 +32,14 @@ const perfHud = new PerfHud(null); // F3: Leistungsanzeige (Grundzustand aus den
 // Bildratenbegrenzung (Grafik-Einstellung): Browser lässt Bilder aus; Desktop-App bekommt den Wert für die Hülle
 const limiter = new FrameLimiter();
 let gfxSig = '';
+let perfSet = null;
 function syncGfx() {
   const g = currentGfx();
   if (g.sig === gfxSig) return;
   gfxSig = g.sig;
   limiter.setCap(g.v.fpsCap);
-  perfHud.toggle(!!g.v.perfHud);
+  // Leistungsanzeige nur umschalten, wenn sich die Einstellung selbst ändert (F3 bleibt bis dahin gültig)
+  if (g.v.perfHud !== perfSet) { perfSet = g.v.perfHud; perfHud.toggle(!!g.v.perfHud); }
   notifyDesktop(g.v);
 }
 syncGfx();

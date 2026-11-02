@@ -34,10 +34,11 @@ export function buildFlightChain(composer, { scene, camera, cockpit, bloom, look
 
   const ao = new AoPass(camera);
   if (import.meta.env && import.meta.env.DEV) {
-    // nur Entwicklung: ?aoview=1 zeigt nur die Verdeckung, ?aor=Radius ?aot=Dicke (m) zum Abstimmen
+    // nur Entwicklung: ?aoview=1 zeigt nur die Verdeckung, ?aor=Radius ?aot=Dicke (m) zum Abstimmen (gilt für alle Stufen)
     try {
       const q = new URLSearchParams(location.search);
       ao.view = q.get('aoview') === '1' ? 1 : 0;
+      if (+q.get('aor') || +q.get('aot')) ao.devRadius = true;
       if (+q.get('aor')) { ao.radius = +q.get('aor'); ao.gtaoMat.uniforms.radius.value = ao.radius; }
       if (+q.get('aot')) { ao.thickness = +q.get('aot'); ao.gtaoMat.uniforms.thickness.value = ao.thickness; }
     } catch { /* egal */ }

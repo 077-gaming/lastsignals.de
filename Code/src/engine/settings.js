@@ -15,8 +15,9 @@ const TIER_INDEX = { low: 0, medium: 1, high: 2, ultra: 3, extreme: 4, niedrig: 
 export function tierIndex(name) { return TIER_INDEX[name] ?? null; }
 
 // Gruppen der Oberfläche (Reiter im Hub, Abschnitte im Bordmenü)
+// [id, Titel, Kurztitel für das schmale Bordmenü]
 export const GROUPS = [
-  ['preset', 'VOREINSTELLUNG'],
+  ['preset', 'VOREINSTELLUNG', 'STUFE'],
   ['bild', 'BILD'],
   ['licht', 'LICHT'],
   ['effekte', 'EFFEKTE'],
@@ -32,7 +33,7 @@ export const SCHEMA = [
   { key: 'upscale', group: 'bild', label: 'HOCHSKALIERUNG', desc: 'LS-Hochskalierung (FSR-1-Art): eigenes kantenrichtiges Hochrechnen plus Nachschärfen. Greift, sobald die Szene unter der Bildschirmdichte gerechnet wird (Skalierung oder automatische Anpassung).',
     type: 'choice', options: [['off', 'AUS'], ['ls', 'LS-HOCHSKALIERUNG (FSR-1-ART)']], def: 'off', preset: true, apply: 'live' },
   { key: 'sharpen', group: 'bild', label: 'SCHÄRFE', desc: 'Kontrastadaptives Nachschärfen (RCAS-Art), ein Vollbild-Durchgang. 0 % = aus.',
-    type: 'range', min: 0, max: 100, step: 5, unit: '%', def: [0, 0, 0, 20, 30], preset: true, apply: 'live' },
+    type: 'range', min: 0, max: 100, step: 5, unit: '%', def: [0, 0, 0, 35, 40], preset: true, apply: 'live' },
   { key: 'aa', group: 'bild', label: 'KANTENGLÄTTUNG', desc: 'FXAA ist günstig und etwas weich, SMAA erkennt Kantenformen und bleibt scharf. AUTO: SMAA, solange die Szene unter 1,5-facher Pixeldichte gerechnet wird – darüber glättet die Dichte selbst (spart auf Retina-Bildschirmen ≈ 1,5 ms). MSAA fällt aus: zeichnet auf Apple-Grafik schwarz.',
     type: 'choice', options: [['off', 'AUS'], ['fxaa', 'FXAA'], ['smaa', 'SMAA'], ['auto', 'AUTO']], def: ['off', 'fxaa', 'auto', 'auto', 'smaa'], preset: true, apply: 'live' },
   { key: 'aniso', group: 'bild', label: 'ANISOTROPE FILTERUNG', desc: 'Schärfere Oberflächen unter flachem Blickwinkel (Rümpfe, Stationsplatten).',

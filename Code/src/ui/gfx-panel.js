@@ -16,7 +16,7 @@ const PRESET_DESC = {
   low: 'Pixeldichte 1, direkt ohne Nachbearbeitung. Für ältere Rechner.',
   medium: 'Pixeldichte 1,5, FXAA, Nachleuchten, weniger Partikel. Standard auf Tablets.',
   high: 'Pixeldichte 1,75 mit automatischer Anpassung, SMAA unter 1,5-facher Dichte, Umgebungsverdeckung MITTEL, Schatten 2048, 8× Filterung.',
-  ultra: 'Pixeldichte 2, Umgebungsverdeckung HOCH, Schärfen, 16× Filterung, feiner gebackener Himmel, 9.000 Sterne.',
+  ultra: 'Pixeldichte 2, Umgebungsverdeckung HOCH, Schärfen 35 %, 16× Filterung, feiner gebackener Himmel, 9.000 Sterne.',
   extreme: 'Desktop-App: SMAA immer, volle Umgebungsverdeckung, Schatten 4096, Spiegelung 256, mehr Partikel, größere Sichtweite.',
   custom: 'Eigene Werte. Eine Stufe wählen setzt alle Bild-, Licht- und Effektwerte zurück.',
 };
@@ -103,7 +103,7 @@ function presetPane(r, caps, s) {
 function inner(compact) {
   const { caps, s, r } = state();
   const tab = GROUPS.some((g) => g[0] === lastTab) ? lastTab : 'preset';
-  const tabs = GROUPS.map(([id, t], i) => `<button type="button" class="gx-tab${id === tab ? ' on' : ''}" data-gfx="tab" data-v="${id}"><i>${String(i + 1).padStart(2, '0')}</i>${t}</button>`).join('');
+  const tabs = GROUPS.map(([id, t, short], i) => `<button type="button" class="gx-tab${id === tab ? ' on' : ''}" data-gfx="tab" data-v="${id}"><i>${String(i + 1).padStart(2, '0')}</i>${compact && short ? short : t}</button>`).join('');
   const pane = tab === 'preset' ? presetPane(r, caps, s) : SCHEMA.filter((d) => d.group === tab).map((d) => rowHtml(d, r, caps)).join('');
   return `<nav class="gx-tabs">${tabs}</nav><div class="gx-pane" data-pane="${tab}">${pane}</div>
     <div class="gx-foot"><span class="ls-label" data-gx-saved>${r.custom ? 'BENUTZERDEFINIERT' : 'STUFE ' + TIER_LABEL[r.tier]}</span><span class="ls-spacer"></span>${compact ? '' : '<span class="ls-label">GESPEICHERT IN DIESEM BROWSER</span>'}</div>`;

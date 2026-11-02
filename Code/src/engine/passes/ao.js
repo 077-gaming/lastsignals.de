@@ -80,13 +80,17 @@ void main() {
   gl_FragColor = uView == 1 ? vec4(vec3(ao), 1.0) : vec4(col.rgb * ao, col.a);
 }`;
 
-// Stufen: Auflösung (Anteil), Proben je Richtung (GTAO SAMPLES), Stärke
+// Stufen: Auflösung (Anteil), Proben je Richtung (GTAO SAMPLES), Stärke, Radius (m, Mindestwert) und radiusZ (Radius
+// wächst mit dem Abstand: radiusZ × Entfernung), Dicke = Radius.
 // pow: Kontrastkurve der Verdeckung (GTAO-Uniform scale). Die Rümpfe sind meist konvex, Fugen schmal: ohne Kurve
 // bliebe die Verdeckung kaum sichtbar.
+// Prüfung 02.11.2026 (eingefrorenes Bild, Schiff nah/Station): Radius 10 m / pow 2 war kaum sichtbar (mittlere
+// Abweichung 0,5 von 255). Radius 40–60 m mit pow 2,5–3 dunkelt Fugen unter Decks, Anbauten und Kontaktstellen sichtbar
+// ab (Abweichung 1,1–1,3), ohne Säume um Vordergrundteile; Mehrkosten im Rahmen der Messstreuung (≈ 0,1 ms).
 const LEVELS = {
-  medium: { res: 0.4, samples: 8, k: 0.9, pow: 1.8 },   // 0,4: hält HOCH im Zeitbudget (Retina)
-  high: { res: 0.5, samples: 16, k: 1, pow: 2.0 },
-  ultra: { res: 1, samples: 16, k: 1, pow: 2.0 },
+  medium: { res: 0.4, samples: 8, k: 1, pow: 2.5, radius: 40, radiusZ: 0.06 },   // 0,4: hält HOCH im Zeitbudget (Retina)
+  high: { res: 0.5, samples: 16, k: 1, pow: 3, radius: 60, radiusZ: 0.08 },
+  ultra: { res: 1, samples: 16, k: 1, pow: 3, radius: 60, radiusZ: 0.08 },
 };
 
 export class AoPass extends Pass {
@@ -99,7 +103,8 @@ export class AoPass extends Pass {
     this.fold = false; // Zusammenführen im Kamera-Look statt eigenem Durchgang
     this.depth = null; // zuletzt gelesene Tiefentextur (für den Kamera-Look)
     // Weltmaßstab: Spielerschiff ≈ 48 m (Radius 24), Station Radius 160. Radius 10 m trifft Fugen und Anbauten, nicht ganze Rümpfe.
-    this.radius = 10; this.thickness = 8; this.fade = 3200;
+    this.radius = 40; this.thickness = 40; this.fade = 3200; // Radius/Dicke je Stufe (LEVELS)
+    this.devRadius = false; // Entwicklung: ?aor/?aot halten den Radius fest
     const rtOpt = { type: THREE.HalfFloatType, depthBuffer: false, stencilBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false };
     this.rtA = new THREE.WebGLRenderTarget(4, 4, rtOpt);
     this.rtB = new THREE.WebGLRenderTarget(4, 4, rtOpt);
@@ -112,7 +117,7 @@ export class AoPass extends Pass {
     });
     const U = this.gtaoMat.uniforms;
     U.tNoise.value = this.noise;
-    U.radiusZ = { value: 0.025 };
+    U.radiusZ = { value: 0.06 };
     U.radius.value = this.radius; U.thickness.value = this.thickness;
     U.distanceExponent.value = 1.6; U.distanceFallOff.value = 1; U.scale.value = 1;
     this.denoiseMat = new THREE.ShaderMaterial({ uniforms: { tAO: { value: this.rtA.texture } }, vertexShader: VS, fragmentShader: DENOISE_FS, depthTest: false, depthWrite: false });
@@ -131,7 +136,9 @@ export class AoPass extends Pass {
     this.level = level;
     if (this.gtaoMat.defines.SAMPLES !== L.samples) { this.gtaoMat.defines.SAMPLES = L.samples; this.gtaoMat.needsUpdate = true; }
     this.compMat.uniforms.uK.value = L.k;
-    this.gtaoMat.uniforms.scale.value = L.pow;
+    const U = this.gtaoMat.uniforms;
+    U.scale.value = L.pow;
+    if (!this.devRadius) { this.radius = L.radius; this.thickness = L.radius; U.radius.value = L.radius; U.thickness.value = L.radius; U.radiusZ.value = L.radiusZ; }
     if (this._res !== L.res) { this._res = L.res; this.setSize(this._w, this._h); }
   }
 

@@ -32,7 +32,7 @@ Gespeichert in `localStorage['ls.settings']`:
 |---|---|---|---|
 | `renderScale` | 50–200 % | 100 | sofort |
 | `upscale` | `off`, `ls` (LS-Hochskalierung, FSR-1-Art) | aus | sofort |
-| `sharpen` | 0–100 % | 0 / 0 / 0 / 20 / 30 | sofort |
+| `sharpen` | 0–100 % | 0 / 0 / 0 / 35 / 40 | sofort |
 | `aa` | `off`, `fxaa`, `smaa`, `auto` | aus / FXAA / AUTO / AUTO / SMAA | sofort |
 | `aniso` | 1, 2, 4, 8, 16 | 1 / 4 / 8 / 16 / 16 | sofort (geänderte Texturen laden neu hoch) |
 | `shadows` | `off`, `low` 1024, `high` 2048, `ultra` 4096 | aus / aus / hoch / hoch / ultra | Neuaufbau |
@@ -84,9 +84,10 @@ LS-Hochskalierung hochrechnet; bei Supersampling (über 100 %) höchstens die Bi
 GTAO-Shader aus `three/examples/jsm/shaders/GTAOShader.js`, aber ohne zweite Szenen-Zeichnung: Normalen aus der
 Tiefe, Tiefe aus dem Szenenziel (beide Composer-Ziele bekommen eigene `DepthTexture` – eine geklonte Textur teilt in
 three.js die GL-Textur, das gäbe eine Rückkopplung). Halbe Auflösung (MITTEL 8, HOCH 16 Proben), 5 × 5 tiefengewichtet
-entrauscht, tiefengerecht hochgerechnet, Radius 10 m und mit der Entfernung wachsend (2,5 % des Abstands), Leuchtendes
+entrauscht, tiefengerecht hochgerechnet, Radius MITTEL 40 m / HOCH und VOLL 60 m und mit der Entfernung wachsend (6 bzw.
+8 % des Abstands), Kontrastkurve pow 2,5 / 3 (Werte je Stufe in `LEVELS`, siehe „Prüfung“ unten), Leuchtendes
 (HDR > 1) bleibt hell, ausgeblendet ab 2–3 km. Ohne Cockpit-Ebene rechnet der Kamera-Look die Verdeckung beim Lesen ein
-(`USE_AO` in `post.js`), mit Cockpit ein eigener Durchgang vor der Cockpit-Ebene. Abstimmen: `?aoview=1&aor=10&aot=8`.
+(`USE_AO` in `post.js`), mit Cockpit ein eigener Durchgang vor der Cockpit-Ebene. Abstimmen: `?aoview=1&aor=60&aot=60` (hält Radius/Dicke für alle Stufen fest).
 
 ### Baustein LS-Hochskalierung (FSR-1-Art) (`passes/upscale.js`)
 
@@ -149,3 +150,36 @@ Sichtbar besser in den festen Ansichten (A/B im selben eingefrorenen Bild, `bild
 Rumpftexturen schärfer, Cockpit-Anzeigen lesbarer), Schärfen, 16× anisotrope Filterung (Stationsplatten unter
 flachem Winkel), LS-Hochskalierung gegenüber gestreckter Leinwand bei 65 %. Kein sichtbarer Unterschied: Schatten
 4096 statt 2048 und Spiegelung 1024 statt 512 → nur noch in EXTREM (Desktop), wählbar bleiben sie.
+
+## Prüfung 02.11.2026 (unabhängige Prüfung, nach dem Umbau)
+
+Behoben:
+- EXTREM fiel beim Start auf ULTRA zurück: `isAutoQuality()` (perf/quality.js) kannte den Namen nicht und hielt die
+  Wahl für automatisch. Jetzt gelten EXTREM und eigene Werte vor der Namensprüfung als eigene Wahl (mit `?desktop=1`
+  geprüft: Stufe bleibt nach Start und Neuladen, Schatten 4096, AO VOLL).
+- Schwarzes Bild nach einem Auflösungswechsel: Eine neue Leinwandgröße leert die Leinwand. Angedockt zeichnet der
+  Renderer nur jedes 4./32. Bild, die Leinwand blieb dann bis 0,5 s schwarz (Sonde: 13 von 14 Wechseln). Jetzt wird
+  nach jeder Größenänderung im selben Bild gezeichnet (`_mustDraw`), beim stehenden Bild des Sektorsprungs regelt die
+  adaptive Auflösung nicht.
+- Umgebungsverdeckung kaum sichtbar: Radius 10 m / pow 2 ergab im eingefrorenen Bild eine mittlere Abweichung von
+  0,5 von 255. Mit Radius 40–60 m, pow 2,5–3 und Dicke = Radius dunkeln Fugen unter Decks, Triebwerksgondeln und
+  Kontaktstellen sichtbar ab (Abweichung vorher/nachher 1,0–1,6 statt 0,5), ohne Säume um Vordergrundteile.
+  Mehrkosten des größeren Radius ≈ 0,3 ms (HOCH, Retina, Schiff nah, Minimum aus 6 abwechselnden Läufen).
+- Schärfen ULTRA 20 → 35 %, EXTREM 30 → 40 % (gleicher Durchgang, gleiche Kosten; 20 % war neben SMAA kaum zu sehen).
+- Bordmenü: Reiter „VOREINSTELLUNG“ war abgeschnitten → im schmalen Menü „STUFE“. F3 wird nicht mehr bei jeder
+  anderen Grafikänderung auf die gespeicherte Leistungsanzeige zurückgesetzt.
+
+GPU-Zeit (abwechselnd gemessen, Minimum / Median, Rechner mit anderen Sitzungen geteilt):
+
+| Ansicht | vorher (FXAA, ohne AO, ohne Schärfen) | nachher |
+|---|---|---|
+| HOCH 1440 × 900 Retina fest 100 %, Flug Saturn | 6,97 / 8,46 ms | 7,56 / 8,56 ms |
+| HOCH 1440 × 900 Retina fest 100 %, Flug Europa | 6,48 / 7,33 ms | 6,15 / 8,63 ms |
+| HOCH 960 × 600 Dichte 1, Schiff nah (AO MITTEL, SMAA) | 3,22 / 4,37 ms | 4,03 / 4,88 ms |
+| ULTRA 960 × 600 Dichte 1, Schiff nah (AO HOCH, SMAA, Schärfen) | 2,58 / 3,48 ms | 4,74 / 6,61 ms |
+| ULTRA 1440 × 900 Retina, Schiff nah: AO aus / alter Radius 10 m / neu 60 m | 9,71 / 9,79 ms | 9,89 / 11,65 · 10,31 / 10,75 ms |
+
+Die Einzelwerte liegen zweigipflig (≈ 7 oder ≈ 12 ms je nach Last der anderen Sitzungen); maßgeblich ist der Abstand
+im selben Lauf. HOCH hält im Flug das 8-ms-Ziel über die adaptive Auflösung (GPU-Grenze 7,6 ms).
+Vergleichsbögen (ausgeschnitten, 2-fach, eingefroren): `bilder/engine-pruefung-high.jpg`, `bilder/engine-pruefung-ultra.jpg`.
+
