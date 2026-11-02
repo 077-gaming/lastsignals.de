@@ -650,6 +650,25 @@ export class ModelFactory {
     // Vorlage bleibt unberührt im Zwischenspeicher (Geometrien/Materialien geteilt, je Grafik-Engine neu hochgeladen)
     const src = gltf.scene.clone(true);
     src.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+    // Spielerschiffe: Klarlack über der Lackierung (Glanzkante im Sonnen- und Kantenlicht), Umgebungslicht etwas stärker.
+    // Nur eigene Schiffe (wenige Teile im Bild); Materialien je Modell einmal ersetzt, Vorlage im Zwischenspeicher bleibt.
+    if (key.startsWith('ship:') && !opts.noCoat) {
+      const done = new Map();
+      src.traverse((o) => {
+        if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial || o.material.isMeshPhysicalMaterial) return;
+        let m = done.get(o.material);
+        if (!m) {
+          const b = o.material;
+          m = new THREE.MeshPhysicalMaterial();
+          THREE.MeshStandardMaterial.prototype.copy.call(m, b);
+          m.clearcoat = b.emissiveMap || b.emissive?.getHex() ? 0.25 : 0.5;
+          m.clearcoatRoughness = 0.28;
+          m.envMapIntensity = (b.envMapIntensity ?? 1) * 1.15;
+          done.set(b, m);
+        }
+        o.material = m;
+      });
+    }
     const flip = (opts.forward || '+z') !== '-z';
     const wrap = new THREE.Group();
     wrap.name = 'glb:' + key;

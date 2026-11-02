@@ -73,25 +73,27 @@ if (typeof window !== 'undefined') {
 }
 
 // Optionale Modelle: werden nur geladen, wenn die Datei in public/models liegt (sonst bleibt das prozedurale Modell)
+// Aufbereitete Meshy-Gegner zeigen schon mit dem Bug nach −z (werkzeug/stationen.mjs, Drehung beim Aufbereiten)
+const NEG_Z = { forward: '-z' };
 const OPTIONAL_MODELS = [
   ['station:europa', '/models/station-europa.glb'],
   ['station:saturn', '/models/station-saturn.glb'],
   ['station:eris', '/models/station-eris.glb'],
   ['enemy:vulture', '/models/enemy-vulture.glb'], // Meshy-Modell, aufbereitet 02.11.2026
   // Meshy-Hauptreihe S01–S05, S07, S08 als Piraten der tiefen Sektoren (aufbereitet 02.11.2026: Bug nach −z, Länge 2, WebP)
-  ['enemy:corsair', '/models/enemy-corsair.glb'],
-  ['enemy:boarder', '/models/enemy-boarder.glb'],
-  ['enemy:merc', '/models/enemy-merc.glb'],
-  ['enemy:stalker', '/models/enemy-stalker.glb'],
-  ['enemy:colossus', '/models/enemy-colossus.glb'],
-  ['enemy:hunter', '/models/enemy-hunter.glb'],
-  ['enemy:dread', '/models/enemy-dread.glb'],
+  ['enemy:corsair', '/models/enemy-corsair.glb', NEG_Z],
+  ['enemy:boarder', '/models/enemy-boarder.glb', NEG_Z],
+  ['enemy:merc', '/models/enemy-merc.glb', NEG_Z],
+  ['enemy:stalker', '/models/enemy-stalker.glb', NEG_Z],
+  ['enemy:colossus', '/models/enemy-colossus.glb', NEG_Z],
+  ['enemy:hunter', '/models/enemy-hunter.glb', NEG_Z],
+  ['enemy:dread', '/models/enemy-dread.glb', NEG_Z],
   // weitere Meshy-Modelle (aufbereitet 02.11.2026): Stealth-Infiltrator, Siege-Bomber, Außenposten, Larva (groß als Sternenwal)
-  ['enemy:jammer', '/models/enemy-jammer.glb'],
-  ['enemy:minelayer', '/models/enemy-minelayer.glb'],
-  ['enemy:werft', '/models/enemy-werft.glb'],
-  ['enemy:wal', '/models/enemy-wal.glb'],
-  ['enemy:queen', '/models/enemy-queen.glb'],
+  ['enemy:jammer', '/models/enemy-jammer.glb', NEG_Z],
+  ['enemy:minelayer', '/models/enemy-minelayer.glb', NEG_Z],
+  ['enemy:werft', '/models/enemy-werft.glb', NEG_Z],
+  ['enemy:wal', '/models/enemy-wal.glb', NEG_Z],
+  ['enemy:queen', '/models/enemy-queen.glb', NEG_Z],
 ];
 
 const PITCH = 55 * Math.PI / 180;
@@ -204,6 +206,7 @@ export class Renderer {
       sun: new THREE.DirectionalLight(0xffffff, 2.4),   // Führungslicht (Sonne)
       rim: new THREE.DirectionalLight(0x9fc4ff, 1.4),   // Kantenlicht von hinten
       fill: new THREE.DirectionalLight(0x8090b0, 0.2),  // schwaches Fülllicht aus Richtung Milchstraße
+      view: new THREE.DirectionalLight(0xc8d4ff, 0.8), // Blicklicht: aus Kamerarichtung, hält Rümpfe vor schwarzem All lesbar
       hemi: new THREE.HemisphereLight(0x40506a, 0x050608, 0.35),
     };
     const sh = this.lights.sun.shadow;
@@ -214,7 +217,7 @@ export class Renderer {
     sh.bias = -0.0004; sh.normalBias = 1.2; sh.radius = 2.5;
     this._shadowAt = null;
     this.scene.add(this.lights.sun, this.lights.sun.target, this.lights.rim, this.lights.rim.target,
-      this.lights.fill, this.lights.fill.target, this.lights.hemi);
+      this.lights.fill, this.lights.fill.target, this.lights.hemi, this.lights.view, this.lights.view.target);
 
     this.factory = new ModelFactory();
     this.factory.prepare = (key, wrap) => this._prepareGLB(key, wrap);
@@ -473,10 +476,10 @@ export class Renderer {
     // Drohnen (nur eigenes Fraktions-Set, nur geflogene Stufen) gehören dazu: auch sie nie sichtbar nachladen
     const drones = this.drones.setup(fac, world.drones || world.profile?.drones);
     this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl) : Promise.resolve(), drones]);
-    for (const [key, url] of OPTIONAL_MODELS) {
+    for (const [key, url, opts] of OPTIONAL_MODELS) {
       fetch(url, { method: 'HEAD' }).then((r) => {
         const t = r.headers.get('content-type') || '';
-        if (r.ok && !t.includes('html') && !this._disposed) return this.factory.registerGLB(key, url);
+        if (r.ok && !t.includes('html') && !this._disposed) return this.factory.registerGLB(key, url, opts);
         return null;
       }).catch(() => { /* kein Modell vorhanden */ });
     }
@@ -1789,6 +1792,8 @@ export class Renderer {
     } else this.sel.visible = false;
 
     this.env.chaseK = this.rig.k;
+    // Blicklicht folgt der Kamera (von leicht oben), Ziel ist der Blickpunkt
+    { const L = this.lights.view; L.position.copy(cam.position); L.position.y += 60; L.target.position.copy(_cl); L.target.updateMatrixWorld(); L.intensity = 0.8 * (0.4 + 0.6 * this.rig.k); }
     if (W) this.env.update(cam, this.gl.getPixelRatio(), this._pointScale, this.time, this.camTarget, dt);
     // Sprungtor-Linse im Kamera-Durchgang (nächstes Tor im Bild)
     const OU = this.output.uniforms;
