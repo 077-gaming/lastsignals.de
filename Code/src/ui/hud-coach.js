@@ -73,7 +73,11 @@ export class HudCoach {
   update() {
     if (!this.el || this.i >= STEPS.length) return;
     const w = this.world, p = w.player;
-    if (!p || w.docked || w.playerDead) { this.el.classList.toggle('hidden', true); return; }
+    // SYSTEM-Reihe (Planung/QUESTS_SYSTEM.md): Wer den geführten Einstieg wählt, wird von ihr eingewiesen; der Coach
+    // tritt dann ganz zurück. Solange die Wahl noch offen ist, wartet er. Bei „Direkt spielen“ bleibt er die Kurzeinweisung.
+    const sys = w.profile && w.profile.system;
+    if (sys && sys.mode === 'guided') { this.i = STEPS.length; w.profile.tut = STEPS.length; this.el.classList.remove('on'); return; }
+    if (!p || w.docked || w.playerDead || (sys && sys.mode == null)) { this.el.classList.toggle('hidden', true); return; }
     this.el.classList.toggle('hidden', false);
     const key = STEPS[this.i].key;
     if (key === 'fly') {
