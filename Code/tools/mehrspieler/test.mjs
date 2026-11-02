@@ -256,9 +256,14 @@ async function main() {
   }
   const hubAlly = await waitFor(hub.D, () => !!window.__ls.world.entities.get('ally'), null, 20000) && await waitFor(hub.E, () => !!window.__ls.world.entities.get('ally') && window.__ls.world.sector.id === 'SA-1', null, 20000);
   check('Koop aus dem Hub: Gastgeber und Gast (andere Fraktion) sehen sich als Partner', hubAlly);
-  await waitFor(hub.D, () => window.__ls.mp.secReady && window.__ls.mp.remotes.size > 0, null, 15000);
+  await waitFor(hub.D, () => window.__ls.mp.secReady && window.__ls.mp.roster().some((r) => r.cs === 'Echo'), null, 15000);
   await sleep(2500);
-  const hubDup = await Promise.all([hub.D, hub.E].map((pg) => pg.evaluate(() => ({ rp: [...window.__ls.world.entities.keys()].filter((k) => k.startsWith('rp:')).length, coop: window.__ls.mp.roster().map((r) => r.coop) }))));
+  // Nur die Testpiloten zählen: Der Heimatsektor ist ein echter Realtime-Kanal, dort kann ein fremder Client
+  // (z. B. ein offener Entwicklungs-Tab mit ?dev=game&f=saturn) mitfliegen
+  const hubDup = await Promise.all([hub.D, hub.E].map((pg) => pg.evaluate((names) => ({
+    rp: [...window.__ls.world.entities.values()].filter((e) => String(e.id).startsWith('rp:') && names.includes(e.name)).length,
+    coop: window.__ls.mp.roster().filter((r) => names.includes(r.cs)).map((r) => r.coop),
+  }), ['Delta', 'Echo'])));
   check('Koop aus dem Hub: Partner nicht doppelt, in der Liste als KOOP', hubDup.every((d) => d.rp === 0 && d.coop.length === 1 && d.coop[0] === true), JSON.stringify(hubDup));
   await hub.D.close(); await hub.E.close();
 

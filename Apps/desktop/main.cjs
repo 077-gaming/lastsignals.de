@@ -34,6 +34,8 @@ const settings = loadSettings();
 // ---------------------------------------------------------------- Chromium-Schalter (vor app.ready)
 app.commandLine.appendSwitch('force_high_performance_gpu'); // Rechner mit zwei Grafikchips: den starken nehmen
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
+// Ton ohne Klick: Browser werten Controller-Tasten nicht als Nutzergeste. In der App startet der Ton deshalb sofort
+// (Schalter für den ganzen Prozess, dazu autoplayPolicy im Fenster), auch wenn nur der Controller benutzt wird.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 if (settings.unlimitedFps || process.env.LS_UNLIMITED_FPS === '1') {
   // Bildratenbegrenzung aus (Einstellung, wirkt erst nach Neustart): kein VSync, Bildrate nach oben offen
@@ -100,6 +102,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true, nodeIntegration: false, sandbox: true,
       backgroundThrottling: false, spellcheck: false,
+      autoplayPolicy: 'no-user-gesture-required', // Musik und Effekte auch ohne Klick/Taste (Controller)
     },
   });
   if (!IS_MAC) win.setMenuBarVisibility(false);

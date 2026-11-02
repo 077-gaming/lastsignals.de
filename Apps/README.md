@@ -5,6 +5,7 @@ Das Spiel aus `Code/` verpackt als App, ohne bezahlte Entwicklerkonten und ohne 
 - **Mac** (`desktop/`): Electron-Hülle, ad-hoc signiert, `.zip` und `.dmg` für Apple Silicon und universal.
   Schema `app://ls/`, Preload mit `window.lsDesktop` (contextIsolation an, nodeIntegration aus), Hochleistungs-GPU,
   Bildratenbegrenzung abschaltbar (Menü, Neustart), Vollbild mit F11 bzw. Ctrl+Cmd+F, Fenstergröße wird gemerkt.
+  Autoplay-Regel `no-user-gesture-required`: Ton startet auch, wenn nur der Controller benutzt wird.
 - **Windows** (`desktop/packen-windows.mjs`): dieselbe Electron-Hülle für Windows x64, auf dem Mac gebaut (kein Wine:
   Symbol und Versionsdaten setzt `@electron/packager` per `resedit`). Portable `.zip` (Ordner `LAST SIGNALS` mit
   `LAST SIGNALS.exe`) und Installer `-setup.exe` (NSIS über `makensis`, `desktop/windows-setup.nsi`, nur für den

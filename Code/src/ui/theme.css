@@ -161,3 +161,18 @@ body[data-faction="eris"] { --fx: #9a52ff; }
   padding: 12px 18px; background: rgba(6, 9, 13, .94); border-left: 2px solid var(--ls-warn); box-shadow: inset 0 0 0 1px var(--ls-line);
   font-family: var(--ls-text); font-size: 14px; line-height: 1.4; color: var(--ls-tx); transition: opacity .5s; }
 .ls-notice.out { opacity: 0; }
+
+/* Hinweis „Taste oder Klick für Ton“ (audio.js): Browser starten Ton nicht über Controller-Tasten */
+.ls-sndhint {
+  position: fixed; top: 118px; left: 50%; transform: translateX(-50%); z-index: 10000; pointer-events: none; /* unter Kopfleiste und Sektoranzeige */
+  display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 12px;
+  background: rgba(6, 9, 13, .86); border: 1px solid rgba(255, 255, 255, .22);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  font-family: var(--ls-display);
+  font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .94);
+  animation: ls-sndhint-in .16s steps(3, end);
+}
+.ls-sndhint b { font-weight: 400; color: var(--ls-tx-2); }
+.ls-sndhint b::after { content: ""; display: inline-block; width: 1px; height: 10px; margin-left: 10px; background: rgba(255, 255, 255, .32); vertical-align: -1px; }
+@keyframes ls-sndhint-in { from { opacity: 0; transform: translate(calc(-50% - 12px), 0); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .ls-sndhint { animation: none; } }

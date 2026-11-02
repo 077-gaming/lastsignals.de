@@ -104,7 +104,30 @@ function engine() {
   document.addEventListener('visibilitychange', resume);
   window.addEventListener('pointerdown', resume, { passive: true });
   window.addEventListener('keydown', resume);
+  soundHint(ctx);
   return S;
+}
+
+// Hinweis „Taste/Klick für Ton“: Browser starten Ton erst nach einer echten Taste oder einem Klick – Controller-Tasten
+// zählen dafür nicht (Gamepad-API). Wer nur mit dem Controller spielt, sieht deshalb oben einen kurzen Hinweis, bis
+// der Ton läuft. In der Mac-/Windows-App (Electron, Autoplay-Regel 'no-user-gesture-required') läuft der Ton sofort,
+// der Hinweis erscheint dort nicht.
+function soundHint(ctx) {
+  if (typeof document === 'undefined') return;
+  let el = null, t = 0;
+  const hide = () => { clearTimeout(t); if (el) { el.remove(); el = null; } };
+  const show = () => {
+    if (el || ctx.state === 'running' || ctx.state === 'closed' || document.hidden) return;
+    el = document.createElement('div');
+    el.className = 'ls-sndhint';
+    el.setAttribute('role', 'status');
+    el.innerHTML = '<b>TON AUS</b><span>TASTE ODER KLICK FÜR TON</span>';
+    document.body.appendChild(el);
+  };
+  const check = () => { if (ctx.state === 'running' || ctx.state === 'closed') hide(); else if (!el) { clearTimeout(t); t = setTimeout(show, 1200); } };
+  ctx.addEventListener?.('statechange', check);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hide(); else check(); });
+  check();
 }
 function loadSfx(E) {
   if (E.sfxLoad) return E.sfxLoad;

@@ -54,7 +54,7 @@ Alles läuft über **Supabase Realtime** (Broadcast + Presence) mit dem öffentl
 
 - Puffer je Spieler (12 Zustände), Darstellung **130 ms** hinter dem neuesten Stand, linear interpoliert (Winkel über ±180° kurz). Zeitbasis = Sendezeit, Versatz zur eigenen Uhr aus dem kleinsten beobachteten Laufzeitversatz (kriecht langsam nach, gegen Uhrendrift).
 - Fehlt Nachschub: Vorhersage entlang der letzten Bewegung **höchstens 250 ms**, dann Stillstand. Ohne Zustand seit 4 s wird das Schiff ausgeblendet.
-- Schiff = echtes Fraktionsmodell mit Lasern aus `lo`; Namensschild (Rufname, Stufe, Hüllenbalken), Pfeil auf der Minikarte (Weiß = eigene Fraktion, Blau = andere, Rot = PvP-Ziel), Spielerliste PILOTEN (Taste P).
+- Schiff = echtes Fraktionsmodell (Meshy-GLB, `render/renderer.js` lädt es über `_need`/`EXTRA_MODELS`, sobald das Schiff im Sektor auftaucht; bis dahin das prozedurale Modell, danach Neuaufbau) mit Lasern aus `lo`; Namensschild (Rufname, Stufe, Hüllenbalken), Pfeil auf der Minikarte (Weiß = eigene Fraktion, Blau = andere, Rot = PvP-Ziel), Spielerliste PILOTEN (Taste P).
 - Feuert ein fremder Spieler, zeigt die eigene Grafik Laser zu seinem Ziel, wenn das Ziel bei mir existiert (ich, ein anderer fremder Spieler, ein Gegner ≤ 1 km neben ihm). Rein optisch.
 - Koop-Partner wird nicht doppelt gezeigt: gleiches `cp` in der Presence oder per Einladung verbunden → nur `ally` aus `coop.js`.
 

@@ -5,6 +5,7 @@ import { progressOf, clientTag } from '../net/cloud-logic.js';
 import { newProfile } from '../core/data.js';
 import { VERSION } from './screens-kit.js';
 import { chooseSave, toast, accountDialog } from './account-ui.js';
+import { hasAuthHint } from '../net/supa.js'; // ohnehin im Hauptpaket (Koop, Mehrspieler)
 
 let instance = null;
 let initP = null;
@@ -38,7 +39,7 @@ export async function initAccount(store) {
     const a = await getAccount(store);
     const recoveryLink = /type=recovery/.test(location.hash);
     let hint = true;
-    if (a.api.kind === 'supabase') { const { hasAuthHint } = await import('../net/supa.js'); hint = hasAuthHint(); }
+    if (a.api.kind === 'supabase') hint = hasAuthHint();
     if (hint) await a.init(); else { a.ready = true; }
     if (recoveryLink && a.signedIn) a.recovery = true;
     return a;

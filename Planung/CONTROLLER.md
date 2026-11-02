@@ -102,7 +102,7 @@ Joystick und Knöpfe von `hud-touch.js` sind ausgeblendet, solange der Controlle
 
 ## Grenzen
 
-- **Ton:** Browser werten Controller-Tasten nicht als Nutzergeste, die Musik startet daher erst nach dem ersten Klick oder Tastendruck (Warnung „AudioContext was not allowed to start“). In der Electron-App lässt sich das über die Autoplay-Regel des Fensters lösen.
+- **Ton:** Browser werten Controller-Tasten nicht als Nutzergeste, die Musik startet daher erst nach dem ersten Klick oder Tastendruck (Warnung „AudioContext was not allowed to start“). Solange der Ton deshalb ruht, zeigt das Spiel oben den Hinweis „TON AUS · TASTE ODER KLICK FÜR TON“ (`audio.js`, `soundHint`). In der Mac-/Windows-App ist die Autoplay-Regel gesetzt (`Apps/desktop/main.cjs`: Schalter `autoplay-policy` und `webPreferences.autoplayPolicy` = `no-user-gesture-required`), dort läuft der Ton auch nur mit Controller sofort und der Hinweis erscheint nicht.
 - **Electron/PC-App:** Chromium liefert Controller-Daten nur an das Fenster im Vordergrund.
 - **Ohne Standard-Mapping** (seltene Controller, alte Treiber) wird dieselbe Tastenreihenfolge angenommen; Trigger als Achsen werden dann nicht ausgewertet.
 - Fenster im HUD verschieben und Arsenal per Ziehen belegen bleibt Maus/Touch vorbehalten (Arsenal: A legt in den nächsten freien Platz).
