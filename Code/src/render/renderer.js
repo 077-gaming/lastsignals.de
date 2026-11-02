@@ -674,23 +674,25 @@ export class Renderer {
     }
     if (this._disposed) return;
     // einmal im nächsten Bild mitzeichnen (vor dem echten Bild, gleiches Zielformat), danach umschalten
-    await new Promise((res) => { this._prepQ = { root, res }; });
+    // Warteschlange: mehrere Modelle können gleichzeitig fertig werden (Sektor-Requisiten, Gegner); vorher überschrieb
+    // das zweite das erste, dessen Umschalten dann nie kam
+    await new Promise((res) => { (this._prepQ || (this._prepQ = [])).push({ root, res }); });
   }
 
   _drawPrep() {
-    const { root, res } = this._prepQ;
+    const Q = this._prepQ;
     this._prepQ = null;
     const gl = this.gl, prev = gl.getRenderTarget();
     const useComposer = !(this.lowQuality || this.quality === 0);
     if (useComposer && !this._prepRT) this._prepRT = new THREE.WebGLRenderTarget(8, 8, { type: THREE.HalfFloatType, samples: 0 });
-    this.scene.add(root);
+    for (const q of Q) this.scene.add(q.root);
     try {
       gl.setRenderTarget(useComposer ? this._prepRT : null); // ohne Nachbearbeitung: das echte Bild überschreibt es gleich
       gl.render(this.scene, this.camera);
     } catch { /* egal */ } finally {
-      this.scene.remove(root);
+      for (const q of Q) this.scene.remove(q.root);
       gl.setRenderTarget(prev);
-      res();
+      for (const q of Q) q.res();
     }
   }
 
@@ -2261,7 +2263,7 @@ export class Renderer {
   dispose() {
     this._disposed = true;
     try { this.drones.dispose(); } catch { /* egal */ }
-    if (this._prepQ) { const r = this._prepQ.res; this._prepQ = null; r(); }
+    if (this._prepQ) { const Q = this._prepQ; this._prepQ = null; for (const q of Q) q.res(); }
     if (this._prepRT) { this._prepRT.dispose(); this._prepRT = null; }
     for (const off of this._offs) off();
     this._offs.length = 0;
