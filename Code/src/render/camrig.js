@@ -14,7 +14,7 @@ export const FOV_TAC = 40, FOV_CHASE = 58;
 // Verfolger: Höhe über dem Schiff (Grad), Abstand in Schiffsradien, Blickpunkt vor dem Schiff
 const CH_ELEV = 15 * Math.PI / 180, CH_ELEV_FIGHT = 21 * Math.PI / 180;
 const CH_DIST = 4.1;
-const CH_R0 = 24.7, CH_EXP = 0.55, CH_ELEV_BIG = 9 * Math.PI / 180;
+const CH_R0 = 24.7, CH_EXP = 0.5, CH_ELEV_BIG = 9 * Math.PI / 180, CH_YAW_BIG = 17 * Math.PI / 180;
 const BLEND_T = 0.9; // Sekunden für den Wechsel
 
 function wrap(a) { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; }
@@ -167,14 +167,16 @@ export class CameraRig {
     const r = Math.max(14, pv.vr);
     // Abstand: Grundabstand × Zoom, beim Beschleunigen etwas zurück, bei Tempo etwas weiter, im Kampf weiter
     const accK = Math.max(-0.6, Math.min(1, this.accel / ((maxSpeed || 320) * 0.45)));
-    // Größenstaffelung sichtbar: Abstand wächst nur mit Radius^0,55 (bezogen auf den Starter, 24,7 m), sonst wäre jedes
+    // Größenstaffelung sichtbar: Abstand wächst nur mit Radius^0,5 (bezogen auf den Starter, 24,7 m), sonst wäre jedes
     // Schiff gleich groß im Bild. Starter ≈ 18 %, Schiff 8 ≈ 33 % der Bildbreite. Nie näher als 1,45 Radien (Rumpf).
     const rEff = CH_R0 * Math.pow(r / CH_R0, CH_EXP);
     const D = Math.max(r * 1.45, rEff * CH_DIST * this.zoom * (1 + 0.08 * n + 0.1 * accK * this.motion + 0.16 * ck));
-    // lange Rümpfe (Schiff 7/8): Kamera steiler, damit Länge und Silhouette von hinten lesbar sind
+    // lange Rümpfe (Schiff 7/8): Kamera steiler und leicht seitlich, damit Länge und Silhouette von hinten lesbar sind
     const big = Math.min(1, Math.max(0, (r - 45) / 35));
     const elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck + big * CH_ELEV_BIG;
-    const ox = -fx * D * Math.cos(elev), oz = -fz * D * Math.cos(elev), oy = D * Math.sin(elev) + r * 0.3;
+    // lange Rümpfe: leichte Dreiviertelsicht (Kamera 17° seitlich versetzt), damit die Länge im Bild liegt
+    const yc = this.yaw + big * CH_YAW_BIG, fxc = -Math.sin(yc), fzc = -Math.cos(yc);
+    const ox = -fxc * D * Math.cos(elev), oz = -fzc * D * Math.cos(elev), oy = D * Math.sin(elev) + r * 0.3;
     // Federung: Kamera-Versatz folgt kritisch gedämpft (keine Schwingung, nur Nachziehen)
     if (this.reset) { this.pos.set(ox, oy, oz); this.posV.set(0, 0, 0); this._pitch = null; }
     else spring(this.pos, this.posV, ox, oy, oz, 7.5, dt);
