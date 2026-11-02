@@ -32,6 +32,8 @@ const VIEWS = [
   ['tor-saturn', '/?dev=game&f=saturn', 10000, 'tor'],
   ['schiff5-eris', '/?dev=game&f=eris', 12000, 'schiff5'],
   ['kampf-schwarm', '/?dev=game&f=europa', 10000, 'schwarm'],
+  // Runde 2: Schiff 6 Eris im Kampf vor dunklem Nebel (Silhouette, Randlicht)
+  ['kampf-eris-s6', '/?dev=game&f=eris', 12000, 'kampf6'],
 ];
 // Fester Ablauf je Vorbereitung (gleiche Lage, gleicher Kurs, gleiche Gegnerzahl)
 const PREP = {
@@ -39,6 +41,12 @@ const PREP = {
   kampf: () => {
     const w = __ls.world; w.player.x += 1400; w.player.rot = 0.6;
     for (let i = 0; i < 3; i++) { const e = w.spawnTemp('raider', w.player.x - Math.sin(0.6) * (420 + i * 60) + (i - 1) * 90, w.player.z - Math.cos(0.6) * (420 + i * 60)); w.provoke(e); if (!i) w.setTarget(e.id); }
+    w.toggleAttack();
+  },
+  kampf6: () => {
+    const w = __ls.world, r = __ls.renderer; w.player.ship = 's6'; w.profile.ship = 's6'; r._playerDirty = true;
+    w.player.x += 1400; w.player.rot = 0.6;
+    for (let i = 0; i < 3; i++) { const e = w.spawnTemp('raider', w.player.x - Math.sin(0.6) * (520 + i * 60) + (i - 1) * 110, w.player.z - Math.cos(0.6) * (520 + i * 60)); w.provoke(e); if (!i) w.setTarget(e.id); }
     w.toggleAttack();
   },
   hangar: () => { document.querySelector('[data-nav] [data-sec="hangar"]')?.click(); },

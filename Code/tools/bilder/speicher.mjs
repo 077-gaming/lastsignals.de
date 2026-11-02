@@ -34,7 +34,7 @@ await page.addInitScript(([q, desktop]) => {
       else if (o && lv === 0 && arguments.length === 6 && arguments[5] && arguments[5].width) add(M.tex, o, arguments[5].width * arguments[5].height * 4 * 1.333);
       return ti.apply(this, arguments);
     };
-    const dt = P.deleteTexture; P.deleteTexture = function (o) { if (M.tex.has(o)) { M.now -= M.tex.get(o); M.tex.delete(o); } return dt.call(this, o); };
+    const dt = P.deleteTexture; P.deleteTexture = function (o) { M.dels = (M.dels || 0) + 1; if (M.tex.has(o)) { M.now -= M.tex.get(o); M.tex.delete(o); } return dt.call(this, o); };
     const brb = P.bindRenderbuffer, rbc = new WeakMap(); P.bindRenderbuffer = function (t, r) { rbc.set(this, r); return brb.call(this, t, r); };
     const bpp = (fmt) => BPP[fmt] || 4;
     const rs = P.renderbufferStorage; P.renderbufferStorage = function (t, fmt, w, h) { const r = rbc.get(this); if (r) add(M.rb, r, w * h * bpp(fmt)); return rs.apply(this, arguments); };
@@ -45,8 +45,8 @@ await page.addInitScript(([q, desktop]) => {
 }, [q, desktop]);
 const MB = (b) => +(b / 1048576).toFixed(1);
 const snap = async (label) => {
-  const m = await page.evaluate(() => ({ now: window.__gpuMem.now, peak: window.__gpuMem.peak, hd: [...(window.__lsBay?.factory.glb.values() || [])].filter((w) => w.userData.hdTex).length }));
-  console.log(label.padEnd(34), 'jetzt', MB(m.now), 'MB · Spitze', MB(m.peak), 'MB · 4K-Rümpfe im Hangar', m.hd);
+  const m = await page.evaluate(() => ({ big: [...window.__gpuMem.tex.values()].filter((b) => b >= 60 * 1048576).length, dels: window.__gpuMem.dels, n: window.__gpuMem.tex.size, now: window.__gpuMem.now, peak: window.__gpuMem.peak, hd: [...(window.__lsBay?.factory.glb.values() || [])].filter((w) => w.userData.hdTex).length }));
+  console.log(label.padEnd(34), 'Texturen', m.n, '(4K:', m.big + ')', 'jetzt', MB(m.now), 'MB · Spitze', MB(m.peak), 'MB · 4K-Rümpfe im Hangar', m.hd);
   return m;
 };
 await page.goto(`${base}/?dev=dock&f=${f}`);
@@ -82,5 +82,5 @@ await snap(`Werft durchgeblättert (${n} Karten)`);
 await page.evaluate(() => document.querySelector('[data-act="tab"][data-tab="ore"]')?.click());
 await page.waitForTimeout(1500);
 const end = await snap('Hangar verlassen');
-console.log(JSON.stringify({ q, desktop, peakMB: MB(end.peak), endMB: MB(end.now) }));
+console.log(JSON.stringify({ q, desktop, peakMB: MB(end.peak), endMB: MB(end.now), tex4k: end.big }));
 await browser.close();
