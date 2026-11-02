@@ -592,17 +592,27 @@ function wikiBody(page, t) {
 
 function hallBody(page, t) {
   const h = t.hall;
+  const L = h.live;
   const cta = `${P(t.lang, 'home')}#${t.ids.founder}`;
+  const orders = ['honor', 'xp', 'kills', 'level'];
+  const fx = ['europa', 'saturn', 'eris'];
+  const FXC = { europa: '#d8b25a', saturn: '#e0782a', eris: '#9a52ff' }; // wie src/factions.js FX_HEX
+  // Tafel wird von src/hall.js mit echten Daten gefüllt (hall_of_fame). Ohne JavaScript: leere Plätze wie bisher.
   return subShell(page, t, h.kicker, h.title, h.lede, `<div class="hall-grid">
-    <section class="plaque ls-panel" aria-labelledby="plaque-h">
-      <div class="ls-head"><span class="ls-code">HOF·01</span><span class="ls-title" id="plaque-h">${esc(h.plaque)}</span><span class="ls-spacer"></span><span class="hall-state"><i aria-hidden="true"></i>${esc(h.open)}</span></div>
+    <section class="plaque ls-panel" aria-labelledby="plaque-h" data-hall data-lang="${t.lang}"
+      data-t="${esc(JSON.stringify({ loading: L.loading, pilots: L.pilots, empty: L.empty, offline: L.offline, cols: L.cols }))}">
+      <div class="ls-head"><span class="ls-code">HOF·01</span><span class="ls-title" id="plaque-h">${esc(h.plaque)}</span><span class="ls-spacer"></span><span class="hall-state"><i aria-hidden="true"></i><span data-hall-state>${esc(h.open)}</span></span></div>
+      <div class="hall-ctl">
+        <div class="hall-seg" role="group" aria-label="${esc(h.kicker)}">${orders.map((o, i) => `<button type="button" class="${i === 0 ? 'on' : ''}" aria-pressed="${i === 0}" data-hall-order="${o}">${esc(L.tabs[i])}</button>`).join('')}</div>
+        <div class="hall-seg" role="group" aria-label="${esc(L.cols[2])}"><button type="button" class="on" aria-pressed="true" data-hall-fx="">${esc(L.all)}</button>${fx.map((f) => `<button type="button" aria-pressed="false" data-hall-fx="${f}" style="--c:${FXC[f]}"><i aria-hidden="true"></i>${f.toUpperCase()}</button>`).join('')}</div>
+      </div>
       <div class="plaque-in">
         <svg class="plaque-crest" viewBox="0 0 120 120" aria-hidden="true"><path d="M60 6L106 32V88L60 114L14 88V32Z" class="pq-l"/><path d="M60 20L94 39V81L60 100L26 81V39Z" class="pq-l2"/><path d="M30 60H50L55 44L62 78L67 60H90" class="pq-sig"/></svg>
-        <ol class="plaque-rows">
+        <ol class="plaque-rows" data-hall-rows>
           <li class="is-first"><span class="ls-num">01</span><b>${esc(h.first)}</b><a class="ls-btn is-primary" href="${cta}" data-click>${esc(h.cta)}</a></li>
           ${[2, 3, 4, 5].map((n) => `<li><span class="ls-num">${pad(n)}</span><i aria-hidden="true"></i><span class="sr">${esc(h.slot)} ${n}: ${esc(h.open)}</span></li>`).join('')}
         </ol>
-        <p class="plaque-note">${esc(h.firstNote)}</p>
+        <p class="plaque-note">${esc(L.note)}</p>
       </div>
       <span class="ls-corners" aria-hidden="true"></span>
     </section>
@@ -610,6 +620,7 @@ function hallBody(page, t) {
       <h2 class="ls-label" id="cats-h">${esc(h.listsHead)}</h2>
       <ol class="cat-list">${h.lists.map((l, i) => `<li><span class="ls-num">${pad(i + 1)}</span>${esc(l)}</li>`).join('')}</ol>
       <p class="plan-note">${esc(h.periods)}. ${esc(h.note)}</p>
+      <p class="plan-note">${esc(h.firstNote)} <a href="${cta}" data-click>${esc(h.cta)}</a></p>
     </aside>
   </div>`);
 }

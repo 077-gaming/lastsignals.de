@@ -10,6 +10,8 @@ import {
   signalScope, shipName, shipNo, doctrineOf,
 } from './screens-kit.js';
 import { hubScreen as hubImpl } from './screens-hub.js';
+import { openAccount } from './account-flow.js';
+import { toast } from './account-ui.js';
 import { stage } from './screens-stage.js';
 
 /** Rufname: 3–16 Zeichen, Buchstaben, Ziffern, - und _ */
@@ -177,7 +179,23 @@ export async function bootSequence(root) {
 
 function codeLength(v) { let n = 0; for (const _ of v) n++; return n; }
 
-export async function loginScreen(root, store) {
+// Kontozeile im Titel: angemeldet (weiter als Rufname, abmelden) oder Konto anmelden/anlegen
+function kontoHtml(account) {
+  if (account && account.signedIn) {
+    const p = account.pilot;
+    const mail = esc(account.user?.email || '');
+    return `<div class="ac-login">
+      <div class="ac-login-st is-on"><i></i><span>ANGEMELDET · ${p ? `<b>${esc(p.callsign.toUpperCase())}</b> · ` : 'RUFNAME FEHLT · '}${mail}</span></div>
+      <div class="ac-row">${p ? `<button type="button" class="ls-btn is-fx" data-acc="go">WEITER ALS ${esc(p.callsign.toUpperCase())}</button>` : '<button type="button" class="ls-btn is-fx" data-acc="claim">RUFNAME SICHERN</button>'}<button type="button" class="ls-btn" data-acc="logout">KONTO ABMELDEN</button></div>
+    </div>`;
+  }
+  return `<div class="ac-login">
+    <div class="ac-login-st"><i></i><span>KEIN KONTO · SPIELSTAND NUR IN DIESEM BROWSER</span></div>
+    <div class="ac-row"><button type="button" class="ls-btn is-fx" data-acc="login">MIT KONTO ANMELDEN</button><button type="button" class="ls-btn" data-acc="signup">KONTO ANLEGEN</button></div>
+  </div>`;
+}
+
+export async function loginScreen(root, store, account = null) {
   neutralBody();
   signal.lock = 1;
   let pilots = [];
@@ -219,7 +237,8 @@ export async function loginScreen(root, store) {
     <main class="login-main">
       <div class="login-left">
         <div class="rise" style="--d:1">${wordmark()}</div>
-        ${panel('ID·01', 'ZUGANG · RUFNAME', '<span class="ls-label" data-mode>EINGABE</span>', `
+        ${panel('ID·00', 'KONTO · SERVER-SPIELSTAND', '<span class="ls-label">OPTIONAL</span>', `<div data-konto>${kontoHtml(account)}</div>`, 'rise ac-login-pn', 'style="--d:2"')}
+        ${panel('ID·01', 'OHNE KONTO SPIELEN · RUFNAME', '<span class="ls-label" data-mode>EINGABE</span>', `
           <form data-form novalidate autocomplete="off" class="pi-form">
             <div class="pi-field" data-field>
               <span class="pi-prompt">&gt;</span>
@@ -356,6 +375,35 @@ export async function loginScreen(root, store) {
     };
     s.on(input, 'input', () => refresh());
     s.on(form, 'submit', (e) => { e.preventDefault(); submit(); });
+    // Konto: anmelden, anlegen, Rufname sichern, weiter als Kontopilot, abmelden
+    const konto = $('[data-konto]');
+    const goAccount = async () => {
+      if (done || !account?.pilot) return;
+      done = true;
+      clearTimeout(fxTimer);
+      document.body.dataset.faction = account.pilot.faction;
+      await s.close();
+      resolve({ callsign: account.pilot.callsign, isNew: false, account: true });
+    };
+    let accBusy = false;
+    s.on(konto, 'click', async (e) => {
+      const b = e.target.closest('[data-acc]');
+      if (!b || accBusy || done) return;
+      const act = b.dataset.acc;
+      if (act === 'go') { goAccount(); return; }
+      accBusy = true;
+      try {
+        if (act === 'logout') {
+          await account.logout();
+          toast('Abgemeldet. Lokale Spielstände bleiben in diesem Browser.');
+        } else {
+          const lp = check(input.value).p;
+          const r = await openAccount(store, act === 'claim' ? 'claim' : act, { callsign: lp?.callsign || input.value.trim(), faction: lp?.faction });
+          if (r && r.pilot) { konto.innerHTML = kontoHtml(account); accBusy = false; goAccount(); return; }
+        }
+        konto.innerHTML = kontoHtml(account);
+      } finally { accBusy = false; }
+    });
     s.on(list, 'click', (e) => {
       const b = e.target.closest('[data-cs]');
       if (!b) return;
@@ -541,8 +589,8 @@ export async function factionSelect(root) {
 
 // ---------------------------------------------------------------- 4) Mission Control
 
-export async function hubScreen(root, profile, store) {
-  return hubImpl(root, profile, store);
+export async function hubScreen(root, profile, store, account = null) {
+  return hubImpl(root, profile, store, account);
 }
 
 // ---------------------------------------------------------------- 5) Startsequenz

@@ -5,15 +5,11 @@
 //   bringen ihm Erfahrung, Credits und Auftragsfortschritt im eigenen Spielstand. Gegner in seiner Nähe greifen ihn an.
 // Beide sehen das andere Schiff (Entity 'ally', wird wie ein Spielerschiff gezeichnet).
 // Grenzen: Ereignisse, Kisten und Erz sind je Spieler getrennt; Gegner auf der Seite des Gastgebers zielen nur auf ihn.
-import { createClient } from '@supabase/supabase-js';
 import { VARIANTS } from '../core/data.js';
+import { sb } from './supa.js'; // gemeinsamer Client (öffentlicher Schlüssel, eine Auth-Instanz für Konto und Koop)
 
-const URL = 'https://ydvtdxvnkmjbdwxsriuv.supabase.co';
-const KEY = 'sb_publishable_7bAvG-sHZiTgXmMI_-Oqgg_gMFC5Pnc'; // öffentlicher Schlüssel (wie auf der Website)
 const RATE = 1 / 8;
 const CREDIT = 20; // so lange nach dem letzten eigenen Treffer zählt ein Abschuss für den Gast (s)
-let client = null;
-const sb = () => client || (client = createClient(URL, KEY, { realtime: { params: { eventsPerSecond: 30 } } }));
 
 export const newCode = () => String(1000 + Math.floor(Math.random() * 9000));
 

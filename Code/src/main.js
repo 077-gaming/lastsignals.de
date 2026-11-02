@@ -18,6 +18,10 @@ import { PerfHud } from './perf/perfhud.js';
 import { autoQuality, isAutoQuality, storeAutoQuality, raiseCap, QualityGuard, Q_NAMES, Q_LABEL } from './perf/quality.js';
 import { setSetting, settings, reduced } from './ui/screens-kit.js';
 import './ui/theme.css';
+import { initAccount, linkPilot, settle, resolvePending, openAccount } from './ui/account-flow.js';
+import { toast } from './ui/account-ui.js';
+
+const CLOUD_EVERY = 120; // s: im Flug alle 2 Minuten auf dem Server sichern (nur mit Konto)
 
 const STEP = 1 / 60;          // feste Simulationsschrittweite
 const MAX_FRAME = 0.25;       // nach Tab-Wechsel nicht endlos nachrechnen
@@ -223,8 +227,23 @@ function playSession(profile, opts = {}) {
     // (W = Schub) schließt in Chrome/Edge den Tab – das lässt sich nicht abfangen, nur mit Rückfrage absichern.
     const saveOnLeave = (e) => { world.saveNow(); if (e && !world.docked) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', saveOnLeave);
-    const onVisibility = () => { if (document.hidden) world.saveNow(); };
+    const cloud = opts.account && opts.account.linked(profile.callsign) ? opts.account : null;
+    const onVisibility = () => { if (document.hidden) { world.saveNow(); cloud?.pushLeave(world.profile); } };
     document.addEventListener('visibilitychange', onVisibility);
+    const onPageHide = () => { world.saveNow(); cloud?.pushLeave(world.profile); };
+    window.addEventListener('pagehide', onPageHide);
+
+    // Konto: Server-Stand sichern beim Andocken und alle 2 min im Flug; ein anderes Gerät war neuer → zur Station
+    let cloudT = 0, offAccount = () => { }, offDock = () => { };
+    if (cloud) {
+      offDock = bus.on('docked', () => { world.saveNow(); cloud.push(world.profile); });
+      cloudT = setInterval(() => { if (!document.hidden && !cloud.pending) cloud.push(world.profile); }, CLOUD_EVERY * 1000);
+      offAccount = cloud.on((type) => {
+        if (type !== 'conflict') return;
+        bus.emit('message', { kind: 'warn', title: 'KONTO', text: 'Ein anderes Gerät hat einen neueren Spielstand gesichert. Rückkehr zur Station, dort wird abgeglichen.' });
+        setTimeout(() => bus.emit('toHub'), 3000);
+      });
+    }
 
     const offHub = bus.on('toHub', () => {
       running = false;
@@ -234,6 +253,8 @@ function playSession(profile, opts = {}) {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('beforeunload', saveOnLeave);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+      clearInterval(cloudT); offAccount(); offDock();
       window.removeEventListener('ls:store', onStore);
       input.dispose(); touch.dispose(); if (coop) coop.stop();
       audio.dispose();
@@ -308,25 +329,47 @@ function notice(text) {
 async function main() {
   await chooseQuality();
   if (DEV && DEV.get('dev')) { await devStart(); }
+  // Konto im Hintergrund prüfen (nur mit gespeicherter Sitzung oder Link aus einer Mail, sonst kein Netz)
+  const accountP = initAccount(store).catch((err) => { console.warn('Konto nicht verfügbar', err); return null; });
   await bootSequence(screensRoot);
+  const account = await accountP;
+  if (account && account.recovery) {
+    const r = await openAccount(store, 'newpw');
+    if (r && r.passwordSet) toast('Neues Passwort gespeichert. Du bist angemeldet.');
+  }
+  let next = null; // Pilot, zu dem nach einer Anmeldung im Hub gewechselt wird
   for (;;) {
-    const { callsign } = await loginScreen(screensRoot, store);
+    const login = next || await loginScreen(screensRoot, store, account);
+    next = null;
+    const { callsign } = login;
     const release = await lockPilot(callsign);
     if (!release) { notice(`Pilot ${callsign.toUpperCase()} ist bereits in einem anderen Tab aktiv. Dort weiterspielen oder den Tab schließen.`); continue; }
+    // Kontopilot: Server-Stand laden und mit dem lokalen Stand abgleichen (fragt, wenn beide gelten könnten)
+    if (login.account && account && account.linked(callsign)) await linkPilot(account, store);
     let profile = store.get(callsign);
     if (!profile) {
       const factionId = await factionSelect(screensRoot);
       profile = store.create(callsign, factionId);
     }
     for (;;) {
+      if (account && account.linked(callsign)) { try { await settle(account, store, callsign); } catch (err) { console.warn('Abgleich übersprungen', err); } }
       profile = store.get(callsign) || profile;
       document.body.dataset.faction = profile.faction;
       hubMusic(true);
-      const choice = await hubScreen(screensRoot, profile, store);
+      const choice = await hubScreen(screensRoot, profile, store, account);
       hubMusic(false);
       if (choice === 'logout') { release(); break; }
+      if (choice === 'sync') continue; // Konflikt im Hub: abgleichen und Hub neu aufbauen
+      if (choice === 'account') {
+        // Im Hub angemeldet: gleicher Rufname → verknüpfen und bleiben, anderer Rufname → Pilot wechseln
+        if (account.linked(callsign)) { await linkPilot(account, store); continue; }
+        release();
+        next = { callsign: account.pilot.callsign, account: true };
+        break;
+      }
       await launchSequence(screensRoot, profile);
-      await playSession(profile);
+      await playSession(profile, { account });
+      if (account && account.pending) await resolvePending(account, store);
     }
   }
 }

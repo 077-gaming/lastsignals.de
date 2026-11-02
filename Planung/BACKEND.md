@@ -7,12 +7,14 @@
 
 - `pilots`: id (fortlaufend ab 2; **0 = Toni/Gründer**, **1 = Verlosung**, beide von Hand), user_id (Auth-Konto), callsign (3–16 Zeichen, eindeutig, Groß/Klein egal), faction (europa|saturn|eris), title, founder, created_at. Öffentlich lesbar.
 - `pilot_profiles`: pilot_id, bio (max 500), avatar_url, banner_url, theme (jsonb), updated_at. Öffentlich lesbar, ändern nur der eigene Pilot.
+- `pilot_saves`: Spielstand je Pilot (jsonb ≤ 512 kB, Version, Stufe, EP, Ehre, Abschüsse). Nur der eigene Pilot. Ablauf und Konfliktregeln: `Planung/KONTEN.md`.
 - Speicher `profiles` (öffentlich lesbar): Hochladen nur in den eigenen Ordner `<user_id>/…`.
 
 ## Funktionen
 
 - `callsign_available(p_callsign)` → boolean, für alle (Live-Prüfung beim Reservieren).
 - `claim_callsign(p_callsign, p_faction)` → Pilot, nur angemeldet, einmal pro Konto (legt auch das Profil an).
+- `save_pilot_state(…)` → (version, conflict) mit Versionsprüfung, `hall_of_fame(p_faction, p_order, p_limit)` öffentlich. Siehe `Planung/KONTEN.md`.
 
 ## Ablauf Gründungspilot (Website)
 

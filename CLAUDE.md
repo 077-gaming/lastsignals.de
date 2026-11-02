@@ -23,6 +23,7 @@
 - SYSTEM-Reihe: `src/sim/system-quests.js` (69 Quests, Kapitel 1–18), Karte `src/ui/hud-guide.js`, Stand im Bordmenü (Esc) unter HILFE.
 - Tages- und Wochenaufträge: `src/sim/contracts.js` (UTC-Tag, ISO-Woche, fester Zufall je Pilot).
 - Sektoren 1–8 je Fraktion: `sectorsFor()` in `data.js`; tiefe Gegner nutzen `look` (Grundform eines vorhandenen Typs), Eigenheiten `brood`, `regen`, `jam`, Bosse mit `boss`/`respawn`.
+- Konto und Server-Spielstand: `Planung/KONTEN.md` (`src/net/account*.js`, `src/ui/account-*.js`); Browser-Test ohne echte Konten mit `?konto=attrappe`.
 - Kamera: V wechselt Verfolger → Cockpit → Taktisch (`render/camrig.js`); Cockpit ist eine eigene Ebene (`render/cockpit.js`).
 
 ## Regeln

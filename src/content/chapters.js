@@ -180,7 +180,8 @@ export const CH = {
     },
     hall: {
       title: 'Ruhmeshalle', kicker: 'Bestenlisten',
-      lede: 'Die Ruhmeshalle öffnet mit dem Mehrspieler-Server. Noch steht kein einziger Name auf der Tafel.',
+      lede: 'Live aus dem Spiel: Piloten mit Konto, gewertet nach Ehre, Erfahrung, Abschüssen oder Stufe. Wer ohne Konto spielt, steht nicht auf der Tafel.',
+      live: { tabs: ['Ehre', 'Erfahrung', 'Abschüsse', 'Stufe'], all: 'Alle', cols: ['Pl', 'Pilot', 'Fraktion', 'St', 'Ehre', 'EP', 'Abschüsse'], loading: 'Lade …', pilots: 'Piloten', empty: 'Noch kein Name auf der Tafel. Der erste Pilot mit Konto steht hier ganz oben.', offline: 'Ruhmeshalle gerade nicht erreichbar. Bitte später erneut laden.', note: 'Testphase: Spielstände werden im Spiel berechnet und sind noch nicht gegen Manipulation geschützt.' },
       plaque: 'Ehrentafel · Saison 1', first: 'Dein Rufname?', slot: 'Platz', open: 'Frei', listsHead: 'Acht Bestenlisten',
       firstNote: 'Gründungspiloten sichern ihren Namen, bevor die Tafel öffnet.',
       lists: ['Gesamt', 'Ehre', 'Erfahrung', 'PvP', 'Boss-Jäger', 'Wurmlöcher', 'Battle Map', 'Clans'],
@@ -334,7 +335,8 @@ export const CH = {
     },
     hall: {
       title: 'Hall of Fame', kicker: 'Leaderboards',
-      lede: 'The Hall of Fame opens with the multiplayer server. Not a single name is on the board yet.',
+      lede: 'Live from the game: pilots with an account, ranked by honor, experience, kills or level. Players without an account are not on the board.',
+      live: { tabs: ['Honor', 'Experience', 'Kills', 'Level'], all: 'All', cols: ['#', 'Pilot', 'Faction', 'Lv', 'Honor', 'XP', 'Kills'], loading: 'Loading …', pilots: 'pilots', empty: 'No name on the board yet. The first pilot with an account goes straight to the top.', offline: 'Hall of Fame unreachable right now. Please reload later.', note: 'Test phase: progress is calculated in the game and not yet protected against tampering.' },
       plaque: 'Honour board · Season 1', first: 'Your callsign?', slot: 'Rank', open: 'Open', listsHead: 'Eight leaderboards',
       firstNote: 'Founding pilots secure their name before the board opens.',
       lists: ['Overall', 'Honor', 'Experience', 'PvP', 'Boss hunters', 'Wormholes', 'Battle Map', 'Clans'],

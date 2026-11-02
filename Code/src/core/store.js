@@ -76,6 +76,7 @@ export const store = {
     const k = keyOf(profile && profile.callsign);
     if (!k || FORBIDDEN.has(k)) return false;
     const all = readAll();
+    try { profile.savedAt = new Date().toISOString(); } catch { /* eingefrorenes Objekt */ }
     all[k] = profile;
     const ok = writeAll(all);
     try { localStorage.setItem(LAST, profile.callsign); } catch { /* egal */ }
