@@ -24,7 +24,7 @@ export const homeSectors = (f, lang) => HOMES[f].map((n, i) => ({
 // Eigene Schiffsnamen gibt es noch nicht: Die Seite zeigt ehrlich Klassennamen. price null = Preis folgt.
 export const SHIPS = [
   { id: 's1', code: 'S-01', level: 1, lasers: 2, gens: 2, hp: 6000, cur: 'free', price: 0, model: true },
-  { id: 's2', code: 'S-02', level: 5, lasers: 4, gens: 3, hp: 16000, cur: 'credits', price: 60000 },
+  { id: 's2', code: 'S-02', level: 5, lasers: 4, gens: 3, hp: 16000, cur: 'credits', price: 120000 },
   { id: 's3', code: 'S-03', level: 10, lasers: 5, gens: 5, hp: 32000, cur: 'credits', price: 250000 },
   { id: 's4', code: 'S-04', level: 15, lasers: null, gens: null, viz: [6, 6], hp: null, cur: 'credits', est: true },
   { id: 's5', code: 'S-05', level: 20, lasers: 8, gens: 8, hp: 90000, cur: 'tritium', price: 40000 },
