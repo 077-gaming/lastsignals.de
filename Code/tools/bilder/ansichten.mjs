@@ -1,6 +1,9 @@
 // Feste Vergleichsansichten für Vorher/Nachher (nur Entwicklung, braucht laufenden Dev-Server und Google Chrome).
 // Aufruf: node tools/bilder/ansichten.mjs <ausgabeordner> [basis-url]
 // Gleiche Fenstergröße (960×600, Pixeldichte 1), gleiche Wartezeit, gleicher Einstieg je Ansicht.
+// Vergleichbar (Runde 2): läuft unsichtbar (headless), fester Zufallswert (Math.random mit Startwert, SEED=…), und in
+// Flugansichten wird die Simulation nach der Vorbereitung um eine feste Zeit (2,5 s in 50 Schritten) weitergerechnet und
+// dann angehalten – gleiche Gegnerlage, gleicher Kurs, nur die Grafik läuft weiter (Messung der Bildzeit bleibt gültig).
 import { chromium } from 'playwright-core';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -58,9 +61,10 @@ const PREP = {
 };
 
 await fs.mkdir(out, { recursive: true });
+const SEED = +(process.env.SEED || 1234);
 const browser = await chromium.launch({
-  channel: 'chrome', headless: false,
-  args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'],
+  channel: 'chrome',
+  args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--enable-gpu', '--use-angle=metal', '--ignore-gpu-blocklist'],
 });
 const report = [];
 for (const [name, url, wait, , vopt] of VIEWS) {
@@ -70,6 +74,11 @@ for (const [name, url, wait, , vopt] of VIEWS) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.addInitScript((seed) => {
+    // fester Zufall (mulberry32): gleiche Sterne, Felder, Gegnerentscheidungen in jedem Lauf
+    let a = seed >>> 0;
+    Math.random = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }, SEED);
   await page.addInitScript((q) => {
     // eigene Kamerawahl und Qualität vor dem Start setzen (nur dieser Testbrowser)
     const s = { camera: 'chase', cockpit: false };
@@ -81,6 +90,10 @@ for (const [name, url, wait, , vopt] of VIEWS) {
   await page.waitForTimeout(wait - 3000);
   await page.evaluate((prep) => { window.__ls?.series?.choose('direct'); if (prep) (0, eval)(`(${prep})()`); }, VIEWS.find((v) => v[0] === name)[3] ? PREP[VIEWS.find((v) => v[0] === name)[3]].toString() : '').catch((e) => errors.push(String(e)));
   if (!hud && !vopt?.hud) await page.addStyleTag({ content: '#hud{display:none!important}' });
+  if (url.includes('dev=game') && process.env.FREEZE !== '0') {
+    // feste Weltzeit: 2,5 s Simulation in festen Schritten, danach angehalten
+    await page.evaluate(() => { const w = window.__ls?.world; if (!w) return; for (let i = 0; i < 50; i++) w.update(0.05); w.update = () => {}; }).catch((e) => errors.push(String(e)));
+  }
   await page.waitForTimeout(3000);
   // Kurzer Messwert aus dem Renderer, falls die Test-Schnittstelle da ist
   const info = await page.evaluate(async () => {

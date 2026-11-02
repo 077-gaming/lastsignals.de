@@ -1,7 +1,10 @@
 // Vorher/Nachher-Bilder je Schiffsklasse (nur Entwicklung, Dev-Server + Google Chrome, läuft unsichtbar).
 // Aufruf: Q=high node tools/bilder/schiffe.mjs <ausgabeordner> [basis-url]
 //   KLASSEN=s1,s8  nur diese Klassen · ANSICHT=hangar,verfolger,cockpit,nah  nur diese Ansichten
-// Je Klasse eine feste Fraktion (alle drei kommen vor), gleiche Lage, gleicher Kurs, gleiche Wartezeit.
+//   FRAKTIONEN=europa,eris  (Standard: Hangar alle drei, Flugansichten zwei je Klasse)
+// Gleiche Lage, gleicher Kurs, gleiche Wartezeit. „hangar“ nimmt zusätzlich fünf Hangar-Nahaufnahmen auf
+// (Kamera 0,75–1,1 Radien: Bug, Flanke, Heck, Oberseite, Unterseite – Unterseite ohne Hallenboden), dafür braucht der
+// Stand den Prüf-Haken window.__lsBay.orbit (station-bay.js). Fehlt er (alter Stand), entfallen die Nahaufnahmen.
 // Ergebnis: <klasse>-<fraktion>-<ansicht>.png und bericht.json (Bildzeit, GPU-Zeit, Draw Calls, Texturen).
 import { chromium } from 'playwright-core';
 import fs from 'node:fs/promises';
@@ -11,7 +14,15 @@ const out = process.argv[2] || 'schiffe';
 const base = process.argv[3] || 'http://localhost:5198';
 const quality = process.env.Q || 'high';
 const size = (process.env.GROESSE || '1600x900').split('x').map(Number);
-const FAC = { s1: 'europa', s2: 'saturn', s3: 'eris', s4: 'europa', s5: 'saturn', s6: 'eris', s7: 'europa', s8: 'saturn' };
+// Flugansichten: zwei Fraktionen je Klasse (jede Fraktion kommt mehrfach vor); Hangar: alle drei
+const FAC2 = { s1: ['europa', 'saturn'], s2: ['saturn', 'europa'], s3: ['eris', 'europa'], s4: ['europa', 'eris'], s5: ['saturn', 'eris'], s6: ['eris', 'europa'], s7: ['europa', 'saturn'], s8: ['saturn', 'europa'] };
+const ALLF = ['europa', 'saturn', 'eris'];
+const facOverride = process.env.FRAKTIONEN ? process.env.FRAKTIONEN.split(',') : null;
+// Hangar-Nahaufnahmen [Name, Gier, Neigung, Abstand in Radien, Blickversatz x (− = Bug), ohne Halle]
+const CLOSE = [
+  ['nah-bug', 28, 16, 0.78, -0.32, false], ['nah-flanke', 74, 6, 0.95, 0, false], ['nah-heck', 158, 20, 0.85, 0.3, false],
+  ['nah-oben', 115, 58, 1.0, 0, true], ['nah-unten', 48, -32, 1.1, 0, true],
+];
 const classes = (process.env.KLASSEN || 's1,s2,s3,s4,s5,s6,s7,s8').split(',');
 const views = (process.env.ANSICHT || 'hangar,verfolger,nah,cockpit').split(',');
 
@@ -36,8 +47,8 @@ await fs.mkdir(out, { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome', args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--enable-gpu', '--use-angle=metal', '--ignore-gpu-blocklist'] });
 const report = [];
 for (const sh of classes) {
-  const f = FAC[sh];
   for (const view of views) {
+  for (const f of facOverride || (view === 'hangar' ? ALLF : FAC2[sh])) {
     const ctx = await browser.newContext({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1 });
     const page = await ctx.newPage();
     const errors = [];
@@ -80,10 +91,18 @@ for (const sh of classes) {
         return { x: r.x, y: r.y, width: r.width, height: r.height };
       });
       await page.screenshot({ path: file, ...(clip && clip.width > 50 ? { clip } : {}) });
+      // Nahaufnahmen über den Prüf-Haken des Hangars (fester Umlaufwinkel)
+      const hook = await page.evaluate(() => !!window.__lsBay);
+      if (hook && clip) for (const [name, yaw, pitch, dist, dx, clean] of CLOSE) {
+        await page.evaluate(([yaw, pitch, dist, dx, clean]) => { const b = window.__lsBay; b.orbit = { yaw, pitch, dist, dx, clean }; b._dirty = true; }, [yaw, pitch, dist, dx, clean]);
+        await page.waitForTimeout(500);
+        await page.screenshot({ path: path.join(out, `${sh}-${f}-${name}.png`), clip });
+      }
     } else await page.screenshot({ path: file });
     report.push({ sh, f, view, errors: errors.slice(0, 5), info });
     console.log(sh, f, view, JSON.stringify(info), errors.length ? errors[0].slice(0, 160) : '');
     await ctx.close();
+  }
   }
 }
 await browser.close();
