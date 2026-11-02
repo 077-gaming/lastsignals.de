@@ -8,7 +8,14 @@ const SFX = [
   'hit_shield', 'hit_hull', 'explosion_small', 'explosion_big', 'engine_loop', 'boost', 'jump_charge', 'jump_warp',
   'dock', 'loot', 'levelup', 'alarm', 'ui_click', 'ui_open', 'radio', 'alien_death',
 ];
-const MUSIC = { calm: 'home_calm', combat: 'combat', silence: 'silence', hub: 'hub' };
+// Musik je Stimmung als Mischliste (alle ElevenLabs, Vault „LAST SIGNALS - Audio und Lizenzen“). Innerhalb einer
+// Stimmung folgt kurz vor Stückende ein anderes Stück (keine direkte Wiederholung, Überblendung).
+const MUSIC = {
+  calm: ['home_calm', 'explore_2'], combat: ['combat'], boss: ['boss'], silence: ['silence'], hub: ['hub', 'title'],
+};
+const MUSIC_LEVEL = { calm: 0.55, combat: 0.7, boss: 0.75, silence: 0.55, hub: 0.5 };
+const MUSIC_FADE = 3;          // Sekunden Überblendung beim Stückwechsel
+const MUSIC_RESUME_MS = 90000; // so lange nach dem Ausblenden geht ein Stück an der alten Stelle weiter
 const LASER_SOUND = { pulse: 'laser_pulse', ion: 'laser_ion', plasma: 'laser_plasma', gamma: 'laser_gamma' };
 
 // Grundlautstärke je Effekt, damit das Gesamtbild stimmt (Laser leiser als Explosionen).
@@ -35,19 +42,24 @@ export function hubMusic(on) {
   const E = engine();
   if (!E) return;
   applyGains(E);
-  const tr = musicTrack(E, 'hub');
+  const tr = E._hubTrack && E._hubTrack.ok ? E._hubTrack : musicTrack(E, pickTrack(E, 'hub'));
   if (!tr || !tr.ok) return;
+  E._hubTrack = tr;
+  E.lastTrack = tr.id;
   const now = E.ctx.currentTime;
   clearTimeout(tr.stopT);
   tr.gain.gain.cancelScheduledValues(now);
   if (on) {
     tr.gain.gain.setTargetAtTime(0.5, now, 1.2);
+    // Am Stückende das andere Hub-Stück einblenden (hub/title im Wechsel)
+    tr.onNearEnd = () => { if (!E._hubOn || E._hubTrack !== tr) return; tr.gain.gain.setTargetAtTime(0, E.ctx.currentTime, 1); E._hubTrack = null; hubMusic(true); };
     const go = () => { if (tr.el.paused) tr.el.play().catch(() => { }); };
     go();
     if (!E._hubKick) { E._hubKick = true; const kick = () => { if (E._hubOn) { go(); E.ctx.resume().catch(() => { }); } }; window.addEventListener('pointerdown', kick); window.addEventListener('keydown', kick); }
   } else {
     tr.gain.gain.setTargetAtTime(0, now, 0.5);
-    tr.stopT = setTimeout(() => tr.el.pause(), 2500);
+    tr.onNearEnd = null;
+    tr.stopT = setTimeout(() => { tr.el.pause(); tr.stoppedAt = performance.now(); }, 2500);
   }
   E._hubOn = !!on;
 }
@@ -108,22 +120,37 @@ function loadSfx(E) {
   }));
   return E.sfxLoad;
 }
-// Musikspur als gestreamtes <audio>-Element, einmal je Stück angelegt und wiederverwendet
-function musicTrack(E, key) {
-  if (E.tracks.has(key)) return E.tracks.get(key);
-  const id = MUSIC[key];
+// Nächstes Stück einer Stimmung: ein kürzlich unterbrochenes zuerst (Fortsetzen), sonst keine direkte Wiederholung
+function pickTrack(E, mood) {
+  const list = (MUSIC[mood] || MUSIC.calm).filter((id) => !(E.tracks.get(id) && E.tracks.get(id).ok === false));
+  if (!list.length) return null;
+  const now = performance.now();
+  const resume = list.find((id) => { const t = E.tracks.get(id); return t && t.stoppedAt && now - t.stoppedAt < MUSIC_RESUME_MS; });
+  if (resume) return resume;
+  const fresh = list.filter((id) => id !== E.lastTrack);
+  const pool = fresh.length ? fresh : list;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+// Musikspur als gestreamtes <audio>-Element, einmal je Stück angelegt und wiederverwendet. Ohne Schleife:
+// kurz vor dem Ende ruft onNearEnd das nächste Stück der Stimmung auf (Überblendung statt harter MP3-Schleifenpause).
+function musicTrack(E, id) {
   if (!id) return null;
+  if (E.tracks.has(id)) return E.tracks.get(id);
   const el = new Audio(`/audio/music/${id}.mp3`);
-  el.loop = true; el.preload = 'auto'; el.crossOrigin = 'anonymous';
+  el.loop = false; el.preload = 'auto'; el.crossOrigin = 'anonymous';
   let t = null;
   try {
     const src = E.ctx.createMediaElementSource(el);
     const gain = E.ctx.createGain(); gain.gain.value = 0;
     src.connect(gain).connect(E.musicGain);
-    t = { el, gain, ok: true };
+    t = { id, el, gain, ok: true, stoppedAt: 0, onNearEnd: null };
     el.addEventListener('error', () => { t.ok = false; }, { once: true });
+    el.addEventListener('timeupdate', () => {
+      if (t.onNearEnd && el.duration && el.duration - el.currentTime < MUSIC_FADE + 0.5) { const f = t.onNearEnd; t.onNearEnd = null; f(); }
+    });
+    el.addEventListener('ended', () => { if (t.onNearEnd) { const f = t.onNearEnd; t.onNearEnd = null; f(); } else { el.currentTime = 0; } });
   } catch { t = null; }
-  E.tracks.set(key, t);
+  E.tracks.set(id, t);
   return t;
 }
 
@@ -161,7 +188,7 @@ export class AudioSystem {
       on('sector', () => this.play('jump_warp')),
       on('docked', () => this.play('dock')),
       on('undocked', () => this.play('dock', null, 1.1)),
-      on('message', (p) => { if (p && p.kind === 'radio') this.play('radio'); }),
+      on('message', (p) => { if (p && p.kind === 'radio') { this.play('radio'); this.duck(0.45, 2.5); } }),
       on('playerDead', () => this.play('explosion_big')),
       // Rückmeldungen ohne eigene Datei: kurz synthetisiert (Treffer-Tick, Abschuss, Auftrag, Warnung, Combo)
       on('explode', (p) => { if (p && p.kind === 'enemy') { this.synth('kill'); this.duck(p.size >= 2 ? 0.45 : 0.7, 0.9); } }),
@@ -298,31 +325,58 @@ export class AudioSystem {
     this.engine.start();
   }
 
-  updateMusic(force = false) {
+  // Stimmung aus der Lage: Stille-Sektoren, Kampf (Boss bei Alpha-Gegner in 1,5 km), sonst Ruhe. Hysterese: nach dem
+  // Kampf mindestens 12 s Kampfmusik, damit die Musik nicht flattert. Innerhalb einer Stimmung wechselt das Stück am Ende.
+  updateMusic(force = false, next = false) {
     if (!this.ctx || !this.E) return;
+    const E = this.E;
     const sector = this.world.sector?.id || '';
-    let want = performance.now() < this.combatUntil ? 'combat' : 'calm';
+    const nowMs = performance.now();
+    let want = nowMs < this.combatUntil ? (this._bossNear() ? 'boss' : 'combat') : 'calm';
     if (/^STILLE|^IS-/.test(sector)) want = 'silence';
-    let tr = musicTrack(this.E, want);
-    if (!tr || !tr.ok) { want = 'calm'; tr = musicTrack(this.E, want); }
-    if (!tr || !tr.ok) return;
+    if (!force && !next && want === 'calm' && this.musicState && this.musicState !== 'calm' && nowMs - (this._moodAt || 0) < 12000) want = this.musicState;
+    let tr = this.track;
     // Autoplay-Sperre: Musik nachstarten, sobald der Browser Ton erlaubt (erste Eingabe)
-    if (want === this.musicState && tr.el.paused && this.ctx.state === 'running') tr.el.play().catch(() => { });
-    if (want === this.musicState && !force) return;
+    if (!next && tr && want === this.musicState && tr.el.paused && this.ctx.state === 'running') tr.el.play().catch(() => { });
+    if (!next && want === this.musicState && !force) return;
+    if (want !== this.musicState) this._moodAt = nowMs;
+    tr = musicTrack(E, pickTrack(E, want));
+    if (!tr || !tr.ok) { want = 'calm'; tr = musicTrack(E, pickTrack(E, 'calm')); }
+    if (!tr || !tr.ok) return;
     const now = this.ctx.currentTime;
     if (this.track && this.track !== tr) {
       const old = this.track;
+      old.onNearEnd = null;
       old.gain.gain.cancelScheduledValues(now);
-      old.gain.gain.setTargetAtTime(0, now, 1.2);
+      old.gain.gain.setTargetAtTime(0, now, MUSIC_FADE / 3);
       clearTimeout(old.stopT);
-      old.stopT = setTimeout(() => { if (this.track !== old) old.el.pause(); }, 5000);
+      old.stopT = setTimeout(() => {
+        if (this.track === old) return;
+        old.el.pause();
+        if (next) { old.el.currentTime = 0; old.stoppedAt = 0; } else old.stoppedAt = performance.now();
+      }, MUSIC_FADE * 1000 + 500);
     }
     clearTimeout(tr.stopT);
+    if (!tr.stoppedAt || nowMs - tr.stoppedAt >= MUSIC_RESUME_MS) { if (tr !== this.track) tr.el.currentTime = 0; }
+    tr.stoppedAt = 0;
     tr.gain.gain.cancelScheduledValues(now);
-    tr.gain.gain.setTargetAtTime(want === 'combat' ? 0.7 : 0.55, now, 1.5);
+    tr.gain.gain.setTargetAtTime(MUSIC_LEVEL[want] ?? 0.55, now, MUSIC_FADE / 3);
+    tr.onNearEnd = () => { if (this.track === tr) this.updateMusic(false, true); };
     if (tr.el.paused) tr.el.play().catch(() => { });
     this.track = tr;
+    E.lastTrack = tr.id;
     this.musicState = want;
+  }
+
+  _bossNear() {
+    const p = this.world.player;
+    if (!p) return false;
+    for (const e of this.world.entities.values()) {
+      if (e.kind !== 'enemy' || !(e.hp > 0) || e.rank !== 'alpha') continue;
+      const dx = e.x - p.x, dz = e.z - p.z;
+      if (dx * dx + dz * dz < 1500 * 1500) return true;
+    }
+    return false;
   }
 
   update() {

@@ -104,7 +104,7 @@ function playSession(profile, opts = {}) {
     const touch = new HudTouch(hudRoot, world, renderer, input); // iPad/Tablet: Joystick, Knöpfe, Zielanzeige
     const audio = new AudioSystem(bus, world, renderer);
     audio.start();
-    if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud }; // nur Entwicklung: Test-Pilot (tools/playtest)
+    if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio }; // nur Entwicklung: Test-Pilot (tools/playtest)
 
     // Dauerhaft unter 50 Bilder/s: eine Stufe tiefer, mit kurzer Meldung. Automatische Wahl → gespeichert,
     // eigene Wahl → nur für diese Sitzung (die Einstellung im Hub bleibt, wie der Spieler sie gesetzt hat).
