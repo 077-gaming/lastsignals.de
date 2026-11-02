@@ -112,64 +112,53 @@ ${VN}
 }
 
 // ---------- Feindetail für texturierte Meshy-Schiffe ----------
-// Ergänzt die gebackenen Karten (Farbe, Normal, ORM) nur aus der Nähe: feine Platten-/Fugenlinien im Objektraum
-// (Meter über uUnit), Gebrauchsspuren (Rauheit, leichte Flecken), Glanz an Kanten (Bildschirm-Krümmung × Fresnel).
-// Alles fällt mit dem Abstand weg (Linien schmaler als ein Bildpunkt → aus) und hängt an uDet (Qualitätsstufe:
-// 0 = aus, der Zweig wird dann für das ganze Schiff übersprungen). uUnit = Meter je Modelleinheit (Rumpf-Maßstab).
-export function glbShipDetail(m, uDet, uUnit) {
+// Ergänzt die gebackenen Karten (Farbe, Normal, ORM) nur aus der Nähe: Gebrauchsspuren (Rauheit, leichte Flecken),
+// feine Kratzrichtung in der Rauheit, Glanz an Geometriekanten. Runde 2: das frühere Plattenraster im Objektraum ist
+// entfernt – es lief als gestrichelte Naht quer über die Panele der Meshy-Textur (die Fugen trägt die Textur selbst).
+// Dazu ein Fresnel-Randlicht in Fraktionsfarbe (uRimC, auch aus der Ferne: Silhouette vor dunklem Nebel).
+// uDet = Qualitätsstufe (0 = Nahdetail aus), uUnit = Meter je Modelleinheit (Rumpf-Maßstab).
+export function glbShipDetail(m, uDet, uUnit, rim) {
   const prev = m.onBeforeCompile;
+  const uRimC = { value: new THREE.Color(rim ? rim.color : 0x9fb4d0) }, uRimK = { value: rim ? rim.k : 0.08 };
+  m.userData.uRimC = uRimC; m.userData.uRimK = uRimK;
   m.onBeforeCompile = (sh, r) => {
     if (prev) prev(sh, r);
-    sh.uniforms.uDet = uDet; sh.uniforms.uUnit = uUnit;
-    sh.vertexShader = 'varying vec3 vSdP; varying vec3 vSdN;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
-      vSdP = position; vSdN = normal;`);
-    sh.fragmentShader = `uniform float uDet, uUnit;
-varying vec3 vSdP; varying vec3 vSdN;
-float sdSeam = 0.0, sdNear = 0.0, sdDirt = 0.0, sdEdge = 0.0;
+    sh.uniforms.uDet = uDet; sh.uniforms.uUnit = uUnit; sh.uniforms.uRimC = uRimC; sh.uniforms.uRimK = uRimK;
+    sh.vertexShader = 'varying vec3 vSdP;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vSdP = position;`);
+    sh.fragmentShader = `uniform float uDet, uUnit, uRimK; uniform vec3 uRimC;
+varying vec3 vSdP;
+float sdNear = 0.0, sdDirt = 0.0, sdEdge = 0.0;
 ${VN}
 ` + sh.fragmentShader
       .replace('#include <color_fragment>', `#include <color_fragment>
         if (uDet > 0.001) {
           vec3 p = vSdP * uUnit;
-          vec3 dN = abs(normalize(vSdN));
-          vec2 q = dN.x >= dN.y && dN.x >= dN.z ? p.zy : (dN.y >= dN.z ? p.xz : p.xy);
-          // Plattenraster 2,4 × 1,6 m mit Reihenversatz, je Platte leicht anderer Ton
-          q *= vec2(1.0 / 2.4, 1.0 / 1.6);
-          q.x += lsH3(vec3(floor(q.y), 3.1, 0.7)) * 0.5;
-          vec2 f = fract(q), fw = max(fwidth(q), vec2(1e-5));
-          vec2 d = min(f, 1.0 - f) / fw;
-          float lod = 1.0 - smoothstep(0.012, 0.032, max(fw.x, fw.y)); // nur nah: Platte ≥ ≈ 40 Bildpunkte
-          sdNear = lod * uDet;
-          sdSeam = (1.0 - smoothstep(0.5, 1.4, min(d.x, d.y))) * sdNear;
-          float pr = lsH3(vec3(floor(q), 5.3));
-          sdDirt = smoothstep(0.55, 0.95, lsVN(p * 0.35) * 0.65 + lsVN(p * 1.7) * 0.35) * sdNear;
-          diffuseColor.rgb *= (1.0 - sdSeam * 0.28) * (1.0 + (pr - 0.5) * 0.06 * sdNear) * (1.0 - sdDirt * 0.12);
+          // nur nah: ≈ 1 m Rumpf ≥ 16 Bildpunkte
+          float fw = length(fwidth(p));
+          sdNear = (1.0 - smoothstep(0.03, 0.08, fw)) * uDet;
+          sdDirt = smoothstep(0.6, 0.95, lsVN(p * 0.35) * 0.65 + lsVN(p * 1.7) * 0.35) * sdNear;
+          diffuseColor.rgb *= 1.0 - sdDirt * 0.08;
         }`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        if (uDet > 0.001) {
+        if (uDet > 0.001 && sdNear > 0.001) {
           float scr = lsVN(vec3(vSdP.x * uUnit * 9.0, vSdP.y * uUnit * 0.9, vSdP.z * uUnit * 9.0));
-          roughnessFactor = clamp(roughnessFactor + sdSeam * 0.15 + sdDirt * 0.12 + (scr - 0.5) * 0.08 * sdNear, 0.04, 1.0);
+          roughnessFactor = clamp(roughnessFactor + sdDirt * 0.1 + (scr - 0.5) * 0.06 * sdNear, 0.04, 1.0);
         }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         if (uDet > 0.001 && sdNear > 0.001) {
-          // Fuge als feine Rinne: Höhe = -sdSeam, Normale aus Bildschirm-Ableitungen
-          vec3 sp = -vViewPosition;
-          vec3 dpx = dFdx(sp), dpy = dFdy(sp);
-          vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx);
-          float det = dot(dpx, r1);
-          vec2 dh = vec2(dFdx(sdSeam), dFdy(sdSeam)) * -0.02;
-          normal = normalize(abs(det) * normal - sign(det) * (dh.x * r1 + dh.y * r2));
           sdEdge = clamp(length(fwidth(normalize(vNormal))) * 1.6 - 0.2, 0.0, 1.0) * sdNear; // Kanten der Geometrie, nicht der Normalkarte
         }`)
       .replace('#include <opaque_fragment>', `
-        if (uDet > 0.001) {
+        {
           float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
-          outgoingLight += vec3(0.62, 0.7, 0.82) * (sdEdge * 0.05 + fr * 0.025 * sdNear) * uDet;
+          outgoingLight += uRimC * fr * uRimK;
+          if (uDet > 0.001) outgoingLight += vec3(0.62, 0.7, 0.82) * sdEdge * 0.05 * uDet;
         }
         #include <opaque_fragment>`);
   };
   const prevKey = m.customProgramCacheKey ? m.customProgramCacheKey.bind(m) : () => '';
-  m.customProgramCacheKey = () => prevKey() + '|glbdet';
+  m.customProgramCacheKey = () => prevKey() + '|glbdet2';
   return m;
 }
 

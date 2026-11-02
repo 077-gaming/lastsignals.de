@@ -130,6 +130,8 @@ for (const [id, scale] of [['s3', 1.4], ['s4', 1.6], ['s5', 1.8], ['s6', 2.0], [
 // schmales Schiff kleiner als ein kurzes, breites der Klasse darunter (Schiff 5 neben Schiff 4). Jede Klasse ≈ 13 %
 // mehr Grundflächen-Maß als die vorige, Schiff 8 klar am größten; alle Fraktionen einer Klasse gleich groß.
 // Bezug Starter: 40 m (≈ bisherige Startergröße), Radius für Kamera und Effekte wächst mit (24 m beim Starter).
+// Fresnel-Randlicht der Meshy-Rümpfe in Fraktionsfarbe (Silhouette vor dunklem Nebel; Eris-Lack ist fast schwarz)
+const SHIP_RIM = { europa: { color: 0xffe0a8, k: 0.06 }, saturn: { color: 0xff8434, k: 0.16 }, eris: { color: 0x9a5cff, k: 0.24 } };
 export const SHIP_FOOT = { s1: 40, s2: 45.5, s3: 51.5, s4: 58.5, s5: 66, s6: 75, s7: 85, s8: 96 };
 function laserSlotPos(layout, i, out) {
   const l = layout.lasers[i];
@@ -583,6 +585,9 @@ function hdTex(url, srgb) {
   }
   return p;
 }
+function dropHd(hd) { if (hd) { HD_CACHE.delete(hd.map); HD_CACHE.delete(hd.normal); } }
+/** Belegte 4K-Texturen (Prüfwerkzeug: Speicher nach dem Durchblättern) */
+export function hdCacheSize() { return HD_CACHE.size; }
 async function loadHdTextures(hd) {
   const [map, normal] = await Promise.all([hdTex(hd.map, true), hdTex(hd.normal, false)]);
   return { map, normal };
@@ -724,11 +729,8 @@ export class ModelFactory {
         o.material = m;
       });
     }
-    let hd = null;
     if (key.startsWith('ship:') && !opts.noCoat) {
       const done = new Map();
-      // 4K-Stufe (eigenes Schiff/Hangar auf ULTRA oder in der Desktop-App): Farbe und Normalkarte ersetzen
-      if (opts.hd) hd = await loadHdTextures(opts.hd).catch((err) => { console.warn('4K-Texturen fehlen', key, err); return null; });
       src.traverse((o) => {
         if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial || o.material.isMeshPhysicalMaterial) return;
         let m = done.get(o.material);
@@ -738,13 +740,14 @@ export class ModelFactory {
           THREE.MeshStandardMaterial.prototype.copy.call(m, b);
           // Klarlack: mit eigener Rauheitskarte (gebackene Materialkarten) dezenter, sonst wie bisher
           const orm = !!b.roughnessMap;
-          m.clearcoat = orm ? 0.3 : (b.emissiveMap || b.emissive?.getHex() ? 0.25 : 0.5);
-          m.clearcoatRoughness = orm ? 0.32 : 0.28;
+          // Runde 2: dezenter (0,3 → 0,15, rauer), sonst wirkte Schiff 8 Europa im Hangar gläsern
+          m.clearcoat = orm ? 0.15 : (b.emissiveMap || b.emissive?.getHex() ? 0.25 : 0.5);
+          m.clearcoatRoughness = orm ? 0.42 : 0.28;
           m.envMapIntensity = (b.envMapIntensity ?? 1) * 1.15;
-          if (hd && m.map && hd.map) { hd.map.anisotropy = m.map.anisotropy; m.map = hd.map; }
-          if (hd && m.normalMap && hd.normal) { hd.normal.anisotropy = m.normalMap.anisotropy; m.normalMap = hd.normal; }
+          // 2K-Karten merken: die 4K-Stufe (setShipHd) tauscht Farbe und Normalkarte und kann zurückschalten
+          m.userData.map2k = m.map; m.userData.nrm2k = m.normalMap;
           // Feindetail aus der Nähe (Fugen, Spuren, Kantenglanz), Stufe über this.uShipDetail, Maßstab je Rumpf
-          if (m.map) { m.userData.uUnit = { value: 1 }; glbShipDetail(m, this.uShipDetail, m.userData.uUnit); }
+          if (m.map) { m.userData.uUnit = { value: 1 }; glbShipDetail(m, this.uShipDetail, m.userData.uUnit, SHIP_RIM[key.split(':')[2]] || SHIP_RIM.europa); }
           done.set(b, m);
         }
         o.material = m;
@@ -760,9 +763,11 @@ export class ModelFactory {
     wrap.userData.glbFlip = flip;
     wrap.userData.glbLen = Math.max(0.001, box.max.z - box.min.z);
     wrap.userData.glbWid = Math.max(0.001, box.max.x - box.min.x);
-    wrap.userData.glbHd = !!hd;
+    wrap.userData.glbHd = false;
     wrap.userData.glbScale = opts.scale ?? null;
     this.glb.set(key, wrap);
+    // 4K-Stufe (nur eigenes Schiff/Hangar auf ULTRA bzw. Desktop-App ab HOCH): vor dem Vorbereiten einsetzen
+    if (opts.hd) await this.setShipHd(key, opts.hd);
     // Vor dem Umschalten vorbereiten (Renderer: Shader parallel übersetzen, Texturen hochladen), damit der Wechsel
     // vom Platzhalter zum echten Modell nicht mitten im Flug ruckelt
     if (this.prepare) { try { await this.prepare(key, wrap); } catch (err) { console.warn('Modell-Vorbereitung', key, err); } }
@@ -771,6 +776,41 @@ export class ModelFactory {
     this.glbKeyVers[key] = (this.glbKeyVers[key] || 0) + 1;
     this.version++;
     return wrap;
+  }
+  /**
+   * 4K-Farbe und -Normalkarte eines Spielerschiffs ein- (urls) oder ausschalten (null). Je Modell eigene Kopien der
+   * Texturen (gleiche Bilddaten): Ausschalten gibt nur den Grafikspeicher dieser Grafik-Engine frei und entfernt die
+   * Bilder aus dem Zwischenspeicher, damit der Browser sie freigeben kann (Schiffswechsel, Hangar verlassen).
+   */
+  async setShipHd(key, urls) {
+    const wrap = this.glb.get(key);
+    if (!wrap) return false;
+    const mats = new Set();
+    wrap.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m && m.userData && 'map2k' in m.userData) mats.add(m); });
+    if (urls) {
+      if (wrap.userData.hdTex) return true;
+      const hd = await loadHdTextures(urls).catch((err) => { console.warn('4K-Texturen fehlen', key, err); return null; });
+      if (!hd || wrap.userData.hdTex || this.glb.get(key) !== wrap) return !!wrap.userData.hdTex;
+      const map = hd.map.clone(), normal = hd.normal.clone();
+      for (const m of mats) {
+        if (m.map) { map.anisotropy = m.map.anisotropy; m.map = map; }
+        if (m.normalMap) { normal.anisotropy = m.normalMap.anisotropy; m.normalMap = normal; }
+      }
+      wrap.userData.hdTex = [map, normal]; wrap.userData.hdUrls = urls; wrap.userData.glbHd = true;
+      return true;
+    }
+    const t = wrap.userData.hdTex;
+    if (!t) return false;
+    for (const m of mats) { m.map = m.userData.map2k; m.normalMap = m.userData.nrm2k; }
+    for (const x of t) x.dispose();
+    dropHd(wrap.userData.hdUrls);
+    wrap.userData.hdTex = null; wrap.userData.hdUrls = null; wrap.userData.glbHd = false;
+    return false;
+  }
+  /** 4K-Stufe aller Spielerschiffe außer keep (Schlüssel oder Liste) freigeben */
+  releaseShipHd(keep) {
+    const k = new Set([].concat(keep || []));
+    for (const [key, w] of this.glb) if (w.userData.hdTex && !k.has(key)) this.setShipHd(key, null);
   }
   /** Laser-/Generator-Modelle eines Loadouts laden (einmal je Schlüssel). Promise, nie Fehler. */
   needEquip(lo) {
@@ -945,11 +985,14 @@ export class ModelFactory {
     const F = FACTIONS[faction] || FACTIONS.europa;
     const text = `${F.prefix || 'LS'}-${shipId === 's1' ? '01' : String(shipId).replace(/\D/g, '').padStart(2, '0')}`;
     const span = maxX - minX;
+    // Meshy-Rümpfe: keine aufgelegte Kennung (die flache Tafel lag auf Stufen und Kanten halb im Rumpf und las sich
+    // wie ein Rest der Meshy-Schriftzüge, z. B. „S0-01“ hinter dem Cockpit); Kennung nur auf Platzhalter-Rümpfen
+    if (hull.userData.glbLen) return;
     for (const hit of M.hits) {
       if (!hit) continue;
       const x = hit.x;
       const w = Math.min(8, span * 0.17), plane = new THREE.Mesh(this.geo('shipmark', () => new THREE.PlaneGeometry(1, 0.25).rotateX(-PI / 2)), this._markMat(text));
-      plane.scale.setScalar(w);
+      plane.scale.setScalar(w); plane.userData.shipMark = true;
       plane.position.set(x, hit.y + 0.08, 4);
       plane.renderOrder = 3;
       bank.add(plane);
