@@ -494,6 +494,7 @@ export class Renderer {
   /** Gegner des Sektors (auch noch nicht erschienene, Ereignis-Piraten, Brut) gleich beim Sektoraufbau anfordern */
   _needSector(world) {
     const sec = world.sector || {};
+    if (sec.station) this._need('station:' + this.faction); // Station zuerst (größte Datei, steht beim Start im Bild)
     const types = new Set([...(sec.spawns || []).map((s) => s.type), ...(sec.eventPirates || [])]);
     for (const t of [...types]) { const b = ENEMIES[t]?.brood?.type; if (b) types.add(b); }
     for (const t of types) this._need('enemy:' + t);
