@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { ModelFactory } from '../render/models.js';
+import { ModelFactory, equipKeys } from '../render/models.js';
 
 // Echte Schiffsmodelle (GLB) je Fraktion und Klasse: Startschiff Saturn sofort, alle anderen erst, wenn die Bucht
 // das Schiff zeigt (Schiffswerft blättert durch alle Klassen; jede Datei 0,7–3 MB).
@@ -577,6 +577,8 @@ export class HangarBay {
     const key = faction + '|' + shipId + '|' + JSON.stringify(loadout || {}) + '|' + (locked ? 1 : 0) + '|' + this.factory.version;
     if (key === this._key) return;
     this._key = key;
+    // Meshy-Laser/-Generatoren des Loadouts nachladen, danach neu aufbauen
+    if (equipKeys(loadout).some((q) => !this.factory.glb.has(q))) this.factory.needEquip(loadout).then(() => { this._key = ''; this._dirty = true; this.onChange && this.onChange(); });
     this._buildEnv(faction);
     this._clear(this.shipRoot);
     this._clear(this.plan);
@@ -695,12 +697,8 @@ export class HangarBay {
     const box = this._box, c = this._sph.center;
     const L = box.max.x - box.min.x, Bw = box.max.z - box.min.z;
     // Teile, die nicht zur Hülle gehören (Laser, Generatoren)
-    const lm = this.factory.mats.get('std:laser:metal'), gm = this.factory.mats.get('std:gen:metal');
     const parts = new Set();
-    this.ship.root.traverse((o) => {
-      if (!o.isMesh) return;
-      if (o.material === lm || o.material === gm) o.parent.traverse((q) => parts.add(q));
-    });
+    this.ship.root.traverse((o) => { if (o.userData.equip) o.traverse((q) => parts.add(q)); });
     // Landekufen: Federbein, Kolben, Hydraulikzylinder, Scherenglied, Fußteller
     const a = new THREE.Vector3(), b = new THREE.Vector3();
     for (const fxp of [0.22, 0.74]) for (const sz of [-1, 1]) {

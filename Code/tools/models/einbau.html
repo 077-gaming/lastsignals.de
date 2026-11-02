@@ -45,11 +45,13 @@ window.__show = async (o) => {
       lasers: Array.from({ length: S.laserSlots }, (_, i) => LT[i % 4]),
       gens: Array.from({ length: S.genSlots }, (_, i) => (i % 2 ? 'dr1' : 'sh1')),
     };
+    if (!o.procedural) await F.needEquip(lo);
     m = F.buildShip(o.f, o.s, lo);
     info = `${o.f} ${o.s} · Laser ${lo.lasers.length} · Gen ${lo.gens.length} · Triebwerke ${m.engines.length} · Platzhalter ${m.placeholder}`;
   } else {
     for (const [k, u, op] of o.reg || []) if (!F.glb.has(k)) await F.registerGLB(k, u, op || {});
     m = F[o.fn](...(o.args || []));
+    if (m && !m.root) m = { root: m };
     if (o.scale) m.root.scale.setScalar(o.scale);
     info = `${o.fn} ${JSON.stringify(o.args || [])}`;
   }

@@ -85,6 +85,15 @@ const EXTRA_MODELS = {
   freighter: ['/models/freighter.glb', NEG_Z],
 };
 for (const t of Object.keys(ENEMIES)) if (t !== 'nest') EXTRA_MODELS['enemy:' + t] = [`/models/enemy-${t}.glb`, NEG_Z];
+// Ausrüstung im Flug (Spitze/Auge +z wie Object3D.lookAt, daher unverändert: AS_IS dreht nicht), Sprungtor,
+// Außenposten der tiefen Sektoren (reine Kulisse, nicht andockbar)
+const AS_IS = NEG_Z;
+for (const r of ['R1', 'R2', 'R3']) EXTRA_MODELS['rocket:' + r] = [`/models/rocket-${r.toLowerCase()}.glb`, AS_IS];
+for (const m of ['SPM', 'BRM', 'STM']) EXTRA_MODELS['mine:' + m] = [`/models/mine-${m.toLowerCase()}.glb`, AS_IS];
+EXTRA_MODELS['drone:repair'] = ['/models/repair-bot.glb', AS_IS];
+EXTRA_MODELS.portal = ['/models/portal.glb', AS_IS];
+EXTRA_MODELS['outpost:europa'] = ['/models/station-europa-2.glb', AS_IS];
+EXTRA_MODELS['outpost:eris'] = ['/models/station-eris-2.glb', AS_IS];
 // Requisiten mit zwei Stufen (Datei und -lod1): Asteroiden (drei Formen), Erze, Frachtkiste, Wrack
 for (const [k, file] of [['asteroid', 'asteroid-1'], ['asteroid:2', 'asteroid-2'], ['asteroid:3', 'asteroid-3'], ['ore:nickel', 'ore-nickel'],
   ['ore:cobalt', 'ore-cobalt'], ['ore:platinum', 'ore-platinum'], ['crate', 'crate'], ['wreck', 'wreck']]) {
@@ -92,6 +101,7 @@ for (const [k, file] of [['asteroid', 'asteroid-1'], ['asteroid:2', 'asteroid-2'
   EXTRA_MODELS[k + ':lod1'] = [`/models/${file}-lod1.glb`, NEG_Z];
 }
 
+const MINE_SIZE = 7; // Meshy-Minen sind 3 m groß; im Spiel neben Rakete (7 m) und Beutekiste (13,6 m) gut sichtbar
 const PITCH = 55 * Math.PI / 180;
 const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
 const FOV = FOV_TAC;
@@ -286,7 +296,7 @@ export class Renderer {
     this._offs = [];
     const on = (t, fn) => this._offs.push(bus.on(t, fn));
     on('shot', (p) => { this.effects.shot(p); if (p && p.from === this.world?.player?.id && !p.drone) this.rig.fire(p.ammo === 'SAL' ? 1.6 : 1); });
-    on('rocket', (p) => this.effects.rocket(p));
+    on('rocket', (p) => { if (p && p.from === 'player') this._need('rocket:' + (p.rocket || 'R1')); this.effects.rocket(p); });
     on('explode', (p) => this._onExplode(p));
     on('damage', (p) => { this.effects.damage(p); this._onDamage(p); });
     on('telegraph', (p) => this.tele.start(p));
@@ -472,7 +482,12 @@ export class Renderer {
     // ownModelReady: main.js zeigt den Flug erst danach (kein sichtbarer Wechsel vom Platzhalter)
     // Drohnen (nur eigenes Fraktions-Set, nur geflogene Stufen) gehören dazu: auch sie nie sichtbar nachladen
     const drones = this.drones.setup(fac, world.drones || world.profile?.drones);
-    this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl) : Promise.resolve(), drones]);
+    // Laser und Generatoren des eigenen Loadouts gehören zum eigenen Schiff (sonst sichtbarer Wechsel nach dem Start)
+    const equip = this.factory.needEquip(world.player?.loadout || world.profile?.loadout);
+    // gewählte Rakete gleich mit (klein, ≈ 170 KB), damit der erste Schuss schon das Modell zeigt
+    const pr = world.profile, rk = pr?.selectedRocket || 'R1';
+    if (pr?.ammo?.[rk] > 0) this._need('rocket:' + rk);
+    this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl) : Promise.resolve(), drones, equip]);
   }
 
   /** Gegner des Sektors (auch noch nicht erschienene, Ereignis-Piraten, Brut) gleich beim Sektoraufbau anfordern */
@@ -481,6 +496,10 @@ export class Renderer {
     const types = new Set([...(sec.spawns || []).map((s) => s.type), ...(sec.eventPirates || [])]);
     for (const t of [...types]) { const b = ENEMIES[t]?.brood?.type; if (b) types.add(b); }
     for (const t of types) this._need('enemy:' + t);
+    // Außenposten (Meshy-Stationsvarianten Europa/Eris) als ferne Kulisse in den tiefen Sektoren 4–8, nicht andockbar
+    if (this._outpost) { this.scene.remove(this._outpost); this._outpost = null; }
+    this._outpostKey = (sec.index || 1) >= 4 && EXTRA_MODELS['outpost:' + this.faction] ? 'outpost:' + this.faction : null;
+    if (this._outpostKey) this._need(this._outpostKey);
     // Asteroidenfelder zeigen die großen Brocken als Meshy-Formen (fields.js tauscht sie nach dem Laden ein)
     if ((this.env.fields?.fields || sec.fields || []).some((F) => F.type === 'asteroids')) for (const k of ['asteroid', 'asteroid:2']) { this._need(k); this._need(k + ':lod1'); }
   }
@@ -602,7 +621,7 @@ export class Renderer {
     const fac = P?.faction || W.profile?.faction || this.faction;
     const ship = P?.ship || W.profile?.ship || 's1';
     let probe = null;
-    if (key === `ship:${ship}:${fac}` || key === `ship:${ship}`) probe = this.factory.buildShip(fac, ship, P?.loadout || W.profile?.loadout);
+    if (key === `ship:${ship}:${fac}` || key === `ship:${ship}` || key.startsWith('laser:') || key.startsWith('gen:')) probe = this.factory.buildShip(fac, ship, P?.loadout || W.profile?.loadout);
     else if (key === `station:${this.faction}` || key === 'station') {
       let has = false;
       if (W.entities) W.entities.forEach((e) => { if (e.kind === 'station') has = true; });
@@ -615,6 +634,7 @@ export class Renderer {
     else if (key.startsWith('ore:')) probe = this.factory.buildOre(key.split(':')[1], 0);
     else if (key.startsWith('crate')) probe = this.factory.buildCrate();
     else if (key.startsWith('wreck')) probe = this.factory.buildWreck(0);
+    else if (/^(rocket|mine|drone|portal|outpost)/.test(key) && this.factory.glb.has(key)) probe = { root: this.factory._glb(key) };
     if (!probe) return; // für diese Sitzung nicht sichtbar: nichts vorbereiten (spart Grafikspeicher)
     const root = probe.root;
     root.position.set(this.camTarget.x, 0, this.camTarget.z);
@@ -687,7 +707,7 @@ export class Renderer {
       v.gk = [`ship:${sh}:${fac}`, `ship:${sh}`];
     } else if (e.kind === 'station') v.gk = [`station:${this.faction}`, 'station'];
     else if (e.kind === 'enemy') v.gk = [e.type === 'nest' ? 'nest' : 'enemy:' + e.type];
-    else if (e.kind === 'nest' || e.kind === 'freighter') v.gk = [e.kind];
+    else if (e.kind === 'nest' || e.kind === 'freighter' || e.kind === 'portal') v.gk = [e.kind];
     else if (e.kind === 'asteroid') { const k = ASTEROID_KEYS[seed % 3]; v.gk = [k, k + ':lod1']; }
     else if (e.kind === 'ore') v.gk = ['ore:' + e.type, `ore:${e.type}:lod1`];
     else if (e.kind === 'crate' || e.kind === 'wreck') v.gk = [e.kind, e.kind + ':lod1'];
@@ -699,6 +719,7 @@ export class Renderer {
         const ship = e.ship || this.world?.profile?.ship || 's1';
         v.model = f.buildShip(fac, ship, lo);
         v.sig = this._sig(e);
+        f.needEquip(lo); v.ever = f.equipVer(lo); // gekaufter Laser: Modell nachladen, dann neu aufbauen
         v.vr = v.model.radius;
         v.maxSpeed = SHIPS[ship]?.speed || 320;
         v.shieldColor = new THREE.Color(FACTIONS[fac]?.glow ?? SHIELD_COLOR).getHex();
@@ -841,7 +862,8 @@ export class Renderer {
   _sync(e) {
     let v = this.views.get(e.id);
     if (e.id === 'player' && this._playerDirty && this._loadGLB) this._ensureMine(e);
-    if (v && ((v.gk && v.ver !== this.factory.keyVer(v.gk[0], v.gk[1])) || (e.id === 'player' && this._playerDirty && this._sig(e) !== v.sig))) {
+    if (v && ((v.gk && v.ver !== this.factory.keyVer(v.gk[0], v.gk[1])) || (e.id === 'player' && ((this._playerDirty && this._sig(e) !== v.sig)
+      || v.ever !== this.factory.equipVer(e.loadout || this.world?.profile?.loadout))))) {
       this._removeView(e.id); v = null;
     }
     if (!v) {
@@ -1224,6 +1246,15 @@ export class Renderer {
       this.scene.add(g); this.scene.add(beam);
       D = this._repD = { g, rotors, lamp, beam, a: 0, spot: new THREE.Vector3(), spotT: 0, mats: [hull, dark, lampMat, beam.material, lampTex], geos: [body.geometry, arm.geometry, rotorG, beamGeo] };
     }
+    // Meshy-Reparaturroboter (Auge/Greifarm +z, 5 m), sobald geladen: ersetzt Körper, Arm und Rotoren
+    this._need('drone:repair');
+    if (!D.bot && this.factory.glb.has('drone:repair')) {
+      const o = this.factory._glb('drone:repair');
+      D.g.add(o);
+      D.bot = o; D.tool = o.getObjectByName('HP_Tool') || null;
+      for (const c of D.g.children) if (c !== o && c !== D.lamp) c.visible = false;
+      if (D.tool) { D.g.updateMatrixWorld(true); D.lamp.position.copy(D.g.worldToLocal(D.tool.getWorldPosition(new THREE.Vector3()))); }
+    }
     D.g.visible = true; D.beam.visible = this._repK > 0.6;
     const sp = pv.root.position, r = (pv.vr || 24) * 1.35;
     D.a += dt * 1.9;
@@ -1237,7 +1268,9 @@ export class Renderer {
     const hx = sp.x + D.spot.x, hy = sp.y + D.spot.y, hz = sp.z + D.spot.z;
     D.g.lookAt(hx, hy, hz);
     const pa = D.beam.geometry.attributes.position;
-    pa.setXYZ(0, x, y - 0.4, z); pa.setXYZ(1, hx, hy, hz); pa.needsUpdate = true;
+    if (D.tool) { D.g.updateMatrixWorld(true); D.tool.getWorldPosition(_s3); pa.setXYZ(0, _s3.x, _s3.y, _s3.z); }
+    else pa.setXYZ(0, x, y - 0.4, z);
+    pa.setXYZ(1, hx, hy, hz); pa.needsUpdate = true;
     D.beam.material.opacity = 0.55 + Math.random() * 0.45; // Flackern wie beim Schweißen
     D.lamp.material.opacity = 0.6 + Math.random() * 0.4;
     // Funken am Schweißpunkt (gedrosselt)
@@ -1250,6 +1283,75 @@ export class Renderer {
       }
     }
   }
+  // Gelegte Minen (Simulation: world.mines, feste Liste): Meshy-Mine je Typ (SPM/BRM/STM, ≈ 7 m), bis sie geladen ist
+  // ein schlichter Körper mit Leuchtpunkt; drehen sich langsam, pulsieren scharf. Feste Ansichten je Minenplatz.
+  _updateMines(W) {
+    const ms = W && W.mines;
+    const M = this._mineViews || (this._mineViews = []);
+    for (let i = 0; i < M.length; i++) if (M[i] && (!ms || !ms[i] || !ms[i].active)) M[i].g.visible = false;
+    if (!ms) return;
+    for (let i = 0; i < ms.length; i++) {
+      const m = ms[i];
+      if (!m.active || !m.type) continue;
+      const key = 'mine:' + m.type;
+      this._need(key);
+      const has = this.factory.glb.has(key);
+      let v = M[i];
+      if (!v || v.type !== m.type || v.glb !== has) {
+        if (v) this.scene.remove(v.g);
+        v = M[i] = this._buildMine(m.type, has);
+        this.scene.add(v.g);
+      }
+      v.g.visible = true;
+      v.g.position.set(m.x, 4 + Math.sin(this.time * 1.3 + i) * 0.8, m.z);
+      v.g.rotation.y = this.time * 0.5 + i;
+      const k = m.armed ? 0.7 + 0.3 * Math.sin(this.time * 6 + i) : 0.35;
+      v.light.material.opacity = k;
+    }
+  }
+  _buildMine(type, has) {
+    const f = this.factory, g = new THREE.Group();
+    const col = type === 'SPM' ? 0xff4a3a : type === 'BRM' ? 0x6ab8ff : 0xffd84a;
+    if (has) { const o = f._glb('mine:' + type); o.scale.setScalar(MINE_SIZE / 3); g.add(o); }
+    else {
+      const b = new THREE.Mesh(f.geo('mine:body', () => new THREE.IcosahedronGeometry(1, 1)), f.std('mine:body', { color: 0x3a3d44, metal: 0.8, rough: 0.4, flat: true }));
+      b.scale.set(MINE_SIZE / 2, MINE_SIZE / 4, MINE_SIZE / 2); g.add(b);
+    }
+    const light = new THREE.Sprite(f.sprite(col, 1.6, 'mine:' + type));
+    light.material = light.material.clone(); light.material.transparent = true;
+    light.position.y = MINE_SIZE * 0.35; light.scale.setScalar(MINE_SIZE * 1.4);
+    g.add(light);
+    return { g, type, glb: has, light };
+  }
+  _disposeMines() {
+    for (const v of this._mineViews || []) if (v) { this.scene.remove(v.g); v.light.material.dispose(); }
+    this._mineViews = null;
+  }
+
+  // Außenposten einsetzen, sobald das Modell da ist: fester Platz je Sektor fern von Tor, Station und Feldern,
+  // Oberkante 16 m über der Flugebene wie die Heimatstationen, langsame Drehung, keine Schatten, keine Spiellogik
+  _updateOutpost() {
+    const key = this._outpostKey, W = this.world;
+    if (!key || this._outpost || !W || !this.factory.glb.has(key)) return;
+    const sec = W.sector || {}, size = sec.size || 6000;
+    const avoid = [];
+    W.entities?.forEach((e) => { if (e.kind === 'station' || e.kind === 'portal') avoid.push([e.x || 0, e.z || 0, 1400]); });
+    for (const F of this.env.fields?.fields || []) avoid.push([F.x, F.z, F.r + 500]);
+    let best = null, bestD = -1, a0 = (hashString(String(sec.id || 'x')) % 360) * Math.PI / 180;
+    for (let i = 0; i < 24; i++) {
+      const a = a0 + i * 0.7, r = size * (0.45 + (i % 4) * 0.1), x = Math.cos(a) * r, z = Math.sin(a) * r;
+      let d = Infinity;
+      for (const [ax, az, ar] of avoid) d = Math.min(d, Math.hypot(x - ax, z - az) - ar);
+      if (d > bestD) { bestD = d; best = [x, z]; }
+    }
+    const o = this.factory._glb(key);
+    o.position.set(best[0], -44, best[1]);
+    o.rotation.y = a0;
+    o.userData.outpost = true;
+    this._outpost = o;
+    this.scene.add(o);
+  }
+
   _disposeRepairDrone() {
     const D = this._repD;
     if (!D) return;
@@ -1866,6 +1968,9 @@ export class Renderer {
     // Sprung in der Welt abgebrochen (weggeflogen, angedockt, abgeschossen) → Lade-Effekt sofort weg
     if (this.effects.jump.on && W && !W.jump) this.effects.jumpCancel();
     this._repairDrone(dt, pv, W);
+    this._updateMines(W);
+    this._updateOutpost();
+    if (this._outpost) this._outpost.rotation.y += dt * 0.02;
     this.effects.update(dt);
     this.trails.update(dt);
     this.tele.update(dt);
@@ -2159,7 +2264,7 @@ export class Renderer {
     this.tele.dispose();
     this.speedDust.dispose();
     this._clearDying();
-    this.sel.geometry.dispose(); this.selMat.dispose(); this._hitMat?.dispose(); this._disposeRepairDrone();
+    this.sel.geometry.dispose(); this.selMat.dispose(); this._hitMat?.dispose(); this._disposeRepairDrone(); this._disposeMines();
     this.selInner.geometry.dispose(); this.selInner.material.dispose();
     this.factory.dispose();
     disposeTextures();

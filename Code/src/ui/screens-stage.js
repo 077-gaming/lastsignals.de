@@ -10,7 +10,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { CameraLookPass } from '../render/post.js';
 import { Sky, cameraBasis } from '../render/sky.js';
-import { ModelFactory, hpName } from '../render/models.js';
+import { ModelFactory, equipKeys, hpName } from '../render/models.js';
 import { settings, reduced } from './screens-kit.js';
 import { MenuPlanets } from './screens-planets.js';
 import { buildMenuStation } from './screens-station.js';
@@ -435,6 +435,7 @@ class Stage {
     this.ship = null;
     if (!faction || faction === 'neutral') return;
     let m = null;
+    this.factory.needEquip(loadout || { lasers: ['pulse'] }); // Meshy-Laser/-Generatoren: nach dem Laden baut der Schlüssel (version) neu
     try { m = this.factory.buildShip(faction, shipId || 's1', loadout || { lasers: ['pulse', 'pulse'], gens: [] }); } catch (err) { console.warn('Schiff für Menü nicht gebaut:', err); return; }
     // Triebwerksstrahl ist für die Draufsicht gebaut; von der Seite liefert er ungültige Werte im Bloom
     for (const en of m.engines) en.trail.visible = false;
@@ -750,8 +751,16 @@ class Stage {
    * Bauteil (Laser oder Generator) einzeln rendern, wie es am Schiff sitzt: Teil aus einem Platzhalter-Schiff lösen,
    * in die Mitte legen, Dreiviertel-Ansicht. kind 'laser' | 'gen'. Liefert PNG-Adresse oder null.
    */
+  /** Meshy-Modell eines Bauteils laden (Promise, nie Fehler) */
+  waitPart(kind, id) { return this.factory.needEquip(kind === 'laser' ? { lasers: [id] } : { gens: [id] }); }
+
   partThumb(faction, kind, id) {
     if (!this.ok || !this.cur) return null;
+    // erst das Meshy-Modell laden (undefined = später erneut fragen), sonst bliebe das prozedurale Bild stehen
+    if (equipKeys(kind === 'laser' ? { lasers: [id] } : { gens: [id] }).some((k) => !this.factory.glb.has(k)) && !this._partTried?.has(kind + id)) {
+      (this._partTried || (this._partTried = new Set())).add(kind + id);
+      return undefined;
+    }
     const key = `part|${kind}|${id}|${this.factory.version}`;
     if (this.thumbs.has(key)) return this.thumbs.get(key);
     let part = null;

@@ -556,7 +556,9 @@ export class Effects {
     const tUv = new Float32Array(TRAIL_N * 4);
     for (let k = 0; k < TRAIL_N; k++) { const u = k / (TRAIL_N - 1); tUv.set([u, 0, u, 1], k * 4); }
     for (let i = 0; i < 24; i++) {
-      const mesh = new THREE.Mesh(this.rocketGeo, this.rocketMat);
+      // Körper: Meshy-Rakete je Typ (R1–R3, Spitze +z, 7 m), sonst schlanker Zylinder
+      const mesh = new THREE.Group();
+      const body = new THREE.Mesh(this.rocketGeo, this.rocketMat); mesh.add(body);
       const fl = new THREE.Sprite(this.rocketFlame); fl.position.z = -4.5; fl.scale.setScalar(10); mesh.add(fl);
       mesh.visible = false; this.group.add(mesh);
       const tg = new THREE.BufferGeometry();
@@ -569,7 +571,7 @@ export class Effects {
       trail.frustumCulled = false; trail.visible = false; trail.renderOrder = 19;
       this.group.add(trail);
       this.rockets.push({
-        mesh, on: false, t: 0, dur: 0.6, sx: 0, sz: 0, cx: 0, cz: 0, ex: 0, ez: 0, to: null, acc: 0, px: 0, pz: 0,
+        mesh, body, glb: {}, on: false, t: 0, dur: 0.6, sx: 0, sz: 0, cx: 0, cz: 0, ex: 0, ez: 0, to: null, acc: 0, px: 0, pz: 0,
         trail, tg, tp, tm, hist: new Float32Array(TRAIL_N * 3), hn: 0, fade: 0,
       });
     }
@@ -845,6 +847,15 @@ export class Effects {
     b.remain = d;
   }
 
+  // Raketenkörper je Typ: Meshy-Modell aus der Fabrik (einmal je Raketenplatz und Typ geklont), sonst Zylinder
+  _rocketBody(r, key) {
+    const F = this.host.factory;
+    let g = r.glb[key];
+    if (!g && F && F.glb.has('rocket:' + key)) { g = r.glb[key] = F._glb('rocket:' + key); if (g) r.mesh.add(g); }
+    for (const k in r.glb) r.glb[k].visible = k === key;
+    r.body.visible = !g;
+  }
+
   rocket(p) {
     const H = this.host;
     let r = null;
@@ -857,6 +868,7 @@ export class Effects {
     r.cz = (_v.z + _w.z) / 2 + dx / d * side * d * 0.35;
     r.px = r.sx; r.pz = r.sz;
     r.hn = 0; r.fade = 1; r.trail.visible = false; r.tm.uniforms.uFade.value = 1;
+    this._rocketBody(r, p.rocket || 'R1');
     r.mesh.visible = true;
     r.mesh.position.set(r.sx, 4, r.sz);
     this._flash(_v.x, 6, _v.z, 26, 0.12, 0xffd8a0, 2.2, null);

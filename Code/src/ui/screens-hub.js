@@ -1140,10 +1140,10 @@ export async function hubScreen(root, profile, store) {
       const [kind, id] = key.split(':');
       let url = null;
       try { url = kind === 'ship' ? stage.thumbnail(P.faction, id) : stage.partThumb(P.faction, kind, id); } catch { url = null; }
-      if (url === undefined && kind === 'ship') {
+      if (url === undefined) {
         // Modell lädt noch: vormerken und nach dem Laden erneut versuchen (statt Platzhalter-Bild für immer)
         thumbUrl[key] = '';
-        stage.waitShipModel(P.faction, id).then(() => { if (s.closed) return; delete thumbUrl[key]; applyThumbs(s.inner); });
+        (kind === 'ship' ? stage.waitShipModel(P.faction, id) : stage.waitPart(kind, id)).then(() => { if (s.closed) return; delete thumbUrl[key]; applyThumbs(s.inner); });
         pumpThumbs();
         return;
       }

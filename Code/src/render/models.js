@@ -292,6 +292,7 @@ function genGeometry(key) {
   }
   return P_.merge();
 }
+const GEN_SIZE = 2.4; // Höhe des Meshy-Generators im Spiel (prozedural: flaches Modul 0,9 m, Antrieb 2,1 m)
 const GEN_GLOW = (key) => key.startsWith('sh') ? SHIELD_COLOR : key.startsWith('dr') ? 0xffb35a : 0xd8dce4;
 
 // ---------- Gegner (Einheitsgröße ≈ Radius 1, Bug nach −z) ----------
@@ -561,6 +562,18 @@ export function preloadGLB(url) {
 }
 export function glbLoaded(url) { return GLB_CACHE.has(url); }
 
+// Ausrüstung am Schiff (Meshy, Bug/Lauf +z wie glTF): je Lasertyp ein Modell, Generatoren nach Art (Schild, Antrieb)
+export const EQUIP_URL = {
+  'laser:pulse': '/models/laser-pulse.glb', 'laser:ion': '/models/laser-ion.glb', 'laser:plasma': '/models/laser-plasma.glb',
+  'laser:gamma': '/models/laser-gamma.glb', 'gen:sh': '/models/gen-shield.glb', 'gen:dr': '/models/gen-speed.glb',
+};
+export function equipKeys(lo) {
+  const out = new Set();
+  for (const k of lo?.lasers || []) if (k && EQUIP_URL['laser:' + k]) out.add('laser:' + k);
+  for (const k of lo?.gens || []) if (k) { const g = k.startsWith('sh') ? 'gen:sh' : k.startsWith('dr') ? 'gen:dr' : null; if (g) out.add(g); }
+  return [...out];
+}
+
 const GLB_PREFIX = { player: 'ship', station: 'station', enemy: 'enemy', nest: 'enemy', portal: 'portal', crate: 'crate', wreck: 'wreck', ore: 'ore' };
 
 export class ModelFactory {
@@ -715,6 +728,18 @@ export class ModelFactory {
     this.version++;
     return wrap;
   }
+  /** Laser-/Generator-Modelle eines Loadouts laden (einmal je Schlüssel). Promise, nie Fehler. */
+  needEquip(lo) {
+    const P = this._eqPending || (this._eqPending = new Map());
+    return Promise.all(equipKeys(lo).map((k) => {
+      if (this.glb.has(k)) return null;
+      if (!P.has(k)) P.set(k, this.registerGLB(k, EQUIP_URL[k]).catch((err) => console.warn('Ausrüstungsmodell fehlt', k, err)));
+      return P.get(k);
+    }));
+  }
+  /** Stand der Ausrüstungsmodelle eines Loadouts (Ansicht baut neu, wenn eins nachgeladen ist) */
+  equipVer(lo) { let n = 0; for (const k of equipKeys(lo)) n += this.glbKeyVers[k] || 0; return n; }
+
   // Stand der GLB-Modelle für eine Entity-Art (Ansicht baut nur neu, wenn sich ihr Modell geändert hat)
   glbVer(kind) { return this.glbVers[GLB_PREFIX[kind] || kind] || 0; }
   // Stand genau der Modelle, die eine Ansicht nutzen würde (z. B. 'ship:s1:europa' und Rückfall 'ship:s1')
@@ -988,10 +1013,22 @@ export class ModelFactory {
       }
       let hp = hull.getObjectByName(hpName('Laser', i));
       if (!hp) hp = fallbackHP(laserSlotPos(layout, i, tmp));
-      const lg = this.geo('laser:' + key, () => laserGeometry(key));
       const part = new THREE.Group();
-      this._meshes(part, lg, { metal, glow: this.glow(LASERS[key].color, 3.0) });
-      const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0, lg.muzzle); part.add(muzzle);
+      part.userData.equip = true;
+      // Meshy-Laser (Lauf nach −z nach dem Drehen, Fassung im Ursprung, HP_Muzzle an der Mündung), sonst prozedural
+      const gl = this._glb('laser:' + key);
+      let mz;
+      if (gl) {
+        part.add(gl);
+        gl.updateMatrixWorld(true);
+        const hm = gl.getObjectByName('HP_Muzzle');
+        mz = hm ? part.worldToLocal(hm.getWorldPosition(new THREE.Vector3())).z : -(gl.userData.glbLen || 10);
+      } else {
+        const lg = this.geo('laser:' + key, () => laserGeometry(key));
+        this._meshes(part, lg, { metal, glow: this.glow(LASERS[key].color, 3.0) });
+        mz = lg.muzzle;
+      }
+      const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0, mz); part.add(muzzle);
       const flash = new THREE.Sprite(this.sprite(LASERS[key].color, 2.2));
       flash.position.copy(muzzle.position); flash.scale.setScalar(3.5); part.add(flash);
       mount(hp, part, true);
@@ -1005,9 +1042,15 @@ export class ModelFactory {
       if (own && own.gens[i]) continue;
       let hp = hull.getObjectByName(hpName('Gen', i));
       if (!hp) hp = fallbackHP(genSlotPos(layout, i, tmp));
-      const gg = this.geo('gen:' + key, () => genGeometry(key));
       const part = new THREE.Group();
-      this._meshes(part, gg, { metal: gmetal, dark: this.std('ship:dark', SHIP_DARK), glow: this.glow(GEN_GLOW(key), 1.5) });
+      part.userData.equip = true;
+      const gk = key.startsWith('sh') ? 'gen:sh' : key.startsWith('dr') ? 'gen:dr' : null;
+      const gm = gk && this._glb(gk);
+      if (gm) { gm.scale.setScalar(GEN_SIZE / 3); part.add(gm); } // Meshy-Generator: Fassung im Ursprung, 3 m hoch
+      else {
+        const gg = this.geo('gen:' + key, () => genGeometry(key));
+        this._meshes(part, gg, { metal: gmetal, dark: this.std('ship:dark', SHIP_DARK), glow: this.glow(GEN_GLOW(key), 1.5) });
+      }
       mount(hp, part, true);
     }
     // Triebwerke: Glühen + Schweif
