@@ -29,7 +29,7 @@ function cleanMeta(m) {
   const n = (v, a, b, d) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(a, Math.min(b, v)) : d);
   return {
     cs: M.cleanName(m.cs), fac: m.fac, ship: SHIPS[m.ship] ? m.ship : 's1', lv: Math.round(n(m.lv, 1, 99, 1)),
-    pvp: m.pvp === 1 || m.pvp === true, cp: typeof m.cp === 'string' && /^\d{4}$/.test(m.cp) ? m.cp : '',
+    cp: typeof m.cp === 'string' && /^\d{4}$/.test(m.cp) ? m.cp : '',
     hm: Math.round(n(m.hm, 1, 1e7, 1000)), sm: Math.round(n(m.sm, 0, 1e7, 0)),
     lo: { lasers: lasers.length ? lasers : ['pulse'], gens },
   };
@@ -47,6 +47,8 @@ export class Multiplayer {
     try { for (const n of JSON.parse(lsGet(MUTE_KEY) || '[]')) if (typeof n === 'string') this.muted.add(n.toLowerCase()); } catch { /* egal */ }
     this.pvp = lsGet(PVP_KEY) === '1';
     this.rate = new M.RateLimit(4, 8, 0.7);
+    this.pres = new M.RateLimit(M.PRES_N, M.PRES_PER, M.PRES_GAP); // Presence-Budget (Supabase-Grenze je Client)
+    this._rejoinN = 0; this._rejoinT = 0;
     this.inv = new Map();      // eingehende Einladungen: sid → { code, cs, fac, sec, t }
     this.outInv = null;        // gesendete Einladung: { to, code, t }
     this.lastAttacker = null;  // { sid, t } für den Abschuss
@@ -96,7 +98,7 @@ export class Multiplayer {
     const p = this.world.player;
     if (!on && p.targetId && p.targetId.startsWith('rp:')) this.world.setTarget(null);
     this._sys(on ? 'PvP an: In Sektoren ab 2 außerhalb der sicheren Zone kannst du Piloten anderer Fraktionen angreifen und wirst selbst angreifbar.' : 'PvP aus: Du bist für andere Piloten nicht angreifbar und greifst keine an.', 'sector');
-    this._trackAt = -1e9; this._lastPack = null;
+    this._lastPack = null; // PvP steht in den Flags des Zustands: sofort senden, keine Presence nötig
     this._emit('roster');
   }
 
@@ -104,10 +106,10 @@ export class Multiplayer {
   roster() {
     const p = this.world.player, out = [];
     for (const R of this.remotes.values()) {
-      if (!R.meta) continue;
+      if (!R.meta || R.parked) continue;
       const has = R.ent && R.st;
       out.push({
-        sid: R.sid, cs: R.meta.cs, fac: R.meta.fac, lv: R.meta.lv, ship: R.meta.ship, pvp: R.meta.pvp,
+        sid: R.sid, cs: R.meta.cs, fac: R.meta.fac, lv: R.meta.lv, ship: R.meta.ship, pvp: !!(R.st && R.st.flags & M.FLAG.pvp),
         dist: has ? Math.hypot(R.ent.x - p.x, R.ent.z - p.z) : (R.st ? Math.hypot(R.st.x - p.x, R.st.z - p.z) : Infinity),
         attackable: !!(R.ent && R.ent.pvpOk), coop: this._isPartner(R), muted: this.isMuted(R.meta.cs),
         invited: !!(this.outInv && this.outInv.to === R.sid), inviting: this.inv.has(R.sid), docked: !!(R.st && R.st.flags & M.FLAG.docked),
@@ -161,12 +163,25 @@ export class Multiplayer {
     this._emit('roster');
   }
   leaveCoop() {
-    const c = this.world.coop;
-    if (!c) return;
-    c.stop();
+    if (!this.world.coop) return;
+    this._endCoop('Koop verlassen.');
+  }
+  /** Koop beenden; ein Gast einer anderen Fraktion kehrt in die eigenen Sektoren zurück (gleicher Index, Position bleibt). */
+  _endCoop(text) {
+    const w = this.world, c = w.coop, pr = w.profile;
+    if (c) c.stop();
     this.coopSid = null;
-    this._sys('Koop verlassen.', 'sector');
-    this._trackAt = -1e9;
+    if (w._homeFac && w._homeFac !== pr.faction && FACTIONS[pr.faction] && w.sector) {
+      const secs = sectorsFor(pr.faction), id = M.sameIndexSector(secs, w.sector.index || 1);
+      if (id) {
+        const p = w.player, x = p.x, z = p.z, rot = p.rot;
+        w._homeFac = pr.faction; w.sectors = secs;
+        w._changeSector(id, null);
+        p.x = p.px = x; p.z = p.pz = z; p.rot = p.prot = rot;
+        w._updateZones();
+      }
+    }
+    this._sys(text, 'sector');
     this._emit('roster');
   }
   /** Fremden Spieler als Ziel wählen (nur wenn angreifbar) */
@@ -196,10 +211,11 @@ export class Multiplayer {
     // Koop aus einer Einladung: Partner länger weg (verlassen, Flug beendet, getrennt) → Koop beenden, wieder frei
     if (w.coop && this.coopSid && t - this.coopAt > 12) {
       this._noAlly = w.entities.get('ally') ? 0 : this._noAlly + dt;
-      if (this._noAlly > 6) { w.coop.stop(); this.coopSid = null; this._trackAt = -1e9; this._sys('Koop beendet: Mitspieler nicht mehr verbunden.', 'sector'); this._emit('roster'); }
+      if (this._noAlly > 6) this._endCoop('Koop beendet: Mitspieler nicht mehr verbunden.');
     } else if (!w.coop && this.coopSid) this.coopSid = null;
+    if (this._rejoinT > 0 && t >= this._rejoinT) { this._rejoinT = 0; this._joinSector(true); }
     if (this.away || !this.secReady) return;
-    // Presence-Daten aktuell halten (Schiff, Stufe, PvP, Koop)
+    // Presence-Daten aktuell halten (Schiff, Stufe, Koop); aufgeschobene Aktualisierung geht raus, sobald das Budget reicht
     this._metaAcc += dt;
     if (this._metaAcc >= 1) { this._metaAcc = 0; this._track(false); }
     // eigener Zustand
@@ -273,7 +289,7 @@ export class Multiplayer {
     e.hp = Math.round(st.hull * e.hpMax); e.shield = Math.round(st.shield * e.shieldMax);
     e.level = R.meta.lv; e.name = R.meta.cs;
     const o = R.o || (R.o = { pvp: false, fac: '', zone: false, coop: '' });
-    o.pvp = R.meta.pvp && !!(st.flags & M.FLAG.pvp); o.fac = R.meta.fac; o.zone = !!(st.flags & M.FLAG.zone); o.coop = R.meta.cp;
+    o.pvp = !!(st.flags & M.FLAG.pvp); o.fac = R.meta.fac; o.zone = !!(st.flags & M.FLAG.zone); o.coop = R.meta.cp;
     const was = e.pvpOk;
     e.pvpOk = e.alive && M.canAttack(me, o);
     if (was && !e.pvpOk && w.player.targetId === e.id) w.player.attacking = false;
@@ -332,19 +348,22 @@ export class Multiplayer {
     return ch;
   }
 
-  _joinSector() {
+  /** soft: derselbe Sektor nach Verbindungsabbruch neu verbinden (Chatverlauf bleibt) */
+  _joinSector(soft = false) {
     if (this.disposed) return;
     const key = M.sectorChannel(this.world.sector);
     this.arriveAt = nowS();
-    if (key === this.secKey && this.secCh) { this._lastPack = null; return; } // gleicher Raum (z. B. Koop-Gast baut Sektor neu)
+    if (!soft && key === this.secKey && this.secCh) { this._lastPack = null; return; } // gleicher Raum (z. B. Koop-Gast baut Sektor neu)
+    if (!soft || key !== this.secKey) this._rejoinN = 0;
+    this._rejoinT = 0;
     const old = this.secCh;
     this.secCh = null; this.secKey = key; this.secReady = false;
     for (const R of this.remotes.values()) this._dropEnt(R);
     this.remotes.clear();
     this.inv.clear(); this.outInv = null;
-    this.chat.sector.length = 0; this.unread.sector = 0;
+    if (!soft) { this.chat.sector.length = 0; this.unread.sector = 0; }
     this.status = 'verbinde';
-    this._emit('roster'); this._emit('chat', { ch: 'sector', reset: true });
+    this._emit('roster'); if (!soft) this._emit('chat', { ch: 'sector', reset: true });
     this._chain = this._chain.then(async () => {
       if (old) await this._close(old, true);
       if (this.disposed || this.secKey !== key) return;
@@ -353,7 +372,7 @@ export class Multiplayer {
       ch.on('presence', { event: 'sync' }, mine(() => this._onSync(ch)));
       ch.on('presence', { event: 'leave' }, mine(({ key: k }) => this._remove(k)));
       ch.on('broadcast', { event: 's' }, mine(({ payload }) => this._onState(payload)));
-      ch.on('broadcast', { event: 'bye' }, mine(({ payload }) => payload && this._remove(payload.i)));
+      ch.on('broadcast', { event: 'bye' }, mine(({ payload }) => payload && this._park(payload.i)));
       ch.on('broadcast', { event: 'inv' }, mine(({ payload }) => this._onInvite(payload)));
       ch.on('broadcast', { event: 'inva' }, mine(({ payload }) => this._onInviteAnswer(payload)));
       ch.on('broadcast', { event: 'hit' }, mine(({ payload }) => this._onHit(payload)));
@@ -363,35 +382,45 @@ export class Multiplayer {
       ch.subscribe((st) => {
         if (this.secCh !== ch) return;
         if (st === 'SUBSCRIBED') {
-          this.secReady = true; this.status = 'verbunden'; this._lastPack = null; this._trackAt = -1e9;
-          if (!this.away) this._track(true);
+          this.secReady = true; this.status = 'verbunden'; this._lastPack = null; this._trackSig = '';
+          this._track(true);
           this._emit('roster');
         } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') {
           this.secReady = false; this.status = 'getrennt'; this._emit('roster');
+          // Server hat den Kanal geschlossen (z. B. Ratengrenze): von selbst neu verbinden, mit wachsender Pause.
+          // Fehler und Zeitüberschreitung versucht realtime-js selbst erneut.
+          if (st === 'CLOSED' && !this._rejoinT) {
+            const d = M.REJOIN[Math.min(this._rejoinN, M.REJOIN.length - 1)];
+            this._rejoinN++; this._rejoinT = nowS() + d;
+          }
         }
       });
     }).catch((err) => console.warn('Mehrspieler: Sektorkanal', err));
   }
 
   async _close(ch, bye) {
-    try {
-      if (bye && ch.state === 'joined') { this._send(ch, 'bye', { i: this.sid }); await ch.untrack().catch(() => {}); }
-    } catch { /* egal */ }
+    // Kein untrack: Verlassen des Kanals entfernt die Presence ohnehin (spart Presence-Budget).
+    if (bye && ch.state === 'joined') this._send(ch, 'bye', { i: this.sid });
+    // Vom Server geschlossene Kanäle hat realtime-js schon ausgetragen. Nicht erneut entfernen: das Austragen geht
+    // nach Thema und träfe sonst einen neuen Kanal gleichen Namens.
+    if (ch.state === 'closed') return;
     try { await sb().removeChannel(ch); } catch { /* egal */ }
   }
 
   _meta() {
     const w = this.world, pr = w.profile, p = w.player;
     return {
-      cs: pr.callsign, fac: pr.faction, ship: pr.ship, lv: pr.level || 1, pvp: this.pvp ? 1 : 0, cp: w.coop ? w.coop.code : '',
+      cs: pr.callsign, fac: pr.faction, ship: pr.ship, lv: pr.level || 1, cp: w.coop ? w.coop.code : '',
       hm: Math.round(p.hpMax || 1), sm: Math.round(p.shieldMax || 0),
       lo: { lasers: (pr.loadout.lasers || []).slice(0, 10), gens: (pr.loadout.gens || []).slice(0, 12) },
     };
   }
   _track(force) {
-    if (!this.secReady || !this.secCh || this.away) return;
+    if (!this.secReady || !this.secCh) return;
     const m = this._meta(), sig = JSON.stringify(m), t = nowS();
-    if (!force && (sig === this._trackSig || t - this._trackAt < TRACK_MIN)) return;
+    if (sig === this._trackSig) return;
+    if (!force && t - this._trackAt < TRACK_MIN) return;
+    if (this.pres.take(t) > 0) return; // Budget erschöpft: das Sekundenraster versucht es später erneut
     this._trackSig = sig; this._trackAt = t;
     this.secCh.track(m).catch(() => { this._trackSig = ''; });
   }
@@ -399,13 +428,14 @@ export class Multiplayer {
   _visibility() {
     if (this.disposed) return;
     if (document.hidden) {
-      // Tab verlassen: abmelden (die anderen nehmen das Schiff sofort heraus), Kanäle bleiben offen
+      // Tab verlassen: 'bye' (die anderen nehmen das Schiff sofort heraus und parken den Eintrag), kein Senden mehr.
+      // Presence bleibt bestehen (untrack/track bei jedem Tab-Wechsel sprengte die Presence-Grenze von Supabase).
       this.away = true;
-      if (this.secReady) { this._send(this.secCh, 'bye', { i: this.sid }); this.secCh.untrack().catch(() => {}); }
-      this._trackSig = '';
+      if (this.secReady) this._send(this.secCh, 'bye', { i: this.sid });
     } else {
+      // zurück: nächster Zustand geht sofort raus und holt das Schiff bei den anderen zurück
       this.away = false; this._lastPack = null; this.arriveAt = nowS();
-      this._track(true);
+      this._track(false);
     }
   }
 
@@ -426,6 +456,17 @@ export class Multiplayer {
     if (!R) return;
     this._dropEnt(R);
     this.remotes.delete(sid);
+    this.inv.delete(sid);
+    if (this.outInv && this.outInv.to === sid) this.outInv = null;
+    this._emit('roster');
+  }
+
+  /** Pilot hat 'bye' gesendet (Tab im Hintergrund oder vor dem Verlassen): Schiff weg, Eintrag bleibt bis Presence-leave */
+  _park(sid) {
+    const R = this.remotes.get(sid);
+    if (!R) return;
+    this._dropEnt(R);
+    R.parked = true; R.st = null; R.ip = new M.Interp(); R.lastRecv = -1e9;
     this.inv.delete(sid);
     if (this.outInv && this.outInv.to === sid) this.outInv = null;
     this._emit('roster');
@@ -458,6 +499,7 @@ export class Multiplayer {
     const t = nowS();
     if (!R.ip.push(m.t / 100, s, t)) return;
     R.st = s; R.lastRecv = t;
+    if (R.parked) { R.parked = false; this._emit('roster'); }
   }
 
   _onChat(m, ch) {

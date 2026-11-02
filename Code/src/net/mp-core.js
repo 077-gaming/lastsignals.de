@@ -17,12 +17,24 @@ export const PVP_HIT_RANGE = 650 * 1.6; // m: Treffer nur aus plausibler Entfern
 export const PVP_CREDIT = 20;          // s: so lange nach dem letzten eigenen Treffer zählt ein Abschuss
 export const PVP_REPEAT = 300;         // s: derselbe Gegner bringt erst danach wieder Ehre
 export const FLAG = { alive: 1, fire: 2, pvp: 4, zone: 8, docked: 16 };
+// Presence (track/untrack) ist bei Supabase je Client streng begrenzt: gemessen schließt der Server den Kanal beim
+// 6. Ereignis innerhalb von etwa 20–30 s („Client presence rate limit exceeded“). Darum höchstens 4 je 30 s,
+// alles Häufige (PvP, Tab im Hintergrund) läuft über Broadcast, aufgeschobene Aktualisierungen gehen später raus.
+export const PRES_N = 4;
+export const PRES_PER = 30;
+export const PRES_GAP = 1.5;
+export const REJOIN = [3, 8, 20, 45]; // s bis zum nächsten Verbindungsversuch, wenn der Server den Kanal schließt
 
 /** Kanal je Sektor: Heimat (Index 1) je Fraktion getrennt, ab Index 2 gemeinsamer Raum aller Fraktionen (Front). */
 export function sectorChannel(sector) {
   if (!sector) return null;
   const idx = sector.index || 1;
   return idx >= PVP_MIN_SECTOR ? `ls-mp-front-${idx}` : `ls-mp-home-${String(sector.id).toLowerCase()}`;
+}
+/** Sektor mit gleichem Index in einer anderen Sektorliste (Koop-Gast kehrt in die eigenen Sektoren zurück) → id oder null */
+export function sameIndexSector(sectors, index) {
+  for (const k in sectors) if (sectors[k] && sectors[k].index === index) return sectors[k].id;
+  return null;
 }
 export const factionChannel = (f) => `ls-mp-fac-${String(f).toLowerCase()}`;
 export const GLOBAL_CHANNEL = 'ls-mp-all';

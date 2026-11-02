@@ -25,21 +25,23 @@ Alles läuft über **Supabase Realtime** (Broadcast + Presence) mit dem öffentl
 
 ## Presence (Sektorkanal)
 
-`track()` beim Beitritt und bei Änderung (höchstens alle 2 s):
+`track()` beim Beitritt und bei Änderung (höchstens alle 2 s **und höchstens 4-mal je 30 s**, siehe unten):
 
 ```json
-{ "cs": "Rufname", "fac": "saturn", "ship": "s1", "lv": 8, "pvp": 0, "cp": "4821",
+{ "cs": "Rufname", "fac": "saturn", "ship": "s1", "lv": 8, "cp": "4821",
   "hm": 6000, "sm": 2800, "lo": { "lasers": ["pulse", "pulse"], "gens": ["sh1", "dr1"] } }
 ```
 
-`cp` = Koop-Code oder `''`, `hm`/`sm` = Hülle/Schild maximal (für Ziel-Anzeige), `lo` = Laser/Generatoren (Modell). Empfänger prüft alles (`cleanMeta`: Fraktion bekannt, Schiff/Laser/Generator aus `data.js`, Rufname gereinigt ≤ 20 Zeichen). `sync` baut die Liste, `leave` entfernt sofort.
+`cp` = Koop-Code oder `''`, `hm`/`sm` = Hülle/Schild maximal (für Ziel-Anzeige), `lo` = Laser/Generatoren (Modell). Empfänger prüft alles (`cleanMeta`: Fraktion bekannt, Schiff/Laser/Generator aus `data.js`, Rufname gereinigt ≤ 20 Zeichen). `sync` baut die Liste, `leave` entfernt sofort. PvP steht **nicht** in der Presence, sondern nur in den Flags des Zustands (Schalten kostet kein Presence-Ereignis).
+
+**Presence-Grenze von Supabase (gemessen 02.11.2026):** Beim 6. `track`/`untrack` innerhalb von etwa 20–30 s schließt der Server den Sektorkanal (`system`: „Client presence rate limit exceeded“, danach `phx_close`). Darum: Budget 4 je 30 s mit 1,5 s Abstand (`PRES_N`, `PRES_PER`, `PRES_GAP`), eine aufgeschobene Aktualisierung geht im Sekundenraster raus, sobald das Budget reicht. Kein `untrack` beim Verlassen (das Schließen des Kanals entfernt die Presence) und keines beim Tab-Wechsel. Schließt der Server den Kanal trotzdem, verbindet `mp.js` nach 3 / 8 / 20 / 45 s selbst neu (`REJOIN`, Chatverlauf bleibt).
 
 ## Nachrichten (Broadcast)
 
 | Ereignis | Kanal | Inhalt | Wer |
 |---|---|---|---|
 | `s` | Sektor | `{ i: sid, t: zeit/10ms, d: [x, z, rot·100, kurs·100, tempo, hülle%, schild%, flags, ziel] }` | jeder, 9×/s nur bei Änderung, spätestens 1×/s |
-| `bye` | Sektor | `{ i }` | beim Sektorwechsel, Tab verlassen, Flugende |
+| `bye` | Sektor | `{ i }` | beim Sektorwechsel, Tab verlassen, Flugende; Empfänger nimmt das Schiff heraus und parkt den Eintrag, bis wieder `s` kommt oder die Presence `leave` meldet |
 | `inv` | Sektor | `{ i, to, code, cs, fac, sec }` | Einladung „Zu zweit fliegen“ |
 | `inva` | Sektor | `{ i, to, code, ok: 0/1, busy? }` | Antwort |
 | `hit` | Sektor | `{ i, to, d, s, c, r }` | PvP-Treffer: Schaden, nur Schild (SAB), kritisch, Rakete |
@@ -68,7 +70,7 @@ Alles läuft über **Supabase Realtime** (Broadcast + Presence) mit dem öffentl
 1. A klickt in der Spielerliste ZU ZWEIT FLIEGEN → `inv` mit neuem 4-stelligem Code.
 2. B sieht die Einladung (Spielerliste + Funkspruch, 30 s gültig) → ANNEHMEN sendet `inva ok=1` und startet `new Coop(world, bus, { role: 'guest', code })`. Andere Fraktion: B übernimmt die Sektoren des Gastgebers (wie Koop aus dem Hub), Position bleibt.
 3. A startet beim Empfang `new Coop(world, bus, { role: 'host', code })`. Ab jetzt der bekannte Koop (Gastgeber rechnet Gegner).
-4. KOOP VERLASSEN (Spielerliste) beendet den Koop; `coop.js` sendet `bye`. Ist der Partner länger als 6 s weg, endet ein Einladungs-Koop von selbst.
+4. KOOP VERLASSEN (Spielerliste) beendet den Koop; `coop.js` sendet `bye`. Ist der Partner länger als 6 s weg, endet ein Einladungs-Koop von selbst. Ein Gast einer anderen Fraktion kehrt dabei in die eigenen Sektoren zurück (gleicher Index, Position bleibt; `sameIndexSector`).
 
 Koop aus dem Hub (Code-Dialog) läuft unverändert; `main.js` ruft jetzt `world.coop.update()` statt einer festen Variable, damit ein Koop auch im Flug starten kann.
 
@@ -82,8 +84,8 @@ Koop aus dem Hub (Code-Dialog) läuft unverändert; `main.js` ruft jetzt `world.
 
 ## Verbindungsabbau
 
-- Sektorwechsel: `bye`, `untrack`, Kanal schließen, alle fremden Schiffe entfernen, neuen Kanal öffnen (nacheinander, damit kein Kanal doppelt existiert).
-- Tab im Hintergrund: `bye` + `untrack` (die anderen nehmen das Schiff sofort heraus), zurück → `track`. Tab schließen (`pagehide`) und Flugende: alle Kanäle schließen.
+- Sektorwechsel: `bye`, Kanal schließen, alle fremden Schiffe entfernen, neuen Kanal öffnen (nacheinander, damit kein Kanal doppelt existiert: realtime-js gibt für ein Thema, das schon offen ist, denselben Kanal zurück und trägt beim Schließen nach Thema aus).
+- Tab im Hintergrund: nur `bye`, kein Senden mehr (die anderen nehmen das Schiff sofort heraus); zurück → nächster Zustand holt das Schiff zurück. Presence bleibt dabei bestehen. Tab schließen (`pagehide`) und Flugende: alle Kanäle schließen.
 - Ohne Zustand seit 4 s wird ein Schiff ausgeblendet, `leave` der Presence entfernt es aus der Liste.
 
 ## Grenzen der Testphase
@@ -97,3 +99,4 @@ Koop aus dem Hub (Code-Dialog) läuft unverändert; `main.js` ruft jetzt `world.
 
 - Selbsttest: `cd Code && node src/sim/selftest.mjs` (Abschnitt „MP:“: Kanäle, Paket, Interpolation, Chat, Filter, Rate, PvP-Regeln, Ehre, Weltanbindung).
 - Browser: Entwicklungsserver starten, dann `node tools/mehrspieler/test.mjs --url http://localhost:<port> [--bilder <ordner>]` – drei Piloten (Alpha SATURN, Bravo ERIS, Charlie SATURN) in Sektor 3, dazu Koop aus dem Hub-Dialog (Delta/Echo). Testpiloten per Entwicklungs-Link `?dev=game&f=<fraktion>&cs=<Rufname>`.
+- Zweiter Browser-Test: `node tools/mehrspieler/pruefung.mjs http://localhost:<port> [<bilder>]` – HTML im Rufnamen, Tab im Hintergrund, Ankunftsschutz, PvP aus, Treffer aus zu großer Entfernung, Presence-Grenze (PvP-Schalter und Tab-Wechsel in schneller Folge), Wiederverbinden, Einladung über Fraktionen mit Rückkehr in die eigenen Sektoren.

@@ -1350,6 +1350,14 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   const rl = new M.RateLimit(4, 8, 0.7);
   const res = [0, 0.3, 1, 2, 3, 4, 5].map((t) => rl.take(t) === 0);
   check('MP: Ratenbegrenzung (Abstand und 4 je 8 s)', JSON.stringify(res) === JSON.stringify([true, false, true, true, true, false, false]) && rl.take(8.1) === 0);
+  // Presence-Budget unter der Supabase-Grenze (Kanal schließt beim 6. Ereignis in ≈ 20–30 s): auch Dauerdrücken
+  // (jede Sekunde ein Versuch, 60 s lang) bringt in keinem 30-s-Fenster mehr als 4 Ereignisse durch
+  const pres = new M.RateLimit(M.PRES_N, M.PRES_PER, M.PRES_GAP), presT = [];
+  for (let t = 0; t <= 60; t += 0.25) if (pres.take(t) === 0) presT.push(t);
+  let presMax = 0;
+  for (const t0 of presT) presMax = Math.max(presMax, presT.filter((t) => t >= t0 && t < t0 + 30).length);
+  check('MP: Presence höchstens 4 je 30 s', presMax <= 4 && presMax >= 4 && M.PRES_N < 5, `max ${presMax}`);
+  check('MP: Koop-Gast kehrt in den eigenen Sektor gleichen Indexes zurück', M.sameIndexSector(secsE, secs['SA-3'].index) === 'ER-3' && M.sameIndexSector(secsE, 1) === 'ER-1' && M.sameIndexSector(secsE, 99) === null);
   // PvP-Regeln
   const A = { pvp: true, fac: 'saturn', zone: true, coop: '' }, B = { pvp: true, fac: 'eris', zone: true, coop: '' };
   check('MP: PvP zwischen Fraktionen mit PvP an', M.canAttack(A, B) && M.canAttack(B, A));
