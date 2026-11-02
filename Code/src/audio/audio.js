@@ -88,7 +88,9 @@ function engine() {
   if (S) return S;
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return null;
-  const ctx = new Ctx();
+  // 'balanced': größerer Ausgabepuffer, damit Musik bei kurzen Lastspitzen (Laden, Sektorwechsel) nicht knackt
+  let ctx;
+  try { ctx = new Ctx({ latencyHint: 'balanced' }); } catch { ctx = new Ctx(); }
   const master = ctx.createGain(), sfxGain = ctx.createGain(), musicGain = ctx.createGain();
   // Limiter am Ende: viele gleichzeitige Explosionen/Laser übersteuern nicht mehr (kein Kratzen, gleichmäßiger Pegel)
   const limiter = ctx.createDynamicsCompressor();
