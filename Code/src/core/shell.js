@@ -1,11 +1,11 @@
-// App-Hüllen (Apps/): Mac-App (Electron, window.lsDesktop aus dem Preload), iPhone/iPad und Android (Capacitor).
+// App-Hüllen (Apps/): Mac- und Windows-App (Electron, window.lsDesktop aus dem Preload), iPhone/iPad und Android (Capacitor).
 // In einer Hülle liegt das Spiel als Datei in der App: kein Service Worker, kein „App installieren“-Knopf.
 
 /** Reine Logik (Selbsttest): welche Hülle? 'desktop' | 'capacitor' | '' (Browser). */
 export function appShellOf({ flag = '', desktop = null, capacitor = null, protocol = '' } = {}) {
   if (desktop && typeof desktop === 'object' && desktop.platform) return 'desktop';
   if (capacitor && typeof capacitor === 'object' && (typeof capacitor.isNativePlatform !== 'function' || capacitor.isNativePlatform())) return 'capacitor';
-  if (protocol === 'app:') return 'desktop'; // Mac-App: eigenes Schema app://
+  if (protocol === 'app:') return 'desktop'; // Mac-/Windows-App: eigenes Schema app://
   if (protocol === 'capacitor:') return 'capacitor'; // iOS: capacitor://localhost
   if (flag === '1') return 'capacitor'; // App-Build ohne erkannte Brücke: trotzdem wie eine Hülle behandeln
   return '';

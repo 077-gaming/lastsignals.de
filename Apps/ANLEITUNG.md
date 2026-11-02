@@ -10,6 +10,8 @@ Das Spiel selbst steckt komplett in der App und startet auch ohne Internet. Koop
 |---|---|
 | `LAST-SIGNALS-mac-arm64.dmg` oder `.zip` | Mac mit Apple-Chip (M1 bis M5) |
 | `LAST-SIGNALS-mac-universal.dmg` oder `.zip` | jeder Mac (Apple-Chip und ältere Intel-Macs), etwas größer |
+| `LAST-SIGNALS-windows-x64-setup.exe` | Windows 10 oder 11 (64 Bit), Installer mit Startmenü- und Desktop-Verknüpfung |
+| `LAST-SIGNALS-windows-x64.zip` | Windows 10 oder 11 (64 Bit), ohne Installation: entpacken und starten |
 | `LAST-SIGNALS-ios-unsigniert.ipa` | iPhone und iPad (eine App für beide), über Sideloadly oder AltStore |
 | `LAST-SIGNALS-ios-simulator.zip` | nur für den iOS-Simulator in Xcode, nicht für echte Geräte |
 | `LAST-SIGNALS-android-debug.apk` | Android-Handy oder -Tablet (Android 7 oder neuer) |
@@ -35,7 +37,34 @@ Tipps:
 - Menü **LAST SIGNALS → Bildratenbegrenzung aus (Neustart nötig)**: Das Spiel rechnet so viele Bilder wie möglich statt im Takt des Bildschirms. Nur zum Messen gedacht, der Mac wird dabei wärmer. Nach dem Haken fragt die App, ob sie neu starten soll.
 - Spielstände liegen in `~/Library/Application Support/LAST SIGNALS`.
 
+## Windows
+
+Die Windows-Version ist **nicht signiert**. Windows SmartScreen kennt die Datei deshalb noch nicht und warnt beim ersten Start. Das ist bei unsignierten Testversionen normal.
+
+### Weg A: Installer (`LAST-SIGNALS-windows-x64-setup.exe`)
+
+1. Datei doppelklicken.
+2. Erscheint **„Der Computer wurde durch Windows geschützt“**: auf **Weitere Informationen** klicken, dann auf **Trotzdem ausführen**.
+3. Der Installer braucht keine Administratorrechte. Er installiert nach `%LOCALAPPDATA%\Programs\LAST SIGNALS` und legt eine Verknüpfung im Startmenü und auf dem Desktop an. Am Ende kannst du LAST SIGNALS direkt starten.
+4. Entfernen: **Einstellungen → Apps → Installierte Apps → LAST SIGNALS → Deinstallieren**. Spielstände bleiben dabei erhalten.
+
+### Weg B: ohne Installation (`LAST-SIGNALS-windows-x64.zip`)
+
+1. Rechtsklick auf die `.zip` → **Alle extrahieren…** (nicht direkt aus der .zip heraus starten).
+2. Im entpackten Ordner **LAST SIGNALS** die Datei **LAST SIGNALS.exe** doppelklicken.
+3. SmartScreen-Warnung wie oben: **Weitere Informationen → Trotzdem ausführen**.
+4. Optional: Rechtsklick auf `LAST SIGNALS.exe` → **Weitere Optionen anzeigen → Senden an → Desktop (Verknüpfung erstellen)**.
+
+Tipps:
+
+- **Vollbild**: `F11`.
+- **Menüleiste**: `F10` blendet sie ein und aus (Bildratenbegrenzung, Neu laden, Über LAST SIGNALS). Im Spiel bleibt sie verborgen, damit `Alt` frei bleibt.
+- Spielstände und Einstellungen liegen in `%APPDATA%\LAST SIGNALS`.
+- Voraussetzung: Windows 10 oder 11, 64 Bit, eine Grafikkarte mit aktuellem Treiber (WebGL 2).
+
 ## iPhone und iPad
+
+**Am einfachsten (ohne Datei, ohne Apple-ID): als Web-App.** In Safari `https://lastsignals.de/play/` öffnen → **Teilen** (Quadrat mit Pfeil) → **Zum Home-Bildschirm** → **Hinzufügen**. LAST SIGNALS startet dann vom Home-Bildschirm im Vollbild wie eine App. Die folgenden Wege mit der `.ipa` sind für Tester, die die echte App-Hülle prüfen wollen.
 
 Apple erlaubt Apps außerhalb des App Stores nur mit einer Signatur. Ohne bezahltes Entwicklerkonto geht das mit deiner normalen (kostenlosen) Apple-ID. Die App läuft dann **7 Tage**, danach musst du sie neu aufspielen (Spielstand bleibt erhalten, solange du die App nicht löschst).
 
@@ -77,17 +106,19 @@ Die App läuft im Querformat ohne Status- und Navigationsleiste. Wischen vom Ran
 Alles aus dem aktuellen Spielstand neu bauen (Ausgabe nach `~/LAST-SIGNALS-Uebergabe/downloads/`):
 
 ```bash
-bash Apps/bauen.sh               # Mac, iPhone/iPad, Android
-bash Apps/bauen.sh mac           # nur Mac (oder ios, android, beliebig kombiniert)
+bash Apps/bauen.sh               # Mac, Windows, iPhone/iPad, Android
+bash Apps/bauen.sh mac           # nur Mac (oder windows, ios, android, beliebig kombiniert)
 TEST=1 bash Apps/bauen.sh mac    # danach die Mac-App automatisch prüfen
+TEST=1 bash Apps/bauen.sh windows  # Windows-Dateien bauen und ihren Aufbau prüfen
 ```
 
-Voraussetzungen: Node 20+, Xcode (iOS), JDK 21 und Android-SDK mit `platforms;android-36` und `build-tools;36.0.0` (Android). Das Skript sucht JDK und SDK selbst (Homebrew: `openjdk@21`, `android-commandlinetools`).
+Voraussetzungen: Node 20+, für den Windows-Installer `makensis` (`brew install makensis`, Wine ist nicht nötig), Xcode (iOS), JDK 21 und Android-SDK mit `platforms;android-36` und `build-tools;36.0.0` (Android). Das Skript sucht JDK und SDK selbst (Homebrew: `openjdk@21`, `android-commandlinetools`).
 
 Tests:
 
 - `node Apps/tests/mac.mjs` – startet die gepackte Mac-App, spielt bis zum Hub, prüft Desktop-Kennung, Service Worker, Realtime (Koop), Fenstergröße, Schalter.
+- `node Apps/tests/windows.mjs` – prüft ohne Windows den Aufbau: `LAST SIGNALS.exe` (64 Bit, Symbol, Versionsdaten), `resources/app.asar` mit dem Spiel, Desktop-Kennung, Installer.
 - `node Apps/tests/ios.mjs "iPhone 18 Pro"` bzw. `"iPad Pro 11-inch (M5)"` – Debug-Build im Simulator bis zum Hub, Realtime, Bildschirmfoto.
 - `node Apps/tests/android.mjs` – APK im Emulator (falls eingerichtet) bis zum Hub, Realtime, Bildschirmfoto.
 
-Für das Spiel ist `window.lsDesktop` (nur Mac-App) die Desktop-Kennung: `{ platform: 'mac', version, arch, unlimitedFps, fullscreen(), setUnlimitedFps(), relaunch() }`.
+Für das Spiel ist `window.lsDesktop` (Mac- und Windows-App) die Desktop-Kennung: `{ platform: 'mac' | 'windows', version, arch, unlimitedFps, fullscreen(), setUnlimitedFps(), relaunch() }`.

@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
 # LAST SIGNALS: alle Test-Apps aus dem aktuellen Spielstand neu bauen (nichts wird veröffentlicht).
 #
-#   bash Apps/bauen.sh                 → Mac, iPhone/iPad und Android
-#   bash Apps/bauen.sh mac android     → nur die genannten (mac | ios | android)
+#   bash Apps/bauen.sh                 → Mac, Windows, iPhone/iPad und Android
+#   bash Apps/bauen.sh mac android     → nur die genannten (mac | windows | ios | android)
 #   TEST=1 bash Apps/bauen.sh mac      → danach die Mac-App automatisch prüfen (tests/mac.mjs)
+#   TEST=1 bash Apps/bauen.sh windows  → danach .zip und Installer prüfen (tests/windows.mjs, ohne Windows)
 #   MAC_ARCH=arm64 bash Apps/bauen.sh  → nur Apple Silicon (Standard: arm64 und universal)
 #   ZIEL=/pfad bash Apps/bauen.sh      → Ausgabeordner (Standard: ~/LAST-SIGNALS-Uebergabe/downloads)
 #
-# Voraussetzungen: Node 20+, Xcode (iOS), JDK 21 und Android-SDK (Android, siehe ANLEITUNG.md).
+# Voraussetzungen: Node 20+, Xcode (iOS), JDK 21 und Android-SDK (Android, siehe ANLEITUNG.md),
+# für den Windows-Installer makensis (brew install makensis; ohne makensis entsteht nur die portable .zip). Wine ist nicht nötig.
 set -euo pipefail
 
 APPS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$APPS/.." && pwd)"
 ZIEL="${ZIEL:-$HOME/LAST-SIGNALS-Uebergabe/downloads}"
 MAC_ARCH="${MAC_ARCH:-alle}"
-WAS=("$@"); [ ${#WAS[@]} -eq 0 ] && WAS=(mac ios android)
+WAS=("$@"); [ ${#WAS[@]} -eq 0 ] && WAS=(mac windows ios android)
 will() { local x; for x in "${WAS[@]}"; do [ "$x" = "$1" ] && return 0; done; return 1; }
 schritt() { printf '\n==== %s\n' "$*"; }
 mkdir -p "$ZIEL"
@@ -33,6 +35,12 @@ if will mac; then
   schritt "Mac-App (Electron) → .zip und .dmg"
   (cd "$APPS" && node desktop/packen.mjs --arch "$MAC_ARCH" --ziel "$ZIEL")
   if [ "${TEST:-0}" = "1" ]; then (cd "$APPS" && node tests/mac.mjs); fi
+fi
+
+if will windows; then
+  schritt "Windows-App (Electron, x64) → portable .zip und Installer (NSIS)"
+  (cd "$APPS" && node desktop/packen-windows.mjs --ziel "$ZIEL")
+  if [ "${TEST:-0}" = "1" ]; then (cd "$APPS" && node tests/windows.mjs "$ZIEL"); fi
 fi
 
 if will ios || will android; then

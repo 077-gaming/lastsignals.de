@@ -1,4 +1,4 @@
-// LAST SIGNALS als Mac-App (Electron-Hülle, unsigniert, nur zum Testen).
+// LAST SIGNALS als Desktop-App für Mac und Windows (Electron-Hülle, unsigniert, nur zum Testen).
 // Das Spiel liegt als fertiger Web-Build in www/ und wird über das eigene Schema app://ls/ ausgeliefert:
 // So bleiben die absoluten Pfade des Spiels (/models/…, /audio/…, /fonts/…) gültig, Spielstände liegen
 // dauerhaft im App-Profil, und Koop (Supabase Realtime) läuft weiter über das Netz.
@@ -7,6 +7,10 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, screen, shell } = r
 const fs = require('node:fs');
 const path = require('node:path');
 
+const IS_MAC = process.platform === 'darwin';
+const IS_WIN = process.platform === 'win32';
+// Kennung für das Spiel (window.lsDesktop.platform): 'mac' | 'windows' | sonst process.platform
+const PLATFORM = IS_MAC ? 'mac' : IS_WIN ? 'windows' : process.platform;
 const SCHEME = 'app';
 const HOST = 'ls';
 const START = `${SCHEME}://${HOST}/index.html`;
@@ -15,6 +19,7 @@ const WWW = [path.join(__dirname, 'www'), path.join(__dirname, '..', 'www')].fin
 
 // ---------------------------------------------------------------- Einstellungen (im App-Profil)
 // Nur für Tests: eigenes, leeres Profil (Spielstände, Einstellungen) statt ~/Library/Application Support/LAST SIGNALS
+// (Mac) bzw. %APPDATA%\LAST SIGNALS (Windows)
 if (process.env.LS_USER_DATA) app.setPath('userData', path.resolve(process.env.LS_USER_DATA));
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'einstellungen.json');
 const DEFAULTS = { bounds: null, maximized: false, fullscreen: false, unlimitedFps: false };
@@ -27,7 +32,7 @@ function saveSettings(s) {
 const settings = loadSettings();
 
 // ---------------------------------------------------------------- Chromium-Schalter (vor app.ready)
-app.commandLine.appendSwitch('force_high_performance_gpu'); // Macs mit zwei Grafikchips: den starken nehmen
+app.commandLine.appendSwitch('force_high_performance_gpu'); // Rechner mit zwei Grafikchips: den starken nehmen
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 if (settings.unlimitedFps || process.env.LS_UNLIMITED_FPS === '1') {
@@ -89,12 +94,15 @@ function createWindow() {
     minWidth: 960, minHeight: 600,
     backgroundColor: '#000000', title: 'LAST SIGNALS', show: false,
     fullscreenable: true,
+    // Windows: keine sichtbare Menüleiste (F10 blendet sie ein); Alt bleibt fürs Spiel frei (Alt+Zahl = Leiste wechseln)
+    autoHideMenuBar: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true, nodeIntegration: false, sandbox: true,
       backgroundThrottling: false, spellcheck: false,
     },
   });
+  if (!IS_MAC) win.setMenuBarVisibility(false);
   if (settings.maximized) win.maximize();
   if (settings.fullscreen) win.setFullScreen(true);
   win.once('ready-to-show', () => win.show());
@@ -113,9 +121,11 @@ function createWindow() {
   win.on('close', remember);
   win.on('closed', () => { win = null; });
 
-  // F11 schaltet Vollbild (zusätzlich zu Ctrl+Cmd+F aus dem Menü)
+  // F11 schaltet Vollbild (zusätzlich zu Ctrl+Cmd+F aus dem Menü). Windows: F10 blendet die Menüleiste ein und aus.
   win.webContents.on('before-input-event', (e, input) => {
-    if (input.type === 'keyDown' && input.key === 'F11') { e.preventDefault(); win.setFullScreen(!win.isFullScreen()); }
+    if (input.type !== 'keyDown') return;
+    if (input.key === 'F11') { e.preventDefault(); win.setFullScreen(!win.isFullScreen()); }
+    else if (input.key === 'F10' && !IS_MAC) { e.preventDefault(); win.setMenuBarVisibility(!win.isMenuBarVisible()); }
   });
   // Externe Links im normalen Browser öffnen, nie im Spielfenster
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -147,11 +157,30 @@ function setUnlimitedFps(on, ask = true) {
 
 function buildMenu() {
   const name = 'LAST SIGNALS';
+  const fpsItem = { label: 'Bildratenbegrenzung aus (Neustart nötig)', type: 'checkbox', checked: !!settings.unlimitedFps, click: (item) => setUnlimitedFps(item.checked) };
+  if (!IS_MAC) {
+    // Windows: schlichtes Menü (per F10 sichtbar). Bewusst ohne Ctrl-Kürzel wie Ctrl+R/Ctrl+W, die mitten im Spiel stören würden.
+    const about = () => dialog.showMessageBox(win || undefined, {
+      type: 'info', title: `Über ${name}`, message: `${name} ${app.getVersion()}`,
+      detail: `Testversion, nicht zur Weitergabe.\nElectron ${process.versions.electron} · Chromium ${process.versions.chrome} · ${process.arch}`,
+    });
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { label: 'Spiel', submenu: [fpsItem, { type: 'separator' }, { label: `Über ${name}`, click: about }, { type: 'separator' }, { role: 'quit', label: 'Beenden', accelerator: 'Alt+F4' }] },
+      { label: 'Darstellung', submenu: [
+        { label: 'Vollbild', accelerator: 'F11', click: () => { if (win) win.setFullScreen(!win.isFullScreen()); } },
+        { label: 'Menüleiste ausblenden', accelerator: 'F10', click: () => { if (win) win.setMenuBarVisibility(false); } },
+        { type: 'separator' },
+        { label: 'Neu laden', click: () => { if (win) win.webContents.reload(); } },
+        { role: 'toggleDevTools', label: 'Entwicklerwerkzeuge', accelerator: 'Ctrl+Shift+I' },
+      ] },
+    ]));
+    return;
+  }
   const template = [
     { label: name, submenu: [
       { role: 'about', label: `Über ${name}` },
       { type: 'separator' },
-      { label: 'Bildratenbegrenzung aus (Neustart nötig)', type: 'checkbox', checked: !!settings.unlimitedFps, click: (item) => setUnlimitedFps(item.checked) },
+      fpsItem,
       { type: 'separator' },
       { role: 'hide', label: `${name} ausblenden` },
       { role: 'hideOthers', label: 'Andere ausblenden' },
@@ -177,7 +206,7 @@ function buildMenu() {
 
 // ---------------------------------------------------------------- Brücke für den Preload (window.lsDesktop)
 ipcMain.on('ls:info', (e) => {
-  e.returnValue = { platform: process.platform === 'darwin' ? 'mac' : process.platform, version: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome, arch: process.arch, unlimitedFps: !!settings.unlimitedFps };
+  e.returnValue = { platform: PLATFORM, version: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome, arch: process.arch, unlimitedFps: !!settings.unlimitedFps };
 });
 ipcMain.handle('ls:fullscreen', (e, on) => {
   const w = BrowserWindow.fromWebContents(e.sender);
@@ -194,6 +223,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
   app.setName('LAST SIGNALS');
+  if (IS_WIN) app.setAppUserModelId('de.lastsignals.spiel'); // Taskleiste: Fenster und Verknüpfung gehören zusammen
   app.setAboutPanelOptions({ applicationName: 'LAST SIGNALS', applicationVersion: app.getVersion(), copyright: 'Testversion, nicht zur Weitergabe' });
   app.whenReady().then(() => {
     protocol.handle(SCHEME, serve);
