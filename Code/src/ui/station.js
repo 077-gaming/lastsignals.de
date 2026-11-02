@@ -567,7 +567,25 @@ export class StationUI {
     // Hangar und Schiffsmodell im Hintergrund vorbereiten, solange der Pilot noch anfliegt
     this._preT = setTimeout(() => {
       const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1));
-      idle(() => { if (this._offs.length && SHARED.bay === null) { SHARED.bay = new HangarBay(); if (!SHARED.bay.ok) SHARED.bay = false; } });
+      idle(() => {
+        if (this._offs.length && SHARED.bay === null) { SHARED.bay = new HangarBay(); if (!SHARED.bay.ok) SHARED.bay = false; }
+        // Eigenes Schiff im Hangar schon jetzt bauen und Shader im Hintergrund übersetzen: sonst kostet das erste
+        // Andocken einmalig ~0,3 s Bauzeit plus ~0,15 s Shader (Test-Pilot 02.11.2026)
+        const bay = SHARED.bay, p = this.world && this.world.profile;
+        if (!bay || !p || this.isOpen) return;
+        // Erst bauen, wenn der Hangar das echte Schiffsmodell geladen hat (sonst baut das Andocken neu)
+        let tries = 0;
+        const prep = () => {
+          if (!this._offs.length || this.isOpen) return;
+          if ((bay.pending.size > 0 || bay.isLoading(p.faction, p.ship)) && tries++ < 40) { setTimeout(() => idle(prep), 500); return; }
+          try {
+            bay.setShip(p.faction, p.ship, p.loadout, false);
+            const cam = bay._camera();
+            if (bay.gl.compileAsync) bay.gl.compileAsync(bay.scene, cam).catch(() => { /* nur Vorbereitung */ });
+          } catch (err) { console.warn('Hangar-Vorbereitung', err); }
+        };
+        idle(prep);
+      });
     }, 1200);
   }
 

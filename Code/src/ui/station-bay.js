@@ -278,6 +278,8 @@ export class HangarBay {
       return;
     }
     const gl = this.gl;
+    // Synchrone Shader-Prüfung nur im Entwicklungsserver (sonst ~0,16 s beim ersten Andocken, wie im Spiel-Renderer)
+    gl.debug.checkShaderErrors = !!(import.meta.env && import.meta.env.DEV);
     gl.outputColorSpace = THREE.SRGBColorSpace;
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = 0.72;
