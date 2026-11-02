@@ -483,6 +483,7 @@ function oreGeometry(variant) {
   g.computeBoundingSphere();
   return g;
 }
+export const ASTEROID_KEYS = ['asteroid', 'asteroid:2', 'asteroid:3']; // Meshy-Formen (je mit ':lod1')
 const ORE_VEIN = { nickel: [0xd8ccb4, 0.55], cobalt: [0x4a7aff, 1.1], platinum: [0xeef0ff, 0.8] };
 
 // ---------- Fabrik ----------
@@ -721,6 +722,20 @@ export class ModelFactory {
   _glb(...keys) {
     for (const k of keys) { const s = this.glb.get(k); if (s) return s.clone(true); }
     return null;
+  }
+
+  // Requisite mit zwei Stufen (Meshy LOD0 ≈ 1.500 Dreiecke, LOD1 ≈ 400, gleiches Koordinatensystem): THREE.LOD
+  // schaltet beim Zeichnen nach Entfernung um (Renderer setzt die Schaltweite passend zur Größe: lodFar).
+  // Gibt { obj, lod } oder null (kein Modell geladen).
+  _glbLod(k0, k1) {
+    const a = this._glb(k0);
+    if (!a) return null;
+    const b = this._glb(k1);
+    if (!b) return { obj: a, lod: null, len: a.userData.glbLen, scale: a.userData.glbScale };
+    const L = new THREE.LOD();
+    L.addLevel(a, 0);
+    L.addLevel(b, 400, 0.12);
+    return { obj: L, lod: L, len: a.userData.glbLen, scale: a.userData.glbScale };
   }
 
   _meshes(group, geos, mats) {
@@ -1275,8 +1290,8 @@ export class ModelFactory {
   buildCrate() {
     const root = new THREE.Group(), spin = new THREE.Group();
     root.add(spin);
-    const g = this._glb('crate');
-    if (g) spin.add(g);
+    const G = this._glbLod('crate', 'crate:lod1');
+    if (G) spin.add(G.obj);
     else this._meshes(spin, this.geo('crate:v2', crateGeometry), {
       metal: this.std('crate:metal', { color: 0x7a7f88, metal: 0.9, rough: 0.3 }),
       plate: this.std('crate:plate', { color: 0x2e3036, metal: 0.7, rough: 0.45, panel: 0.35, lines: 0.5 }),
@@ -1284,14 +1299,14 @@ export class ModelFactory {
     });
     const s = new THREE.Sprite(this.sprite(CRATE_COLOR, 0.5));
     s.scale.setScalar(22); root.add(s);
-    return { root, spin, glow: s };
+    return { root, spin, glow: s, lod: G?.lod || null };
   }
 
   buildWreck(seed) {
     const root = new THREE.Group(), spin = new THREE.Group();
     root.add(spin);
-    const g = this._glb('wreck');
-    if (g) spin.add(g);
+    const G = this._glbLod('wreck', 'wreck:lod1');
+    if (G) { G.obj.rotation.set(0.25 * Math.sin(seed), 0, 0.3 * Math.cos(seed * 1.7)); spin.add(G.obj); }
     else {
       const v = seed % 4;
       this._meshes(spin, this.geo('wreck:v2:' + v, () => wreckGeometry(v)), {
@@ -1304,7 +1319,7 @@ export class ModelFactory {
     }
     const s = new THREE.Sprite(this.sprite(CARGO_COLOR, 0.5));
     s.scale.setScalar(20); root.add(s);
-    return { root, spin, glow: s };
+    return { root, spin, glow: s, lod: G?.lod || null };
   }
 
   // Erz: dunkler Fels im Sonnenlicht, nur schmale Adern leuchten schwach in Erzfarbe
@@ -1336,8 +1351,8 @@ export class ModelFactory {
   buildOre(type, seed) {
     const root = new THREE.Group(), spin = new THREE.Group();
     root.add(spin);
-    const g = this._glb('ore:' + type, 'ore');
-    if (g) { g.scale.setScalar(g.userData.glbScale ?? 2 / (g.userData.glbLen || 2)); spin.add(g); }
+    const G = this._glbLod('ore:' + type, `ore:${type}:lod1`);
+    if (G) { G.obj.scale.setScalar(G.scale ?? 2 / (G.len || 2)); spin.add(G.obj); return { root, spin, glow: null, lod: G.lod }; }
     else {
       const v = seed % 4;
       const geo = this.geo('ore:v2:' + v, () => oreGeometry(v));
@@ -1474,8 +1489,9 @@ export class ModelFactory {
   buildAsteroid(seed = 0, big = false) {
     const root = new THREE.Group(), spin = new THREE.Group();
     root.add(spin);
-    const g = this._glb('asteroid');
-    if (g) { g.scale.setScalar(g.userData.glbScale ?? 2 / (g.userData.glbLen || 2)); spin.add(g); }
+    const k = ASTEROID_KEYS[seed % 3];
+    const G = this._glbLod(k, k + ':lod1');
+    if (G) { G.obj.scale.setScalar(G.scale ?? 2 / (G.len || 2)); spin.add(G.obj); return { root, spin, glow: null, lod: G.lod }; }
     else {
       const v = seed % 4;
       const geo = this.geo('asteroid:' + v + (big ? ':hi' : ''), () => rockGeometry(500 + v * 13, big ? 5 : 4, 1 + v * 0.3));

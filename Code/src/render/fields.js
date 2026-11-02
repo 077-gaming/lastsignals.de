@@ -256,6 +256,7 @@ export function buildFields(opts, keep) {
   const newPts = () => ({ pos: [], col: [], size: [], rate: [], phase: [] });
 
   const out = { asteroids: 0, debris: 0, nebula: 0, rocks: 0 };
+  const glbCells = [];
   fields.forEach((F, fi) => {
     const R = rng(hashString(`${seed}:${fi}:${F.type}`));
     const r = F.r;
@@ -308,6 +309,8 @@ export function buildFields(opts, keep) {
           }
           out.rocks += n;
           finishMesh(mesh);
+          // große Brocken (Form 0/1) bekommen die Meshy-Form, sobald sie geladen ist (siehe upgrade)
+          if (vi < 2) glbCells.push({ mesh, vi, x: x0 + CELL / 2, z: z0 + CELL / 2, g0: null, g1: null });
         }
       }
       // Staub und Eiskristalle im Feld
@@ -496,5 +499,78 @@ export function buildFields(opts, keep) {
   setAO(old);
   points(LP, 7);
 
-  return { group, fields, stats: out };
+  // Meshy-Asteroiden: die großen Brocken (Formen 0/1, je Zelle ein InstancedMesh) tauschen nur Geometrie und Material,
+  // Instanzen, Drehung und Draw Calls bleiben gleich. Je Zelle zwei Stufen: LOD0 (≈ 1.500 Dreiecke) nur nahe der
+  // Kamera, sonst LOD1 (≈ 400, kaum mehr als die prozedurale Form mit 320). Kleine Brocken bleiben prozedural
+  // (2–11 m, wenige Pixel groß; Meshy-Form wäre 5× so viele Dreiecke ohne sichtbaren Gewinn).
+  const F_glb = opts.factory, rockTint = opts.rock.clone();
+  const up = { done: !glbCells.length || !F_glb, tick: 0 };
+  const bake = (key) => {
+    const w = F_glb.glb.get(key);
+    if (!w) return null;
+    let mesh = null;
+    w.updateMatrixWorld(true);
+    w.traverse((o) => { if (!mesh && o.isMesh) mesh = o; });
+    if (!mesh) return null;
+    const src = mesh.geometry, g = new THREE.BufferGeometry();
+    for (const k of ['position', 'normal', 'uv']) {
+      const A = src.attributes[k];
+      if (!A) continue;
+      const n = A.itemSize, arr = new Float32Array(A.count * n);
+      for (let i = 0; i < A.count; i++) { arr[i * n] = A.getX(i); arr[i * n + 1] = A.getY(i); if (n > 2) arr[i * n + 2] = A.getZ(i); }
+      g.setAttribute(k, new THREE.BufferAttribute(arr, n));
+    }
+    if (src.index) g.setIndex(src.index.clone());
+    g.applyMatrix4(mesh.matrixWorld);
+    return { g, mat: mesh.material };
+  };
+  const upgrade = () => {
+    const forms = [['asteroid', 'asteroid:lod1'], ['asteroid:2', 'asteroid:2:lod1']].map(([a, b]) => [bake(a), bake(b)]);
+    if (forms.some(([a, b]) => !a || !b)) return false;
+    // gleiche Größe wie die prozedurale Form (Radius ≈ 1): z-Länge der LOD0-Stufe auf 2 bringen, LOD1 mit gleichem Maßstab
+    const mats = forms.map(([a, b]) => {
+      a.g.computeBoundingBox();
+      const k = 2 / Math.max(1e-3, a.g.boundingBox.max.z - a.g.boundingBox.min.z);
+      a.g.scale(k, k, k); b.g.scale(k, k, k);
+      const m = a.mat;
+      return keep(spinMaterial({
+        map: m.map, normalMap: m.normalMap, normalScale: m.normalScale, roughnessMap: m.roughnessMap, metalnessMap: m.metalnessMap,
+        roughness: m.roughness, metalness: m.metalness, color: 0xffffff, envMapIntensity: 0.5,
+      }, uTime));
+    });
+    // Instanzfarben: Textur ist schon Felsfarbe → nur Helligkeit und ein Hauch Sektor-Ton
+    const base = rockTint.r * 0.3 + rockTint.g * 0.59 + rockTint.b * 0.11 || 0.3, hue = rockTint.clone().multiplyScalar(1 / Math.max(rockTint.r, rockTint.g, rockTint.b, 1e-3));
+    for (const C of glbCells) {
+      const [a, b] = forms[C.vi], src = C.mesh.geometry;
+      const mk = (f) => { const g = new THREE.BufferGeometry(); for (const k in f.g.attributes) g.setAttribute(k, f.g.attributes[k]); g.setIndex(f.g.index); g.setAttribute('aSpin', src.attributes.aSpin); g.boundingSphere = src.boundingSphere; return keep(g); };
+      C.g0 = mk(a); C.g1 = mk(b);
+      C.mesh.geometry = C.g1;
+      C.mesh.material = mats[C.vi];
+      const col = C.mesh.instanceColor;
+      if (col) {
+        for (let i = 0; i < C.mesh.count; i++) {
+          c.fromArray(col.array, i * 3);
+          const lum = (c.r * 0.3 + c.g * 0.59 + c.b * 0.11) / base;
+          c2.setRGB(1, 1, 1).lerp(hue, 0.3).multiplyScalar(Math.min(1.25, 0.5 + lum * 0.55));
+          c2.toArray(col.array, i * 3);
+        }
+        col.needsUpdate = true;
+      }
+    }
+    for (const [a, b] of forms) { keep(a.g); keep(b.g); }
+    return true;
+  };
+  const _cp = new THREE.Vector3();
+  const update = (camera) => {
+    if (!up.done) { if (F_glb.glbKeyVers['asteroid:2:lod1'] && F_glb.glbKeyVers['asteroid:lod1'] && F_glb.glb.has('asteroid') && F_glb.glb.has('asteroid:2')) up.done = upgrade() || !!(up.fail = (up.fail || 0) + 1 > 3); return; }
+    if (!glbCells.length || !glbCells[0].g0 || (up.tick++ & 7)) return; // Stufe alle 8 Bilder prüfen
+    _cp.copy(camera.position);
+    for (const C of glbCells) {
+      const dx = _cp.x - C.x, dy = _cp.y + 260, dz = _cp.z - C.z;
+      const want = dx * dx + dy * dy + dz * dz < 760 * 760 ? C.g0 : C.g1;
+      if (C.mesh.geometry !== want) C.mesh.geometry = want;
+    }
+  };
+
+  return { group, fields, stats: out, update };
 }

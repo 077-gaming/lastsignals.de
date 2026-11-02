@@ -440,6 +440,7 @@ export class Environment {
     this.sky.update(pr);
     this.planets.update(camera.position, camTarget, time);
     if (this.layers) this.layers.update(camTarget, time);
+    if (this.fields?.update) this.fields.update(camera);
     if (this.hazardMat) {
       this.hazardMat.uniforms.uCam.value.set(camTarget.x, camTarget.z);
       const camB = this.sectorSize - Math.max(Math.abs(camTarget.x), Math.abs(camTarget.z));

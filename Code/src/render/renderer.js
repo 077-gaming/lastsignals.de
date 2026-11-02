@@ -7,7 +7,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { CameraLookPass } from './post.js';
 import { BloomPass } from './bloom.js';
 import { FACTIONS, SHIPS, ENEMIES } from '../core/data.js';
-import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, preloadGLB } from './models.js';
+import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, preloadGLB } from './models.js';
 import { store } from '../core/store.js';
 import { JumpMarker } from './marker.js';
 import { Environment, sectorFaction } from './environment.js';
@@ -85,6 +85,12 @@ const EXTRA_MODELS = {
   freighter: ['/models/freighter.glb', NEG_Z],
 };
 for (const t of Object.keys(ENEMIES)) if (t !== 'nest') EXTRA_MODELS['enemy:' + t] = [`/models/enemy-${t}.glb`, NEG_Z];
+// Requisiten mit zwei Stufen (Datei und -lod1): Asteroiden (drei Formen), Erze, Frachtkiste, Wrack
+for (const [k, file] of [['asteroid', 'asteroid-1'], ['asteroid:2', 'asteroid-2'], ['asteroid:3', 'asteroid-3'], ['ore:nickel', 'ore-nickel'],
+  ['ore:cobalt', 'ore-cobalt'], ['ore:platinum', 'ore-platinum'], ['crate', 'crate'], ['wreck', 'wreck']]) {
+  EXTRA_MODELS[k] = [`/models/${file}.glb`, NEG_Z];
+  EXTRA_MODELS[k + ':lod1'] = [`/models/${file}-lod1.glb`, NEG_Z];
+}
 
 const PITCH = 55 * Math.PI / 180;
 const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
@@ -375,9 +381,9 @@ export class Renderer {
     if (!world) return;
     this.faction = sectorFaction(world);
     if (!this._modelsQueued) { this._modelsQueued = true; this._queueModels(world); }
-    this._needSector(world);
     this._shadowAt = null;
     this.env.build(world, this.lights, this.quality, this.rect.width * this.basePR, this.rect.height * this.basePR);
+    this._needSector(world);
     this.output.uniforms.uFlare.value = this.env.flareStrength;
     this.output.uniforms.uSun.value.copy(this.env.sunScreen);
     this.output.uniforms.uSunCol.value.copy(this.env.sunColor);
@@ -475,6 +481,8 @@ export class Renderer {
     const types = new Set([...(sec.spawns || []).map((s) => s.type), ...(sec.eventPirates || [])]);
     for (const t of [...types]) { const b = ENEMIES[t]?.brood?.type; if (b) types.add(b); }
     for (const t of types) this._need('enemy:' + t);
+    // Asteroidenfelder zeigen die großen Brocken als Meshy-Formen (fields.js tauscht sie nach dem Laden ein)
+    if ((this.env.fields?.fields || sec.fields || []).some((F) => F.type === 'asteroids')) for (const k of ['asteroid', 'asteroid:2']) { this._need(k); this._need(k + ':lod1'); }
   }
 
   /** Zusatzmodell anfordern (einmal je Schlüssel; fehlt die Datei, bleibt das prozedurale Modell) */
@@ -603,6 +611,10 @@ export class Renderer {
     else if (key.startsWith('enemy:')) probe = this.factory.buildEnemy(key.slice(6));
     else if (key === 'nest') probe = this.factory.buildNest(0);
     else if (key === 'freighter') probe = this.factory.buildFreighter(0);
+    else if (key.startsWith('asteroid')) probe = this.factory.buildAsteroid(Math.max(0, ASTEROID_KEYS.indexOf(key.replace(':lod1', ''))));
+    else if (key.startsWith('ore:')) probe = this.factory.buildOre(key.split(':')[1], 0);
+    else if (key.startsWith('crate')) probe = this.factory.buildCrate();
+    else if (key.startsWith('wreck')) probe = this.factory.buildWreck(0);
     if (!probe) return; // für diese Sitzung nicht sichtbar: nichts vorbereiten (spart Grafikspeicher)
     const root = probe.root;
     root.position.set(this.camTarget.x, 0, this.camTarget.z);
@@ -676,6 +688,9 @@ export class Renderer {
     } else if (e.kind === 'station') v.gk = [`station:${this.faction}`, 'station'];
     else if (e.kind === 'enemy') v.gk = [e.type === 'nest' ? 'nest' : 'enemy:' + e.type];
     else if (e.kind === 'nest' || e.kind === 'freighter') v.gk = [e.kind];
+    else if (e.kind === 'asteroid') { const k = ASTEROID_KEYS[seed % 3]; v.gk = [k, k + ':lod1']; }
+    else if (e.kind === 'ore') v.gk = ['ore:' + e.type, `ore:${e.type}:lod1`];
+    else if (e.kind === 'crate' || e.kind === 'wreck') v.gk = [e.kind, e.kind + ':lod1'];
     if (v.gk) { for (const k of v.gk) this._need(k); v.ver = f.keyVer(v.gk[0], v.gk[1]); }
     switch (e.kind) {
       case 'player': {
@@ -738,6 +753,7 @@ export class Renderer {
         const r = Math.max(8, e.radius || 40);
         v.model = f.buildAsteroid(seed, r >= 100);
         v.model.root.scale.setScalar(r);
+        if (v.model.lod) v.model.lod.levels[1].distance = r * 9; // Meshy-Fels: LOD1 ab ≈ 90 px Radius
         v.vr = r;
         v.spinX = 0.02 + (seed % 7) * 0.008; v.spinY = 0.03 + (seed % 5) * 0.01;
         break;
@@ -767,12 +783,13 @@ export class Renderer {
         v.model.root.add(ring);
         break;
       }
-      case 'crate': v.model = f.buildCrate(); v.vr = 16; break;
-      case 'wreck': v.model = f.buildWreck(seed); v.vr = 30; break;
+      case 'crate': v.model = f.buildCrate(); v.vr = 16; if (v.model.lod) v.model.lod.levels[1].distance = 170; break;
+      case 'wreck': v.model = f.buildWreck(seed); v.vr = 30; if (v.model.lod) v.model.lod.levels[1].distance = 480; break;
       case 'ore': {
         v.model = f.buildOre(e.type, seed);
         const r = Math.max(8, e.radius || 12) * 1.1;
         v.model.root.scale.setScalar(r);
+        if (v.model.lod) v.model.lod.levels[1].distance = r * 9;
         v.vr = r;
         v.spinX = 0.1 + (seed % 7) * 0.03; v.spinY = 0.12 + (seed % 5) * 0.04;
         break;
