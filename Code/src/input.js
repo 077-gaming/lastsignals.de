@@ -178,7 +178,9 @@ export class Input {
         this.cruise = false;
         this.bus.emit('message', {
           kind: 'info',
-          text: m === 'chase'
+          text: m === 'cockpit'
+            ? 'Kamera: Cockpit – Steuerung wie Verfolger, Instrumente auf der Konsole (V wechselt).'
+            : m === 'chase'
             ? 'Kamera: Verfolger – Maus lenkt, W Schub, S bremsen, Klick wählt Gegner (V wechselt).'
             : 'Kamera: Taktisch – Klick fliegt hin, WASD bildbezogen (V wechselt).',
         });

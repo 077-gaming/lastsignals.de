@@ -18,6 +18,7 @@ import { scaleRingMaterial, scaleRingGeometry } from './overlay.js';
 import { GpuTimer } from '../perf/gputimer.js';
 import { renderHints, PR_CAP } from '../perf/quality.js';
 import { CameraRig, FOV_TAC, FOV_CHASE } from './camrig.js';
+import { Cockpit } from './cockpit.js';
 import { Telegraph } from './telegraph.js';
 import { StationLife } from './stationlife.js';
 import { SpeedDust } from './speeddust.js';
@@ -82,9 +83,18 @@ const OPTIONAL_MODELS = [
 const PITCH = 55 * Math.PI / 180;
 const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
 const FOV = FOV_TAC;
+// Sektor-Look: Belichtung, Farbmultiplikator (vor ACES), Schattenanhebung. Europa kühl-klar, Saturn warm,
+// Eris dunkel-violett mit etwas mehr Belichtung, damit Rümpfe und Asteroiden lesbar bleiben.
+const SECTOR_LOOK = {
+  europa: { exp: 1.04, grade: [0.98, 1.0, 1.03], lift: 0 },
+  saturn: { exp: 1.0, grade: [1.04, 1.0, 0.94], lift: 0 },
+  eris: { exp: 1.07, grade: [1.0, 0.97, 1.05], lift: 0 },
+};
+const PLAYER_LAYER = 5, FOV_COCKPIT = 74; // Cockpit: eigenes Schiff auf eigener Ebene (ausblendbar), Sichtfeld am Pilotenplatz
 // Verfolger-Kamera: Himmelsrahmen um 55° nach oben gedreht → Bildaufbau der Taktik-Kamera liegt vorn am Horizont
 const SKY_Q_CHASE = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), PITCH);
 const SKY_Q_ID = new THREE.Quaternion();
+const _s3 = new THREE.Vector3();
 const _sq = new THREE.Quaternion(), _cp = new THREE.Vector3(), _cl = new THREE.Vector3(), _so = new THREE.Vector3(), _s2 = new THREE.Vector2();
 // Schiff bei Standard-Abstand ≈ 8 % der Bildhöhe, ganz nah ≈ 25 %, ganz weit für die Übersicht
 const ZOOM_MIN = 230, ZOOM_MAX = 3400, ZOOM_START = 520;
@@ -186,6 +196,7 @@ export class Renderer {
     sh.mapSize.set(2048, 2048);
     sh.camera.left = -400; sh.camera.right = 400; sh.camera.top = 400; sh.camera.bottom = -400;
     sh.camera.near = 200; sh.camera.far = 3200;
+    sh.camera.layers.enable(PLAYER_LAYER);
     sh.bias = -0.0004; sh.normalBias = 1.2; sh.radius = 2.5;
     this._shadowAt = null;
     this.scene.add(this.lights.sun, this.lights.sun.target, this.lights.rim, this.lights.rim.target,
@@ -243,6 +254,14 @@ export class Renderer {
     this.output = new CameraLookPass();
     this.output.bloom = this.bloom;
     this.composer.addPass(this.renderPass);
+    // Cockpit: eigene Ebene nach der Welt, Tiefenpuffer gelöscht (eigener Tiefenbereich), Nachleuchten wirkt mit
+    this.cockpit = new Cockpit();
+    this.cockpitPass = new RenderPass(this.cockpit.scene, this.cockpit.camera);
+    this.cockpitPass.clear = false;
+    this.cockpitPass.clearDepth = true;
+    this.cockpitPass.enabled = false;
+    this.composer.addPass(this.cockpitPass);
+    this.camera.layers.enable(PLAYER_LAYER);
     this.composer.addPass(this.bloom);
     this.composer.addPass(this.output);
     // Bloom ist weich: auf Retina-Dichte reicht ein Viertel der Pixel (spart ≈ 6 ms Grafikzeit pro Bild)
@@ -354,6 +373,11 @@ export class Renderer {
     this.output.uniforms.uFlare.value = this.env.flareStrength;
     this.output.uniforms.uSun.value.copy(this.env.sunScreen);
     this.output.uniforms.uSunCol.value.copy(this.env.sunColor);
+    // Belichtung und Farbabstimmung je Sektor: Heimat nach Fraktionsfarbe, tiefe Sektoren dunkler und kühler
+    const look = SECTOR_LOOK[this.faction] || SECTOR_LOOK.europa, deep = Math.max(0, Math.min(2, (world.sector?.index || 1) - 1));
+    this.gl.toneMappingExposure = look.exp * (1 - 0.05 * deep);
+    this.output.uniforms.uGrade.value.set(look.grade[0], look.grade[1], look.grade[2] * (1 + 0.02 * deep));
+    this.output.uniforms.uLift.value = look.lift;
     this._snap = true;
     this._perf.warm = 1.5; // erste Bilder nach dem Aufbau nicht für die Auflösung werten
     // Schattenzustand je Sitzung fest (Qualität „hoch“): wechselte er zwischen Sektoren mit und ohne Station, übersetzte
@@ -968,7 +992,7 @@ export class Renderer {
         if (m.swarm) {
           const p = 1 + Math.sin(t * 3.4 + v.phase) * 0.07;
           m.spin.scale.set(p, 1 + Math.sin(t * 3.4 + v.phase + 1.2) * 0.05, 2 - p);
-          if (e.type === 'spiker') m.spin.rotation.y = t * 0.7 + v.phase;
+          if ((e.def?.look || e.type) === 'spiker') m.spin.rotation.y = t * 0.7 + v.phase;
           else m.spin.rotation.z = v.bank * 0.5;
           m.glow.scale.setScalar(1.5 + Math.sin(t * 5 + v.phase) * 0.3);
         } else {
@@ -1318,6 +1342,67 @@ export class Renderer {
   }
   /** Taste V: Kamera wechseln (Taktisch ↔ Verfolger), Wahl wird gespeichert */
   toggleCamera() { return this.rig.toggle(); }
+  get viewMode() { return this.rig.view; }
+
+  // Cockpit-Pose: Kopfpunkt am Anker HP_Cockpit (Schiffe 3–8) oder am berechneten Anker (Startschiffe, Schiff 2:
+  // vorn oben im Rumpf), Blick in Flugrichtung, leicht gesenkt. Überblendet die Verfolger-Pose mit kc.
+  _cockpitPose(pv, kc) {
+    if (pv._ckRoot !== pv.root) { pv._ckRoot = pv.root; pv._ckNode = pv.root.getObjectByName('HP_Cockpit') || null; }
+    const h = pv.rrot, fx = -Math.sin(h), fz = -Math.cos(h);
+    if (pv._ckNode) { pv.root.updateMatrixWorld(); pv._ckNode.getWorldPosition(_v); }
+    else _v.set(pv.rx + fx * pv.vr * 0.42, pv.root.position.y + pv.vr * 0.2, pv.rz + fz * pv.vr * 0.42);
+    _cp.lerp(_v, kc);
+    _cl.lerp(_v.set(_v.x + fx * 100, _v.y - 4, _v.z + fz * 100), kc);
+    // eigenes Außenmodell ausblenden, solange der Pilotenplatz die Sicht hat
+    if (kc > 0.5 && (pv._ckHidden !== pv.root || this.time > (pv._ckAt || 0))) { pv._ckHidden = pv.root; pv._ckAt = this.time + 0.5; pv.root.traverse((o) => o.layers.set(PLAYER_LAYER)); } // nachgeladene Teile mit erfassen
+  }
+
+  // Verfolger: liegt die Kamera in einem großen Stationsteil (Hüllquader je Teil), rückt sie zum Schiff heran;
+  // steht schon das Schiff darin, steigt sie über dessen Oberkante. Quader einmal je Station (Stationen stehen still).
+  _clearStation(pv) {
+    let sv = this._stView;
+    if (!sv || !this.views.has(sv.id) || this.views.get(sv.id) !== sv) { sv = null; this.views.forEach((v) => { if (v.kind === 'station') sv = v; }); this._stView = sv; }
+    if (!sv || Math.hypot(_cp.x - sv.rx, _cp.z - sv.rz) > sv.vr * 3 + 600) return;
+    if (!sv._bbs || sv._bbN !== sv.root.children.length) {
+      sv._bbN = sv.root.children.length;
+      sv.root.updateMatrixWorld(true);
+      sv._bbs = [];
+      sv.root.traverse((o) => {
+        const pos = o.isMesh && o.visible && o.geometry?.attributes?.position;
+        if (!pos || pos.count < 300) return;
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+        if (b.max.y - b.min.y > 4) sv._bbs.push(b.expandByScalar(6)); // flache Scheiben (Andockfeld) verdecken nichts
+      });
+    }
+    const hit = (p) => { for (const b of sv._bbs) if (b.containsPoint(p)) return b; return null; };
+    const bb = hit(_cp);
+    if (!bb) return;
+    _v.set(pv.rx, pv.root.position.y, pv.rz);
+    if (hit(_v)) { _cp.y = Math.max(_cp.y, bb.max.y + 15); return; }
+    let lo = 0, hi = 1; // Anteil der Strecke Schiff → Kamera, der noch frei ist
+    for (let k = 0; k < 8; k++) { const m = (lo + hi) / 2; _s3.copy(_v).lerp(_cp, m); if (hit(_s3)) hi = m; else lo = m; }
+    _cp.copy(_v).lerp(_cp, lo);
+  }
+
+  _cockpitFrame(dt, W, pv, fov) {
+    const kc = this.rig.kc, on = kc > 0.5 && !!pv && !!W?.player && !W.docked;
+    this.cockpitPass.enabled = on;
+    this.camera.layers[on ? 'disable' : 'enable'](PLAYER_LAYER);
+    if (!on) return;
+    const p = W.player, rig = this.rig;
+    const t = p.targetId != null ? W.entities.get(p.targetId) : null;
+    this.cockpit.setAccent(FACTIONS[W.profile?.faction]?.accent ?? 0xff8a2a);
+    // Kopfbewegung: Stoß-Feder und Beschleunigung, abschaltbar über Kamerawackeln
+    const m = rig.shakeOn ? rig.motion : 0;
+    _so.set(rig.kick.x * 0.002 * m, rig.kick.y * 0.002 * m - Math.max(-1, Math.min(1, (rig.accel || 0) / 400)) * 0.03 * m, 0);
+    this.cockpit.update(dt, fov, _so, rig.shakeRoll(this.time) * 0.3 * m, {
+      hull: p.hpMax ? p.hp / p.hpMax : 1, shield: p.shieldMax ? p.shield / p.shieldMax : 0,
+      speed: Math.hypot(p.vx || 0, p.vz || 0) || p.speed || 0, maxSpeed: pv.maxSpeed || 320, ab: (pv.ab || 0) > 0.1,
+      target: t && t.alive !== false ? (t.name || t.def?.name || t.type) : null,
+      dist: t ? Math.hypot(t.x - p.x, t.z - p.z) : 0, tHull: t && t.hpMax ? t.hp / t.hpMax : 0,
+    });
+  }
   get cameraMode() { return this.rig.mode; }
   /** Verfolger-Kamera zu mehr als der Hälfte eingeblendet */
   get chaseActive() { return this.rig.mode === 'chase' && this.rig.k > 0.5; }
@@ -1625,18 +1710,22 @@ export class Renderer {
       rig.chasePose(dt, pv, e, hostile ? cv : null, hostile ? this.combatK : 0, pv.maxSpeed, shipY, tanC);
       _cp.lerp(rig._outPos, K); _cl.lerp(rig._outLook, K);
       viewD = d + (rig._outPos.distanceTo(_v.set(pv.rx, 0, pv.rz)) - d) * K;
+      if (rig.kc > 0.001) this._cockpitPose(pv, rig.kc);
+      else if (K > 0.5) this._clearStation(pv);
     } else rig.reset = true;
     this._viewD = viewD;
     cam.position.copy(_cp);
     // Wackeln: Taktisch nur Verschiebung (Himmel ist ein gebackenes Bild), Verfolger auch leichte Neigung
-    rig.shakeOffset(this.time, _so, (d * 0.022) * (1 - K) + Math.max(14, pv ? pv.vr : 20) * 0.16 * K);
+    rig.shakeOffset(this.time, _so, (d * 0.022) * (1 - K) + Math.max(14, pv ? pv.vr : 20) * 0.16 * K * (1 - 0.85 * rig.kc));
     cam.position.add(_so);
     cam.up.set(0, 1, 0);
     cam.lookAt(_cl);
-    if (K > 0.001) cam.rotateZ((-(pv ? pv.bank : 0) * 0.16 + rig.shakeRoll(this.time)) * K);
+    if (K > 0.001) cam.rotateZ((-(pv ? pv.bank : 0) * (0.16 + 0.34 * rig.kc) + rig.shakeRoll(this.time) * (1 - 0.6 * rig.kc)) * K);
     // Sichtfeld: Kick bei hohem Tempo und Nachbrenner (Taktik nur leicht)
-    const fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (FOV_CHASE - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K
+    let fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (FOV_CHASE - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K
       - (rig.firePunch || 0) * (0.6 + 1.4 * K); // Schuss: kurzes Heranrücken (negativer FOV-Puls)
+    fov += (FOV_COCKPIT + 6 * rig.fovKick * rig.motion - fov) * rig.kc;
+    this._cockpitFrame(dt, W, pv, fov);
     if (Math.abs(fov - this._fov) > 0.01) {
       this._fov = fov; this._tanH = Math.tan(fov * Math.PI / 360);
       cam.fov = fov; cam.updateProjectionMatrix();
@@ -1874,6 +1963,7 @@ export class Renderer {
     this.gl.setSize(w, h, false);
     this.composer.setPixelRatio(pr);
     this.composer.setSize(w, h);
+    this.cockpit.setSize(w, h);
     // EffectComposer ruft setSize der Durchgänge mit Pufferpixeln auf; FXAA nur ohne Retina-Dichte
     this.output.setFxaa(pr < 1.5);
     this._updatePointScale();
@@ -2024,6 +2114,7 @@ export class Renderer {
     this.factory.dispose();
     disposeTextures();
     this.composer.renderTarget1.dispose(); this.composer.renderTarget2.dispose();
+    this.cockpit.dispose();
     this.bloom.dispose(); this.output.dispose?.();
     this.gpuTimer.dispose();
     this.gl.dispose();

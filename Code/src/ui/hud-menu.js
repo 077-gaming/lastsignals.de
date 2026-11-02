@@ -3,6 +3,7 @@
 import { SHIPS, ENEMIES, AMMO } from '../core/data.js';
 import { TextSlot, ClassSlot, Bar, fmt } from './hud-parts.js';
 import { SYSTEM_QUESTS, SYSTEM_CHAPTERS } from '../sim/system-quests.js';
+import { contractTitle } from '../sim/contracts.js';
 
 const GROUP = { pirate: 'PIRAT', swarm: 'SCHWARM' };
 const BEH = { aggressive: 'AGGRESSIV', passive: 'PASSIV', opportunist: 'LAUERT', thief: 'PLÜNDERER', territorial: 'REVIER', stationary: 'STATIONÄR', nest: 'NEST' };
@@ -119,6 +120,8 @@ export function menuHtml(windows) {
       </section>
       <section class="mp-pane" data-pane="steuerung"><div class="mp-ctrl">${ctrl}</div></section>
       <section class="mp-pane" data-pane="hilfe">
+        <div class="mp-sec mp-sec-t">AUFTRÄGE · TAG UND WOCHE<span class="hg-sp"></span><span class="mp-sec-n">TÄGLICH NEU · WOCHE AB MONTAG</span></div>
+        <div class="mp-sys" data-r="contracts"></div>
         <div class="mp-sec mp-sec-t">SYSTEM-REIHE<span class="hg-sp"></span><span class="mp-sec-n" data-r="sysstate"></span></div>
         <div class="mp-sys" data-r="syslist"></div>
         <div class="mp-pair">
@@ -188,9 +191,11 @@ export class HudMenu {
 
   _renderHelp(p) {
     const st = p.system || {}, done = st.done || [], skip = st.skipped || [];
-    const key = `${st.mode}|${done.length}|${skip.length}|${st.idx}`;
+    const ct = p.contracts || {}, all = [...(ct.daily || []), ...(ct.weekly || [])];
+    const key = `${st.mode}|${done.length}|${skip.length}|${st.idx}|${all.map((c) => c.progress).join(',')}`;
     if (key === this._helpKey) return;
     this._helpKey = key;
+    this.el.querySelector('[data-r="contracts"]').innerHTML = all.map((c) => `<div class="mp-sysr${c.done ? ' is-done' : ''}"><span class="ls-num">${c.id[0] === 'w' ? 'WO' : 'TG'}</span><span>${esc(contractTitle(c))}</span><span class="hg-sp"></span><b class="ls-num">${c.done ? 'ERLEDIGT' : `${fmt(c.progress)}/${fmt(c.count)}`}</b></div>`).join('');
     const cur = SYSTEM_QUESTS[st.idx | 0];
     this.el.querySelector('[data-r="sysstate"]').textContent = `${done.length} / ${SYSTEM_QUESTS.length} · ${st.mode === 'guided' ? 'GEFÜHRT' : 'FREI'}`;
     this.el.querySelector('[data-r="syslist"]').innerHTML = Object.entries(SYSTEM_CHAPTERS).map(([n, t]) => {

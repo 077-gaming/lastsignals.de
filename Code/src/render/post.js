@@ -18,6 +18,8 @@ uniform sampler2D tDiffuse;
 uniform sampler2D tBloom;     // Nachleuchten (bloom.js), Viertelauflösung, vor der Tonwertabbildung addiert
 uniform float uBloomK;
 uniform float uTime, uGrain, uCA, uVig, uFlare, uAspect, uWarp, uDanger;
+uniform vec3 uGrade;          // Farbabstimmung je Sektor (Multiplikator vor der Tonwertabbildung)
+uniform float uLift;          // Anhebung der Schatten je Sektor (nach der Tonwertabbildung, sehr klein)
 uniform vec2 uSun;            // Sonne in Bildkoordinaten (0..1)
 uniform vec3 uSunCol;
 uniform vec2 uLensC, uLensR; uniform float uLensK;   // Sprungtor: Gravitationslinse (Mitte, Halbachsen in Bildkoordinaten)
@@ -147,6 +149,7 @@ void main() {
     c += (fl * 0.018 + veil) * uFlare * uSunCol;
   #endif
 
+  c *= uGrade;
   #if defined( ACES_FILMIC_TONE_MAPPING )
     c = ACESFilmicToneMapping(c);
   #elif defined( AGX_TONE_MAPPING )
@@ -154,6 +157,7 @@ void main() {
   #elif defined( NEUTRAL_TONE_MAPPING )
     c = NeutralToneMapping(c);
   #endif
+  c = c + uLift * (1.0 - c);
   vec4 o = sRGBTransferOETF(vec4(c, 1.0));
 
   // Vignette (sanft, optisch: cos^4-ähnlich)
@@ -175,7 +179,7 @@ export class CameraLookPass extends Pass {
   constructor() {
     super();
     this.uniforms = {
-      tDiffuse: { value: null }, toneMappingExposure: { value: 1 }, tBloom: { value: null }, uBloomK: { value: 0 },
+      tDiffuse: { value: null }, toneMappingExposure: { value: 1 }, uGrade: { value: new THREE.Vector3(1, 1, 1) }, uLift: { value: 0 }, tBloom: { value: null }, uBloomK: { value: 0 },
       uTime: { value: 0 }, uGrain: { value: 0.022 }, uCA: { value: 0.006 }, uVig: { value: 0.32 },
       uFlare: { value: 0 }, uAspect: { value: 1.6 }, uWarp: { value: 0 }, uDanger: { value: 0 }, uSun: { value: new THREE.Vector2(0.75, 0.8) },
       uSunCol: { value: new THREE.Color(1, 0.95, 0.88) },

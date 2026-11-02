@@ -307,6 +307,7 @@ export class World {
         continue;
       }
       if (e.rank === 'alpha') this._alphaTick(e, dt);
+      if (e.def.brood || e.def.regen || e.def.jam) this._traitTick(e, dt);
       e.thinkCd -= dt;
       if (e.state === 'nest') {
         if (e.thinkCd <= 0) { e.thinkCd += C.THINK_INTERVAL; thinkNest(this, e); }
@@ -749,6 +750,7 @@ export class World {
     const rvx = (tgt.vx || 0) - (shooter.vx || 0), rvz = (tgt.vz || 0) - (shooter.vz || 0);
     const cross = Math.abs(rvx * dz - rvz * dx) / d;
     c -= C.HIT_CROSS_LOSS * Math.min(1, cross / C.HIT_CROSS_SPEED);
+    if (shooter === this.player && this._jamUntil > this.time) c -= 0.15; // Jammer in der Nähe
     return c < C.HIT_MIN ? C.HIT_MIN : c > C.HIT_MAX ? C.HIT_MAX : c;
   }
 
@@ -898,7 +900,8 @@ export class World {
     e.attacking = false;
     e.token = false;
     e.vx = 0; e.vz = 0;
-    e.respawnAt = this.time + this.rng.range(C.ENEMY_RESPAWN[0], C.ENEMY_RESPAWN[1]);
+    e.respawnAt = this.time + (e.def.respawn || this.rng.range(C.ENEMY_RESPAWN[0], C.ENEMY_RESPAWN[1]));
+    if (e.def.boss) this._msg(`${e.name} ist gefallen. Die Beute gehört dem letzten Treffer.`, 'quest');
     this.entities.delete(e.id);
     if (p.targetId === e.id) { p.targetId = null; p.attacking = false; }
     this.bus.emit('explode', { id: e.id, x: e.x, z: e.z, size: this.explodeSize(e), kind: 'enemy', rank: e.rank || null });
@@ -1101,7 +1104,7 @@ export class World {
 
   /** Variante würfeln (beim Aufbau und Wiedererscheinen). */
   _rollRank(e) {
-    if (e.def.eventOnly || e.temp) { this.applyRank(e, 'normal'); return; }
+    if (e.def.eventOnly || e.temp || e.def.boss) { this.applyRank(e, 'normal'); return; }
     const r = this.rng.next();
     // Kein Alpha (×10 Leben, ×6 Schaden) im Startsektor einer Fraktion: für Neulinge kaum zu schaffen
     const alphaOk = (this.sector && this.sector.index || 1) >= 2;
@@ -1174,6 +1177,29 @@ export class World {
         }
         this._msg(`${e.name} ruft Verstärkung: ${n} ${ENEMIES[type].name} im Anflug!`, 'warn');
       }
+    }
+  }
+
+  /** Eigenheiten der tiefen Gegner: brood (im Kampf Nachwuchs, höchstens max zugleich), regen (Schild je Sekunde),
+   *  jam (stört im Kampf die Zielerfassung des Spielers: Trefferchance −15 %, solange er in Reichweite ist). */
+  _traitTick(e, dt) {
+    const d = e.def, engagedNow = e.provoked || e.state === 'attack';
+    if (d.regen && e.shield < e.shieldMax) e.shield = Math.min(e.shieldMax, e.shield + e.shieldMax * d.regen * dt);
+    if (d.jam && engagedNow) {
+      const p = this.player, dx = p.x - e.x, dz = p.z - e.z;
+      if (dx * dx + dz * dz < d.range * d.range * 1.2) { if (!(this._jamUntil > this.time)) this._msg(`${e.name} stört deine Zielerfassung.`, 'warn', 'jam', 20); this._jamUntil = this.time + 0.5; }
+    }
+    if (d.brood && engagedNow) {
+      e.broodT = (e.broodT ?? d.brood.every * 0.5) - dt;
+      if (e.broodT > 0) return;
+      e.broodT = d.brood.every;
+      e.brood = (e.brood || []).filter((o) => o.alive !== false && this.entities.has(o.id));
+      if (e.brood.length >= d.brood.max) return;
+      const a = this.rng.next() * Math.PI * 2, r = e.radius + 80;
+      const o = this.spawnTemp(d.brood.type, e.x + Math.cos(a) * r, e.z + Math.sin(a) * r);
+      o.expire = true;
+      this._aggro(o);
+      e.brood.push(o);
     }
   }
 

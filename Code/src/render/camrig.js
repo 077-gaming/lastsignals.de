@@ -21,21 +21,23 @@ const smooth = (k) => k * k * (3 - 2 * k);
 
 export function readCamSettings() {
   // Standard ist die Verfolger-Kamera (Entscheidung Toni 30.10.2026); Taktisch nur, wenn so gewählt
-  const o = { mode: 'chase', shake: true, reduced: false };
+  const o = { mode: 'chase', shake: true, reduced: false, cockpit: false };
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
     const c = s.camera || localStorage.getItem(KEY_CAM);
     o.mode = c === 'tactical' ? 'tactical' : 'chase';
+    o.cockpit = o.mode === 'chase' && s.cockpit === true;
     o.shake = s.shake !== false;
     o.reduced = s.reducedMotion === true;
   } catch { /* privater Modus */ }
   try { if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) o.reduced = true; } catch { /* alt */ }
   return o;
 }
-export function saveCamMode(mode) {
+export function saveCamMode(mode, cockpit = false) {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
     s.camera = mode;
+    s.cockpit = !!cockpit;
     localStorage.setItem(KEY, JSON.stringify(s));
     localStorage.setItem(KEY_CAM, mode);
     try { window.dispatchEvent(new CustomEvent('ls:settings', { detail: { ...s } })); } catch { /* alt */ }
@@ -48,6 +50,8 @@ export class CameraRig {
     this.mode = s.mode;
     this.k = s.mode === 'chase' ? 1 : 0;   // 0 = taktisch, 1 = Verfolger (Übergang dazwischen)
     this.kRaw = this.k;
+    this.cockpit = s.cockpit;              // Cockpit = Verfolger-Steuerung aus dem Pilotenplatz
+    this.kc = this.kcRaw = s.cockpit ? 1 : 0;
     this._apply(s);
     this.trauma = 0;                       // 0..1, Quadrat bestimmt die Stärke
     this.kick = new THREE.Vector3();       // Stoß-Feder (Welt-Versatz in m)
@@ -81,13 +85,17 @@ export class CameraRig {
     const s = readCamSettings();
     this._apply(s);
     if (s.mode !== this.mode) this.mode = s.mode;
+    this.cockpit = s.cockpit;
   }
-  /** Taste V: Kamera wechseln, Wahl speichern. Gibt den neuen Modus zurück. */
+  /** Taste V: Verfolger → Cockpit → Taktisch → Verfolger, Wahl speichern. Gibt die neue Ansicht zurück. */
   toggle() {
-    this.mode = this.mode === 'chase' ? 'tactical' : 'chase';
-    saveCamMode(this.mode);
-    return this.mode;
+    if (this.mode === 'chase' && !this.cockpit) this.cockpit = true;
+    else if (this.cockpit) { this.cockpit = false; this.mode = 'tactical'; }
+    else this.mode = 'chase';
+    saveCamMode(this.mode, this.cockpit);
+    return this.view;
   }
+  get view() { return this.cockpit ? 'cockpit' : this.mode; }
   get chase() { return this.mode === 'chase'; }
   /** Verfolger-Abstand (Mausrad) */
   zoomBy(delta) { this.zoom = Math.max(0.65, Math.min(2.4, this.zoom * Math.exp(delta * 0.0011))); }
@@ -185,6 +193,9 @@ export class CameraRig {
     const d = dt / BLEND_T;
     this.kRaw = want > this.kRaw ? Math.min(want, this.kRaw + d) : Math.max(want, this.kRaw - d);
     this.k = smooth(this.kRaw);
+    const wc = this.cockpit ? 1 : 0;
+    this.kcRaw = wc > this.kcRaw ? Math.min(wc, this.kcRaw + d) : Math.max(wc, this.kcRaw - d);
+    this.kc = smooth(this.kcRaw);
     // Sichtfeld weitet sich ab ≈ 55 % Tempo, Nachbrenner legt nach
     const fk = Math.max(0, Math.min(1, (n - 0.55) / 0.5));
     const fw = fk * fk * (3 - 2 * fk) + ab * 0.45;

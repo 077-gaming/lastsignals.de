@@ -51,6 +51,21 @@ export const FACTIONS = {
 
 // Sektoren: Index 1 bis 3 für den ersten Test Run. Gleiche Gegner in allen drei Heimaten.
 // size = halbe Kantenlänge der quadratischen Karte in Metern (Spielebene x/z).
+// Tiefe Sektoren 4–8 je Fraktion (ohne Station, Stufe 10–40; Namen und Stufen wie auf der Website)
+const DEEP_NAMES = {
+  europa: ['Kallisto', 'Amalthea', 'Himalia', 'Thebe', 'Elara'],
+  saturn: ['Dione', 'Rhea', 'Titan', 'Hyperion', 'Iapetus'],
+  eris: ['Makemake', 'Haumea', 'Quaoar', 'Orcus', 'Gonggong'],
+};
+// Tiefe Sektoren: [Stufe von, bis, Größe, Gegner, Erze, Ereignis-Piraten, Boss]
+const DEEP = [
+  [10, 14, 8500, [['vulture', 10], ['spitter', 16], ['merc', 16], ['hunter', 6]], { cobalt: 16, platinum: 16 }, ['merc'], null],
+  [14, 20, 9000, [['merc', 14], ['breeder', 12], ['stalker', 16], ['hunter', 6]], { platinum: 18, iridium: 8 }, ['merc', 'stalker'], null],
+  [20, 26, 9500, [['jammer', 14], ['stalker', 14], ['symbiont', 16]], { platinum: 16, iridium: 12 }, ['stalker'], ['werft', 1]],
+  [26, 32, 10000, [['boarder', 16], ['minelayer', 12], ['colossus', 6]], { iridium: 18 }, ['boarder'], ['wal', 1]],
+  [32, 40, 10000, [['corsair', 16], ['colossus', 6], ['queen', 2], ['tender', 12]], { iridium: 22 }, ['corsair'], ['dread', 1]],
+];
+
 const HOME_NAMES = {
   europa: ['Europa', 'Io', 'Ganymed', 'Kallisto'],
   saturn: ['Enceladus', 'Mimas', 'Tethys', 'Dione'],
@@ -107,7 +122,7 @@ export function sectorsFor(factionId) {
     [id(3)]: {
       id: id(3), index: 3, name: names[2], levelMin: 6, levelMax: 10, size: 8000,
       station: null,
-      portals: [{ x: -6400, z: -6400, to: id(2) }],
+      portals: [{ x: -6400, z: -6400, to: id(2) }, { x: 6400, z: 6400, to: id(4) }],
       spawns: [{ type: 'jackal', count: 18 }, { type: 'spiker', count: 18 }, { type: 'vulture', count: 10 }],
       crates: 28, ore: { cobalt: 18, platinum: 14 },
       fields: [
@@ -119,6 +134,24 @@ export function sectorsFor(factionId) {
       ],
       eventPirates: ['jackal'],
     },
+    ...Object.fromEntries(DEEP.map(([lo, hi, size, sp, ore, ev, boss], i) => {
+      const n = i + 4, h = size / 2 - 600, last = n === 8;
+      const k = (a) => Math.round(Math.cos(a) * size * 0.3), m = (a) => Math.round(Math.sin(a) * size * 0.3);
+      return [id(n), {
+        id: id(n), index: n, name: DEEP_NAMES[factionId][i], levelMin: lo, levelMax: hi, size,
+        station: null,
+        portals: [{ x: -h, z: -h, to: id(n - 1) }, ...(last ? [] : [{ x: h, z: h, to: id(n + 1) }])],
+        spawns: [...sp.map(([type, count]) => ({ type, count })), ...(boss ? [{ type: boss[0], count: boss[1] }] : [])],
+        crates: 30, ore,
+        fields: [
+          { x: k(n), z: -m(n) - 600, r: 1900, type: 'asteroids' },
+          { x: -k(n * 2), z: m(n * 2), r: 1700, type: 'asteroids' },
+          { x: 0, z: 0, r: 1300, type: 'debris' },
+          { x: -size * 0.35, z: size * 0.1, r: 2200, type: 'nebula' },
+        ],
+        eventPirates: ev,
+      }];
+    })),
   };
 }
 
@@ -213,6 +246,120 @@ export const ENEMIES = {
     loot: { credits: 800, tritium: 4, xp: 1600, honor: 8 }, color: 0x3e3a3a, accent: 0xff3a6a,
     habitat: { route: 0.4, debris: 0.3, open: 0.3 }, explode: 2.4,
     ai: { style: 'thief', orbit: 0.75, special: 'volley', specialCd: [8, 12], retreatHp: 0.35, cover: true, call: false, guard: true, dodge: 0.4 },
+  },
+  // ── Tiefe Sektoren 4–8 (Stufe 10–30). look: Grundform aus der Grafik (eigene Farbe, Größe aus radius) ──
+  spitter: {
+    name: 'Spitter', group: 'swarm', behavior: 'aggressive', pack: true, level: 10, look: 'spiker',
+    hp: 5200, shield: 2600, speed: 170, damage: 120, range: 700, fireRate: 0.8, aggroRange: 800, radius: 22,
+    loot: { credits: 900, tritium: 4, xp: 2000, honor: 8 }, color: 0x5d7a2a, accent: 0xb8ff3a,
+    habitat: { asteroids: 0.6, open: 0.4 }, explode: 2,
+    ai: { style: 'kite', orbit: 0.9, special: 'acid', specialCd: [5, 8], retreatHp: 0, cover: true, call: true, guard: false, dodge: 0.35 },
+  },
+  merc: {
+    name: 'Merc', group: 'pirate', behavior: 'aggressive', pack: true, level: 11, look: 'raider',
+    hp: 6800, shield: 5200, speed: 220, damage: 130, range: 480, fireRate: 1.0, aggroRange: 650, radius: 24,
+    loot: { credits: 1100, tritium: 5, xp: 2400, honor: 10 }, color: 0x6a6f60, accent: 0xffd23a,
+    habitat: { route: 0.5, debris: 0.2, open: 0.3 }, explode: 2,
+    ai: { style: 'pack', orbit: 0.7, special: 'volley', specialCd: [6, 9], retreatHp: 0.2, cover: false, call: true, guard: true, dodge: 0.5 },
+  },
+  breeder: {
+    name: 'Breeder', group: 'swarm', behavior: 'territorial', pack: false, level: 14, look: 'larva',
+    hp: 9500, shield: 3000, speed: 120, damage: 90, range: 300, fireRate: 0.9, aggroRange: 600, radius: 34,
+    loot: { credits: 1500, tritium: 7, xp: 3200, honor: 12 }, color: 0x4e8a3a, accent: 0xffe86a,
+    habitat: { asteroids: 0.8, open: 0.2 }, explode: 2.6, brood: { type: 'larva', every: 9, max: 4 },
+    ai: { style: 'swarm', orbit: 0.6, special: 'acid', specialCd: [9, 12], retreatHp: 0, cover: false, call: true, guard: false, dodge: 0.1 },
+  },
+  stalker: {
+    name: 'Stalker', group: 'pirate', behavior: 'opportunist', pack: true, level: 15, look: 'jackal',
+    hp: 7600, shield: 4200, speed: 290, damage: 160, range: 420, fireRate: 1.1, aggroRange: 700, radius: 22,
+    loot: { credits: 1400, tritium: 6, xp: 3000, honor: 12 }, color: 0x2e3138, accent: 0x7affea,
+    habitat: { route: 0.4, debris: 0.3, open: 0.3 }, explode: 1.8,
+    ai: { style: 'ambush', orbit: 0.65, special: 'ram', specialCd: [5, 8], retreatHp: 0.3, cover: true, call: true, guard: false, dodge: 0.85 },
+  },
+  jammer: {
+    name: 'Jammer', group: 'pirate', behavior: 'aggressive', pack: false, level: 20, look: 'vulture',
+    hp: 8800, shield: 6000, speed: 200, damage: 110, range: 760, fireRate: 0.7, aggroRange: 850, radius: 26,
+    loot: { credits: 1700, tritium: 8, xp: 3600, honor: 14 }, color: 0x3a3a52, accent: 0x9a7aff,
+    habitat: { route: 0.3, open: 0.7 }, explode: 2.2, jam: true,
+    ai: { style: 'kite', orbit: 0.95, special: 'volley', specialCd: [7, 10], retreatHp: 0.35, cover: true, call: false, guard: true, dodge: 0.45 },
+  },
+  symbiont: {
+    name: 'Symbiont', group: 'swarm', behavior: 'territorial', pack: true, level: 21, look: 'larva',
+    hp: 6200, shield: 4800, speed: 230, damage: 120, range: 200, fireRate: 1.2, aggroRange: 500, radius: 18,
+    loot: { credits: 1500, tritium: 7, xp: 3400, honor: 13 }, color: 0x2f6a6a, accent: 0x6affc8,
+    habitat: { asteroids: 0.6, nebula: 0.2, open: 0.2 }, explode: 1.6, regen: 0.03,
+    ai: { style: 'swarm', orbit: 0.75, special: 'leap', specialCd: [5, 8], retreatHp: 0, cover: false, call: true, guard: false, dodge: 0.3 },
+  },
+  boarder: {
+    name: 'Boarder', group: 'pirate', behavior: 'aggressive', pack: true, level: 26, look: 'jackal',
+    hp: 12500, shield: 7000, speed: 270, damage: 210, range: 300, fireRate: 1.2, aggroRange: 650, radius: 26,
+    loot: { credits: 2200, tritium: 10, xp: 4600, honor: 16 }, color: 0x5a3a2e, accent: 0xff7a3a,
+    habitat: { route: 0.5, debris: 0.2, open: 0.3 }, explode: 2.2,
+    ai: { style: 'pack', orbit: 0.45, special: 'ram', specialCd: [4, 7], retreatHp: 0, cover: false, call: true, guard: false, dodge: 0.4 },
+  },
+  minelayer: {
+    name: 'Minelayer', group: 'pirate', behavior: 'passive', pack: false, level: 27, look: 'vulture',
+    hp: 14000, shield: 9000, speed: 160, damage: 140, range: 650, fireRate: 0.6, aggroRange: 700, radius: 30,
+    loot: { credits: 2600, tritium: 12, xp: 5200, honor: 18 }, color: 0x4a4436, accent: 0xff3a3a,
+    habitat: { route: 0.6, open: 0.4 }, explode: 2.8,
+    ai: { style: 'kite', orbit: 1, special: 'acid', specialCd: [4, 6], retreatHp: 0.3, cover: true, call: false, guard: true, dodge: 0.2, spRange: 900 },
+  },
+  colossus: {
+    name: 'Colossus', group: 'pirate', behavior: 'aggressive', pack: false, level: 28, look: 'raider',
+    hp: 42000, shield: 26000, speed: 110, damage: 360, range: 620, fireRate: 0.6, aggroRange: 750, radius: 60,
+    loot: { credits: 7000, tritium: 30, xp: 14000, honor: 40 }, color: 0x4c4e55, accent: 0xff5a2a,
+    habitat: { route: 0.4, open: 0.6 }, explode: 4,
+    ai: { style: 'pack', orbit: 0.6, special: 'volley', specialCd: [5, 7], retreatHp: 0, cover: false, call: false, guard: true, dodge: 0 },
+  },
+  corsair: {
+    name: 'Corsair', group: 'pirate', behavior: 'thief', pack: true, level: 32, look: 'vulture',
+    hp: 16000, shield: 11000, speed: 320, damage: 240, range: 460, fireRate: 1.1, aggroRange: 700, radius: 26,
+    loot: { credits: 3200, tritium: 14, xp: 6400, honor: 22 }, color: 0x2a2228, accent: 0xff2a8a,
+    habitat: { route: 0.5, debris: 0.3, open: 0.2 }, explode: 2.4,
+    ai: { style: 'thief', orbit: 0.7, special: 'ram', specialCd: [5, 8], retreatHp: 0.3, cover: true, call: true, guard: true, dodge: 0.7 },
+  },
+  queen: {
+    name: 'Queen', group: 'swarm', behavior: 'territorial', pack: false, level: 35, look: 'spiker',
+    hp: 90000, shield: 45000, speed: 90, damage: 300, range: 750, fireRate: 0.7, aggroRange: 900, radius: 80,
+    loot: { credits: 16000, tritium: 80, xp: 30000, honor: 90 }, color: 0x3a5a2a, accent: 0xfff06a,
+    habitat: { asteroids: 1 }, explode: 5, brood: { type: 'tender', every: 7, max: 6 },
+    ai: { style: 'kite', orbit: 0.8, special: 'acid', specialCd: [5, 7], retreatHp: 0, cover: false, call: true, guard: false, dodge: 0 },
+  },
+  tender: {
+    name: 'Tender', group: 'swarm', behavior: 'territorial', pack: true, level: 32, look: 'larva',
+    hp: 5400, shield: 2000, speed: 260, damage: 110, range: 160, fireRate: 1.2, aggroRange: 500, radius: 14,
+    loot: { credits: 800, tritium: 3, xp: 1800, honor: 6 }, color: 0x7aa04a, accent: 0xfff06a,
+    habitat: { asteroids: 0.8, open: 0.2 }, explode: 1.2,
+    ai: { style: 'swarm', orbit: 0.7, special: 'leap', specialCd: [4, 7], retreatHp: 0, cover: false, call: true, guard: false, dodge: 0.35 },
+  },
+  hunter: {
+    name: 'Hunter', group: 'pirate', behavior: 'aggressive', pack: true, level: 12, look: 'jackal', front: true,
+    hp: 7000, shield: 4000, speed: 300, damage: 150, range: 500, fireRate: 1.1, aggroRange: 1100, radius: 22,
+    loot: { credits: 1300, tritium: 6, xp: 2800, honor: 14 }, color: 0x3a1e1e, accent: 0xff3a3a,
+    habitat: { route: 0.6, open: 0.4 }, explode: 1.8,
+    ai: { style: 'pack', orbit: 0.7, special: 'volley', specialCd: [5, 8], retreatHp: 0, cover: false, call: true, guard: false, dodge: 0.6 },
+  },
+  // ── Bosse: je einer in Sektor 6, 7, 8; erscheinen nach langer Pause neu, die Beute geht an den letzten Treffer ──
+  werft: {
+    name: 'Schwarze Werft', group: 'pirate', behavior: 'aggressive', pack: false, level: 24, look: 'vulture', boss: true, respawn: 900,
+    hp: 260000, shield: 140000, speed: 40, damage: 420, range: 900, fireRate: 0.5, aggroRange: 1000, radius: 120,
+    loot: { credits: 60000, tritium: 400, xp: 120000, honor: 400 }, color: 0x1e1e22, accent: 0xff4a1a,
+    habitat: { open: 1 }, explode: 7, brood: { type: 'merc', every: 14, max: 4 },
+    ai: { style: 'kite', orbit: 0.9, special: 'volley', specialCd: [4, 6], retreatHp: 0, cover: false, call: false, guard: true, dodge: 0 },
+  },
+  wal: {
+    name: 'Sternenwal-Ältester', group: 'swarm', behavior: 'passive', pack: false, level: 30, look: 'larva', boss: true, respawn: 900,
+    hp: 380000, shield: 120000, speed: 70, damage: 380, range: 500, fireRate: 0.6, aggroRange: 700, radius: 160,
+    loot: { credits: 80000, tritium: 500, xp: 160000, honor: 500 }, color: 0x2a4a5a, accent: 0x8affff,
+    habitat: { route: 1 }, explode: 8, regen: 0.01,
+    ai: { style: 'swarm', orbit: 0.5, special: 'leap', specialCd: [6, 9], retreatHp: 0, cover: false, call: false, guard: false, dodge: 0 },
+  },
+  dread: {
+    name: 'Dreadnought', group: 'pirate', behavior: 'aggressive', pack: false, level: 38, look: 'raider', boss: true, respawn: 1200,
+    hp: 520000, shield: 300000, speed: 60, damage: 600, range: 950, fireRate: 0.5, aggroRange: 1100, radius: 180,
+    loot: { credits: 120000, tritium: 800, xp: 240000, honor: 800 }, color: 0x2a2c33, accent: 0xff2a2a,
+    habitat: { open: 1 }, explode: 9, brood: { type: 'corsair', every: 16, max: 3 },
+    ai: { style: 'pack', orbit: 0.8, special: 'volley', specialCd: [3, 5], retreatHp: 0, cover: false, call: false, guard: true, dodge: 0 },
   },
   // Nur im Ereignis „Schwarm-Nest“: steht still, spuckt Larven aus und Säure, bis es zerstört ist.
   nest: {
@@ -455,6 +602,7 @@ export const ORES = {
   nickel: { name: 'Nickel', price: 10, color: 0x9a9a9a },
   cobalt: { name: 'Cobalt', price: 20, color: 0x3a6aff },
   platinum: { name: 'Platinum', price: 60, color: 0xe8e8f0 },
+  iridium: { name: 'Iridium', price: 140, color: 0xc89aff },
 };
 
 // Crates: zufälliger Inhalt, wer zuerst drüberfliegt.
@@ -540,6 +688,22 @@ export const QUESTS = [
   { id: 'q30', sector: 3, title: 'Volle Staffel', text: 'Besitze 8 Drohnen: alle normalen Drohnenplätze belegt.', goal: { type: 'drones', count: 8 }, reward: { credits: 7500, xp: 15000, tritium: 200 } },
   { id: 'q31', sector: 3, title: 'Kommandant', text: 'Erreiche Stufe 10. Danach verkauft dir die Werft Voyager-Drohnen (Tritium).', goal: { type: 'level', count: 10 }, reward: { credits: 22500, tritium: 500, honor: 300 } },
   { id: 'q32', sector: 3, title: 'Signal am Tor', text: 'Ein Alpha-Gegner beherrscht Sektor 3. Zerstöre einen Alpha in Sektor 3 – die Werft zahlt mit einer Cassini-Drohne (Platz 9).', goal: { type: 'kill', target: null, rank: 'alpha', sectorMin: 3, count: 1 }, reward: { xp: 30000, honor: 500, drone: 'cassini' } },
+  // ── Abschnitt 4: Tiefe Sektoren (Stufe 10–30) ──
+  { id: 'q33', sector: 3, title: 'Jenseits der Karte', text: 'Hinter Sektor 3 liegt ein viertes Tor. Spring nach Sektor 4.', goal: { type: 'jump', target: 4, count: 1 }, reward: { credits: 15000, xp: 30000, tritium: 100 } },
+  { id: 'q34', sector: 4, title: 'Säurespucker', text: 'Spitter halten Abstand und spucken Säure. Zerstöre 12 Spitter.', goal: { type: 'kill', target: 'spitter', count: 12 }, reward: { credits: 18000, xp: 40000, honor: 120 } },
+  { id: 'q35', sector: 4, title: 'Söldnerlohn', text: 'Mercs ziehen ihren Schild hoch, sobald es eng wird. Zerstöre 12 Merc.', goal: { type: 'kill', target: 'merc', count: 12 }, reward: { credits: 20000, xp: 45000, tritium: 80, honor: 140 } },
+  { id: 'q36', sector: 4, title: 'Jäger der Front', text: 'Hunter jagen Piloten über weite Strecken. Zerstöre 6 Hunter.', goal: { type: 'kill', target: 'hunter', count: 6 }, reward: { credits: 20000, xp: 45000, honor: 200 } },
+  { id: 'q37', sector: 5, title: 'Brutstätten', text: 'Breeder setzen im Kampf Larven aus. Zerstöre 8 Breeder, bevor die Brut wächst.', goal: { type: 'kill', target: 'breeder', count: 8 }, reward: { credits: 26000, xp: 60000, tritium: 120, honor: 180 } },
+  { id: 'q38', sector: 5, title: 'Schatten', text: 'Stalker lauern getarnt und weichen fast allem aus. Zerstöre 12 Stalker.', goal: { type: 'kill', target: 'stalker', count: 12 }, reward: { credits: 28000, xp: 65000, honor: 200 } },
+  { id: 'q39', sector: 5, title: 'Iridium', text: 'In den tiefen Feldern liegt Iridium. Sammle 30 Einheiten.', goal: { type: 'ore', target: 'iridium', count: 30 }, reward: { credits: 24000, xp: 50000, tritium: 150 } },
+  { id: 'q40', sector: 6, title: 'Störsender', text: 'Jammer stören deine Zielerfassung, solange sie in Reichweite sind. Zerstöre 10 Jammer.', goal: { type: 'kill', target: 'jammer', count: 10 }, reward: { credits: 34000, xp: 80000, honor: 240 } },
+  { id: 'q41', sector: 6, title: 'Symbiose', text: 'Symbionten heilen ihren Schild ständig. Konzentrier das Feuer. Zerstöre 14 Symbionten.', goal: { type: 'kill', target: 'symbiont', count: 14 }, reward: { credits: 34000, xp: 80000, tritium: 160, honor: 240 } },
+  { id: 'q42', sector: 6, title: 'Schwarze Werft', text: 'Die Schwarze Werft baut Mercs nach, solange sie steht. Bring sie zu Fall, die Beute gehört dem letzten Treffer.', goal: { type: 'kill', target: 'werft', count: 1 }, reward: { credits: 80000, xp: 150000, tritium: 500, honor: 600 } },
+  { id: 'q43', sector: 7, title: 'Enterkommando', text: 'Boarder rammen und kleben am Rumpf. Zerstöre 14 Boarder.', goal: { type: 'kill', target: 'boarder', count: 14 }, reward: { credits: 42000, xp: 100000, honor: 300 } },
+  { id: 'q44', sector: 7, title: 'Koloss', text: 'Colossus-Schiffe sind langsam und kaum zu knacken. Zerstöre 3.', goal: { type: 'kill', target: 'colossus', count: 3 }, reward: { credits: 50000, xp: 120000, tritium: 300, honor: 360 } },
+  { id: 'q45', sector: 7, title: 'Der Älteste', text: 'Der Sternenwal-Älteste zieht durch Sektor 7. Stell ihn.', goal: { type: 'kill', target: 'wal', count: 1 }, reward: { credits: 100000, xp: 200000, tritium: 600, honor: 800 } },
+  { id: 'q46', sector: 8, title: 'Königin', text: 'Die Queen schickt Tender vor. Zerstöre eine Queen.', goal: { type: 'kill', target: 'queen', count: 1 }, reward: { credits: 90000, xp: 200000, tritium: 500, honor: 700 } },
+  { id: 'q47', sector: 8, title: 'Dreadnought', text: 'Am Ende der Karte wartet der Dreadnought. Bring ihn zu Fall.', goal: { type: 'kill', target: 'dread', count: 1 }, reward: { credits: 160000, xp: 300000, tritium: 1000, honor: 1200 } },
 ];
 // Alte Spielstände (Kette mit 7 Aufträgen): erledigte alte Aufträge → Platz in der neuen Kette
 export const QUEST_VERSION = 2;

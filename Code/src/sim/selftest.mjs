@@ -1255,5 +1255,48 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   s.dispose();
 }
 
+// ---- Tiefe Sektoren 4–8, neue Gegner, Bosse, Tages- und Wochenaufträge ----
+{
+  const { sectorsFor, ENEMIES: EN } = await import('../core/data.js');
+  const { Contracts, rollContracts, dayKey, weekKey } = await import('./contracts.js');
+  let linked = true, typesOk = true;
+  for (const f of ['europa', 'saturn', 'eris']) {
+    const S = sectorsFor(f), ids = Object.keys(S);
+    if (ids.length !== 8) linked = false;
+    for (const sid of ids) {
+      for (const pt of S[sid].portals) if (!S[pt.to] || !S[pt.to].portals.some((q) => q.to === sid)) linked = false;
+      for (const sp of S[sid].spawns) if (!EN[sp.type]) typesOk = false;
+    }
+  }
+  check('Tiefe Sektoren: je Fraktion 8, Tore in beide Richtungen verbunden', linked);
+  check('Tiefe Sektoren: alle Gegnertypen definiert', typesOk);
+  const pr = newProfile('Tiefflieger', 'eris');
+  pr.level = 30; pr.sector = 'ER-6';
+  const bus = makeBus(), w = new World(pr, bus, { seed: 61 });
+  const boss = [...w.entities.values()].find((e) => e.type === 'werft');
+  check('Sektor 6: Schwarze Werft steht, ohne Elite/Alpha-Würfel', w.sector.index === 6 && !!boss && boss.rank === 'normal');
+  if (boss) {
+    boss.provoked = true; boss.state = 'attack';
+    for (let i = 0; i < 40; i++) w._traitTick(boss, 0.5);
+    const kids = (boss.brood || []).filter((o) => o.alive !== false);
+    check('Werft setzt im Kampf Mercs aus, höchstens 4 zugleich', kids.length > 0 && kids.length <= 4 && kids.every((o) => o.type === 'merc'));
+  }
+  const sym = [...w.entities.values()].find((e) => e.type === 'symbiont');
+  if (sym) { sym.shield = 0; w._traitTick(sym, 1); check('Symbiont heilt Schild', sym.shield > 0); }
+  const d0 = new Date('2026-11-02T12:00:00Z');
+  const a = rollContracts(pr, dayKey(d0), false), b = rollContracts(pr, dayKey(d0), false);
+  check('Tagesaufträge: gleicher Tag, gleiche Aufgaben', JSON.stringify(a) === JSON.stringify(b) && a.length === 3);
+  check('Wochenschlüssel ISO', weekKey(new Date('2026-11-02T12:00:00Z')) === '2026-W45' && weekKey(new Date('2026-01-01T12:00:00Z')) === '2026-W01');
+  let now = d0;
+  const pr2 = newProfile('Pendler', 'europa'), w2 = new World(pr2, makeBus(), { seed: 62 });
+  const ct = new Contracts(w2, w2.bus, () => now);
+  const any = pr2.contracts.daily.find((c) => c.kind === 'kill' && !c.target);
+  const cr0 = pr2.credits;
+  for (let i = 0; i < any.count; i++) w2._questProgress('kill', 'raider', 1, null);
+  check('Tagesauftrag „Gegner zerstören“ zählt und zahlt aus', any.done && pr2.credits > cr0);
+  now = new Date('2026-11-03T12:00:00Z'); ct.refresh();
+  check('Neuer Tag: neue Tagesaufträge, Woche bleibt', pr2.contracts.day === '2026-11-03' && !pr2.contracts.daily.some((c) => c.done) && pr2.contracts.week === '2026-W45');
+}
+
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');
 process.exit(failed ? 1 : 0);

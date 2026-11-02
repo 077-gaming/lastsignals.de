@@ -986,6 +986,7 @@ export class ModelFactory {
 
   buildEnemy(type) {
     const def = ENEMIES[type] || ENEMIES.raider;
+    const look = def.look || type; // tiefe Gegner: Grundform eines vorhandenen Typs, eigene Farbe und Größe
     const root = new THREE.Group();
     const spin = new THREE.Group();
     root.add(spin);
@@ -993,7 +994,7 @@ export class ModelFactory {
     const swarm = def.group === 'swarm';
     if (g) { g.scale.setScalar(g.userData.glbScale ?? 2 / (g.userData.glbLen || 2)); spin.add(g); }
     else {
-      const geos = this.geo('enemy:' + type, () => enemyGeometry(type));
+      const geos = this.geo('enemy:' + look, () => enemyGeometry(look));
       const body = swarm ? this.swarmMat(type, def.color, def.accent)
         : this.std('enemy:' + type, { color: def.color, metal: 0.72, rough: 0.4, flat: true, panel: 5, lines: 0.5, grime: 0.3, rim: 0.2, tilt: 0.05 });
       this._meshes(spin, geos, {
@@ -1009,14 +1010,14 @@ export class ModelFactory {
     spin.add(glow);
     if (!swarm) {
       const nav = new THREE.Sprite(this.navMats().red);
-      nav.position.set(0, 0.25, type === 'raider' ? -0.75 : -0.4);
+      nav.position.set(0, 0.25, look === 'raider' ? -0.75 : -0.4);
       nav.scale.setScalar(0.55);
       spin.add(nav);
     }
     if (!swarm && !g) {
       const tg = this.trailGeo(), tm = this.trailMat(def.accent);
-      const ex = type === 'jackal' ? 0.68 : type === 'vulture' ? 0.36 : 0.46;
-      const ez = type === 'jackal' ? 0.55 : type === 'vulture' ? 0.33 : 0.88;
+      const ex = look === 'jackal' ? 0.68 : look === 'vulture' ? 0.36 : 0.46;
+      const ez = look === 'jackal' ? 0.55 : look === 'vulture' ? 0.33 : 0.88;
       for (const s of [-1, 1]) {
         const tr = new THREE.Mesh(tg, tm);
         tr.position.set(s * ex, 0, ez); tr.scale.set(0.22, 0.22, 1.1);
