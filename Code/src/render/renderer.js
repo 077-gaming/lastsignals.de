@@ -491,6 +491,9 @@ export class Renderer {
     // gewählte Rakete gleich mit (klein, ≈ 170 KB), damit der erste Schuss schon das Modell zeigt
     const pr = world.profile, rk = pr?.selectedRocket || 'R1';
     if (pr?.ammo?.[rk] > 0) this._need('rocket:' + rk);
+    // Eigenes Schiff als angefordert vermerken: Seit alle Schiffe in EXTRA_MODELS stehen, würde _need() es sonst beim
+    // Anlegen der Ansicht (oder für ein fremdes Schiff gleichen Typs) ein zweites Mal laden, solange das erste läuft.
+    if (this._mineUrl) (this._needT || (this._needT = new Set())).add(mine);
     this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl) : Promise.resolve(), drones, equip]);
   }
 
@@ -1742,7 +1745,11 @@ export class Renderer {
     const key = `ship:${sh}:${fac}`;
     if (key === this._mineKey) return;
     this._mineKey = key; this._mineUrl = MODEL_URL.get(key) || null;
-    if (this._mineUrl && !this.factory.glb.has(key) && this._loadGLB) this._loadGLB(key, this._mineUrl);
+    if (!this._mineUrl || this.factory.glb.has(key) || !this._loadGLB) return;
+    const T = this._needT || (this._needT = new Set());
+    if (T.has(key)) return; // schon unterwegs (z. B. als fremdes Schiff über _need angefordert)
+    T.add(key);
+    this._loadGLB(key, this._mineUrl);
   }
   /** Eigenes Schiff fertig (echtes Modell geladen und vorbereitet oder keins vorhanden) */
   _mineReady() {
