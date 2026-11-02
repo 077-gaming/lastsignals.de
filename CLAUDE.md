@@ -11,8 +11,8 @@
 ## Befehle
 
 - Spiel: `cd Code && npm ci && npm run dev` (Port 5173). Abkürzungen: `?dev=hub&f=saturn`, `?dev=game&f=europa`, `?dev=dock&f=eris`.
-- Selbsttest: `cd Code && node src/sim/selftest.mjs`
-- Spiel für /play/ bauen: `cd Code && npx vite build --base=/play/ --outDir <ziel>`
+- Selbsttest: `cd Code && npm test` (vor jedem Build), alles zusammen: `npm run check`
+- Spiel für /play/ bauen: `cd Code && npx vite build --base=/play/`, dann `dist/index.html` und `dist/assets/` nach `public/play/`, `dist/fonts/` nach `public/play/fonts/`. `VITE_ALLOWED_CALLSIGNS` nie setzen (Spiel ist öffentlich).
 - Website: `npm ci && npm run build` (Port 5180 dev, 5181 Vorschau)
 - Test-Pilot: `cd Code && node tools/playtest/spielen.mjs --minuten 2 --fraktion alle` (Dev-Server und Google Chrome nötig)
 - Vergleichsansichten: `cd Code && node tools/bilder/ansichten.mjs <ordner>`
@@ -21,5 +21,5 @@
 ## Regeln
 
 - Kein Push auf `main`, kein Pull Request, kein Merge, kein Tag, kein Deploy, keine Netlify- oder Supabase-Änderung ohne Tonis ausdrückliche Freigabe. Ein lokaler `pre-push`-Hook blockiert `main`/`master` und Tags.
-- Der Live-Stand auf Netlify enthält Änderungen, die hier fehlen. Arbeit auf diesem Stand gilt als „Basis ungeklärt“ und bleibt klein und als Patch-Serie übertragbar.
+- Der Live-Stand wird als Netlify-Upload veröffentlicht, nicht aus GitHub gebaut. Vor jeder Veröffentlichung prüfen, dass der lokale Stand den Live-Stand enthält (Build-Fingerprints der Assets vergleichen).
 - UI nach `Planung/UI_STIL.md`: angeschnittene Ecken, keine Rundungen über 2 px, keine Emojis.
