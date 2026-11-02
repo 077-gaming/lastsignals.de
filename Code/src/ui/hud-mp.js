@@ -278,7 +278,6 @@ export class HudMp {
     this.leaveBtn.hidden = !(w && w.coop);
     const net = !mp ? 'AUS' : mp.status === 'verbunden' ? `${roster.length + 1} IM SEKTOR` : mp.status === 'getrennt' ? 'GETRENNT' : 'VERBINDE';
     if (this.netEl.textContent !== net) this.netEl.textContent = net;
-    this.hud.wins.refit('players');
   }
 
   // Namensschilder über fremden Schiffen (und dem Koop-Partner): Name, Stufe, Hüllenbalken; Rot = PvP-Ziel
@@ -287,9 +286,15 @@ export class HudMp {
     let n = 0;
     if (w && r && !w.docked && w.player) {
       const p = w.player;
-      for (const e of w.entities.values()) {
+      // nur fremde Schiffe und der Koop-Partner (nicht alle Entities je Bild durchsuchen)
+      const list = this._tagList || (this._tagList = []);
+      list.length = 0;
+      const ally = w.entities.get('ally');
+      if (ally) list.push(ally);
+      if (mp) for (const R of mp.remotes.values()) if (R.ent && w.entities.get(R.ent.id) === R.ent) list.push(R.ent);
+      for (const e of list) {
         if (n >= TAG_MAX) break;
-        if (e.kind !== 'player' || e.id === 'player' || e.alive === false || e.id === p.targetId) continue; // Ziel: Name steht an der Zielklammer
+        if (e.alive === false || e.id === p.targetId) continue; // Ziel: Name steht an der Zielklammer
         const d = Math.hypot(e.x - p.x, e.z - p.z);
         if (d > TAG_RANGE) continue;
         const s = r.toScreen(e.x, e.z, this._scr);

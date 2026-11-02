@@ -188,6 +188,12 @@ async function main() {
   await B.evaluate(() => window.__ls.mp.setPvp(true));
   const pvpOk = await waitFor(A, (sid) => { const e = window.__ls.world.entities.get('rp:' + sid); return e && e.pvpOk; }, sids.B, 15000);
   check('PvP: Bravo für Alpha angreifbar (ab Sektor 2, PvP an, andere Fraktion)', pvpOk);
+  await A.bringToFront();
+  const menuOn = await A.evaluate(() => { const h = window.__lsHud; h.toggleMenu(true); h.menu.setTab('system'); return document.querySelector('[data-r="pvpbtn"]').classList.contains('is-on'); });
+  check('Bordmenü zeigt PvP AN', menuOn);
+  await sleep(400);
+  await A.screenshot({ path: path.join(IMG, '08-bordmenue-pvp.png') });
+  await A.evaluate(() => window.__lsHud.toggleMenu(false));
   const cNot = await C.evaluate((sid) => { const e = window.__ls.world.entities.get('rp:' + sid); return e ? !e.pvpOk : true; }, sids.B);
   check('PvP: Charlie (PvP aus) kann Bravo nicht angreifen', cNot);
   const hp0 = await B.evaluate(() => { const p = window.__ls.world.player; window.__pvpDmg = 0; window.__ls.bus.on('damage', (d) => { if (d.id === 'player' && d.pvp) window.__pvpDmg += (d.hull || 0) + (d.shield || 0); }); return p.hp + p.shield; });

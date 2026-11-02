@@ -265,7 +265,10 @@ export class Multiplayer {
     e.x = e.px = s.x; e.z = e.pz = s.z; e.rot = e.prot = s.rot;
     e.vx = s.vx; e.vz = s.vz; e.speed = s.spd;
     const st = R.st;
+    const wasAlive = e.alive;
     e.alive = !!(st.flags & M.FLAG.alive);
+    // fremdes Schiff zerstört: Explosion wie beim eigenen Schiff (Ansicht bleibt, erscheint nach der Reparatur wieder)
+    if (wasAlive && !e.alive && w.entities.get(e.id) === e) this.bus.emit('explode', { id: e.id, x: e.x, z: e.z, size: 2, kind: 'player' });
     e.hpMax = R.meta.hm; e.shieldMax = R.meta.sm;
     e.hp = Math.round(st.hull * e.hpMax); e.shield = Math.round(st.shield * e.shieldMax);
     e.level = R.meta.lv; e.name = R.meta.cs;
@@ -461,6 +464,7 @@ export class Multiplayer {
     if (!m || typeof m.m !== 'string' || !M.validSid(m.i) || m.i === this.sid) return;
     const cs = M.cleanName(m.cs);
     if (this.isMuted(cs)) return;
+    if (ch === 'faction' && m.fac !== this.world.profile.faction) return; // Kanalnamen sind öffentlich: nur die eigene Fraktion
     // Flut-Schutz je Absender (auch Kanäle ohne Präsenz: eigener Zähler je Kennung)
     const lim = this._chatLim || (this._chatLim = new Map());
     let L = lim.get(m.i);
