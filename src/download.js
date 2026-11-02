@@ -51,6 +51,23 @@ export function initDownloads() {
     const copy = main.cloneNode(true);
     copy.removeAttribute('id');
     act.replaceChildren(copy);
+    if (id === 'mac') intelMac(item, copy);
   }
   rec.hidden = false;
+}
+
+// Mac mit Intel-Prozessor: Die Apple-Chip-Datei startet dort nicht. Chrome/Edge verraten die Architektur
+// (userAgentData), dann empfiehlt die Seite die universelle Datei. Safari verrät sie nicht: dort bleibt der Hinweis in der Kachel.
+function intelMac(item, btn) {
+  const uad = navigator.userAgentData;
+  if (!uad || typeof uad.getHighEntropyValues !== 'function') return;
+  uad.getHighEntropyValues(['architecture']).then((v) => {
+    if (!v || v.architecture !== 'x86') return;
+    const uni = item.querySelector('.dl-alt[data-file$="-universal.dmg"]');
+    if (!uni) return;
+    btn.href = uni.href;
+    btn.dataset.file = uni.dataset.file;
+    const em = btn.querySelector('em'), uem = uni.querySelector('em');
+    if (em && uem) em.textContent = uem.textContent;
+  }).catch(() => {});
 }
