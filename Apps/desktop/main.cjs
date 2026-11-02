@@ -22,7 +22,9 @@ const WWW = [path.join(__dirname, 'www'), path.join(__dirname, '..', 'www')].fin
 // (Mac) bzw. %APPDATA%\LAST SIGNALS (Windows)
 if (process.env.LS_USER_DATA) app.setPath('userData', path.resolve(process.env.LS_USER_DATA));
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'einstellungen.json');
-const DEFAULTS = { bounds: null, maximized: false, fullscreen: false, unlimitedFps: false };
+// graphics: letzte Meldung des Spiels (window.lsDesktop.setGraphics), unlimitedFps: Bildratenbegrenzung aus beim
+// nächsten Start (aus dem Spiel: Bildrate UNBEGRENZT, oder über das App-Menü)
+const DEFAULTS = { bounds: null, maximized: false, fullscreen: false, unlimitedFps: false, graphics: null };
 function loadSettings() {
   try { return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE(), 'utf8')) }; } catch { return { ...DEFAULTS }; }
 }
@@ -37,7 +39,11 @@ app.commandLine.appendSwitch('ignore-gpu-blocklist');
 // Ton ohne Klick: Browser werten Controller-Tasten nicht als Nutzergeste. In der App startet der Ton deshalb sofort
 // (Schalter für den ganzen Prozess, dazu autoplayPolicy im Fenster), auch wenn nur der Controller benutzt wird.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
-if (settings.unlimitedFps || process.env.LS_UNLIMITED_FPS === '1') {
+// Zustand dieses Prozesses (Schalter lassen sich nur vor dem Start setzen; Änderungen wirken nach einem Neustart)
+const UNLIMITED_NOW = !!settings.unlimitedFps || process.env.LS_UNLIMITED_FPS === '1';
+// Nur für Tests: Fenster nie zeigen (Tests ohne sichtbares Fenster, z. B. tests/huelle.mjs)
+const HIDDEN = process.env.LS_HIDE_WINDOW === '1';
+if (UNLIMITED_NOW) {
   // Bildratenbegrenzung aus (Einstellung, wirkt erst nach Neustart): kein VSync, Bildrate nach oben offen
   app.commandLine.appendSwitch('disable-frame-rate-limit');
   app.commandLine.appendSwitch('disable-gpu-vsync');
@@ -106,9 +112,9 @@ function createWindow() {
     },
   });
   if (!IS_MAC) win.setMenuBarVisibility(false);
-  if (settings.maximized) win.maximize();
-  if (settings.fullscreen) win.setFullScreen(true);
-  win.once('ready-to-show', () => win.show());
+  if (settings.maximized && !HIDDEN) win.maximize();
+  if (settings.fullscreen && !HIDDEN) win.setFullScreen(true);
+  if (!HIDDEN) win.once('ready-to-show', () => win.show());
 
   // Fenstergröße merken (normale Größe, dazu maximiert/Vollbild)
   const remember = () => {
@@ -207,9 +213,35 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// ---------------------------------------------------------------- Grafik aus dem Spiel (Engine, ENGINE.md)
+// Das Spiel meldet bei jeder Grafikänderung (und beim Start) { fpsCap, renderScale }. Bildrate 0 = UNBEGRENZT schaltet
+// beim nächsten Start disable-frame-rate-limit/disable-gpu-vsync, jeder andere Wert lässt Chromium beim Standard
+// (VSync, das Spiel begrenzt selbst). Übernommen wird nur eine geänderte Bildraten-Wahl: Das Spiel meldet beim Start
+// immer seinen Wert, eine Umstellung über das App-Menü bleibt so bis zur nächsten Änderung im Spiel bestehen.
+// Ungültige Werte ändern nichts (bisheriger Wert bzw. Standard des Spiels: UNBEGRENZT, 100 %)
+function cleanGraphics(g, prev) {
+  const o = g && typeof g === 'object' ? g : {};
+  const cap = Number(o.fpsCap), rs = Number(o.renderScale);
+  return {
+    fpsCap: Number.isFinite(cap) && cap >= 0 && cap <= 1000 ? Math.round(cap) : (prev ? prev.fpsCap : 0),
+    renderScale: Number.isFinite(rs) ? Math.min(200, Math.max(50, Math.round(rs))) : (prev ? prev.renderScale : 100),
+  };
+}
+function setGraphics(raw) {
+  const prev = settings.graphics;
+  const g = cleanGraphics(raw, prev);
+  const wasUnlimited = !!settings.unlimitedFps;
+  if (!prev || prev.fpsCap !== g.fpsCap) settings.unlimitedFps = g.fpsCap === 0;
+  const changed = !prev || prev.fpsCap !== g.fpsCap || prev.renderScale !== g.renderScale || wasUnlimited !== settings.unlimitedFps;
+  settings.graphics = g;
+  if (changed) saveSettings(settings);
+  if (wasUnlimited !== settings.unlimitedFps) buildMenu();
+  return { unlimitedFps: !!settings.unlimitedFps, active: UNLIMITED_NOW, restart: !!settings.unlimitedFps !== UNLIMITED_NOW };
+}
+
 // ---------------------------------------------------------------- Brücke für den Preload (window.lsDesktop)
 ipcMain.on('ls:info', (e) => {
-  e.returnValue = { platform: PLATFORM, version: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome, arch: process.arch, unlimitedFps: !!settings.unlimitedFps };
+  e.returnValue = { platform: PLATFORM, version: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome, arch: process.arch, unlimitedFps: UNLIMITED_NOW };
 });
 ipcMain.handle('ls:fullscreen', (e, on) => {
   const w = BrowserWindow.fromWebContents(e.sender);
@@ -218,6 +250,7 @@ ipcMain.handle('ls:fullscreen', (e, on) => {
   return w.isFullScreen();
 });
 ipcMain.handle('ls:unlimited-fps', (e, on) => { setUnlimitedFps(!!on, false); return settings.unlimitedFps; });
+ipcMain.handle('ls:graphics', (e, g) => setGraphics(g));
 ipcMain.handle('ls:relaunch', () => { app.relaunch(); app.exit(0); });
 
 // ---------------------------------------------------------------- Start

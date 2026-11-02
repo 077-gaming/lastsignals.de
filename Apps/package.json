@@ -12,6 +12,7 @@
     "sync": "npx cap sync",
     "test:mac": "node tests/mac.mjs",
     "test:windows": "node tests/windows.mjs",
+    "test:huelle": "node tests/huelle.mjs",
     "alle": "bash bauen.sh"
   },
   "devDependencies": {
