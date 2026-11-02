@@ -441,9 +441,14 @@ export const GENERATORS = {
 export const SHIPS = {
   s1: { cls: 'Starter', no: 1, name: 'Starter', hp: 6000, speed: 320, laserSlots: 2, genSlots: 2, cargo: 100, level: 1, price: 0, currency: null },
   s2: { cls: 'Courier', no: 2, name: 'Schiff 2', hp: 16000, speed: 300, laserSlots: 4, genSlots: 3, cargo: 300, level: 5, price: 120000, currency: 'credits' },
-  s3: { cls: 'Warden', no: 3, name: 'Schiff 3', hp: 32000, speed: 290, laserSlots: 5, genSlots: 5, cargo: 500, level: 10, price: 250000, currency: 'credits', locked: true },
-  s5: { cls: 'Bastion', no: 5, name: 'Schiff 5', hp: 90000, speed: 300, laserSlots: 8, genSlots: 8, cargo: 1000, level: 20, price: 40000, currency: 'tritium', locked: true },
-  s8: { cls: 'Leviathan', no: 8, name: 'Top-Kampfschiff', hp: 250000, speed: 320, laserSlots: 13, genSlots: 13, cargo: 3000, level: 45, price: 250000, currency: 'tritium', locked: true },
+  s3: { cls: 'Warden', no: 3, name: 'Schiff 3', hp: 32000, speed: 290, laserSlots: 5, genSlots: 5, cargo: 500, level: 10, price: 250000, currency: 'credits' },
+  // s4, s6, s7: Stufe und Plätze laut Schiffstabelle (Toni, 30.10.2026); Leben, Tempo, Laderaum, Preis und
+  // Klassenname vorläufig zwischen den Nachbarschiffen gesetzt (offen in „Fragen und Freigaben“, 02.11.2026)
+  s4: { cls: 'Halberd', no: 4, name: 'Schiff 4', hp: 55000, speed: 295, laserSlots: 7, genSlots: 6, cargo: 700, level: 15, price: 600000, currency: 'credits' },
+  s5: { cls: 'Bastion', no: 5, name: 'Schiff 5', hp: 90000, speed: 300, laserSlots: 8, genSlots: 8, cargo: 1000, level: 20, price: 40000, currency: 'tritium' },
+  s6: { cls: 'Rampart', no: 6, name: 'Schiff 6', hp: 130000, speed: 305, laserSlots: 10, genSlots: 9, cargo: 1500, level: 28, price: 90000, currency: 'tritium' },
+  s7: { cls: 'Monarch', no: 7, name: 'Schiff 7', hp: 180000, speed: 310, laserSlots: 11, genSlots: 11, cargo: 2200, level: 35, price: 160000, currency: 'tritium' },
+  s8: { cls: 'Leviathan', no: 8, name: 'Top-Kampfschiff', hp: 250000, speed: 320, laserSlots: 13, genSlots: 13, cargo: 3000, level: 45, price: 250000, currency: 'tritium' },
 };
 
 export const ORES = {
