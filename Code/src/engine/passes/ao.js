@@ -84,7 +84,7 @@ void main() {
 // pow: Kontrastkurve der Verdeckung (GTAO-Uniform scale). Die Rümpfe sind meist konvex, Fugen schmal: ohne Kurve
 // bliebe die Verdeckung kaum sichtbar.
 const LEVELS = {
-  medium: { res: 0.5, samples: 8, k: 0.9, pow: 1.8 },
+  medium: { res: 0.4, samples: 8, k: 0.9, pow: 1.8 },   // 0,4: hält HOCH im Zeitbudget (Retina)
   high: { res: 0.5, samples: 16, k: 1, pow: 2.0 },
   ultra: { res: 1, samples: 16, k: 1, pow: 2.0 },
 };

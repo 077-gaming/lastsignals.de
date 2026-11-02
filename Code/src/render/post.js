@@ -245,12 +245,14 @@ export class CameraLookPass extends Pass {
     u.toneMappingExposure.value = renderer.toneMappingExposure;
     const bloom = !!(this.bloom && this.bloom.enabled);
     if (bloom) { u.tBloom.value = this.bloom.texture; u.uBloomK.value = this.bloom.strength; }
-    const ao = !!(this.ao && this.ao.enabled && this.ao.fold && this.ao.depth);
+    // Verdeckung eingerechnet, solange der AO-Baustein läuft; mit Cockpit-Ebene (eigener AO-Durchgang) Stärke 0 –
+    // so bleibt der Shader gleich und der Wechsel Verfolger ↔ Cockpit übersetzt nichts neu
+    const ao = !!(this.ao && this.ao.enabled && this.ao.depth);
     if (ao) {
       const A = this.ao, cam = A.camera;
       u.tAO.value = A.texture; u.tAODepth.value = readBuffer.depthTexture || A.depth;
       u.uAoSize.value.set(A.rtB.width, A.rtB.height);
-      u.uAoP.value.set(cam.near, cam.far, A.strength, A.fade);
+      u.uAoP.value.set(cam.near, cam.far, A.fold ? A.strength : 0, A.fade);
     }
     const key = renderer.toneMapping + ':' + this.quality + ':' + (u.uFlare.value > 0) + ':' + this.fxaa + ':' + bloom + ':' + !!this.legacy + ':' + this.grain + ':' + this.ca + ':' + ao;
     if (key !== this._key) {

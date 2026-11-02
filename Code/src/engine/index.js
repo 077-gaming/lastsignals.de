@@ -56,12 +56,12 @@ export function buildFlightChain(composer, { scene, camera, cockpit, bloom, look
   // Kamera-Look ist immer aktiv, sobald die Kette läuft (Tonwertabbildung). FXAA steckt darin (ein Durchgang).
   chain.add({
     id: 'look', stage: 'look', label: 'LOOK', pass: look, active: () => true,
-    apply: (s) => { look.setFxaa(s.g.aa === 'fxaa'); look.setEffects(s.g.grain, s.g.vignette, s.g.chroma); look.setAo(s.g.ao !== 'off' && !s.cockpit ? ao : null); },
+    apply: (s) => { look.setFxaa(s.g.aa === 'fxaa'); look.setEffects(s.g.grain, s.g.vignette, s.g.chroma); look.setAo(s.g.ao !== 'off' ? ao : null); },
   });
 
   const smaa = new SMAAPass(4, 4);
   // AUTO: SMAA nur unter 1,5-facher Szenendichte (wo früher FXAA lief), darüber reicht die Pixeldichte
-  chain.add({ id: 'smaa', stage: 'aa', label: 'SMAA', pass: smaa, active: (s) => s.g.aa === 'smaa' || (s.g.aa === 'auto' && s.ipr < 1.5) });
+  chain.add({ id: 'smaa', stage: 'aa', label: 'SMAA', pass: smaa, active: (s) => s.g.aa === 'smaa' || (s.g.aa === 'auto' && s.dpr < 1.5) });
 
   const up = new UpscalePass();
   chain.add({

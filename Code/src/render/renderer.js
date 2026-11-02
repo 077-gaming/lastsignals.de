@@ -411,7 +411,9 @@ export class Renderer {
     // Nachbearbeitung nötig? NIEDRIG ohne Effekte zeichnet direkt (wie bisher), sonst läuft die Kette
     this._post = this.quality >= 1 || g.bloom > 0 || g.ao !== 'off' || g.aa !== 'off' || g.sharpen > 0
       || g.grain || g.vignette || g.chroma || (g.upscale === 'ls' && this._ipr < this.basePR * 0.97);
-    this.chain.update({ g, q: this.quality, cockpit: this._cockpitOn, upscale: this._upscaling, ipr: this._ipr });
+    // dpr: Szenendichte OHNE adaptive Auflösung – AUTO-Kantenglättung soll nicht mit jedem Regelschritt umschalten
+    // (Umschalten übersetzt Shader: Hänger)
+    this.chain.update({ g, q: this.quality, cockpit: this._cockpitOn, upscale: this._upscaling, dpr: this.basePR * g.renderScale / 100 });
   }
   /** Läuft die Nachbearbeitungskette (sonst zeichnet die Szene direkt auf die Leinwand)? */
   _useComposer() { return !this.lowQuality && this._post; }
