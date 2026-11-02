@@ -23,6 +23,7 @@ import { settings } from './screens-kit.js';
 import { HudQuest } from './hud-quest.js';
 import { HudMap } from './hud-map.js';
 import { HudMenu, menuHtml } from './hud-menu.js';
+import { gfxHandle } from './gfx-panel.js';
 import { questText, radioText } from './hud-text.js';
 
 // ---------- gemeinsame Helfer (auch von station.js genutzt) ----------
@@ -742,6 +743,7 @@ export class Hud {
 
   // ---------- Klicks ----------
   _click(e) {
+    if (gfxHandle(e.target)) return; // GRAFIK im Bordmenü (ui/gfx-panel.js), wirkt live über 'ls:settings'
     const t = e.target.closest('[data-act]');
     if (!t) return;
     const w = this.world;
