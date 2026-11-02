@@ -481,6 +481,8 @@ export class Renderer {
     if (!this._modelsQueued) { this._modelsQueued = true; this._queueModels(world); }
     this._shadowAt = null;
     this.env.build(world, this.lights, this.quality, this.rect.width * this.basePR, this.rect.height * this.basePR);
+    // Anisotropie-Einstellung auch für die eben gebauten Umgebungs-Texturen (z. B. Gitterbeschriftung, vorher fest 4×)
+    if (this._aniso) applyAnisotropy(this.scene, this._aniso);
     this._needSector(world);
     this.output.uniforms.uFlare.value = this.env.flareStrength;
     this.output.uniforms.uSun.value.copy(this.env.sunScreen);
