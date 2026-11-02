@@ -15,9 +15,9 @@ let lastTab = 'preset';
 const PRESET_DESC = {
   low: 'Pixeldichte 1, direkt ohne Nachbearbeitung. Für ältere Rechner.',
   medium: 'Pixeldichte 1,5, FXAA, Nachleuchten, weniger Partikel. Standard auf Tablets.',
-  high: 'Pixeldichte 1,75 mit automatischer Anpassung, SMAA, Umgebungsverdeckung MITTEL, Schatten 2048, Schärfen.',
-  ultra: 'Pixeldichte 2, Umgebungsverdeckung HOCH, Schatten 4096, feinere Spiegelung, feinerer Himmel.',
-  extreme: 'Desktop-App: volle Umgebungsverdeckung, Spiegelung 512, mehr Partikel, größere Sichtweite.',
+  high: 'Pixeldichte 1,75 mit automatischer Anpassung, SMAA unter 1,5-facher Dichte, Umgebungsverdeckung MITTEL, Schatten 2048, 8× Filterung.',
+  ultra: 'Pixeldichte 2, Umgebungsverdeckung HOCH, Schärfen, 16× Filterung, feiner gebackener Himmel, 9.000 Sterne.',
+  extreme: 'Desktop-App: SMAA immer, volle Umgebungsverdeckung, Schatten 4096, Spiegelung 256, mehr Partikel, größere Sichtweite.',
   custom: 'Eigene Werte. Eine Stufe wählen setzt alle Bild-, Licht- und Effektwerte zurück.',
 };
 const APPLY_TAG = { live: 'SOFORT', rebuild: 'NEU AUFBAU' };

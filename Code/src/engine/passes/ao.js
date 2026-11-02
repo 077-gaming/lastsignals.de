@@ -4,7 +4,9 @@
 //  1. GTAO in halber Auflösung (MITTEL/HOCH) bzw. voller (VOLL): R = Verdeckung, G = Abstand zur Kamera (m)
 //  2. Entrauschen 5 × 5 (tiefengewichtet, gleiche Größe) – das Rauschmuster des Shaders wiederholt sich alle 5 Pixel
 //  3. Zusammenführen in voller Auflösung: tiefengerechtes Hochrechnen (4 Nachbarn, Gewicht nach Abstandsunterschied),
-//     Ausblenden mit der Entfernung, multipliziert ins Szenenbild (Schreibziel, danach Tausch)
+//     Ausblenden mit der Entfernung, multipliziert ins Szenenbild (Schreibziel, danach Tausch).
+//     fold = true (ohne Cockpit-Ebene): Schritt 3 entfällt, der Kamera-Look (post.js, USE_AO) rechnet die Verdeckung
+//     beim Lesen ein – spart einen Vollbild-Durchgang (auf Apple-Grafik ≈ 0,5–1 ms bei Retina-Dichte).
 // Muss VOR der Cockpit-Ebene laufen (die löscht die Tiefe) und vor dem Nachleuchten (Leuchten bleibt unverdeckt hell).
 import * as THREE from 'three';
 import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
@@ -94,6 +96,8 @@ export class AoPass extends Pass {
     this.needsSwap = true;
     this.level = 'medium';
     this.view = 0; // 1 = nur Verdeckung zeigen (Entwicklung, ?aoview=1)
+    this.fold = false; // Zusammenführen im Kamera-Look statt eigenem Durchgang
+    this.depth = null; // zuletzt gelesene Tiefentextur (für den Kamera-Look)
     // Weltmaßstab: Spielerschiff ≈ 48 m (Radius 24), Station Radius 160. Radius 10 m trifft Fugen und Anbauten, nicht ganze Rümpfe.
     this.radius = 10; this.thickness = 8; this.fade = 3200;
     const rtOpt = { type: THREE.HalfFloatType, depthBuffer: false, stencilBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false };
@@ -158,6 +162,9 @@ export class AoPass extends Pass {
     // 2. Entrauschen
     renderer.setRenderTarget(this.rtB);
     this.fsQuad.material = this.denoiseMat; this.fsQuad.render(renderer);
+    this.depth = depth;
+    this.needsSwap = !(this.fold && !this.view);
+    if (!this.needsSwap) { renderer.setClearColor(this._clear, ca); renderer.autoClear = ac; return; }
     // 3. Zusammenführen
     const C = this.compMat.uniforms;
     C.tDiffuse.value = readBuffer.texture; C.tDepth.value = depth;
@@ -167,6 +174,9 @@ export class AoPass extends Pass {
     renderer.setClearColor(this._clear, ca);
     renderer.autoClear = ac;
   }
+
+  get texture() { return this.rtB.texture; }
+  get strength() { return this.compMat.uniforms.uK.value; }
 
   dispose() {
     this.rtA.dispose(); this.rtB.dispose(); this.noise.dispose();

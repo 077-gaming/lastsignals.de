@@ -411,7 +411,7 @@ export class Renderer {
     // Nachbearbeitung nötig? NIEDRIG ohne Effekte zeichnet direkt (wie bisher), sonst läuft die Kette
     this._post = this.quality >= 1 || g.bloom > 0 || g.ao !== 'off' || g.aa !== 'off' || g.sharpen > 0
       || g.grain || g.vignette || g.chroma || (g.upscale === 'ls' && this._ipr < this.basePR * 0.97);
-    this.chain.update({ g, q: this.quality, cockpit: this._cockpitOn, upscale: this._upscaling });
+    this.chain.update({ g, q: this.quality, cockpit: this._cockpitOn, upscale: this._upscaling, ipr: this._ipr });
   }
   /** Läuft die Nachbearbeitungskette (sonst zeichnet die Szene direkt auf die Leinwand)? */
   _useComposer() { return !this.lowQuality && this._post; }
@@ -1508,7 +1508,7 @@ export class Renderer {
   _cockpitFrame(dt, W, pv, fov) {
     const kc = this.rig.kc, on = kc > 0.5 && !!pv && !!W?.player && !W.docked;
     this.cockpitPass.enabled = on;
-    this._cockpitOn = on;
+    if (on !== this._cockpitOn) { this._cockpitOn = on; this._updateChain(); } // Verdeckung: eigener Durchgang statt im Look
     this.camera.layers[on ? 'disable' : 'enable'](PLAYER_LAYER);
     if (!on) return;
     const p = W.player, rig = this.rig;
