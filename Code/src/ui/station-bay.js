@@ -19,6 +19,7 @@ const BG = 0x06080c;
 const HAZE = 0x0a0d13;
 const FLOOR = -12;     // Hallenboden
 const PAD = -11.2;     // Oberkante Landeplattform
+const HANGAR_MAX_L = 128; // größte gezeigte Rumpflänge in der Halle (m)
 const YC = 36;        // Unterkante Hallendecke (tief genug, dass Träger, Kran und Licht im Bild stehen)
 
 // Montagepunkte wie in render/models.js (SHIP_LAYOUT), Spiel-Achsen: Bug −z
@@ -608,8 +609,17 @@ export class HangarBay {
       }
     }
     this.shipRoot.position.set(0, 0, 0);
+    // Sehr große Rümpfe (Schiff 8 ≈ 190 m) im Hangar verkleinert zeigen, damit sie in Halle und Plattform passen;
+    // die angezeigten Maße bleiben die echten (dims.rl/rb)
+    this.shipRoot.scale.setScalar(1);
     this.shipRoot.updateMatrixWorld(true);
     this._fitBox(s.root);
+    const realL = this._box.max.x - this._box.min.x, realB = this._box.max.z - this._box.min.z;
+    if (realL > HANGAR_MAX_L) {
+      this.shipRoot.scale.setScalar(HANGAR_MAX_L / realL);
+      this.shipRoot.updateMatrixWorld(true);
+      this._fitBox(s.root);
+    }
     // Schiff so hoch setzen, dass es auf den Kufen über der Plattform steht
     const lift = PAD + 7.2 - this._box.min.y;
     this.shipRoot.position.y = lift;
@@ -622,7 +632,7 @@ export class HangarBay {
     this._fsph = this._fsph || new THREE.Sphere();
     fb.getBoundingSphere(this._fsph);
     const sz = this._box.getSize(this._v);
-    this.dims.l = sz.x; this.dims.b = sz.z;
+    this.dims.l = sz.x; this.dims.b = sz.z; this.dims.rl = realL; this.dims.rb = realB;
     // Kontaktschatten unter dem Rumpf
     this.shadow.position.set(this._sph.center.x, PAD + 0.08, this._sph.center.z);
     this.shadow.scale.set(sz.x * 1.05, 1, sz.z * 1.0);
@@ -1015,7 +1025,7 @@ export class HangarBay {
       const x = (v.x + 1) / 2, y = (1 - v.y) / 2;
       if (x < bx[0]) bx[0] = x; if (x > bx[1]) bx[1] = x; if (y < bx[2]) bx[2] = y; if (y > bx[3]) bx[3] = y;
     }
-    const shot = { url: this.canvas.toDataURL('image/png'), l: this.dims.l, b: this.dims.b, bx: bx.map((q) => Math.max(0, Math.min(1, q))) };
+    const shot = { url: this.canvas.toDataURL('image/png'), l: this.dims.rl ?? this.dims.l, b: this.dims.rb ?? this.dims.b, bx: bx.map((q) => Math.max(0, Math.min(1, q))) };
     this.hideShip = hide;
     this._shots.set(key, shot);
     this.mode = prev.mode;

@@ -126,6 +126,11 @@ const SHIP_LAYOUT = {
 for (const [id, scale] of [['s3', 1.4], ['s4', 1.6], ['s5', 1.8], ['s6', 2.0], ['s7', 2.2], ['s8', 2.4]]) {
   SHIP_LAYOUT[id] = { ...SHIP_LAYOUT.s2, scale };
 }
+// Meshy-Rümpfe: sichtbare Größe nach Grundfläche √(Länge × Breite) statt nur nach Länge – vorher wirkte ein langes,
+// schmales Schiff kleiner als ein kurzes, breites der Klasse darunter (Schiff 5 neben Schiff 4). Jede Klasse ≈ 13 %
+// mehr Grundflächen-Maß als die vorige, Schiff 8 klar am größten; alle Fraktionen einer Klasse gleich groß.
+// Bezug Starter: 40 m (≈ bisherige Startergröße), Radius für Kamera und Effekte wächst mit (24 m beim Starter).
+export const SHIP_FOOT = { s1: 40, s2: 45.5, s3: 51.5, s4: 58.5, s5: 66, s6: 75, s7: 85, s8: 96 };
 function laserSlotPos(layout, i, out) {
   const l = layout.lasers[i];
   if (l) return out.set(l[0], l[1], l[2]);
@@ -754,6 +759,7 @@ export class ModelFactory {
     if (flip) wrap.rotation.y = PI; // glTF-Bug (+z) → Spiel-Bug (−z)
     wrap.userData.glbFlip = flip;
     wrap.userData.glbLen = Math.max(0.001, box.max.z - box.min.z);
+    wrap.userData.glbWid = Math.max(0.001, box.max.x - box.min.x);
     wrap.userData.glbHd = !!hd;
     wrap.userData.glbScale = opts.scale ?? null;
     this.glb.set(key, wrap);
@@ -1004,7 +1010,9 @@ export class ModelFactory {
     bank.add(hull);
     // Echtes Modell: auf die Platzhalter-Länge (≈ 44 m × scale) bringen; Bauteile behalten ihre Größe.
     const glbFlip = !placeholder && !!hull.userData.glbFlip;
-    const fit = placeholder ? 1 : (hull.userData.glbScale ?? (44 * layout.scale) / (hull.userData.glbLen || 44));
+    // Echtes Modell nach Grundfläche (SHIP_FOOT), Platzhalter wie bisher nach Länge
+    const foot = SHIP_FOOT[shipId] || 45.5;
+    const fit = placeholder ? 1 : (hull.userData.glbScale ?? foot / Math.sqrt((hull.userData.glbLen || 44) * (hull.userData.glbWid || hull.userData.glbLen || 44)));
     if (!placeholder) {
       hull.scale.setScalar(fit); this._glbShipLook(hull, faction);
       hull.traverse((o) => { const L = o.isMesh && (Array.isArray(o.material) ? o.material : [o.material]); if (L) for (const m of L) if (m.userData?.uUnit) m.userData.uUnit.value = fit; });
@@ -1124,7 +1132,10 @@ export class ModelFactory {
         engines.push({ hp, glow, trail, size: e[3] });
       }
     }
-    return { root, bank, hull, lasers, engines, radius: 24 * layout.scale, placeholder, plumeHex };
+    // Radius (Kamera-Abstand, Effekte): Mittel aus Grundflächen-Maß und größter Ausdehnung (schlanke lange Rümpfe wie
+    // Schiff 8 brauchen mehr Abstand als ihr Grundflächen-Maß sagt); Starter ≈ 24 m wie bisher
+    const span = placeholder ? 0 : Math.max(hull.userData.glbLen || 44, hull.userData.glbWid || 0) * fit;
+    return { root, bank, hull, lasers, engines, radius: placeholder ? 24 * layout.scale : 0.3 * (foot + span), placeholder, plumeHex };
   }
 
   buildEnemy(type) {

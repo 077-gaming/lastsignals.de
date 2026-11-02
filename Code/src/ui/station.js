@@ -978,7 +978,7 @@ export class StationUI {
       this._layoutBay();
       bay.setShip(p.faction, p.ship, p.loadout, false);
       const dm = this.body.querySelector('[data-r="dims"]');
-      if (dm) dm.textContent = loading ? 'L — · B —' : 'L ' + dec1(bay.dims.l) + U + 'M × B ' + dec1(bay.dims.b) + U + 'M';
+      if (dm) dm.textContent = loading ? 'L — · B —' : 'L ' + dec1(bay.dims.rl ?? bay.dims.l) + U + 'M × B ' + dec1(bay.dims.rb ?? bay.dims.b) + U + 'M';
       bay.start();
     }
     const img = stage.querySelector('img');
