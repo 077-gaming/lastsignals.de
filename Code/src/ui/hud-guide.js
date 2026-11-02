@@ -2,6 +2,8 @@
 // ersten Flug eines neuen Piloten die Wahl „Geführter Einstieg“ oder „Direkt spielen“. Taste G blendet die
 // Karte ein und aus bzw. setzt die Reihe fort. Bausteine aus theme.css (Planung/UI_STIL.md).
 import './hud-guide.css';
+import { keyHint, padMode } from '../input/padglyph.js';
+import { pad } from '../input/gamepad.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
 // Ziele, die an der Station erledigt werden: Karte bleibt beim Andocken sichtbar
@@ -26,6 +28,9 @@ export class SystemGuide {
       this.render(true);
     };
     window.addEventListener('keydown', this._onKey);
+    // Controller benutzt: Tastenschild und Zieltext auf Controller-Symbole umstellen (und zurück)
+    this._onMode = () => this.render(true);
+    window.addEventListener('ls:inputmode', this._onMode);
     this.el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-act]');
       if (!b) return;
@@ -51,11 +56,11 @@ export class SystemGuide {
     if (st.mode === 'guided' && !s.finished) s.reportUi(this._ui());
     let key, html;
     if (st.mode == null) {
-      key = 'choice';
+      key = 'choice|' + (padMode() ? pad.style : 'kb');
       html = `<div class="lsg-card ls-panel lsg-choice"><span class="ls-corners"></span>
         <div class="ls-head"><span class="ls-code">SYS</span><span class="ls-title">Erster Flug</span></div>
         <div class="lsg-body">
-          <p class="lsg-text">Die Station kann dich Schritt für Schritt einweisen: fliegen, zielen, Munition. Du kannst die Einweisung jederzeit mit G aus- und wieder einblenden.</p>
+          <p class="lsg-text">Die Station kann dich Schritt für Schritt einweisen: fliegen, zielen, Munition. Du kannst die Einweisung jederzeit ${padMode() ? `im Bordmenü (${esc(keyHint('ESC'))}, Reiter HILFE)` : 'mit G'} aus- und wieder einblenden.</p>
           <div class="lsg-row">
             <button class="ls-btn is-fx" data-act="guided">Geführter Einstieg</button>
             <button class="ls-btn" data-act="direct">Direkt spielen</button>
@@ -98,13 +103,13 @@ export class SystemGuide {
       else if (g.type === 'wreck') goalText = `${prog} / ${g.count} Wracks eingesammelt`;
       else if (g.type === 'crate') goalText = `${prog} / ${g.count} Frachtkisten`;
       else if (g.type === 'ore') goalText = `${fmt(prog)} / ${g.count} ${g.ore === 'nickel' ? 'Nickel' : g.ore === 'cobalt' ? 'Cobalt' : g.ore}`;
-      else if (g.type === 'dock') goalText = 'An der Station andocken (E)';
+      else if (g.type === 'dock') goalText = `An der Station andocken (${keyHint('E')})`;
       else if (g.type === 'sell') goalText = 'Erz im Reiter ERZ verkaufen';
       else if (g.type === 'buy') goalText = `${g.id === 'ion' ? 'Ion Laser' : g.id} im Shop kaufen`;
       else if (g.type === 'equip') goalText = 'Im Hangar ein Teil umbauen';
       else if (g.type === 'drone') goalText = 'Eine Pioneer-Drohne kaufen';
       else if (g.type === 'formation') goalText = `Formation ${g.id === 'ring' ? 'Ring' : g.id} wählen (Arsenal, FORMATION)`;
-      else if (g.type === 'jump') goalText = `Durch das Tor nach Sektor ${g.sector} springen (J)`;
+      else if (g.type === 'jump') goalText = `Durch das Tor nach Sektor ${g.sector} springen (${keyHint('J')})`;
       else if (g.type === 'dodge') goalText = `${prog} / ${g.count} ${g.kind === 'volley' ? 'Salven' : g.kind === 'ram' ? 'Rammangriffe' : 'Säurewolken'} ausgewichen`;
       else if (g.type === 'interrupt') goalText = 'Einen aufladenden Gegner mit Rakete oder schwerem Treffer stoppen';
       else if (g.type === 'event') goalText = 'Den Frachter bis zum Ziel beschützen';
@@ -118,9 +123,9 @@ export class SystemGuide {
       const pct = Math.round((prog / max) * 100);
       // Segmentierter Balken (10 Segmente)
       const seg = Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(pct / 10) ? 'on' : ''}"></i>`).join('');
-      key = `${q.id}|${goalText}|${pct}`;
+      key = `${q.id}|${goalText}|${pct}|${padMode() ? pad.style : 'kb'}`;
       html = `<div class="lsg-card ls-panel"><span class="ls-corners"></span>
-        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${q.key ? `<span class="ls-key">${esc(q.key)}</span>` : ''}</div>
+        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${q.key ? `<span class="ls-key${padMode() && keyHint(q.key) !== q.key ? ' is-pad' : ''}" data-nopad>${esc(keyHint(q.key))}</span>` : ''}</div>
         <div class="lsg-body">
           <div class="lsg-title">${esc(q.title)}</div>
           <p class="lsg-text">${esc(q.text)}</p>
@@ -150,6 +155,7 @@ export class SystemGuide {
 
   dispose() {
     window.removeEventListener('keydown', this._onKey);
+    window.removeEventListener('ls:inputmode', this._onMode);
     this.el.remove();
   }
 }

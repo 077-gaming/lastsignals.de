@@ -24,6 +24,7 @@
 - Tages- und Wochenaufträge: `src/sim/contracts.js` (UTC-Tag, ISO-Woche, fester Zufall je Pilot).
 - Sektoren 1–8 je Fraktion: `sectorsFor()` in `data.js`; tiefe Gegner nutzen `look` (Grundform eines vorhandenen Typs), Eigenheiten `brood`, `regen`, `jam`, Bosse mit `boss`/`respawn`.
 - Kamera: V wechselt Verfolger → Cockpit → Taktisch (`render/camrig.js`); Cockpit ist eine eigene Ebene (`render/cockpit.js`).
+- Controller (Gamepad-API): `src/input/` (gamepad, padflight, padnav, padglyph), Belegung und Regeln in `Planung/CONTROLLER.md`. Prüfung ohne Controller: `cd Code && node tools/playtest/controller.mjs --url <dev-url>`.
 
 ## Regeln
 

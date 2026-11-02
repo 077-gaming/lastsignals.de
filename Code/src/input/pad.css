@@ -1,0 +1,61 @@
+/* Controller: Fokusrahmen, Texteingabe-Hinweis, Schnellleisten-Auswahl, Controller-Tastenkappen, Touch ausblenden.
+   UI-Stil (Planung/UI_STIL.md): angeschnittene Ecken, Haarlinie in Fraktionsfarbe, Eckmarken, keine Rundungen. */
+
+/* Fokusrahmen: eigene Ebene über allem, folgt dem fokussierten Element (padnav.js) */
+.gp-ring { position: fixed; left: 0; top: 0; z-index: 2147483000; pointer-events: none; display: none; }
+.gp-ring.on { display: block; }
+.gp-ring svg { display: block; overflow: visible; }
+.gp-ring .gp-r1 { fill: color-mix(in srgb, var(--fx, #e0782a) 10%, transparent); stroke: var(--fx, #e0782a); stroke-width: 1.5; }
+.gp-ring .gp-r2 { fill: none; stroke: rgba(255, 255, 255, .85); stroke-width: 1.5; }
+@media (prefers-reduced-motion: no-preference) {
+  .gp-ring.on { animation: gp-in 140ms steps(3, end); }
+}
+@keyframes gp-in { 0% { opacity: .2; } 50% { opacity: 1; } 70% { opacity: .5; } 100% { opacity: 1; } }
+/* Eigener Rahmen ersetzt den Browser-Fokusring, solange der Controller führt */
+html[data-input="pad"] :focus, html[data-input="pad"] :focus-visible { outline: none !important; }
+
+/* Texteingabe-Hinweis unter dem Feld */
+.gp-hint {
+  position: fixed; left: 0; top: 0; z-index: 2147483001; pointer-events: none; display: none;
+  align-items: center; gap: 8px; padding: 6px 10px; max-width: min(520px, 92vw);
+  background: rgba(6, 9, 13, .92); border: 1px solid var(--ls-line-2, rgba(255, 255, 255, .32));
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  font: 12px var(--ls-text, sans-serif); color: var(--ls-tx-2, rgba(255, 255, 255, .66)); white-space: nowrap;
+}
+.gp-hint.on { display: flex; }
+.gp-hint .ls-label { color: var(--fx, #e0782a); }
+.gp-hint.flash { border-color: var(--fx, #e0782a); }
+
+/* Controller-Symbol in Tastenkappen: gleiche Kappe, etwas breiter, Fraktionsakzent links */
+.ls-key.is-pad { min-width: 20px; letter-spacing: .04em; box-shadow: inset 2px 0 0 var(--fx, #e0782a); }
+html[data-pad="ps"] .ls-key.is-pad { font-family: var(--ls-text, sans-serif); }
+
+/* Schnellleiste: gewählter Platz (Steuerkreuz) – nur im Controller-Modus sichtbar */
+html[data-input="pad"] .qs.gp-sel { --sl: var(--fx, #e0782a); outline: 1px solid var(--fx, #e0782a); outline-offset: -4px; }
+
+/* Touch-Geräte mit Controller: Knöpfe und Joystick weg, solange der Controller benutzt wird (Zielanzeige bleibt) */
+html[data-input="pad"] .ht-pad, html[data-input="pad"] .ht-stick { display: none !important; }
+
+/* Belegungsübersicht (Einstellungen, Steuerung, Bordmenü) */
+.gp-map { display: grid; gap: 12px; }
+.gp-svg { width: 100%; height: auto; max-height: 300px; display: block; }
+.gp-svg .gp-body { fill: rgba(255, 255, 255, .03); stroke: rgba(255, 255, 255, .32); stroke-width: 1; }
+.gp-svg .gp-part { fill: rgba(6, 9, 13, .9); stroke: rgba(255, 255, 255, .5); stroke-width: 1; }
+.gp-svg .gp-lead { fill: none; stroke: rgba(255, 255, 255, .22); stroke-width: 1; }
+.gp-svg .gp-k { font: 600 10px var(--ls-mono, monospace); fill: rgba(255, 255, 255, .94); text-anchor: middle; dominant-baseline: central; }
+.gp-svg .gp-t { font: 11px var(--ls-display, sans-serif); letter-spacing: .1em; fill: rgba(255, 255, 255, .66); dominant-baseline: central; }
+.gp-svg .gp-t.r { text-anchor: end; }
+.gp-svg .gp-t b, .gp-svg .gp-kk { fill: var(--fx, #e0782a); font-weight: 600; }
+.gp-tab { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 18px; }
+.gp-grp { display: grid; align-content: start; }
+.gp-grp > b { font: 11px var(--ls-display, sans-serif); letter-spacing: .16em; color: var(--fx, #e0782a); padding: 6px 0 4px; border-bottom: 1px solid rgba(255, 255, 255, .16); }
+.gp-row { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 8px; min-height: 24px; font-size: 12.5px; color: var(--ls-tx-2, rgba(255, 255, 255, .66)); border-bottom: 1px solid rgba(255, 255, 255, .05); }
+.gp-row .ls-key { justify-self: start; }
+.gp-st { font: 11px var(--ls-display, sans-serif); letter-spacing: .14em; color: var(--ls-tx-3, rgba(255, 255, 255, .6)); }
+.gp-st.on { color: var(--fx, #e0782a); }
+
+/* Bordmenü STEUERUNG: Controller-Teil unter der Tastatur, im Controller-Modus zuerst */
+.mp-ctl-wrap { display: flex; flex-direction: column; gap: 10px; }
+html[data-input="pad"] .mp-padsec { order: -1; }
+.mp-padsec .gp-tab { grid-template-columns: 1fr 1fr; column-gap: 16px; }
+.mp-padsec .gp-row { font-size: 12px; }

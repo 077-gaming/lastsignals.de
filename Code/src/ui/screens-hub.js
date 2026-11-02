@@ -18,6 +18,8 @@ import { stage } from './screens-stage.js';
 import { register, killsOf, CLANS } from './screens-roster.js';
 import { World } from '../sim/world.js';
 import { Bus } from '../core/events.js';
+import { padSettings, setPadSetting, pad as gamepad } from '../input/gamepad.js';
+import { padMapHtml, paintPadKeys, padStatus, PAD_ROWS } from './pad-map.js';
 
 const BEHAVIOR = {
   aggressive: 'Greift in Reichweite an',
@@ -811,6 +813,7 @@ function hudPreview() {
 }
 function einstView() {
   const s = settings();
+  const ps = padSettings();
   const h = hudState();
   return `<div class="st">
     <div class="st-c">
@@ -859,6 +862,16 @@ function einstView() {
           ${setRow('LAYOUT SPERREN', 'Fenster bleiben an ihrem Platz.', seg('hudLock', [[false, 'AUS'], [true, 'AN']], h.locked))}
           ${setRow('LAYOUT ZURÜCKSETZEN', 'Positionen, Zuklappen und Anzeige auf Werkseinstellung.', '<button type="button" class="ls-btn mc-reset" data-hudreset>ZURÜCKSETZEN</button>')}
         </div>
+      </section>
+      <section class="ak-sec">
+        ${sub('CT', 'CONTROLLER', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}
+        <div class="mc-set st-set">
+          ${setRow('EMPFINDLICHKEIT', 'Lenken und Umsehen mit den Sticks.', seg('pad.sens', [[0.7, 'NIEDRIG'], [1, 'MITTEL'], [1.3, 'HOCH'], [1.6, 'SEHR HOCH']], ps.sens))}
+          ${setRow('Y-ACHSE UMKEHREN', 'Rechter Stick: nach oben drücken schaut nach unten.', seg('pad.invertY', [[false, 'AUS'], [true, 'AN']], ps.invertY))}
+          ${setRow('TOTZONE', 'Ab welchem Ausschlag die Sticks reagieren. Höher bei driftenden Sticks.', seg('pad.dead', [[0.08, '8 %'], [0.15, '15 %'], [0.22, '22 %'], [0.3, '30 %']], ps.dead))}
+          ${setRow('VIBRATION', 'Treffer am eigenen Schiff, Explosionen in der Nähe, Raketenstart.', seg('pad.rumble', [[true, 'AN'], [false, 'AUS']], ps.rumble))}
+        </div>
+        ${padMapHtml()}
       </section>
     </div>
   </div>`;
@@ -909,10 +922,15 @@ function keyboard() {
 }
 const STEUERUNG = {
   overview() {
-    return `${keyboard()}${tiles(...KEYS.map(([id, t, rows]) => tile(id, t, `${pad2(rows.length)}<i> BEFEHLE</i>`, esc(rows[0][1]), { wide: id === 'mc' })))}`;
+    const nPad = PAD_ROWS.reduce((n, [, r]) => n + r.length, 0);
+    return `${keyboard()}${tiles(...KEYS.map(([id, t, rows]) => tile(id, t, `${pad2(rows.length)}<i> BEFEHLE</i>`, esc(rows[0][1]), { wide: id === 'mc' })),
+      tile('controller', 'CONTROLLER', `${pad2(nPad)}<i> BELEGUNGEN</i>`, 'Xbox, PlayStation, Switch Pro: Flug, Kampf und Menüs ohne Maus', { wide: true }))}`;
   },
-  details: Object.fromEntries(KEYS.map(([id, t, rows]) => [id, [t, () => `<div class="hb-keys">${rows.map(([keys, txt]) =>
-    `<div class="mc-key"><span class="mc-key-k">${keys.map((k) => (k === '…' ? '<span class="ls-label">BIS</span>' : `<span class="ls-key">${k}</span>`)).join('')}</span><span>${esc(txt)}</span></div>`).join('')}</div>`]])),
+  details: {
+    ...Object.fromEntries(KEYS.map(([id, t, rows]) => [id, [t, () => `<div class="hb-keys">${rows.map(([keys, txt]) =>
+      `<div class="mc-key"><span class="mc-key-k">${keys.map((k) => (k === '…' ? '<span class="ls-label">BIS</span>' : `<span class="ls-key">${k}</span>`)).join('')}</span><span>${esc(txt)}</span></div>`).join('')}</div>`]])),
+    controller: ['CONTROLLER', () => `<div class="hb-pad">${sub('CT', 'BELEGUNG', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}${padMapHtml()}</div>`],
+  },
 };
 
 // ---------------------------------------------------------------- Lade-Silhouette der Station
@@ -1188,6 +1206,7 @@ export async function hubScreen(root, profile, store) {
     body.replaceChildren(node);
     body.scrollTop = 0;
     applyThumbs(node);
+    paintPadKeys(node);
     enter(node);
     more = null; checkMore();
     if (current === 'einst') { hudPrev(); perfPrev = ''; perfTick(true); }
@@ -1207,6 +1226,7 @@ export async function hubScreen(root, profile, store) {
     if (l2) l2.scrollTop = keep;
     body.scrollTop = keepB;
     applyThumbs(node);
+    paintPadKeys(node);
     if (ctx.confirm) node.querySelector('[data-buyok]')?.focus({ preventScroll: true });
     else if (focusKey) node.querySelector(focusKey)?.focus({ preventScroll: true });
     if (current === 'hangar') { reframe(); measureHg(); }
@@ -1362,6 +1382,12 @@ export async function hubScreen(root, profile, store) {
     let val = b.dataset.val;
     if (key === 'hudMode') { hudSet((v) => { for (const id of HUD_TOGGLE) v.win[id] = { ...(v.win[id] || { collapsed: false }), mode: val }; }); }
     else if (key === 'hudLock') { val = val === 'true'; hudSet((v) => { v.locked = val; }); }
+    else if (key.startsWith('pad.')) {
+      const k = key.slice(4);
+      val = k === 'invertY' || k === 'rumble' ? val === 'true' : Number(val);
+      setPadSetting(k, val);
+      if (k === 'rumble' && val) gamepad.rumble(0.5, 0.5, 160); // kurze Probe
+    }
     else if (key === 'quickbuyAsk') { val = val === 'true'; try { if (val) localStorage.removeItem('ls.quickbuy.ok'); else localStorage.setItem('ls.quickbuy.ok', '1'); } catch { /* privat */ } }
     else {
       if (key === 'hudScale' || key === 'hubScale' || key === 'master' || key === 'sfx' || key === 'music') val = Number(val);
@@ -1446,6 +1472,10 @@ export async function hubScreen(root, profile, store) {
     }, 30);
   }
   s.on(window, 'resize', () => { reframe(); measureHg(); more = null; checkMore(); });
+  // Controller an- oder abgesteckt, Bauart gewechselt: Symbole und Status neu
+  const padInfo = () => { paintPadKeys(body); for (const el of body.querySelectorAll('[data-padst]')) { el.textContent = padStatus(); el.classList.toggle('on', !!gamepad.connected); } };
+  s.on(window, 'ls:pad', padInfo);
+  s.on(window, 'ls:inputmode', padInfo);
   s.on(body, 'scroll', checkMore, { passive: true });
   s.on($('.mc-more'), 'click', () => body.scrollBy({ top: body.clientHeight * 0.8, behavior: reduced() ? 'auto' : 'smooth' }));
 
