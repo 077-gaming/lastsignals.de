@@ -94,6 +94,15 @@ const OPTIONAL_MODELS = [
   ['enemy:werft', '/models/enemy-werft.glb', NEG_Z],
   ['enemy:wal', '/models/enemy-wal.glb', NEG_Z],
   ['enemy:queen', '/models/enemy-queen.glb', NEG_Z],
+  // Grundgegner der Sektoren 1–3 aus Meshy (Heavy Enforcer, Jackal, Larva, Spiker); Schwarm-Varianten als eingefärbte Kopien
+  ['enemy:raider', '/models/enemy-raider.glb', NEG_Z],
+  ['enemy:jackal', '/models/enemy-jackal.glb', NEG_Z],
+  ['enemy:larva', '/models/enemy-wal.glb', NEG_Z],
+  ['enemy:spiker', '/models/enemy-queen.glb', NEG_Z],
+  ['enemy:spitter', '/models/enemy-queen.glb', { forward: '-z', tint: 0xc8ff8a }],
+  ['enemy:breeder', '/models/enemy-wal.glb', { forward: '-z', tint: 0xffe6a0 }],
+  ['enemy:symbiont', '/models/enemy-wal.glb', { forward: '-z', tint: 0x8affe0 }],
+  ['enemy:tender', '/models/enemy-wal.glb', { forward: '-z', tint: 0xfff3a0 }],
 ];
 
 const PITCH = 55 * Math.PI / 180;

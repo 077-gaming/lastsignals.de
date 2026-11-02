@@ -652,6 +652,16 @@ export class ModelFactory {
     src.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
     // Spielerschiffe: Klarlack über der Lackierung (Glanzkante im Sonnen- und Kantenlicht), Umgebungslicht etwas stärker.
     // Nur eigene Schiffe (wenige Teile im Bild); Materialien je Modell einmal ersetzt, Vorlage im Zwischenspeicher bleibt.
+    // Farbvariante desselben Modells (z. B. Schwarm-Kreaturen): Materialien kopieren, dann einfärben
+    if (opts.tint != null) {
+      const tc = new THREE.Color(opts.tint), done = new Map();
+      src.traverse((o) => {
+        if (!o.isMesh || !o.material) return;
+        let m = done.get(o.material);
+        if (!m) { m = o.material.clone(); m.color?.multiply(tc); done.set(o.material, m); }
+        o.material = m;
+      });
+    }
     if (key.startsWith('ship:') && !opts.noCoat) {
       const done = new Map();
       src.traverse((o) => {
