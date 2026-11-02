@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { PI, _m, _q, _e, _p, _s, _a, _b, _up, _fz, BOX, CYL, CYL6, SPH, HALF, CONE, DISC, ICO, TOR, NOZ, T, TQ, beam, spike, E, lathe, Parts } from './geo.js';
 import { stationParts, STATION_INST_GEO } from './stations.js';
-import { hullDetail, lightPointsMaterial, lightPointsGeometry, lightConeMaterial } from './surface.js';
+import { hullDetail, glbShipDetail, lightPointsMaterial, lightPointsGeometry, lightConeMaterial } from './surface.js';
 import { NOISE } from './glsl.js';
 import { FACTIONS, ENEMIES, LASERS } from '../core/data.js';
 import { getGlowTexture, rng } from './textures.js';
@@ -562,6 +562,33 @@ export function preloadGLB(url) {
 }
 export function glbLoaded(url) { return GLB_CACHE.has(url); }
 
+// 4K-Texturen der Spielerschiffe (Farbe je Fraktion, Normalkarte je Klasse), einmal je Adresse geladen und von
+// Flug und Hangar geteilt (je Grafik-Engine eigene Kopie auf der Grafikkarte). Nur eigenes Schiff/Hangar.
+const HD_CACHE = new Map();
+function hdTex(url, srgb) {
+  let p = HD_CACHE.get(url);
+  if (!p) {
+    p = new THREE.TextureLoader().loadAsync(url).then((t) => {
+      t.flipY = false; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.needsUpdate = true;
+      return t;
+    });
+    p.catch(() => HD_CACHE.delete(url));
+    HD_CACHE.set(url, p);
+  }
+  return p;
+}
+async function loadHdTextures(hd) {
+  const [map, normal] = await Promise.all([hdTex(hd.map, true), hdTex(hd.normal, false)]);
+  return { map, normal };
+}
+/** Adressen der 4K-Stufe zu einer Schiffsdatei ('/models/europa-schiff8.glb' → hd/europa-schiff8-farbe.webp, hd/s8-normal.webp) */
+export function shipHdUrls(url, shipId) {
+  const m = /\/models\/([a-z]+-[a-z0-9]+)\.glb$/.exec(url || '');
+  if (!m) return null;
+  return { map: `/models/hd/${m[1]}-farbe.webp`, normal: `/models/hd/${shipId}-normal.webp` };
+}
+
 // Ausrüstung am Schiff (Meshy, Bug/Lauf +z wie glTF): je Lasertyp ein Modell, Generatoren nach Art (Schild, Antrieb)
 export const EQUIP_URL = {
   'laser:pulse': '/models/laser-pulse.glb', 'laser:ion': '/models/laser-ion.glb', 'laser:plasma': '/models/laser-plasma.glb',
@@ -580,6 +607,7 @@ export class ModelFactory {
   constructor() {
     this.uTime = { value: 0 };     // gemeinsame Zeit für alle Shader
     this.uPointScale = { value: 800 }; // Pixel je Meter in 1 m Abstand (Renderer setzt ihn bei Größenänderung)
+    this.uShipDetail = { value: 1 };   // Feindetail der Meshy-Schiffe (0 = aus: NIEDRIG/MITTEL)
     this.geos = new Map();
     this.mats = new Map();
     this.glb = new Map();
@@ -691,8 +719,11 @@ export class ModelFactory {
         o.material = m;
       });
     }
+    let hd = null;
     if (key.startsWith('ship:') && !opts.noCoat) {
       const done = new Map();
+      // 4K-Stufe (eigenes Schiff/Hangar auf ULTRA oder in der Desktop-App): Farbe und Normalkarte ersetzen
+      if (opts.hd) hd = await loadHdTextures(opts.hd).catch((err) => { console.warn('4K-Texturen fehlen', key, err); return null; });
       src.traverse((o) => {
         if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial || o.material.isMeshPhysicalMaterial) return;
         let m = done.get(o.material);
@@ -700,9 +731,15 @@ export class ModelFactory {
           const b = o.material;
           m = new THREE.MeshPhysicalMaterial();
           THREE.MeshStandardMaterial.prototype.copy.call(m, b);
-          m.clearcoat = b.emissiveMap || b.emissive?.getHex() ? 0.25 : 0.5;
-          m.clearcoatRoughness = 0.28;
+          // Klarlack: mit eigener Rauheitskarte (gebackene Materialkarten) dezenter, sonst wie bisher
+          const orm = !!b.roughnessMap;
+          m.clearcoat = orm ? 0.3 : (b.emissiveMap || b.emissive?.getHex() ? 0.25 : 0.5);
+          m.clearcoatRoughness = orm ? 0.32 : 0.28;
           m.envMapIntensity = (b.envMapIntensity ?? 1) * 1.15;
+          if (hd && m.map && hd.map) { hd.map.anisotropy = m.map.anisotropy; m.map = hd.map; }
+          if (hd && m.normalMap && hd.normal) { hd.normal.anisotropy = m.normalMap.anisotropy; m.normalMap = hd.normal; }
+          // Feindetail aus der Nähe (Fugen, Spuren, Kantenglanz), Stufe über this.uShipDetail, Maßstab je Rumpf
+          if (m.map) { m.userData.uUnit = { value: 1 }; glbShipDetail(m, this.uShipDetail, m.userData.uUnit); }
           done.set(b, m);
         }
         o.material = m;
@@ -717,6 +754,7 @@ export class ModelFactory {
     if (flip) wrap.rotation.y = PI; // glTF-Bug (+z) → Spiel-Bug (−z)
     wrap.userData.glbFlip = flip;
     wrap.userData.glbLen = Math.max(0.001, box.max.z - box.min.z);
+    wrap.userData.glbHd = !!hd;
     wrap.userData.glbScale = opts.scale ?? null;
     this.glb.set(key, wrap);
     // Vor dem Umschalten vorbereiten (Renderer: Shader parallel übersetzen, Texturen hochladen), damit der Wechsel
@@ -967,7 +1005,10 @@ export class ModelFactory {
     // Echtes Modell: auf die Platzhalter-Länge (≈ 44 m × scale) bringen; Bauteile behalten ihre Größe.
     const glbFlip = !placeholder && !!hull.userData.glbFlip;
     const fit = placeholder ? 1 : (hull.userData.glbScale ?? (44 * layout.scale) / (hull.userData.glbLen || 44));
-    if (!placeholder) { hull.scale.setScalar(fit); this._glbShipLook(hull, faction); }
+    if (!placeholder) {
+      hull.scale.setScalar(fit); this._glbShipLook(hull, faction);
+      hull.traverse((o) => { const L = o.isMesh && (Array.isArray(o.material) ? o.material : [o.material]); if (L) for (const m of L) if (m.userData?.uUnit) m.userData.uUnit.value = fit; });
+    }
     else hull.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
     this._shipMarks(bank, hull, faction, shipId);
     const mount = (hp, obj, turn) => {

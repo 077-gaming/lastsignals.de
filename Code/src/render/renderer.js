@@ -7,7 +7,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { CameraLookPass } from './post.js';
 import { BloomPass } from './bloom.js';
 import { FACTIONS, SHIPS, ENEMIES } from '../core/data.js';
-import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, EQUIP_URL, equipKeys, preloadGLB } from './models.js';
+import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, EQUIP_URL, equipKeys, preloadGLB, shipHdUrls } from './models.js';
 import { store } from '../core/store.js';
 import { JumpMarker } from './marker.js';
 import { Environment, sectorFaction } from './environment.js';
@@ -16,7 +16,7 @@ import { Trails } from './trails.js';
 import { disposeTextures, hashString } from './textures.js';
 import { scaleRingMaterial, scaleRingGeometry } from './overlay.js';
 import { GpuTimer } from '../perf/gputimer.js';
-import { renderHints, PR_CAP } from '../perf/quality.js';
+import { renderHints, PR_CAP, hdTextures } from '../perf/quality.js';
 import { CameraRig, FOV_TAC, FOV_CHASE } from './camrig.js';
 import { Cockpit } from './cockpit.js';
 import { Telegraph } from './telegraph.js';
@@ -342,6 +342,7 @@ export class Renderer {
     this.bloom.setLevels(q <= 1 && this.hints.weak ? 4 : 5);
     this.output.setQuality(q);
     this.effects.setQuality(q);
+    this.factory.uShipDetail.value = q >= 2 ? 1 : 0; // Feindetail der Meshy-Schiffe ab HOCH
     // Pixeldichte der Stufe (ultra/hoch 2, mittel 1,5, niedrig 1): Puffer neu anlegen, falls sich etwas ändert
     if (this._sized) { this._sized = false; this.resize(); }
   }
@@ -488,7 +489,7 @@ export class Renderer {
     // gewählte Rakete gleich mit (klein, ≈ 170 KB), damit der erste Schuss schon das Modell zeigt
     const pr = world.profile, rk = pr?.selectedRocket || 'R1';
     if (pr?.ammo?.[rk] > 0) this._need('rocket:' + rk);
-    this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl) : Promise.resolve(), drones, equip]);
+    this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl, this._mineOpts(ship)) : Promise.resolve(), drones, equip]);
   }
 
   /** Gegner des Sektors (auch noch nicht erschienene, Ereignis-Piraten, Brut) gleich beim Sektoraufbau anfordern */
@@ -1731,13 +1732,15 @@ export class Renderer {
     for (const [key, url] of MODELS) if (!this.factory.glb.has(key)) setTimeout(() => this._loadGLB(key, url), 200 * i++);
     for (const key in EXTRA_MODELS) if (key.startsWith('enemy:')) setTimeout(() => this._need(key), 200 * i++);
   }
+  /** Eigenes Schiff: 4K-Farbe und -Normalkarte auf ULTRA bzw. in der Desktop-App (fremde Schiffe immer 2K) */
+  _mineOpts(ship) { return hdTextures(this.quality) ? { hd: shipHdUrls(this._mineUrl, ship) } : undefined; }
   /** Schiff gewechselt (Kauf): dessen Modell laden, falls noch nicht da */
   _ensureMine(e) {
     const fac = e.faction || this.world?.profile?.faction || this.faction, sh = e.ship || this.world?.profile?.ship || 's1';
     const key = `ship:${sh}:${fac}`;
     if (key === this._mineKey) return;
     this._mineKey = key; this._mineUrl = MODEL_URL.get(key) || null;
-    if (this._mineUrl && !this.factory.glb.has(key) && this._loadGLB) this._loadGLB(key, this._mineUrl);
+    if (this._mineUrl && !this.factory.glb.has(key) && this._loadGLB) this._loadGLB(key, this._mineUrl, this._mineOpts(sh));
   }
   /** Eigenes Schiff fertig (echtes Modell geladen und vorbereitet oder keins vorhanden) */
   _mineReady() {

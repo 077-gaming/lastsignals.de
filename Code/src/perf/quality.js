@@ -478,3 +478,19 @@ export class QualityGuard {
     this.hold(12);
   }
 }
+
+/**
+ * 4K-Texturen für das eigene Schiff und den Hangar: in der Desktop-App (window.lsDesktop) oder auf ULTRA, nie auf
+ * Handy/Tablet und nur, wenn der Chip 4096er-Texturen kann. Nur Entwicklung: ?hd=1 / ?hd=0 erzwingt.
+ */
+export function hdTextures(q) {
+  if (typeof window === 'undefined') return false;
+  if (import.meta.env && import.meta.env.DEV) {
+    const o = new URLSearchParams(location.search).get('hd');
+    if (o === '1') return true;
+    if (o === '0') return false;
+  }
+  const g = gpuInfo();
+  if (g.mobile || g.tier === 'soft' || (g.maxTex && g.maxTex < 4096)) return false;
+  return !!window.lsDesktop || q >= 3;
+}

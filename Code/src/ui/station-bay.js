@@ -9,7 +9,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { ModelFactory, equipKeys } from '../render/models.js';
+import { ModelFactory, equipKeys, shipHdUrls } from '../render/models.js';
+import { hdTextures, qIndex } from '../perf/quality.js';
 
 // Echte Schiffsmodelle (GLB) je Fraktion und Klasse: Startschiff Saturn sofort, alle anderen erst, wenn die Bucht
 // das Schiff zeigt (Schiffswerft blättert durch alle Klassen; jede Datei 0,7–3 MB).
@@ -568,7 +569,11 @@ export class HangarBay {
     if (this.factory.glb.has(k) || this.pending.has(k) || (this._tried || (this._tried = new Set())).has(k)) return;
     this._tried.add(k);
     this.pending.add(k);
-    this.factory.registerGLB(k, shipFile(faction, shipId)).then(() => this._done(k), () => this._done(k));
+    // 4K-Stufe wie im Flug (ULTRA oder Desktop-App): Hangar ist die Nahaufnahme des eigenen Schiffs
+    let q = 2;
+    try { q = qIndex(JSON.parse(localStorage.getItem('ls.settings') || '{}').quality) ?? 2; } catch { /* Standard HOCH */ }
+    const url = shipFile(faction, shipId);
+    this.factory.registerGLB(k, url, hdTextures(q) ? { hd: shipHdUrls(url, shipId) } : {}).then(() => this._done(k), () => this._done(k));
   }
 
   setShip(faction, shipId, loadout, locked) {
