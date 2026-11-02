@@ -78,6 +78,14 @@ const OPTIONAL_MODELS = [
   ['station:saturn', '/models/station-saturn.glb'],
   ['station:eris', '/models/station-eris.glb'],
   ['enemy:vulture', '/models/enemy-vulture.glb'], // Meshy-Modell, aufbereitet 02.11.2026
+  // Meshy-Hauptreihe S01–S05, S07, S08 als Piraten der tiefen Sektoren (aufbereitet 02.11.2026: Bug nach −z, Länge 2, WebP)
+  ['enemy:corsair', '/models/enemy-corsair.glb'],
+  ['enemy:boarder', '/models/enemy-boarder.glb'],
+  ['enemy:merc', '/models/enemy-merc.glb'],
+  ['enemy:stalker', '/models/enemy-stalker.glb'],
+  ['enemy:colossus', '/models/enemy-colossus.glb'],
+  ['enemy:hunter', '/models/enemy-hunter.glb'],
+  ['enemy:dread', '/models/enemy-dread.glb'],
 ];
 
 const PITCH = 55 * Math.PI / 180;
@@ -1310,7 +1318,12 @@ export class Renderer {
     let style = 'metal';
     const src = v || (p.id !== undefined && p.id !== null ? this.entity(p.id) : null); // Ansicht evtl. noch nicht angelegt
     if (src) {
-      if (src.kind === 'enemy') style = src.type === 'nest' || ENEMIES[src.type]?.group === 'swarm' ? 'swarm' : 'metal';
+      if (src.kind === 'enemy') {
+        const def = ENEMIES[src.type];
+        style = src.type === 'nest' || def?.group === 'swarm' ? 'swarm' : 'metal';
+        if (def?.boss) style = 'boss';          // Bosse: Kette aus Teilexplosionen, dann der große Knall
+        if (def?.look) p.tint = def.accent;     // tiefe Gegner: Feuer in ihrer Leuchtfarbe
+      }
       else if (src.kind === 'nest') style = 'swarm';
       else if (src.kind === 'player') style = 'ship';
     }
@@ -1349,10 +1362,11 @@ export class Renderer {
   _cockpitPose(pv, kc) {
     if (pv._ckRoot !== pv.root) { pv._ckRoot = pv.root; pv._ckNode = pv.root.getObjectByName('HP_Cockpit') || null; }
     const h = pv.rrot, fx = -Math.sin(h), fz = -Math.cos(h);
+    const lh = h + this.rig.lookYaw * kc, lx = -Math.sin(lh), lz = -Math.cos(lh), ly = Math.tan(this.rig.lookPitch * kc) * 100;
     if (pv._ckNode) { pv.root.updateMatrixWorld(); pv._ckNode.getWorldPosition(_v); }
     else _v.set(pv.rx + fx * pv.vr * 0.42, pv.root.position.y + pv.vr * 0.2, pv.rz + fz * pv.vr * 0.42);
     _cp.lerp(_v, kc);
-    _cl.lerp(_v.set(_v.x + fx * 100, _v.y - 4, _v.z + fz * 100), kc);
+    _cl.lerp(_v.set(_v.x + lx * 100, _v.y - 4 + ly, _v.z + lz * 100), kc);
     // eigenes Außenmodell ausblenden, solange der Pilotenplatz die Sicht hat
     if (kc > 0.5 && (pv._ckHidden !== pv.root || this.time > (pv._ckAt || 0))) { pv._ckHidden = pv.root; pv._ckAt = this.time + 0.5; pv.root.traverse((o) => o.layers.set(PLAYER_LAYER)); } // nachgeladene Teile mit erfassen
   }
@@ -1396,6 +1410,7 @@ export class Renderer {
     // Kopfbewegung: Stoß-Feder und Beschleunigung, abschaltbar über Kamerawackeln
     const m = rig.shakeOn ? rig.motion : 0;
     _so.set(rig.kick.x * 0.002 * m, rig.kick.y * 0.002 * m - Math.max(-1, Math.min(1, (rig.accel || 0) / 400)) * 0.03 * m, 0);
+    this.cockpit.look(rig.lookYaw, rig.lookPitch);
     this.cockpit.update(dt, fov, _so, rig.shakeRoll(this.time) * 0.3 * m, {
       hull: p.hpMax ? p.hp / p.hpMax : 1, shield: p.shieldMax ? p.shield / p.shieldMax : 0,
       speed: Math.hypot(p.vx || 0, p.vz || 0) || p.speed || 0, maxSpeed: pv.maxSpeed || 320, ab: (pv.ab || 0) > 0.1,
@@ -1724,7 +1739,7 @@ export class Renderer {
     // Sichtfeld: Kick bei hohem Tempo und Nachbrenner (Taktik nur leicht)
     let fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (FOV_CHASE - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K
       - (rig.firePunch || 0) * (0.6 + 1.4 * K); // Schuss: kurzes Heranrücken (negativer FOV-Puls)
-    fov += (FOV_COCKPIT + 6 * rig.fovKick * rig.motion - fov) * rig.kc;
+    fov += ((rig.cockpitFov || FOV_COCKPIT) + 6 * rig.fovKick * rig.motion - fov) * rig.kc;
     this._cockpitFrame(dt, W, pv, fov);
     if (Math.abs(fov - this._fov) > 0.01) {
       this._fov = fov; this._tanH = Math.tan(fov * Math.PI / 360);

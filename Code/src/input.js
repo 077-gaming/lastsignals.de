@@ -71,6 +71,8 @@ export class Input {
       if (this.touches.size > 2) return;
       this.primary = e.pointerId;
     }
+    // Cockpit: mittlere Maustaste halten = umsehen (Kurs bleibt)
+    if (e.button === 1 && this.renderer.viewMode === 'cockpit') { e.preventDefault(); this.look = true; this.renderer.rig.looking = true; this.lookX = e.clientX; this.lookY = e.clientY; return; }
     if (e.button !== 0) return;
     if (this.world.docked || this.world.playerDead) return;
     this.mouseX = e.clientX; this.mouseY = e.clientY; this.mouseOnCanvas = true;
@@ -111,6 +113,7 @@ export class Input {
       }
       if (e.pointerId !== this.primary) return;
     }
+    if (this.look) { this.renderer.rig.lookBy(e.clientX - this.lookX, e.clientY - this.lookY); this.lookX = e.clientX; this.lookY = e.clientY; return; }
     this.mouseX = e.clientX; this.mouseY = e.clientY;
     this.mouseOnCanvas = e.target === this.canvas;
   }
@@ -122,6 +125,7 @@ export class Input {
       this.primary = null;
     }
     if (e.button === 0) this.mouseDown = false;
+    if (e.button === 1 && this.look) { this.look = false; this.renderer.rig.looking = false; }
   }
   _pinchDist() { const [a, b] = [...this.touches.values()]; return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0; }
 

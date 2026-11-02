@@ -106,6 +106,10 @@ export function menuHtml(windows) {
   }).join('')}</div>
       </section>
       <section class="mp-pane" data-pane="anzeige">
+        <div class="mp-sec">KAMERA</div>
+        <div class="mp-win"><span class="mp-wt">COCKPIT-SICHTFELD</span><span class="hg-sp"></span><button class="mp-sw mp-step" type="button" data-act="ckfov" data-d="-5" aria-label="Sichtfeld kleiner"><i>−</i></button><b class="ls-num mp-fov" data-r="ckfov">74°</b><button class="mp-sw mp-step" type="button" data-act="ckfov" data-d="5" aria-label="Sichtfeld größer"><i>+</i></button></div>
+        <div class="mp-crow"><span class="ls-key">V</span><span>Verfolger · Cockpit · Taktisch</span></div>
+        <div class="mp-crow"><span class="ls-key">MMB</span><span>Im Cockpit halten: umsehen</span></div>
         <div class="mp-sec">LAYOUT</div>
         <div class="mp-pair">
           <button class="ls-btn" type="button" data-act="lock" data-r="lockbtn">LAYOUT SPERREN</button>

@@ -88,6 +88,9 @@ export class Cockpit {
     this._acc = 1;
   }
 
+  // Umsehen: Kopf dreht sich, der Rahmen bleibt stehen (wandert also durchs Bild)
+  look(yaw, pitch) { this._yaw = yaw; this._pitch = pitch; }
+
   setSize(w, h) { this.camera.aspect = w / Math.max(1, h); this.camera.updateProjectionMatrix(); }
 
   /** fov: Sichtfeld der Weltkamera (gleich halten, sonst passt der Rahmen nicht), bob: Kopfversatz (m), roll (rad) */
@@ -95,7 +98,7 @@ export class Cockpit {
     const cam = this.camera;
     if (Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix(); }
     cam.position.set(bob.x, bob.y, bob.z);
-    cam.rotation.set(0, 0, roll);
+    cam.rotation.set(this._pitch || 0, this._yaw || 0, roll, 'YXZ');
     this._acc += dt;
     if (this._acc >= 0.2 && info) { this._acc = 0; this._draw(info); }
   }

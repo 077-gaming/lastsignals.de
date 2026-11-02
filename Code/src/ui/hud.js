@@ -631,7 +631,7 @@ export class Hud {
     this._menuOpen = open;
     this.menuEl.classList.toggle('show', open);
     this.sMenuCls.set(open);
-    if (open) { this.menu.syncWins(); this.menu._acc = 1; }
+    if (open) { this.menu.syncWins(); this.menu._acc = 1; const o = this.menuEl.querySelector('[data-r="ckfov"]'); if (o && this.renderer?.rig) o.textContent = this.renderer.rig.cockpitFov + '°'; }
     this.barMenu.classList.toggle('on', open);
     this.barMenu.setAttribute('aria-pressed', open ? 'true' : 'false');
   }
@@ -761,6 +761,7 @@ export class Hud {
       case 'tab': this.menu.setTab(t.dataset.tab); break;
       case 'winvis': this.wins.toggleHidden(t.dataset.id); this.menu.syncWins(); break;
       case 'calm': this.menu.setCalm(!this.menu.calm); break;
+      case 'ckfov': { const r = this.renderer?.rig; if (r) { const v = r.setCockpitFov(r.cockpitFov + (+t.dataset.d || 0)); const o = this.menuEl.querySelector('[data-r="ckfov"]'); if (o) o.textContent = v + '°'; } break; }
       case 'sysguide': case 'sysdirect': case 'sysrestart':
         window.dispatchEvent(new CustomEvent('ls:system', { detail: { act: t.dataset.act.slice(3) } })); this.menu._helpKey = ''; break;
       case 'save':

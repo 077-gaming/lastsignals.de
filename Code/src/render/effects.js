@@ -5,6 +5,7 @@
 // Trümmer die nach 1 s zu dunklem Metall abkühlen, Funken), Sprung-Ladung als scharfe Segmentringe mit
 // steigender Drehzahl, kurzer Austrittsblitz mit radialer Streckung, Einblendung, Beute-Glitzern.
 import * as THREE from 'three';
+const _tc = new THREE.Color(), _tc2 = new THREE.Color();
 import { LASERS, ENEMIES } from '../core/data.js';
 import { getGlowTexture, getRingTexture } from './textures.js';
 import { SHIELD_COLOR, ENEMY_VIS } from './models.js';
@@ -873,11 +874,14 @@ export class Effects {
     const x = p.x ?? 0, z = p.z ?? 0;
     const r = Math.max(14, this.host.visualRadius ? this.host.visualRadius(p.id) || 0 : 0) || 20 * Math.sqrt(size);
     if (style === 'swarm') { this._gooStart(x, z, size, r); return; }
-    const pre = 0.33;
+    const boss = style === 'boss';
+    const pre = boss ? 1.4 : 0.33;
+    // Feuerfarbe: Standard Orange, tiefe Gegner mit ihrer Leuchtfarbe gemischt
+    const fire = p.tint != null ? _tc.setHex(0xffb070).lerp(_tc2.setHex(p.tint), 0.5).getHex() : 0xffb070;
     // Aufglühen
-    this._flash(x, 10, z, Math.max(60, r * 2.4) * Math.sqrt(size), pre + 0.05, 0xffb070, 2.4, null, undefined, undefined, undefined, true);
+    this._flash(x, 10, z, Math.max(60, r * 2.4) * Math.sqrt(size), boss ? 0.5 : pre + 0.05, fire, 2.4, null, undefined, undefined, undefined, true);
     this._flash(x, 12, z, Math.max(30, r * 1.2), pre, 0xfff4e0, 2.0, null, undefined, undefined, undefined, true);
-    const n2 = Math.min(4, 2 + Math.round(size));
+    const n2 = boss ? 9 : Math.min(4, 2 + Math.round(size));
     for (let i = 0; i < n2; i++) {
       const a = rand() * Math.PI * 2, d = r * (0.25 + rand() * 0.55);
       this._timer(0.02 + (i / n2) * (pre - 0.06) + rand() * 0.03, 1, x + Math.cos(a) * d, z + Math.sin(a) * d, size, a, 0);

@@ -21,12 +21,13 @@ const smooth = (k) => k * k * (3 - 2 * k);
 
 export function readCamSettings() {
   // Standard ist die Verfolger-Kamera (Entscheidung Toni 30.10.2026); Taktisch nur, wenn so gewählt
-  const o = { mode: 'chase', shake: true, reduced: false, cockpit: false };
+  const o = { mode: 'chase', shake: true, reduced: false, cockpit: false, cockpitFov: 74 };
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
     const c = s.camera || localStorage.getItem(KEY_CAM);
     o.mode = c === 'tactical' ? 'tactical' : 'chase';
     o.cockpit = o.mode === 'chase' && s.cockpit === true;
+    if (s.cockpitFov >= 60 && s.cockpitFov <= 95) o.cockpitFov = +s.cockpitFov;
     o.shake = s.shake !== false;
     o.reduced = s.reducedMotion === true;
   } catch { /* privater Modus */ }
@@ -52,6 +53,8 @@ export class CameraRig {
     this.kRaw = this.k;
     this.cockpit = s.cockpit;              // Cockpit = Verfolger-Steuerung aus dem Pilotenplatz
     this.kc = this.kcRaw = s.cockpit ? 1 : 0;
+    this.cockpitFov = s.cockpitFov;
+    this.lookYaw = 0; this.lookPitch = 0; this.looking = false; // freies Umsehen im Cockpit (mittlere Maustaste)
     this._apply(s);
     this.trauma = 0;                       // 0..1, Quadrat bestimmt die Stärke
     this.kick = new THREE.Vector3();       // Stoß-Feder (Welt-Versatz in m)
@@ -86,6 +89,18 @@ export class CameraRig {
     this._apply(s);
     if (s.mode !== this.mode) this.mode = s.mode;
     this.cockpit = s.cockpit;
+    this.cockpitFov = s.cockpitFov;
+  }
+  /** Cockpit-Sichtfeld 60–95°, gespeichert in 'ls.settings'.cockpitFov */
+  setCockpitFov(v) {
+    this.cockpitFov = Math.max(60, Math.min(95, Math.round(v)));
+    try { const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; s.cockpitFov = this.cockpitFov; localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* privater Modus */ }
+    return this.cockpitFov;
+  }
+  /** Umsehen: Mausweg in Pixeln; beim Loslassen federt der Blick nach vorn zurück */
+  lookBy(dx, dy) {
+    this.lookYaw = Math.max(-1.9, Math.min(1.9, this.lookYaw - dx * 0.0045));
+    this.lookPitch = Math.max(-0.6, Math.min(0.7, this.lookPitch - dy * 0.0045));
   }
   /** Taste V: Verfolger → Cockpit → Taktisch → Verfolger, Wahl speichern. Gibt die neue Ansicht zurück. */
   toggle() {
@@ -193,6 +208,7 @@ export class CameraRig {
     const d = dt / BLEND_T;
     this.kRaw = want > this.kRaw ? Math.min(want, this.kRaw + d) : Math.max(want, this.kRaw - d);
     this.k = smooth(this.kRaw);
+    if (!this.looking || !this.cockpit) { const k = 1 - Math.exp(-dt * 5); this.lookYaw -= this.lookYaw * k; this.lookPitch -= this.lookPitch * k; }
     const wc = this.cockpit ? 1 : 0;
     this.kcRaw = wc > this.kcRaw ? Math.min(wc, this.kcRaw + d) : Math.max(wc, this.kcRaw - d);
     this.kc = smooth(this.kcRaw);

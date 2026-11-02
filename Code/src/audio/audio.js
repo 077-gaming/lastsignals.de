@@ -13,6 +13,8 @@ const SFX = [
 const MUSIC = {
   calm: ['home_calm', 'explore_2'], combat: ['combat'], boss: ['boss'], silence: ['silence'], hub: ['hub', 'title'],
 };
+// Heimatmusik je Fraktion (Sektorkennung EU/SA/ER), mischt sich in allen Sektoren der Fraktion unter die Ruhe-Stücke
+const HOME_TRACK = { EU: 'europa', SA: 'saturn', ER: 'eris' };
 const MUSIC_LEVEL = { calm: 0.55, combat: 0.7, boss: 0.75, silence: 0.55, hub: 0.5 };
 const MUSIC_FADE = 3;          // Sekunden Überblendung beim Stückwechsel
 const MUSIC_RESUME_MS = 90000; // so lange nach dem Ausblenden geht ein Stück an der alten Stelle weiter
@@ -121,8 +123,9 @@ function loadSfx(E) {
   return E.sfxLoad;
 }
 // Nächstes Stück einer Stimmung: ein kürzlich unterbrochenes zuerst (Fortsetzen), sonst keine direkte Wiederholung
-function pickTrack(E, mood) {
-  const list = (MUSIC[mood] || MUSIC.calm).filter((id) => !(E.tracks.get(id) && E.tracks.get(id).ok === false));
+// extra: zusätzliches Stück nur für diesen Aufruf (Heimatmusik der Fraktion in der Ruhe-Stimmung)
+function pickTrack(E, mood, extra = null) {
+  const list = [...(MUSIC[mood] || MUSIC.calm), ...(extra ? [extra] : [])].filter((id) => !(E.tracks.get(id) && E.tracks.get(id).ok === false));
   if (!list.length) return null;
   const now = performance.now();
   const resume = list.find((id) => { const t = E.tracks.get(id); return t && t.stoppedAt && now - t.stoppedAt < MUSIC_RESUME_MS; });
@@ -340,8 +343,9 @@ export class AudioSystem {
     if (!next && tr && want === this.musicState && tr.el.paused && this.ctx.state === 'running') tr.el.play().catch(() => { });
     if (!next && want === this.musicState && !force) return;
     if (want !== this.musicState) this._moodAt = nowMs;
-    tr = musicTrack(E, pickTrack(E, want));
-    if (!tr || !tr.ok) { want = 'calm'; tr = musicTrack(E, pickTrack(E, 'calm')); }
+    const home = HOME_TRACK[sector.slice(0, 2)] || null;
+    tr = musicTrack(E, pickTrack(E, want, want === 'calm' ? home : null));
+    if (!tr || !tr.ok) { want = 'calm'; tr = musicTrack(E, pickTrack(E, 'calm', home)); }
     if (!tr || !tr.ok) return;
     const now = this.ctx.currentTime;
     if (this.track && this.track !== tr) {
@@ -372,7 +376,7 @@ export class AudioSystem {
     const p = this.world.player;
     if (!p) return false;
     for (const e of this.world.entities.values()) {
-      if (e.kind !== 'enemy' || !(e.hp > 0) || e.rank !== 'alpha') continue;
+      if (e.kind !== 'enemy' || !(e.hp > 0) || (e.rank !== 'alpha' && !e.def?.boss)) continue;
       const dx = e.x - p.x, dz = e.z - p.z;
       if (dx * dx + dz * dz < 1500 * 1500) return true;
     }
