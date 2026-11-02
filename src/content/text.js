@@ -246,6 +246,19 @@ export const TEXT = {
       lede: 'Der echte Stand der Entwicklung. Ohne Schönfärberei.',
       entries: [
         {
+          date: '02.11.2026', tag: 'Patchnotes', title: 'Konten, Mehrspieler und Apps',
+          p: 'Die Testversion ist deutlich gewachsen. Alles hier ist spielbar, aber noch im Test: Werte und Abläufe können sich ändern.',
+          list: [
+            'Konto mit E-Mail und Passwort direkt im Spiel, Server-Spielstand für mehrere Geräte',
+            'Ruhmeshalle im Spiel und auf der Website: Ehre, Erfahrung, Abschüsse, Stufe',
+            'Mehrspieler-Test: ab Sektor 2 gemeinsamer Raum aller Fraktionen, Chat, Einladung zum Koop, PvP freiwillig',
+            'Sektoren 4 bis 8 je Fraktion mit neuen Gegnern und drei Bossen',
+            'Neue Modelle für alle acht Schiffsklassen jeder Fraktion',
+            'Controller-Steuerung für Flug, Kampf und Menüs',
+            'Apps als Testversion für Mac, Windows, Android, iPhone und iPad',
+          ],
+        },
+        {
           date: '30.10.2026', tag: 'Patchnotes', title: 'Testversion 0.1',
           p: 'Der erste spielbare Stand läuft als Einzelspieler-Test. Der Spielstand liegt im Browser. Seit 31.10.2026 für alle spielbar.',
           list: [
@@ -269,8 +282,8 @@ export const TEXT = {
       road: 'Fahrplan',
       now: 'Aktuell',
       phases: [
-        ['Vertical Slice', 'Einzelspieler-Test'],
-        ['Alpha', 'Mehrspieler-Server, Konten, Schutz gegen Schummeln'],
+        ['Testversion', 'Konten, Mehrspieler-Test, Koop, Apps'],
+        ['Alpha', 'Eigener Spielserver mit Schutz gegen Schummeln'],
         ['Geschlossene Beta', 'Kleine Testgruppe'],
         ['Offene Beta', 'Mit der Discord-Gemeinschaft'],
         ['Start', 'Für alle'],
@@ -292,13 +305,13 @@ export const TEXT = {
       title: 'Fragen und Antworten',
       items: [
         ['Was ist LAST SIGNALS?', 'Ein Weltraum-Onlinespiel im Browser. Du fliegst dein Schiff in echtem 3D, schräg von oben, per Klick oder mit WASD. Drei Fraktionen kämpfen im äußeren Sonnensystem gegeneinander und gegen den Schwarm.'],
-        ['Kann ich schon spielen?', 'Ja. Die Testversion 0.1 ist für alle offen, direkt im Browser über „Jetzt spielen“. Sie ist ein Einzelspieler-Test, der Spielstand liegt nur in deinem Browser. Als Nächstes kommt die Alpha mit Mehrspieler-Server und echten Konten. Termine nennen wir erst, wenn sie feststehen.'],
+        ['Kann ich schon spielen?', 'Ja. Die Testversion ist für alle offen, direkt im Browser über „Im Browser spielen“ oder als App von der Download-Seite. Ohne Konto liegt dein Spielstand nur in deinem Browser. Mit einem kostenlosen Konto wird er zusätzlich auf dem Server gesichert, du spielst auf mehreren Geräten weiter und erscheinst in der Ruhmeshalle. Termine für weitere Phasen nennen wir erst, wenn sie feststehen.'],
         ['Kostet das Spiel etwas?', 'Nein. LAST SIGNALS wird kostenlos spielbar. Bezahlen kann man nur für Aussehen.'],
         ['Kann man Stärke kaufen?', 'Nein. Waffen, Werte, Erfahrung, Tritium und Booster gibt es nur im Spiel. Mit Nova kauft man ausschließlich Aussehen. Zufallskisten gegen echtes Geld gibt es nicht.'],
         ['Brauche ich einen Download?', 'Nein. LAST SIGNALS läuft im Browser, auf dem Computer mit einem aktuellen Chrome, Edge, Firefox oder Safari. Wer lieber eine App möchte: Auf der Download-Seite gibt es Testversionen für Mac, Windows, Android, iPhone und iPad, noch unsigniert und nicht in den App-Stores.'],
         ['In welchen Sprachen?', 'Deutsch und Englisch.'],
-        ['Mit wie vielen spielt man zusammen?', 'LAST SIGNALS ist als Onlinespiel für viele Piloten gleichzeitig geplant, mit Gruppen bis acht Spieler und Clans über alle Fraktionen. Der Mehrspieler-Server kommt mit der Alpha.'],
-        ['Gibt es ein Wiki?', 'Ein offizielles Wiki mit jedem Gegenstand, jedem Gegner und jedem Event kommt später, direkt aus den Spieldaten erzeugt, damit es immer stimmt.'],
+        ['Mit wie vielen spielt man zusammen?', 'In der Testversion bleibt Sektor 1 je Fraktion getrennt, ab Sektor 2 treffen sich Piloten aller Fraktionen im selben Raum, mit Chat für Sektor, Fraktion und alle. Zu zweit fliegst du im Koop, PvP ist freiwillig. Gruppen bis acht Spieler und Clans über alle Fraktionen sind geplant.'],
+        ['Gibt es ein Wiki?', 'Schiffe, Sektoren, Gegner und Bosse stehen schon jetzt auf den Seiten „Schiffe“ und „Welt“, direkt aus den Spieldaten. Ein vollständiges Wiki mit jedem Gegenstand und jedem Event folgt.'],
       ],
     },
     footer: {
@@ -642,6 +655,19 @@ export const TEXT = {
       lede: 'The real state of development. No spin.',
       entries: [
         {
+          date: '2 Nov 2026', tag: 'Patch notes', title: 'Accounts, multiplayer and apps',
+          p: 'The test version has grown a lot. Everything here is playable but still in testing: numbers and flows may change.',
+          list: [
+            'Account with email and password right in the game, server save for multiple devices',
+            'Hall of fame in the game and on the website: honor, experience, kills, level',
+            'Multiplayer test: from sector 2 on, one shared space for all factions, chat, co-op invites, opt-in PvP',
+            'Sectors 4 to 8 per faction with new enemies and three bosses',
+            'New models for all eight ship classes of every faction',
+            'Controller support for flight, combat and menus',
+            'Apps as test versions for Mac, Windows, Android, iPhone and iPad',
+          ],
+        },
+        {
           date: '30 Oct 2026', tag: 'Patch notes', title: 'Test version 0.1',
           p: 'The first playable build runs as a single-player test. Progress is saved in the browser. Open to everyone since 31 Oct 2026.',
           list: [
@@ -665,8 +691,8 @@ export const TEXT = {
       road: 'Roadmap',
       now: 'Now',
       phases: [
-        ['Vertical slice', 'Single-player test'],
-        ['Alpha', 'Multiplayer server, accounts, anti-cheat'],
+        ['Test version', 'Accounts, multiplayer test, co-op, apps'],
+        ['Alpha', 'Own game server with anti-cheat'],
         ['Closed beta', 'Small test group'],
         ['Open beta', 'With the Discord community'],
         ['Launch', 'For everyone'],
@@ -688,13 +714,13 @@ export const TEXT = {
       title: 'Questions and answers',
       items: [
         ['What is LAST SIGNALS?', 'An online space game in your browser. You fly your ship in true 3D, from an angled top view, by mouse or with WASD. Three factions fight each other and the Swarm in the outer solar system.'],
-        ['Can I play yet?', 'Yes. Test version 0.1 is open to everyone, right in your browser via “Play now”. It is a single-player test; progress is stored only in your browser. Next comes the alpha with a multiplayer server and real accounts. We will name dates once they are certain.'],
+        ['Can I play yet?', 'Yes. The test version is open to everyone, right in your browser via “Play in browser” or as an app from the download page. Without an account your progress stays in your browser. With a free account it is also saved on the server, you can continue on other devices and you appear in the hall of fame. We will name dates for later phases once they are certain.'],
         ['Does it cost anything?', 'No. LAST SIGNALS will be free to play. Money buys looks only.'],
         ['Can you buy power?', 'No. Weapons, stats, experience, Tritium and boosters exist only in the game. Nova buys appearance and nothing else. There are no loot boxes for real money.'],
         ['Do I need to download anything?', 'No. LAST SIGNALS runs in the browser, on a computer with a current Chrome, Edge, Firefox or Safari. If you prefer an app: the download page has test builds for Mac, Windows, Android, iPhone and iPad, still unsigned and not in the app stores.'],
         ['Which languages?', 'English and German.'],
-        ['How many people play together?', 'LAST SIGNALS is planned as an online game for many pilots at once, with groups of up to eight and clans across all factions. The multiplayer server arrives with the alpha.'],
-        ['Is there a wiki?', 'An official wiki with every item, enemy and event will follow, generated straight from the game data so it is always correct.'],
+        ['How many people play together?', 'In the test version sector 1 stays separate per faction; from sector 2 on, pilots of all factions meet in the same space, with chat for sector, faction and everyone. Fly as a pair in co-op, PvP is opt-in. Groups of up to eight and clans across all factions are planned.'],
+        ['Is there a wiki?', 'Ships, sectors, enemies and bosses are already on the “Ships” and “World” pages, straight from the game data. A complete wiki with every item and event will follow.'],
       ],
     },
     footer: {

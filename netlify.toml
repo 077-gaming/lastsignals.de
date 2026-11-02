@@ -77,6 +77,11 @@
   status = 200
   force = true
 [[redirects]]
+  from = "https://lastsignals.online/media/*"
+  to = "/media/:splat"
+  status = 200
+  force = true
+[[redirects]]
   from = "https://lastsignals.online/models/*"
   to = "/models/:splat"
   status = 200
@@ -124,6 +129,11 @@
 
 [[headers]]
   for = "/models/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/media/*"
   [headers.values]
     Cache-Control = "public, max-age=604800"
 

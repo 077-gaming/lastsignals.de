@@ -3,6 +3,7 @@
 import './styles/theme.css';
 import './styles/site.css';
 import './styles/cinema.css';
+import './styles/game.css';
 import { setSound, blip, chapterCue } from './audio.js';
 import { getSession, getStatus, signOut, isOnline, hasAuthState } from './api.js';
 import { FACTIONS, FX_HEX } from './factions.js';
@@ -323,7 +324,7 @@ if (hangarEl) {
     ships.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     fxBtns.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.hgFx === state.fx)));
     hangarEl.querySelectorAll('[data-spec]').forEach((s) => { s.hidden = s.dataset.spec !== state.ship; });
-    const real = b.dataset.model === '1' && state.fx === 'saturn';
+    const real = b.dataset.model === '1';
     tag.textContent = real ? tag.dataset.real : tag.dataset.bp;
     tag.classList.toggle('is-bp', !real);
     hangarEl.classList.toggle('is-bp', !real);
@@ -460,4 +461,93 @@ async function makePoster(kind) {
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(wm);
   await img.decode(); g.drawImage(img, 220, 470, 760, 70);
   out.toBlob((b) => save(b, 'og.jpg'), 'image/jpeg', 0.86);
+}
+
+// ---------- Hero: stumme Spielszene ----------
+// Standbild sofort (LCP). Video (≤ 4 MB) erst nach dem Laden, nur auf großen Bildschirmen und ohne „Bewegung reduzieren“/Datensparen.
+// Auf dem Handy startet es erst auf Tipp (Knopf unten rechts), damit die Startseite schlank bleibt.
+const film = document.querySelector('[data-film]');
+const filmBtn = document.querySelector('[data-film-btn]');
+if (film && filmBtn) {
+  const v = film.querySelector('video');
+  const save = navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || ''));
+  let loaded = false, userPaused = false;
+  const setBtn = (paused) => {
+    filmBtn.setAttribute('aria-pressed', String(paused));
+    const label = paused ? filmBtn.dataset.resume : filmBtn.dataset.pause;
+    filmBtn.setAttribute('aria-label', label); filmBtn.title = label;
+  };
+  const load = () => {
+    if (loaded) return; loaded = true;
+    v.src = v.canPlayType('video/webm; codecs="vp9"') ? v.dataset.srcWebm : v.dataset.srcMp4;
+    v.addEventListener('playing', () => film.classList.add('is-playing'), { once: true });
+    new IntersectionObserver(([e]) => { if (userPaused) return; e.isIntersecting ? v.play().catch(() => {}) : v.pause(); }).observe(film);
+  };
+  if (v && !save) {
+    filmBtn.hidden = false;
+    const auto = !reduce && !mobile;
+    setBtn(!auto);
+    if (auto) {
+      const start = () => { load(); v.play().catch(() => {}); };
+      if (document.readyState === 'complete') idle(start, 1200); else addEventListener('load', () => idle(start, 1200), { once: true });
+    }
+    filmBtn.addEventListener('click', () => {
+      const pause = filmBtn.getAttribute('aria-pressed') !== 'true';
+      userPaused = pause; setBtn(pause);
+      if (pause) v.pause(); else { load(); film.classList.add('is-on'); v.play().catch(() => {}); }
+    });
+  }
+}
+
+// ---------- Schiffs-Galerie: 3D-Betrachter (lädt erst bei Sichtbarkeit, Standbild ohne WebGL) ----------
+const sg = document.querySelector('[data-sg]');
+if (sg) {
+  const FXC = { europa: '#d8b25a', saturn: '#e0782a', eris: '#9a52ff' };
+  const fxBtns = [...sg.querySelectorAll('[data-sg-fx]')], shipBtns = [...sg.querySelectorAll('[data-sg-ship]')];
+  const canvas = sg.querySelector('.sg-canvas'), stateEl = sg.querySelector('[data-sg-state]'), curEl = sg.querySelector('[data-sg-cur]');
+  const loadingText = sg.dataset.lang === 'de' ? 'Lade Modell …' : 'Loading model …';
+  let st = { fx: FACTIONS.includes(faction) ? faction : 'europa', ship: 's1' }, viewer = null;
+  const url = () => `/models/${st.fx}-${st.ship === 's1' ? 'starter' : 'schiff' + st.ship.slice(1)}.glb`;
+  function apply(scroll) {
+    fxBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.sgFx === st.fx)));
+    shipBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.sgShip === st.ship)));
+    sg.querySelectorAll('[data-sg-spec]').forEach((x) => { x.hidden = x.dataset.sgSpec !== st.ship; });
+    sg.querySelectorAll('[data-still]').forEach((x) => { x.hidden = x.dataset.still !== `${st.fx}-${st.ship}`; });
+    sg.style.setProperty('--fx', FXC[st.fx]);
+    curEl.textContent = `${st.fx.toUpperCase()} · S-0${st.ship.slice(1)}`;
+    if (viewer) {
+      sg.classList.add('is-loading'); stateEl.textContent = loadingText;
+      const want = url();
+      viewer.show(want, { color: parseInt(FXC[st.fx].slice(1), 16), yaw: -0.8, pitch: 0.28 }).then((ok) => {
+        if (!ok || want !== url()) return;
+        sg.classList.remove('is-loading'); sg.classList.add('is-3d'); stateEl.textContent = '';
+      }).catch(() => { sg.classList.remove('is-loading'); stateEl.textContent = ''; });
+    }
+    if (scroll) sg.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }
+  fxBtns.forEach((b) => b.addEventListener('click', () => { st.fx = b.dataset.sgFx; apply(); }));
+  shipBtns.forEach((b) => b.addEventListener('click', () => { st.ship = b.dataset.sgShip; apply(); }));
+  document.querySelectorAll('[data-sg-pick]').forEach((b) => b.addEventListener('click', () => { const [f, s] = b.dataset.sgPick.split('-'); st = { fx: f, ship: s }; apply(true); }));
+  apply();
+  if (gl2 && !lowDevice) {
+    near(sg, () => import('./scene/viewer.js').then(({ createViewer }) => {
+      viewer = createViewer(canvas, { mobile, reduce, wheel: true, color: parseInt(FXC[st.fx].slice(1), 16), onLost() { sg.classList.remove('is-3d'); } });
+      if (!viewer) { sg.querySelector('[data-sg-nogl]').hidden = false; return; }
+      apply();
+      visible(sg, (on) => (on ? viewer.start() : viewer.stop()));
+    }).catch(() => {}), '300px');
+  } else sg.querySelector('[data-sg-nogl]').hidden = false;
+}
+
+// ---------- Welt: Sektorleiter je Fraktion ----------
+const ladder = document.querySelector('[data-ladder]');
+if (ladder) {
+  const btns = [...ladder.querySelectorAll('[data-lad-fx]')];
+  const pick = (f) => {
+    btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ladFx === f)));
+    ladder.querySelectorAll('[data-lad]').forEach((l) => { if (l.dataset.lad === f) l.removeAttribute('data-off'); else l.setAttribute('data-off', ''); });
+  };
+  btns.forEach((b) => b.addEventListener('click', () => pick(b.dataset.ladFx)));
+  ladder.classList.add('is-js');
+  if (FACTIONS.includes(faction)) pick(faction);
 }

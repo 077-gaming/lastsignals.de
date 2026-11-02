@@ -8,7 +8,7 @@ const OP = {
   name: '077 GAMING', owner: 'Antonio Geske', street: 'Tiedexer Tor 8B', city: '37574 Einbeck',
   phone: '+49 179 2275656', phoneHref: '+491792275656', mail: 'support@077-gaming.de',
 };
-const DATE = { de: '30. Oktober 2026', en: '30 October 2026' };
+const DATE = { de: '3. November 2026', en: '3 November 2026' };
 const addr = (country) => `${OP.name}<br>${OP.owner}<br>${OP.street}<br>${OP.city}<br>${country}`;
 const mail = `<a href="mailto:${OP.mail}">${OP.mail}</a>`;
 const ext = (href, label) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
@@ -37,7 +37,7 @@ const IMPRESSUM = `<h1>Impressum</h1>
 <h2>Zuständige Datenschutz-Aufsichtsbehörde</h2>
 <p>Die Landesbeauftragte für den Datenschutz Niedersachsen, Prinzenstraße 5, 30159 Hannover</p>
 <h2>Haftung für Links</h2>
-<p>Diese Website enthält Links zu Websites Dritter, etwa zu unseren Kanälen auf Instagram und TikTok. Für deren Inhalte sind ausschließlich die jeweiligen Anbieter verantwortlich.</p>`;
+<p>Diese Website enthält Links zu Websites Dritter, etwa zu unseren Kanälen auf Discord, Instagram und TikTok. Für deren Inhalte sind ausschließlich die jeweiligen Anbieter verantwortlich.</p>`;
 
 const IMPRINT = `<h1>Imprint</h1>
 <p class="legal-note">Legal notice under German law. The German version is authoritative: <a href="https://lastsignals.de/impressum/" hreflang="de" lang="de">Impressum</a>.</p>
@@ -55,42 +55,125 @@ const IMPRINT = `<h1>Imprint</h1>
 <h2>Competent data protection authority</h2>
 <p>Die Landesbeauftragte für den Datenschutz Niedersachsen, Prinzenstraße 5, 30159 Hannover, Germany</p>
 <h2>Liability for links</h2>
-<p>This website links to third-party websites, such as our channels on Instagram and TikTok. Their providers alone are responsible for their content.</p>`;
+<p>This website links to third-party websites, such as our channels on Discord, Instagram and TikTok. Their providers alone are responsible for their content.</p>`;
 
-const DATENSCHUTZ = ({ open, oauth, acct = open || oauth.length > 0 }) => `<h1>Datenschutz</h1>
+// Speicherorte im Browser (localStorage, außer wo anders angegeben). Quelle: Code/src und src (Stand 03.11.2026).
+const KEYS = {
+  de: [
+    ['ls-faction', 'deine Fraktionswahl auf der Website'],
+    ['ls-pending', 'ein noch nicht bestätigter Rufname (nur beim Sichern über die Website)'],
+    ['sb-…-auth-token', 'deine Anmeldesitzung, wenn du mit Konto angemeldet bist (Website und Spiel)'],
+    ['ls-pilot-<Rufname>', 'dein Spielstand im Browser (Rufname, Fraktion, Fortschritt, Ausrüstung)'],
+    ['ls.settings, ls.camera, ls.hud.*, ls.pad, ls.qauto, ls.station.view, ls.quickbuy.ok', 'Einstellungen: Grafik, Ton, Kamera, Anzeigen, Controller'],
+    ['ls.cloud.v1, ls.cloud.pilot, ls.cloud.pending, ls.cloud.backup.<Rufname>', 'Abgleich mit dem Server-Spielstand: letzte Version, Prüfsumme, Zeitpunkt und die zuletzt ersetzte Fassung als Sicherung'],
+    ['ls.mp.mute, ls.mp.pvp', 'Mehrspieler: stummgeschaltete Rufnamen, ob du PvP zulässt'],
+    ['ls.coop (sessionStorage)', 'die laufende Koop-Sitzung, bis der Tab geschlossen wird'],
+  ],
+  en: [
+    ['ls-faction', 'your faction choice on the website'],
+    ['ls-pending', 'a callsign not yet confirmed (only when securing it on the website)'],
+    ['sb-…-auth-token', 'your sign-in session when you are signed in with an account (website and game)'],
+    ['ls-pilot-<callsign>', 'your save game in the browser (callsign, faction, progress, gear)'],
+    ['ls.settings, ls.camera, ls.hud.*, ls.pad, ls.qauto, ls.station.view, ls.quickbuy.ok', 'settings: graphics, sound, camera, HUD, controller'],
+    ['ls.cloud.v1, ls.cloud.pilot, ls.cloud.pending, ls.cloud.backup.<callsign>', 'sync with the server save: last version, checksum, time and the most recently replaced copy as a backup'],
+    ['ls.mp.mute, ls.mp.pvp', 'multiplayer: muted callsigns, whether you allow PvP'],
+    ['ls.coop (sessionStorage)', 'the current co-op session until the tab is closed'],
+  ],
+};
+const keyTable = (lang) => `<table class="legal-table"><thead><tr><th scope="col">${lang === 'de' ? 'Schlüssel' : 'Key'}</th><th scope="col">${lang === 'de' ? 'Inhalt' : 'Content'}</th></tr></thead><tbody>${KEYS[lang].map(([k, v]) => `<tr><td><code>${k.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></td><td>${v}</td></tr>`).join('')}</tbody></table>`;
+
+const DATENSCHUTZ = ({ open, oauth }) => `<h1>Datenschutz</h1>
 <p>Stand: ${DATE.de}</p>
 ${sections([
   ['Verantwortlicher', `<p>${addr('Deutschland')}<br>Telefon: <a href="tel:${OP.phoneHref}">${OP.phone}</a><br>E-Mail: ${mail}</p>`],
-  ['Kurz gesagt', `<p>Diese Website nutzt keine Analyse-, Tracking- oder Werbedienste und lädt keine Schriften, Skripte oder Bilder von fremden Servern. Daten verarbeiten wir nur, wenn du die Website aufrufst (Server-Protokolle)${acct ? ', einen Rufnamen reservierst oder dich anmeldest' : ' oder prüfst, ob ein Rufname frei ist'}.</p>`],
-  ['Hosting und Server-Protokolle', `<p>Die Website wird bei Netlify, Inc. (USA) gehostet. Beim Aufruf verarbeitet Netlify technisch notwendige Daten: IP-Adresse, Datum und Uhrzeit, aufgerufene Adresse, übertragene Datenmenge, Browser und Betriebssystem. Das dient dem sicheren und stabilen Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Netlify verarbeitet diese Daten in unserem Auftrag (Auftragsverarbeitung nach Art. 28 DSGVO). Dabei können Daten in die USA übermittelt werden; Grundlage sind die von Netlify dafür vorgesehenen EU-Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO). Mehr: ${ext('https://www.netlify.com/privacy/', 'Datenschutz bei Netlify')}.</p>`],
-  ['Rufname prüfen', `<p>Tippst du einen Rufnamen ein, fragt die Website bei unserem Server nach, ob er noch frei ist. Dabei wird nur der eingegebene Name übertragen und nicht gespeichert. Der Server liegt bei Supabase, Inc. in einem Rechenzentrum in der EU (Frankfurt am Main) und arbeitet in unserem Auftrag (Art. 28 DSGVO). Rechtsgrundlage ist unser Interesse, dir vor der Reservierung zu zeigen, ob ein Name frei ist (Art. 6 Abs. 1 lit. f DSGVO).</p>`],
-  open || oauth.length ? ['Rufnamen reservieren und Konto', `<p>Wenn du einen Rufnamen reservierst, verarbeiten wir Rufname, Fraktion, E-Mail-Adresse und den Zeitpunkt der Reservierung und Bestätigung. Daraus entsteht dein Konto für Website, Wiki, Pilotenprofil und später das Spiel. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO) und die Anbahnung des Nutzungsverhältnisses (Art. 6 Abs. 1 lit. b DSGVO). Rufname, Fraktion und Gründungspilot-Status können später in Pilotenprofilen und Bestenlisten öffentlich sichtbar sein, deine E-Mail-Adresse nie.</p>
-<p>Die Daten liegen bei Supabase, Inc. in einem Rechenzentrum in der EU (Frankfurt am Main). Supabase verarbeitet diese Daten in unserem Auftrag (Auftragsverarbeitung nach Art. 28 DSGVO). Mehr: ${ext('https://supabase.com/privacy', 'Datenschutz bei Supabase')}.</p>
-<p>Wir speichern die Daten, bis du dein Konto löschen lässt oder deine Einwilligung widerrufst. Nicht bestätigte Anmeldungen löschen wir, sobald sie nicht mehr gebraucht werden. Eine kurze E-Mail an ${mail} genügt.</p>`] : ['Reservierung', `<p>Die Reservierung von Rufnamen ist noch nicht geöffnet. Bis dahin speichern wir keine Namen und keine E-Mail-Adressen. Sobald sie öffnet, steht hier, welche Daten wir wofür verarbeiten.</p>`],
-  open ? ['Bestätigungsmail (Double-Opt-in)', `<p>Nach dem Absenden bekommst du eine E-Mail mit einem Bestätigungslink. Erst der Klick darauf sichert deinen Rufnamen. So stellen wir sicher, dass niemand fremde Adressen einträgt. Wir speichern dafür den Zeitpunkt von Anmeldung und Bestätigung. Die E-Mail wird über den Anmeldedienst von Supabase verschickt.</p>`] : null,
+  ['Kurz gesagt', `<ul>
+<li>Keine Analyse-, Tracking- oder Werbedienste, keine Cookies. Schriften, Skripte, Bilder, Videos und Klänge kommen von unserem eigenen Server.</li>
+<li>Ohne Konto bleibt dein Spielstand nur in deinem Browser bzw. in der App.</li>
+<li>Mit Konto speichern wir E-Mail-Adresse, Rufname, Fraktion und deinen Spielstand bei Supabase in Frankfurt am Main. Dein Passwort sehen wir nie.</li>
+<li>Öffentlich sichtbar sind nur Rufname, Fraktion und Spielwerte in der Ruhmeshalle, nie deine E-Mail-Adresse.</li>
+<li>Chat-Nachrichten im Mehrspieler gehen direkt an die Mitspieler im Kanal und werden von uns nicht gespeichert.</li>
+<li>Löschung jederzeit: eine kurze E-Mail an ${mail} genügt.</li>
+</ul>`],
+  ['Hosting der Website und des Browserspiels', `<p>Website und Browserspiel (unter /play/) werden bei Netlify, Inc. (USA) gehostet. Beim Aufruf verarbeitet Netlify technisch notwendige Daten: IP-Adresse, Datum und Uhrzeit, aufgerufene Adresse, übertragene Datenmenge, Browser und Betriebssystem. Das dient dem sicheren und stabilen Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Netlify verarbeitet diese Daten in unserem Auftrag (Auftragsverarbeitung nach Art. 28 DSGVO). Dabei können Daten in die USA übermittelt werden; Grundlage sind die von Netlify dafür vorgesehenen EU-Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO). Mehr: ${ext('https://www.netlify.com/privacy/', 'Datenschutz bei Netlify')}.</p>`],
+  ['Downloads der Apps (GitHub)', `<p>Die App-Dateien für Mac, Windows, Android, iPhone und iPad liegen als Anhänge eines Releases in unserem öffentlichen Repository bei GitHub, Inc. (USA). Klickst du auf der Download-Seite auf eine Datei, lädt dein Browser sie direkt von GitHub. GitHub verarbeitet dabei technisch notwendige Daten wie IP-Adresse, Zeitpunkt und Browserkennung; dabei können Daten in die USA übertragen werden. Vor dem Klick wird nichts an GitHub übertragen. Rechtsgrundlage ist unser Interesse, die Dateien zuverlässig bereitzustellen (Art. 6 Abs. 1 lit. f DSGVO). Es gelten zusätzlich die ${ext('https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement', 'Datenschutzhinweise von GitHub')}.</p>`],
+  ['Konto', `<p>Ein Konto ist freiwillig. Du kannst es im Spiel anlegen (Titelbildschirm, „Konto anlegen“)${open || oauth.length ? ' oder auf der Website' : ''}. Dafür verarbeiten wir:</p>
+<ul>
+<li>E-Mail-Adresse, für Anmeldung, Bestätigungsmail und „Passwort vergessen“,</li>
+<li>Passwort: Es wird nur bei Supabase als Hash gespeichert (nicht umkehrbar verschlüsselt). Wir können es nicht lesen,</li>
+<li>Rufname und Fraktion, außerdem Titel und Gründungspilot-Status, falls vorhanden,</li>
+<li>eine Konto-Kennung und Zeitpunkte von Anlage, Bestätigung und Anmeldung,</li>
+<li>bei Anmeldungen protokolliert der Anmeldedienst zur Sicherheit IP-Adresse und Zeitpunkt.</li>
+</ul>
+<p>Nach dem Anlegen bekommst du eine E-Mail mit einem Bestätigungslink. Bestätigungs- und Passwort-Mails verschickt der Anmeldedienst von Supabase. Rechtsgrundlage ist die Bereitstellung des Kontos, das du angefordert hast (Art. 6 Abs. 1 lit. b DSGVO).</p>
+<p>Die Daten liegen bei Supabase, Inc. in einem Rechenzentrum in der EU (Frankfurt am Main). Supabase verarbeitet sie in unserem Auftrag (Art. 28 DSGVO). Mehr: ${ext('https://supabase.com/privacy', 'Datenschutz bei Supabase')}.</p>`],
+  ['Server-Spielstand', `<p>Spielst du mit Konto, sichern wir deinen Spielstand zusätzlich auf dem Server (Tabelle <code>pilot_saves</code>), damit du auf anderen Geräten weiterspielen kannst. Gespeichert werden der vollständige Spielstand (unter anderem Rufname, Fraktion, Stufe, Erfahrung, Ehre, Rangpunkte, Credits, Tritium, Schiffe, Ausrüstung, Munition, Drohnen, Laderaum, Sektor, Aufträge und Spielstatistik wie Abschüsse, Tode und Spielzeit), dazu eine Versionsnummer, die Art des Geräts mit Spielversion (zum Beispiel „web“, „electron“ oder „capacitor“) und der Zeitpunkt der letzten Sicherung. Gesichert wird beim Andocken, im Hub, alle zwei Minuten im Flug und beim Verlassen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Der Spielstand liegt ebenfalls bei Supabase in Frankfurt am Main.</p>`],
+  ['Ruhmeshalle', `<p>Die Ruhmeshalle im Spiel und auf der Website zeigt öffentlich die Piloten mit Konto: Rufname, Fraktion, Stufe, Ehre, Erfahrung und Abschüsse. E-Mail-Adressen erscheinen nie. Die Ruhmeshalle gehört zum Spiel, das du mit dem Konto nutzt (Art. 6 Abs. 1 lit. b DSGVO). Wer ohne Konto spielt, erscheint nicht. Möchtest du nicht in der Ruhmeshalle stehen, schreib uns. Dann löschen wir das Konto oder nehmen dich aus der Liste.</p>`],
+  ['Mehrspieler, Chat und Koop', `<p>Im Mehrspieler und im Koop verbindet sich das Spiel über Supabase Realtime mit den Mitspielern im selben Kanal (Sektor, Fraktion, alle, Koop). Das geht auch ohne Konto. Übertragen werden:</p>
+<ul>
+<li>Rufname, Fraktion, Stufe, Schiff, Ausrüstung und Werte von Hülle und Schild,</li>
+<li>Position, Kurs und Tempo deines Schiffs, Treffer, Abschüsse und Einladungen zum Koop,</li>
+<li>eine zufällige Sitzungskennung je Flug,</li>
+<li>Chat-Nachrichten mit Rufname und Fraktion.</li>
+</ul>
+<p>Diese Daten gehen in Echtzeit an die Mitspieler im Kanal und werden nicht in einer Datenbank gespeichert. Chat-Nachrichten sehen alle, die gerade im Kanal sind. Was sie auf ihrem Gerät damit machen, liegt außerhalb unseres Einflusses. Schreib im Chat deshalb nichts Persönliches. Für die Verbindung verarbeitet Supabase deine IP-Adresse. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Mehrspieler-Funktion, die du nutzt). Supabase arbeitet auch hier in unserem Auftrag (Art. 28 DSGVO).</p>`],
+  ['Rufname prüfen', `<p>Tippst du auf der Website oder im Spiel einen Rufnamen ein, fragt die Seite bei unserem Server nach, ob er noch frei ist. Dabei wird nur der eingegebene Name übertragen und nicht gespeichert (Art. 6 Abs. 1 lit. f DSGVO).</p>`],
+  open ? ['Rufnamen über die Website sichern', `<p>Sicherst du deinen Rufnamen über die Website, verarbeiten wir Rufname, Fraktion, E-Mail-Adresse und den Zeitpunkt von Anmeldung und Bestätigung. Erst der Klick auf den Link in der Bestätigungsmail sichert den Namen (Double-Opt-in). Daraus entsteht dasselbe Konto wie im Spiel.</p>`] : null,
   oauth.length ? [`Anmeldung mit ${list(oauth.map((k) => k[0].toUpperCase() + k.slice(1)), 'oder')}`, `<p>Du kannst dich wahlweise mit ${list(oauth.map((k) => PROV.de[k]), 'oder')} anmelden. Erst wenn du den jeweiligen Knopf anklickst, wirst du zum Anbieter weitergeleitet. Wir erhalten dann deine Konto-Kennung, deine E-Mail-Adresse und, falls freigegeben, Name und Profilbild. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Es gelten zusätzlich die Hinweise von ${list(oauth.map((k) => ext(POL[k], k[0].toUpperCase() + k.slice(1))), 'und')}.</p>`] : null,
-  ['Speicherung im Browser', `<p>Die Website setzt keine Cookies. Im Speicher deines Browsers (localStorage) legen wir nur ab, was für die Funktion nötig ist: deine Fraktionswahl${acct ? ', eine noch nicht bestätigte Reservierung und, wenn du angemeldet bist, deine Anmeldesitzung' : ''}. Spielst du die Testversion unter /play/, liegen dort außerdem dein Spielstand (Rufname, Fraktion, Fortschritt) und deine Einstellungen; sie verlassen deinen Browser nicht. Das ist für den von dir gewünschten Dienst unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG). Du kannst diese Daten jederzeit in deinem Browser löschen.</p>`],
+  ['Speicherung im Browser und in den Apps', `<p>Website und Spiel setzen keine Cookies. Im Speicher deines Browsers (localStorage) legen wir nur ab, was für die Funktion nötig ist. Diese Daten verlassen dein Gerät nicht, außer der Spielstand bei Spielen mit Konto (siehe oben):</p>
+${keyTable('de')}
+<p>Das ist für den von dir gewünschten Dienst unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG). Das Browserspiel registriert außerdem einen Service Worker, damit es sich als App installieren lässt. Er speichert nichts zwischen. Du kannst alle diese Daten jederzeit in deinem Browser löschen. Ohne Konto ist dein Spielstand danach weg.</p>`],
+  ['Apps für Mac, Windows, Android, iPhone und iPad', `<p>Die Apps enthalten dasselbe Spiel wie die Browserfassung und verarbeiten dieselben Daten auf dieselbe Weise: Spielstand und Einstellungen lokal in der App, mit Konto zusätzlich bei Supabase, im Mehrspieler über Supabase Realtime. Die Apps enthalten keine Analyse-, Werbe- oder Absturzberichts-Dienste und keine automatische Update-Prüfung. Sie sind Testversionen außerhalb der App-Stores.</p>`],
   ['Ton', '<p>Klänge und Musik der Website werden direkt in deinem Browser erzeugt. Das Spiel lädt seine Klänge als Dateien von unserem eigenen Server. In beiden Fällen werden keine Daten an Dritte übertragen.</p>'],
-  ['Links zu sozialen Netzwerken', '<p>Die Knöpfe zu Instagram, TikTok, Discord und weiteren Kanälen sind einfache Links. Vor dem Anklicken werden keine Daten an diese Anbieter übertragen. Nach dem Anklicken gelten die Datenschutzhinweise des jeweiligen Anbieters.</p>'],
+  ['Links zu sozialen Netzwerken', '<p>Die Knöpfe zu Discord, Instagram, TikTok und weiteren Kanälen sind einfache Links. Vor dem Anklicken werden keine Daten an diese Anbieter übertragen. Nach dem Anklicken gelten die Datenschutzhinweise des jeweiligen Anbieters.</p>'],
+  ['Speicherdauer und Löschung', `<p>Kontodaten, Server-Spielstand und Eintrag in der Ruhmeshalle speichern wir, solange dein Konto besteht. Eine Löschfunktion im Spiel gibt es noch nicht. Bis dahin genügt eine kurze E-Mail an ${mail} mit der E-Mail-Adresse deines Kontos; wir löschen dann Konto, Pilot und Spielstand vollständig. Nicht bestätigte Konten löschen wir, sobald sie nicht mehr gebraucht werden. Mehrspieler- und Chat-Daten werden nicht gespeichert. Daten im Browser löschst du selbst über die Einstellungen deines Browsers.</p>`],
   ['Kontakt', '<p>Schreibst du uns, verarbeiten wir deine Angaben, um die Anfrage zu beantworten (Art. 6 Abs. 1 lit. b und f DSGVO), und löschen sie, wenn sie nicht mehr nötig sind.</p>'],
   ['Deine Rechte', '<p>Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21). Eine Einwilligung kannst du jederzeit für die Zukunft widerrufen (Art. 7 Abs. 3). Du kannst dich bei einer Datenschutz-Aufsichtsbehörde beschweren (Art. 77). Zuständig ist die Landesbeauftragte für den Datenschutz Niedersachsen, Prinzenstraße 5, 30159 Hannover.</p>'],
 ])}`;
 
-const PRIVACY = ({ open, oauth, acct = open || oauth.length > 0 }) => `<h1>Privacy</h1>
+const PRIVACY = ({ open, oauth }) => `<h1>Privacy</h1>
 <p class="legal-note">The German version is authoritative: <a href="https://lastsignals.de/datenschutz/" hreflang="de" lang="de">Datenschutz</a>. Last updated: ${DATE.en}.</p>
 ${sections([
   ['Controller', `<p>${addr('Germany')}<br>Phone: <a href="tel:${OP.phoneHref}">${OP.phone}</a><br>Email: ${mail}</p>`],
-  ['In short', `<p>This website uses no analytics, tracking or advertising services and loads no fonts, scripts or images from third-party servers. We only process data when you visit (server logs)${acct ? ', reserve a callsign or sign in' : ' or check whether a callsign is free'}.</p>`],
-  ['Hosting and server logs', `<p>The website is hosted by Netlify, Inc. (USA). When you visit, Netlify processes technically required data: IP address, date and time, requested address, amount of data transferred, browser and operating system. This serves secure and stable operation (Art. 6(1)(f) GDPR). Netlify processes this data on our behalf (processing under Art. 28 GDPR). Data may be transferred to the USA; the basis is the EU Standard Contractual Clauses provided by Netlify for this purpose (Art. 46(2)(c) GDPR). More: ${ext('https://www.netlify.com/privacy/', 'Netlify privacy')}.</p>`],
-  ['Callsign check', '<p>When you type a callsign, the website asks our server whether it is still free. Only the name you entered is sent, and it is not stored. The server is run by Supabase, Inc. in a data center in the EU (Frankfurt am Main) on our behalf (Art. 28 GDPR). The legal basis is our interest in showing you whether a name is free before you reserve it (Art. 6(1)(f) GDPR).</p>'],
-  open || oauth.length ? ['Callsign reservation and account', `<p>When you reserve a callsign we process your callsign, faction, email address and the time of reservation and confirmation. This becomes your account for the website, wiki, pilot profile and later the game. The legal basis is your consent (Art. 6(1)(a) GDPR) and preparing the user relationship (Art. 6(1)(b) GDPR). Callsign, faction and founding pilot status may later be public on pilot profiles and leaderboards, your email address never.</p>
-<p>The data is stored with Supabase, Inc. in a data center in the EU (Frankfurt am Main). Supabase processes this data on our behalf (processing under Art. 28 GDPR). More: ${ext('https://supabase.com/privacy', 'Supabase privacy')}.</p>
-<p>We keep the data until you ask us to delete your account or withdraw your consent. Unconfirmed sign-ups are deleted once no longer needed. A short email to ${mail} is enough.</p>`] : ['Reservation', '<p>Callsign reservations are not open yet. Until then we store no names and no email addresses. Once they open, this section will state which data we process and why.</p>'],
-  open ? ['Confirmation email (double opt-in)', '<p>After submitting you get an email with a confirmation link. Your callsign is only secured once you click it. This ensures nobody registers someone else’s address. We store the time of sign-up and confirmation for this purpose. The email is sent through the Supabase authentication service.</p>'] : null,
+  ['In short', `<ul>
+<li>No analytics, tracking or advertising services, no cookies. Fonts, scripts, images, videos and sounds come from our own server.</li>
+<li>Without an account your save game stays only in your browser or in the app.</li>
+<li>With an account we store your email address, callsign, faction and save game with Supabase in Frankfurt am Main. We never see your password.</li>
+<li>Only callsign, faction and game stats are public in the hall of fame, never your email address.</li>
+<li>Multiplayer chat messages go straight to the players in the channel and are not stored by us.</li>
+<li>Deletion at any time: a short email to ${mail} is enough.</li>
+</ul>`],
+  ['Hosting of the website and the browser game', `<p>The website and the browser game (at /play/) are hosted by Netlify, Inc. (USA). When you visit, Netlify processes technically required data: IP address, date and time, requested address, amount of data transferred, browser and operating system. This serves secure and stable operation (Art. 6(1)(f) GDPR). Netlify processes this data on our behalf (Art. 28 GDPR). Data may be transferred to the USA; the basis is the EU Standard Contractual Clauses provided by Netlify for this purpose (Art. 46(2)(c) GDPR). More: ${ext('https://www.netlify.com/privacy/', 'Netlify privacy')}.</p>`],
+  ['App downloads (GitHub)', `<p>The app files for Mac, Windows, Android, iPhone and iPad are attached to a release in our public repository at GitHub, Inc. (USA). When you click a file on the download page, your browser loads it directly from GitHub. GitHub processes technically required data such as IP address, time and browser identifier; data may be transferred to the USA. Nothing is sent to GitHub before you click. The legal basis is our interest in providing the files reliably (Art. 6(1)(f) GDPR). The ${ext('https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement', 'GitHub privacy statement')} also applies.</p>`],
+  ['Account', `<p>An account is optional. You can create it in the game (title screen, “Create account”)${open || oauth.length ? ' or on the website' : ''}. For this we process:</p>
+<ul>
+<li>email address, for sign-in, the confirmation email and “forgot password”,</li>
+<li>password: stored only as a hash at Supabase (irreversibly encrypted). We cannot read it,</li>
+<li>callsign and faction, plus title and founding pilot status if any,</li>
+<li>an account ID and the times of creation, confirmation and sign-in,</li>
+<li>on sign-in the authentication service logs IP address and time for security.</li>
+</ul>
+<p>After creating the account you receive an email with a confirmation link. Confirmation and password emails are sent by the Supabase authentication service. The legal basis is providing the account you requested (Art. 6(1)(b) GDPR).</p>
+<p>The data is stored with Supabase, Inc. in a data center in the EU (Frankfurt am Main). Supabase processes it on our behalf (Art. 28 GDPR). More: ${ext('https://supabase.com/privacy', 'Supabase privacy')}.</p>`],
+  ['Server save game', `<p>If you play with an account, we also store your save game on the server (table <code>pilot_saves</code>) so you can continue on other devices. Stored are the complete save game (including callsign, faction, level, experience, honor, rank points, credits, tritium, ships, gear, ammo, drones, cargo, sector, quests and game statistics such as kills, deaths and play time), a version number, the kind of device with game version (for example “web”, “electron” or “capacitor”) and the time of the last save. Saving happens when docking, in the hub, every two minutes in flight and when leaving. The legal basis is Art. 6(1)(b) GDPR. The save game is also stored with Supabase in Frankfurt am Main.</p>`],
+  ['Hall of fame', `<p>The hall of fame in the game and on the website publicly shows pilots with an account: callsign, faction, level, honor, experience and kills. Email addresses never appear. The hall of fame is part of the game you use with your account (Art. 6(1)(b) GDPR). Players without an account do not appear. If you do not want to be listed, write to us and we will delete the account or remove you from the list.</p>`],
+  ['Multiplayer, chat and co-op', `<p>In multiplayer and co-op the game connects via Supabase Realtime to the other players in the same channel (sector, faction, all, co-op). This also works without an account. Transferred are:</p>
+<ul>
+<li>callsign, faction, level, ship, gear and hull and shield values,</li>
+<li>position, heading and speed of your ship, hits, kills and co-op invitations,</li>
+<li>a random session ID per flight,</li>
+<li>chat messages with callsign and faction.</li>
+</ul>
+<p>This data goes to the players in the channel in real time and is not stored in a database. Chat messages are seen by everyone currently in the channel. What they do with them on their own device is beyond our control, so do not post personal information in chat. For the connection Supabase processes your IP address. The legal basis is Art. 6(1)(b) GDPR (the multiplayer feature you use). Supabase acts on our behalf here too (Art. 28 GDPR).</p>`],
+  ['Callsign check', '<p>When you type a callsign on the website or in the game, the page asks our server whether it is still free. Only the name you entered is sent, and it is not stored (Art. 6(1)(f) GDPR).</p>'],
+  open ? ['Securing a callsign on the website', '<p>If you secure your callsign on the website, we process your callsign, faction, email address and the time of sign-up and confirmation. The name is only secured once you click the link in the confirmation email (double opt-in). This creates the same account as in the game.</p>'] : null,
   oauth.length ? [`Sign-in with ${list(oauth.map((k) => k[0].toUpperCase() + k.slice(1)), 'or')}`, `<p>You can sign in with ${list(oauth.map((k) => PROV.en[k]), 'or')}. You are only redirected to the provider once you click the button. We then receive your account ID, your email address and, if shared, your name and profile picture. The legal basis is your consent (Art. 6(1)(a) GDPR). The policies of ${list(oauth.map((k) => ext(POL[k], k[0].toUpperCase() + k.slice(1))), 'and')} also apply.</p>`] : null,
-  ['Browser storage', `<p>This website sets no cookies. In your browser’s storage (localStorage) we only keep what is needed for it to work: your faction choice${acct ? ', an unconfirmed reservation and, when you are signed in, your session' : ''}. If you play the test version at /play/, your save game (callsign, faction, progress) and settings are stored there too; they never leave your browser. This is strictly necessary for the service you requested (§ 25(2) no. 2 TDDDG). You can delete this data in your browser at any time.</p>`],
+  ['Storage in the browser and in the apps', `<p>The website and the game set no cookies. In your browser’s storage (localStorage) we only keep what is needed for them to work. This data does not leave your device, except the save game when you play with an account (see above):</p>
+${keyTable('en')}
+<p>This is strictly necessary for the service you requested (§ 25(2) no. 2 TDDDG). The browser game also registers a service worker so it can be installed as an app. It caches nothing. You can delete all of this data in your browser at any time. Without an account your save game is gone afterwards.</p>`],
+  ['Apps for Mac, Windows, Android, iPhone and iPad', '<p>The apps contain the same game as the browser version and process the same data in the same way: save game and settings locally in the app, with an account also at Supabase, in multiplayer via Supabase Realtime. The apps contain no analytics, advertising or crash reporting services and no automatic update check. They are test versions outside the app stores.</p>'],
   ['Sound', '<p>Sounds and music on this website are generated directly in your browser. The game loads its sounds as files from our own server. In neither case is any data passed to third parties.</p>'],
-  ['Links to social networks', '<p>The buttons for Instagram, TikTok, Discord and other channels are plain links. No data is sent to these providers before you click. After clicking, the provider’s own privacy policy applies.</p>'],
+  ['Links to social networks', '<p>The buttons for Discord, Instagram, TikTok and other channels are plain links. No data is sent to these providers before you click. After clicking, the provider’s own privacy policy applies.</p>'],
+  ['Retention and deletion', `<p>We keep account data, the server save game and your hall of fame entry as long as your account exists. There is no delete button in the game yet. Until then, a short email to ${mail} with your account email address is enough; we then delete account, pilot and save game completely. Unconfirmed accounts are deleted once no longer needed. Multiplayer and chat data is not stored. You delete data in your browser yourself via your browser settings.</p>`],
   ['Contact', '<p>If you write to us, we process your details to answer your request (Art. 6(1)(b) and (f) GDPR) and delete them when no longer needed.</p>'],
   ['Your rights', '<p>You have the right of access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20) and objection (Art. 21). You may withdraw consent at any time with effect for the future (Art. 7(3)). You may lodge a complaint with a supervisory authority (Art. 77). The competent authority is the Landesbeauftragte für den Datenschutz Niedersachsen, Prinzenstraße 5, 30159 Hannover, Germany.</p>'],
 ])}`;

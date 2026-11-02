@@ -1,36 +1,23 @@
 // Texte der Kinoseite (Kapitel 1 bis 7, Kopfleiste, Hangar, Karte, Gründungspilot, Unterseiten).
 // Ergänzt text.js. Quelle der Spielinhalte: Vault-Notiz „30 Ideen/Weltraum-Browserspiel 3D“ und Code/src/core/data.js.
 // Werte sind Planungsstand, keine erfundenen Spielerzahlen, Zitate oder Bewertungen.
+import { SHIPS as GAME_SHIPS, ENEMIES as GAME_ENEMIES, sectorsFor } from '../../Code/src/core/data.js';
 
-// Sektoren je Heimat (gleiche Gegner in allen drei Heimaten)
-const HOME_ENEMIES = [
-  'Raider, Larva', 'Raider, Jackal, Larva', 'Jackal, Spiker, Vulture', 'Vulture, Spitter, Merc',
-  'Merc, Breeder, Stalker', 'Jammer, Stalker, Symbiont', 'Boarder, Minelayer, Colossus', 'Corsair, Colossus, Queen + Tenders',
-];
-const HOME_LEVELS = ['1–3', '3–6', '6–10', '10–14', '14–20', '20–26', '26–32', '32+'];
-const HOMES = {
-  europa: ['Europa', 'Io', 'Ganymed', 'Kallisto', 'Amalthea', 'Himalia', 'Thebe', 'Elara'],
-  saturn: ['Enceladus', 'Mimas', 'Tethys', 'Dione', 'Rhea', 'Titan', 'Hyperion', 'Iapetus'],
-  eris: ['Eris', 'Dysnomia', 'Sedna', 'Makemake', 'Haumea', 'Quaoar', 'Orcus', 'Gonggong'],
-};
-const CODE = { europa: 'EU', saturn: 'SA', eris: 'ER' };
-export const homeSectors = (f, lang) => HOMES[f].map((n, i) => ({
-  code: `${CODE[f]}-${i + 1}`,
-  name: lang === 'en' && n === 'Ganymed' ? 'Ganymede' : lang === 'en' && n === 'Kallisto' ? 'Callisto' : n,
-  level: HOME_LEVELS[i], enemies: HOME_ENEMIES[i],
+// Sektoren je Heimat: direkt aus den Spieldaten (sectorsFor), gleiche Gegner in allen drei Heimaten, Bosse markiert.
+const BOSS_EN = { werft: 'Black Shipyard', wal: 'Elder Star Whale' };
+export const homeSectors = (f, lang) => Object.values(sectorsFor(f)).map((s) => ({
+  code: s.id,
+  name: lang === 'en' && s.name === 'Ganymed' ? 'Ganymede' : lang === 'en' && s.name === 'Kallisto' ? 'Callisto' : s.name,
+  level: `${s.levelMin}–${s.levelMax}`,
+  enemies: s.spawns.map((x) => (GAME_ENEMIES[x.type].boss ? `Boss: ${(lang === 'en' && BOSS_EN[x.type]) || GAME_ENEMIES[x.type].name}` : GAME_ENEMIES[x.type].name)).join(', '),
 }));
 
-// Schiffsreihe (Planungswerte aus Code/src/core/data.js und der Vault-Notiz).
-// Eigene Schiffsnamen gibt es noch nicht: Die Seite zeigt ehrlich Klassennamen. price null = Preis folgt.
+// Schiffsreihe: Werte direkt aus Code/src/core/data.js (SHIPS). Alle acht Klassen haben echte Modelle je Fraktion.
+// Schiff 4, 6 und 7 sind dort vorläufig gesetzt (prov). Sonderschiffe ab Stufe 40 sind geplant (Blaupause).
+const CUR = { credits: 'credits', tritium: 'tritium' };
 export const SHIPS = [
-  { id: 's1', code: 'S-01', level: 1, lasers: 2, gens: 2, hp: 6000, cur: 'free', price: 0, model: true },
-  { id: 's2', code: 'S-02', level: 5, lasers: 4, gens: 3, hp: 16000, cur: 'credits', price: 120000 },
-  { id: 's3', code: 'S-03', level: 10, lasers: 5, gens: 5, hp: 32000, cur: 'credits', price: 250000 },
-  { id: 's4', code: 'S-04', level: 15, lasers: null, gens: null, viz: [6, 6], hp: null, cur: 'credits', est: true },
-  { id: 's5', code: 'S-05', level: 20, lasers: 8, gens: 8, hp: 90000, cur: 'tritium', price: 40000 },
-  { id: 's6', code: 'S-06', level: 28, lasers: null, gens: null, viz: [10, 10], hp: null, cur: 'tritium', est: true },
-  { id: 's7', code: 'S-07', level: 35, lasers: null, gens: null, viz: [11, 11], hp: null, cur: 'tritium', est: true },
-  { id: 's8', code: 'S-08', level: 45, lasers: 13, gens: 13, hp: 250000, cur: 'tritium', price: 250000 },
+  ...Object.entries(GAME_SHIPS).map(([id, g]) => ({ id, code: `S-0${g.no}`, level: g.level, lasers: g.laserSlots, gens: g.genSlots, hp: g.hp,
+    cur: g.currency ? CUR[g.currency] : 'free', price: g.price, model: true, prov: ['s4', 's6', 's7'].includes(id) })),
   { id: 'heal', code: 'SP-H', level: 40, lasers: null, gens: null, viz: [6, 8], hp: null, cur: 'tritium', est: true, special: 'heal' },
   { id: 'tank', code: 'SP-T', level: 40, lasers: null, gens: null, viz: [6, 10], hp: null, cur: 'tritium', est: true, special: 'tank' },
   { id: 'scout', code: 'SP-S', level: 40, lasers: null, gens: null, viz: [8, 6], hp: null, cur: 'tritium', est: true, special: 'scout' },
@@ -92,21 +79,21 @@ export const CH = {
     },
     hangar: {
       code: '04', label: 'Schiffe & Ausrüstung', title: 'Vom Starter zum Top-Kampfschiff.',
-      lede: 'Acht Schiffe in der Hauptreihe, drei Spezialschiffe ab Stufe 40, jeder Laser sichtbar am Rumpf.',
+      lede: 'Acht Schiffe in der Hauptreihe, jede Fraktion mit eigenen Modellen. Spezialschiffe ab Stufe 40 sind geplant.',
       head: 'Hangar', drag: 'Ziehen zum Drehen', faction: 'Fraktion', line: 'Hauptreihe', special: 'Spezial',
       level: 'Ab Stufe', lvl: 'Stufe', lasers: 'Laserplätze', gens: 'Generatorplätze', hp: 'Hülle', price: 'Preis', est: 'Planung', tbd: 'folgt', cls: 'Klasse', clsNote: 'Klassenname · eigener Name folgt',
       cur: { free: 'Kostenlos', credits: 'Credits', tritium: 'Tritium' },
-      real: 'Echtes Modell aus dem Spiel', blueprint: 'Blaupause · Modell in Arbeit',
+      real: 'Echtes Modell aus dem Spiel', blueprint: 'Blaupause · geplant',
       showSlots: 'Bauteile zeigen', laserSlot: 'Laser', genSlot: 'Generator', slotsOff: 'Aus', slotsLabel: 'Bauteile am Modell',
-      names: { s1: 'Starter', s2: 'Jäger', s3: 'Korvette', s4: 'Fregatte', s5: 'Zerstörer', s6: 'Kreuzer', s7: 'Schlachtkreuzer', s8: 'Schlachtschiff', heal: 'Heiler', tank: 'Tank', scout: 'Späher' },
+      names: { s1: 'Starter', s2: 'Courier', s3: 'Warden', s4: 'Halberd', s5: 'Bastion', s6: 'Rampart', s7: 'Monarch', s8: 'Leviathan', heal: 'Heiler', tank: 'Tank', scout: 'Späher' },
       notes: {
         s1: 'Gratis zum Start. Zwei Laser, zwei Generatoren, das erste eigene Schiff.',
         s2: 'Das erste gekaufte Schiff. Mehr Plätze, mehr Hülle.',
         s3: 'Ab hier wird jede Konfiguration eine Entscheidung.',
-        s4: 'Das letzte Credits-Schiff. Werte in Planung.',
+        s4: 'Das letzte Credits-Schiff. Werte vorläufig.',
         s5: 'Das erste Tritium-Schiff. Acht Laser, acht Generatoren.',
-        s6: 'Schweres Tritium-Schiff. Werte in Planung.',
-        s7: 'Vorletzte Stufe der Reihe. Werte in Planung.',
+        s6: 'Schweres Tritium-Schiff. Werte vorläufig.',
+        s7: 'Vorletzte Stufe der Reihe. Werte vorläufig.',
         s8: 'Das Top-Kampfschiff und das große Ziel. 13 Laser, 13 Generatoren.',
         heal: 'Heilstrahl, Heilfeld, Schild an die Gruppe.',
         tank: 'Zwingt Gegner, auf ihn zu schießen. Schutzkuppel, Rammstoß.',
@@ -146,8 +133,8 @@ export const CH = {
       consent: 'Ich habe die <a href="{privacy}">Datenschutzerklärung</a> gelesen und bin einverstanden, dass meine Angaben zur Reservierung gespeichert werden.',
       submit: 'Signal senden', or: 'oder direkt mit', google: 'Google', discord: 'Discord',
       oauthNote: 'Bei Google und Discord wird dein Rufname nach der Anmeldung gesichert.', oauthSoon: 'Anmeldung mit Google und Discord folgt.', soon: 'bald',
-      closed: 'Reservierung öffnet in Kürze. Bis dahin wird nichts gespeichert. Prüfe schon jetzt, ob dein Rufname frei ist.',
-      soonBtn: 'Reservierung öffnet in Kürze',
+      closed: 'Konto und Rufname legst du direkt im Spiel an: „Im Browser spielen“, dann „Konto anlegen“. Das Konto gilt auch für die Ruhmeshalle. Hier prüfst du schon jetzt, ob dein Rufname frei ist; gespeichert wird dabei nichts.',
+      soonBtn: 'Konto im Spiel anlegen',
       check: {
         empty: '', short: 'Mindestens 3 Zeichen.', long: 'Höchstens 16 Zeichen.', chars: 'Nur Buchstaben, Ziffern, _ und -.',
         start: 'Muss mit einem Buchstaben beginnen.', double: 'Kein doppeltes Sonderzeichen und keins am Ende.', reserved: 'Dieser Name ist reserviert.',
@@ -247,21 +234,21 @@ export const CH = {
     },
     hangar: {
       code: '04', label: 'Ships & gear', title: 'From starter to top warship.',
-      lede: 'Eight ships in the main line, three special ships from level 40, every laser visible on the hull.',
+      lede: 'Eight ships in the main line, each faction with its own models. Special ships from level 40 are planned.',
       head: 'Hangar', drag: 'Drag to rotate', faction: 'Faction', line: 'Main line', special: 'Special',
       level: 'From level', lvl: 'Level', lasers: 'Laser slots', gens: 'Generator slots', hp: 'Hull', price: 'Price', est: 'Planned', tbd: 'to follow', cls: 'Class', clsNote: 'Class name · own name to follow',
       cur: { free: 'Free', credits: 'Credits', tritium: 'Tritium' },
-      real: 'Actual in-game model', blueprint: 'Blueprint · model in progress',
+      real: 'Actual in-game model', blueprint: 'Blueprint · planned',
       showSlots: 'Show hardpoints', laserSlot: 'Laser', genSlot: 'Generator', slotsOff: 'Off', slotsLabel: 'Hardpoints on the model',
-      names: { s1: 'Starter', s2: 'Fighter', s3: 'Corvette', s4: 'Frigate', s5: 'Destroyer', s6: 'Cruiser', s7: 'Battlecruiser', s8: 'Battleship', heal: 'Healer', tank: 'Tank', scout: 'Scout' },
+      names: { s1: 'Starter', s2: 'Courier', s3: 'Warden', s4: 'Halberd', s5: 'Bastion', s6: 'Rampart', s7: 'Monarch', s8: 'Leviathan', heal: 'Healer', tank: 'Tank', scout: 'Scout' },
       notes: {
         s1: 'Free to start. Two lasers, two generators, your first own ship.',
         s2: 'Your first purchased ship. More slots, more hull.',
         s3: 'From here on every loadout is a decision.',
-        s4: 'The last Credits ship. Stats in planning.',
+        s4: 'The last Credits ship. Stats provisional.',
         s5: 'The first Tritium ship. Eight lasers, eight generators.',
-        s6: 'Heavy Tritium ship. Stats in planning.',
-        s7: 'Second to last in the line. Stats in planning.',
+        s6: 'Heavy Tritium ship. Stats provisional.',
+        s7: 'Second to last in the line. Stats provisional.',
         s8: 'The top warship and the big goal. 13 lasers, 13 generators.',
         heal: 'Healing beam, healing field, shield to the group.',
         tank: 'Forces enemies to target it. Shield dome, ram.',
@@ -301,8 +288,8 @@ export const CH = {
       consent: 'I have read the <a href="{privacy}">privacy policy</a> and agree that my details are stored for the reservation.',
       submit: 'Send signal', or: 'or continue with', google: 'Google', discord: 'Discord',
       oauthNote: 'With Google and Discord your callsign is secured after sign-in.', oauthSoon: 'Sign-in with Google and Discord is coming.', soon: 'soon',
-      closed: 'Reservations open soon. Nothing is stored until then. Check now whether your callsign is free.',
-      soonBtn: 'Reservations open soon',
+      closed: 'Create your account and callsign right in the game: “Play in browser”, then “Create account”. The account also counts for the hall of fame. Here you can already check whether your callsign is free; nothing is stored.',
+      soonBtn: 'Create account in the game',
       check: {
         empty: '', short: 'At least 3 characters.', long: 'At most 16 characters.', chars: 'Only letters, digits, _ and -.',
         start: 'Must start with a letter.', double: 'No double symbols and none at the end.', reserved: 'This name is reserved.',
