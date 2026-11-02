@@ -32,6 +32,8 @@ const COMBAT_K = 2;
 // Üblicher Messwert je Chip-Klasse: liegt die Messung über dem Doppelten, wird einmal nachgemessen
 const UNIT_EXPECT = { strong: 0.4, good: 0.8, mid: 1.6, weak: 3.5 };
 
+import { hasOwnPreset } from '../engine/settings.js';
+
 function readJSON(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; } }
 function writeJSON(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* privater Modus */ } }
 export function qIndex(name) { return Q_INDEX[name] ?? null; }
@@ -323,6 +325,8 @@ export function decideQuality(gpu, probe, cpuMs, w = window.innerWidth, h = wind
 export function isAutoQuality() {
   const raw = readJSON(SET_KEY), qa = readJSON(AUTO_KEY);
   if (!raw || qIndex(raw.quality) === null) return true;
+  // Einzelne Grafikwerte selbst eingestellt (BENUTZERDEFINIERT) oder EXTREM: eigene Wahl, hat Vorrang
+  if (hasOwnPreset(raw) || raw.quality === 'extreme') return false;
   if (raw.qualityAuto === true) return true;
   if (qa && qa.quality === raw.quality) return true;
   // Übergang: vor der automatischen Wahl gespeicherte Standardstufe (HOCH bzw. ULTRA) gilt nicht als eigene Wahl
@@ -441,7 +445,9 @@ export class QualityGuard {
     const gpu = T && T.ok && T.samples > 20 ? T.gpu : null;
     // Gedrosselt statt überlastet: Bildrate klebt bei ≈ 30, Prozessor und Grafik haben viel Luft
     const throttled = fps > 28 && fps < 32 && work < 10 && (gpu === null ? true : gpu < 14);
-    if (fps < 50 && !throttled) this.bad++; else this.bad = 0;
+    // Bildratenbegrenzung: Grenze knapp unter dem Ziel statt fest 50 (30er-Begrenzer ist kein Leistungsproblem)
+    const floorFps = typeof renderer.fpsFloor === 'function' ? renderer.fpsFloor() : 50;
+    if (fps < floorFps && !throttled) this.bad++; else this.bad = 0;
     const floor = typeof renderer.atFloor === 'function' ? renderer.atFloor() : true;
     if (this.bad >= 6 && (floor || renderer.cpuBound || this.bad >= 12)) {
       const from = renderer.quality;
@@ -461,7 +467,7 @@ export class QualityGuard {
     if (!this.onRaise || this.lowered || this.raiseTo <= q || gpu === null) { this.good = 0; return; }
     const P = renderer._perf || {};
     const frameBudget = 1000 / Math.max(60, Math.min(144, P.best || 60));
-    const ok = fps >= 55 && renderer.scale >= 0.999 && !renderer.lowQuality && gpu < frameBudget * 0.4;
+    const ok = fps >= Math.min(55, (renderer.fpsCap || 1000) * 0.92) && renderer.scale >= 0.999 && !renderer.lowQuality && gpu < frameBudget * 0.4;
     if (!ok) { this.good = 0; this.gpuMax = 0; return; }
     this.gpuMax = Math.max(this.gpuMax, gpu);
     if (++this.good < RAISE_WINDOWS) return;

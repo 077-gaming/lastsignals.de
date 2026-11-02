@@ -192,11 +192,20 @@ export class CameraLookPass extends Pass {
     this._key = '';
     this.quality = 2;
     this.fxaa = false;
+    this.grain = true; this.ca = true; this.vig = true; // Einzelschalter (Grafik-Einstellungen), wirken ab MITTEL
+    this.vigBase = this.uniforms.uVig.value;
     this.bloom = null; // BloomPass (bloom.js): Ergebnis wird hier addiert
   }
 
   setQuality(q) { this.quality = q; this._key = ''; }
-  setFxaa(on) { if (on !== this.fxaa) { this.fxaa = on; this._key = ''; } }
+  setFxaa(on) { on = !!on; if (on !== this.fxaa) { this.fxaa = on; this._key = ''; } }
+  /** Filmkorn, Vignette, Farbsaum einzeln (engine/settings.js) */
+  setEffects(grain, vig, ca) {
+    grain = !!grain; ca = !!ca; vig = !!vig;
+    if (grain !== this.grain || ca !== this.ca) { this.grain = grain; this.ca = ca; this._key = ''; }
+    if (vig !== this.vig) { if (this.vig) this.vigBase = this.uniforms.uVig.value; this.vig = vig; }
+    this.uniforms.uVig.value = vig ? this.vigBase : 0;
+  }
   setSize(w, h) { this.uniforms.uTexel.value.set(1 / Math.max(1, w), 1 / Math.max(1, h)); }
 
   render(renderer, writeBuffer, readBuffer) {
@@ -205,14 +214,15 @@ export class CameraLookPass extends Pass {
     u.toneMappingExposure.value = renderer.toneMappingExposure;
     const bloom = !!(this.bloom && this.bloom.enabled);
     if (bloom) { u.tBloom.value = this.bloom.texture; u.uBloomK.value = this.bloom.strength; }
-    const key = renderer.toneMapping + ':' + this.quality + ':' + (u.uFlare.value > 0) + ':' + this.fxaa + ':' + bloom + ':' + !!this.legacy;
+    const key = renderer.toneMapping + ':' + this.quality + ':' + (u.uFlare.value > 0) + ':' + this.fxaa + ':' + bloom + ':' + !!this.legacy + ':' + this.grain + ':' + this.ca;
     if (key !== this._key) {
       this._key = key;
       const d = {};
       if (renderer.toneMapping === THREE.ACESFilmicToneMapping) d.ACES_FILMIC_TONE_MAPPING = '';
       else if (renderer.toneMapping === THREE.AgXToneMapping) d.AGX_TONE_MAPPING = '';
       else if (renderer.toneMapping === THREE.NeutralToneMapping) d.NEUTRAL_TONE_MAPPING = '';
-      if (this.quality >= 1) { d.USE_GRAIN = ''; d.USE_CA = ''; }
+      if (this.quality >= 1 && this.grain) d.USE_GRAIN = '';
+      if (this.quality >= 1 && this.ca) d.USE_CA = '';
       if (this.quality >= 2 && u.uFlare.value > 0) d.USE_FLARE = '';
       if (this.fxaa) d.USE_FXAA = '';
       if (bloom) d.USE_BLOOM = '';

@@ -17,6 +17,7 @@ import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
 import { PerfHud } from './perf/perfhud.js';
 import { autoQuality, isAutoQuality, storeAutoQuality, raiseCap, QualityGuard, Q_NAMES, Q_LABEL } from './perf/quality.js';
 import { setSetting, settings, reduced } from './ui/screens-kit.js';
+import { FrameLimiter, currentGfx, notifyDesktop, detectCaps } from './engine/index.js';
 import './ui/theme.css';
 
 const STEP = 1 / 60;          // feste Simulationsschrittweite
@@ -27,9 +28,23 @@ const hudRoot = document.getElementById('hud');
 let canvas = document.getElementById('game');
 
 let renderer = null;
-const perfHud = new PerfHud(null); // F3: Leistungsanzeige
+const perfHud = new PerfHud(null); // F3: Leistungsanzeige (Grundzustand aus den Grafik-Einstellungen)
+// Bildratenbegrenzung (Grafik-Einstellung): Browser lässt Bilder aus; Desktop-App bekommt den Wert für die Hülle
+const limiter = new FrameLimiter();
+let gfxSig = '';
+function syncGfx() {
+  const g = currentGfx();
+  if (g.sig === gfxSig) return;
+  gfxSig = g.sig;
+  limiter.setCap(g.v.fpsCap);
+  perfHud.toggle(!!g.v.perfHud);
+  notifyDesktop(g.v);
+}
+syncGfx();
+window.addEventListener('ls:settings', syncGfx);
 // Absicherung im Flug: bei eigener Wahl des Spielers gilt eine Senkung nur bis zum Neuladen der Seite
 let sessionCap = 3;
+const desktopApp = detectCaps().desktop;
 const applyQuality = (name) => setSetting('quality', name);
 // Nur Entwicklungsserver: ?lag=ms bremst jedes Bild künstlich (schwache Rechner nachstellen, Absicherung prüfen)
 const DEV_LAG = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('lag')) || 0 : 0;
@@ -184,6 +199,7 @@ function playSession(profile, opts = {}) {
 
     const frame = (now) => {
       if (!running) return;
+      if (!limiter.allow(now)) { frameId = requestAnimationFrame(frame); return; } // Bildratenbegrenzung: dieses Bild auslassen
       try { frameBody(now); } catch (err) { if (onFrameError(err)) return; }
       if (running) frameId = requestAnimationFrame(frame);
     };
@@ -211,7 +227,7 @@ function playSession(profile, opts = {}) {
       contracts.update(dt);
       guide.render();
       audio.update();
-      guard.frame(dt, performance.now() - t0, renderer, world);
+      if (!desktopApp) guard.frame(dt, performance.now() - t0, renderer, world); // Desktop-App: Stufe bleibt, wie gewählt
       renderer.noteWork(performance.now() - tf);
     };
     frameId = requestAnimationFrame(frame);

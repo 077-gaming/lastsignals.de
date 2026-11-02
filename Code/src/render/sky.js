@@ -538,8 +538,9 @@ export class Sky {
   }
 
   // Umgebungs-Textur (Spiegelungen auf Rümpfen): derselbe Himmel als Rundumbild
-  bakeEquirect(keyDir) {
-    const rt = new THREE.WebGLRenderTarget(512, 256, { type: THREE.HalfFloatType, depthBuffer: false });
+  // w: Breite des Rundumbilds (512 / 1024 / 2048 je Einstellung UMGEBUNGSREFLEXE; PMREM-Würfel = w / 4)
+  bakeEquirect(keyDir, w = 512) {
+    const rt = new THREE.WebGLRenderTarget(w, w / 2, { type: THREE.HalfFloatType, depthBuffer: false });
     const U = this.skyMat.uniforms;
     U.uEquirect.value = 1;
     const sunKeep = this.sunDir.clone();
