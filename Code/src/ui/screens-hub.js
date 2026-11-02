@@ -18,6 +18,8 @@ import { stage } from './screens-stage.js';
 import { register, killsOf, CLANS } from './screens-roster.js';
 import { World } from '../sim/world.js';
 import { Bus } from '../core/events.js';
+import { hallBoard, statusText, toast, modalOpen, clearHallCache } from './account-ui.js';
+import { openAccount } from './account-flow.js';
 
 const BEHAVIOR = {
   aggressive: 'Greift in Reichweite an',
@@ -607,53 +609,11 @@ const FRAKTION = {
 
 // ---------------------------------------------------------------- Ruhmeshalle
 
+// Echte Bestenliste vom Server (hall_of_fame): Reiter Ehre/Erfahrung/Abschüsse/Stufe, Filter Fraktion,
+// eigener Platz hervorgehoben. Gezeichnet von account-ui.js hallBoard() nach dem Einblenden (render()).
 const RUHM = {
-  overview(P, store) {
-    const list = register(store);
-    const meLc = String(P.callsign || '').toLowerCase();
-    const myIdx = list.findIndex((p) => p.callsign.toLowerCase() === meLc);
-    const top = list.slice(0, 3).map((p, i) => `${i + 1}. ${esc(p.callsign.toUpperCase())}`).join(' · ');
-    const agg = Object.keys(FACTIONS).map((id) => ({ id, honor: list.filter((p) => p.faction === id).reduce((a, p) => a + (p.honor || 0), 0) })).sort((a, b) => b.honor - a.honor);
-    return `
-      <div class="hb-hero">
-        <span class="ls-label">DEIN PLATZ IM STATIONSREGISTER</span>
-        <b class="hb-hero-t">${myIdx >= 0 ? pad2(myIdx + 1) : '--'}<i> / ${pad2(list.length)}</i></b>
-        <div class="hb-ros">${ro('EHRE', fmt(P.honor))}${ro('ABSCHÜSSE', fmt(killsOf(P)))}${ro('STUFE', pad2(P.level || 1))}</div>
-      </div>
-      ${tiles(
-        tile('tafel', 'EHRENTAFEL', `${pad2(list.length)}<i> PILOTEN</i>`, top || 'Noch keine Einträge'),
-        tile('vergleich', 'FRAKTIONSVERGLEICH', esc(FACTIONS[agg[0]?.id]?.name.toUpperCase() || ''), 'führt nach Ehre · Piloten, Ehre, Abschüsse'),
-      )}`;
-  },
-  details: {
-    tafel: ['EHRENTAFEL', (P, store) => {
-      const list = register(store);
-      const meLc = String(P.callsign || '').toLowerCase();
-      const myIdx = list.findIndex((p) => p.callsign.toLowerCase() === meLc);
-      const row = (p, i) => {
-        const me = i === myIdx;
-        return `<div class="mc-tr mc-rh${me ? ' me' : ''}" style="--fx:${accentOf(p.faction)}"><span class="ls-num">${pad2(i + 1)}</span><span>${esc(p.callsign.toUpperCase())}${me ? '<i class="mc-rh-you">DU</i>' : ''}</span><span class="mc-rh-f"><i></i><b>${esc(FX_CODE[p.faction] || '--')}</b>${esc(FACTIONS[p.faction]?.name || '')}</span><span class="ls-num">${pad2(p.level || 1)}</span><span class="ls-num">${fmt(p.honor)}</span><span class="ls-num">${fmt(killsOf(p))}</span></div>`;
-      };
-      const TOP = 15;
-      let rows = list.slice(0, TOP).map(row).join('');
-      if (myIdx >= TOP) rows += `<div class="mc-rh-gap ls-label">${pad2(myIdx - TOP + 1)} PILOTEN DAZWISCHEN</div>${row(list[myIdx], myIdx)}`;
-      return `<div class="mc-table"><div class="mc-tr mc-th mc-rh"><span>PL</span><span>PILOT</span><span>FRAKTION</span><span>ST</span><span>EHRE</span><span>ABSCH.</span></div>${rows}</div>`;
-    }],
-    vergleich: ['FRAKTIONSVERGLEICH', (P, store) => {
-      const list = register(store);
-      const agg = Object.keys(FACTIONS).map((id) => {
-        const ps = list.filter((p) => p.faction === id);
-        return { id, n: ps.length, honor: ps.reduce((a, p) => a + (p.honor || 0), 0), kills: ps.reduce((a, p) => a + killsOf(p), 0) };
-      });
-      const mx = (k) => Math.max(1, ...agg.map((a) => a[k]));
-      return `<div class="hb-cmp">${agg.map((a) => `<div class="hb-cmp-f" style="--fx:${accentOf(a.id)}">
-          <span class="mc-rh-f"><i></i><b>${esc(FX_CODE[a.id])}</b>${esc(FACTIONS[a.id].name)}</span>
-          <div class="mc-fv-m"><span class="ls-label">PILOTEN</span>${bar(a.n / mx('n'), 'is-shield')}<span class="ls-num">${pad2(a.n)}</span></div>
-          <div class="mc-fv-m"><span class="ls-label">EHRE</span>${bar(a.honor / mx('honor'), 'is-shield')}<span class="ls-num">${fmt(a.honor)}</span></div>
-          <div class="mc-fv-m"><span class="ls-label">ABSCHÜSSE</span>${bar(a.kills / mx('kills'), 'is-shield')}<span class="ls-num">${fmt(a.kills)}</span></div>
-        </div>`).join('')}</div>`;
-    }],
-  },
+  overview() { return '<div data-hof></div>'; },
+  details: {},
 };
 
 // ---------------------------------------------------------------- Clan
@@ -809,11 +769,42 @@ function hudPreview() {
     </div>
   </div>`;
 }
-function einstView() {
+// Konto in den Einstellungen: angemeldet (Status, sichern, abmelden) oder anmelden/anlegen
+function kontoSection(P, account) {
+  const signed = account && account.signedIn;
+  const linked = signed && account.linked(P.callsign);
+  const [stTxt, stCls] = account ? statusText(account) : ['BEREIT', ''];
+  let body;
+  if (linked) {
+    body = `<div class="ac-hub-st">
+        <div><span class="ls-label">KONTO</span><b>${esc(account.user.email || '')}</b></div>
+        <div><span class="ls-label">RUFNAME</span><b>${esc(account.pilot.callsign.toUpperCase())}</b></div>
+        <div><span class="ls-label">SERVER-STAND</span><b class="${stCls}" data-acc-st>${esc(stTxt)}</b></div>
+      </div>
+      <p class="hb-note">Gesichert wird beim Andocken, beim Wechsel im Hub, alle 2 Minuten im Flug und beim Verlassen. Ohne Verbindung spielst du lokal weiter, der Stand wird später nachgesichert.</p>
+      <div class="ac-row"><button type="button" class="ls-btn is-fx" data-acc="sync">JETZT SICHERN</button><button type="button" class="ls-btn" data-acc="logout">KONTO ABMELDEN</button></div>`;
+  } else if (signed) {
+    const other = account.pilot ? account.pilot.callsign.toUpperCase() : '';
+    body = `<div class="ac-hub-st">
+        <div><span class="ls-label">KONTO</span><b>${esc(account.user.email || '')}</b></div>
+        <div><span class="ls-label">KONTOPILOT</span><b>${esc(other || 'NOCH KEINER')}</b></div>
+        <div><span class="ls-label">DIESER PILOT</span><b class="is-warn">NUR LOKAL</b></div>
+      </div>
+      <p class="hb-note">${esc(CS(P))} gehört nicht zu diesem Konto und bleibt in diesem Browser.${other ? ` Wechsle zu ${esc(other)}, um mit dem Server-Stand zu spielen.` : ''}</p>
+      <div class="ac-row">${other ? `<button type="button" class="ls-btn is-fx" data-acc="switch">ZU ${esc(other)} WECHSELN</button>` : '<button type="button" class="ls-btn is-fx" data-acc="claim">RUFNAME SICHERN</button>'}<button type="button" class="ls-btn" data-acc="logout">KONTO ABMELDEN</button></div>`;
+  } else {
+    body = `<p class="hb-note">Kein Konto: Der Spielstand liegt nur in diesem Browser. Mit Konto liegt er auf dem Server, du stehst in der Ruhmeshalle und spielst auf jedem Gerät weiter. Ist der Rufname ${esc(CS(P))} beim Anlegen frei, wird dieser Stand übernommen.</p>
+      <div class="ac-row"><button type="button" class="ls-btn is-fx" data-acc="login">MIT KONTO ANMELDEN</button><button type="button" class="ls-btn" data-acc="signup">KONTO ANLEGEN</button></div>`;
+  }
+  return `<section class="ak-sec">${sub('KT', 'KONTO', `<span class="ls-label">${linked ? 'VERBUNDEN' : signed ? 'ANGEMELDET' : 'OHNE KONTO'}</span>`)}<div class="ac-hub">${body}</div></section>`;
+}
+
+function einstView(P, ctx) {
   const s = settings();
   const h = hudState();
   return `<div class="st">
     <div class="st-c">
+      ${kontoSection(P, ctx && ctx.account)}
       <section class="ak-sec">
         ${sub('GR', 'DARSTELLUNG', '<span class="ls-label" data-saved>BEREIT</span>')}
         <div class="mc-set st-set">
@@ -863,7 +854,7 @@ function einstView() {
     </div>
   </div>`;
 }
-const EINST = { overview: () => einstView(), details: {} };
+const EINST = { overview: (P, store, ctx) => einstView(P, ctx), details: {} };
 
 // ---------------------------------------------------------------- Steuerung
 
@@ -998,7 +989,7 @@ function railMini(P, sector) {
   </div>`;
 }
 
-export async function hubScreen(root, profile, store) {
+export async function hubScreen(root, profile, store, account = null) {
   const P = profile || {};
   const f = FACTIONS[P.faction];
   const { level } = xpOf(P);
@@ -1112,6 +1103,7 @@ export async function hubScreen(root, profile, store) {
   // Handel und Umbau laufen über eine Welt aus dem Profil (gleiche Regeln wie an der Station, speichert selbst)
   let world = null, worldFailed = false;
   const ctx = {
+    account,
     shopTab: 'ships', sel: null, qty: 1, confirm: false, pick: '', msg: null, last: null,
     world() {
       if (world || worldFailed) return world;
@@ -1192,6 +1184,11 @@ export async function hubScreen(root, profile, store) {
     more = null; checkMore();
     if (current === 'einst') { hudPrev(); perfPrev = ''; perfTick(true); }
     if (current === 'hangar') { reframe(); measureHg(); }
+    if (current === 'ruhm') {
+      const hof = node.querySelector('[data-hof]');
+      if (hof && account) hallBoard(hof, { account, me: P, onLogin: () => accountAct('login') });
+      else if (hof) hof.innerHTML = '<p class="hb-note">Ruhmeshalle nicht verfügbar.</p>';
+    }
   };
   // Neu zeichnen ohne Einblenden (Kauf, Auswahl, Umbau), Listenposition bleibt
   const redraw = () => {
@@ -1309,6 +1306,49 @@ export async function hubScreen(root, profile, store) {
   });
 
 
+  // Konto: beim Wechsel im Hub sichern (höchstens alle 20 s), Anzeige des Server-Stands live halten
+  let lastPush = 0;
+  const cloudPush = (force = false) => {
+    if (!account || !account.linked(P.callsign) || account.pending) return null;
+    if (!force && Date.now() - lastPush < 20000) return null;
+    lastPush = Date.now();
+    try { if (world) world.saveNow(); } catch { /* egal */ }
+    return account.push(P, { always: force }); // „Jetzt sichern“ fragt immer den Server (findet neuere Stände anderer Geräte)
+  };
+  const accStatus = () => {
+    const el = body.querySelector('[data-acc-st]');
+    if (!el || !account) return;
+    const [t, c] = statusText(account);
+    el.textContent = t; el.className = c;
+  };
+  const accountAct = async (act) => {
+    if (!account || accBusy) return;
+    accBusy = true;
+    try {
+      if (act === 'sync') {
+        const r = await cloudPush(true);
+        if (r && r.ok) toast('Spielstand auf dem Server gesichert.');
+        else if (r && r.offline) toast('Keine Verbindung. Der Stand bleibt lokal und wird später nachgesichert.', 'warn');
+        else if (r && r.error) toast(r.error, 'warn');
+      } else if (act === 'logout') {
+        try { if (world) world.saveNow(); } catch { /* egal */ }
+        if (account.linked(P.callsign)) await account.push(P);
+        await account.logout();
+        clearHallCache();
+        toast('Abgemeldet. Dieser Pilot bleibt in diesem Browser spielbar.');
+        if (current === 'einst' || current === 'ruhm') render();
+      } else if (act === 'switch') {
+        finishRef('account');
+      } else {
+        const r = await openAccount(store, act, { callsign: P.callsign, faction: P.faction });
+        if (r && r.pilot) { clearHallCache(); finishRef('account'); }
+        else if (current === 'einst') render();
+      }
+    } finally { accBusy = false; }
+  };
+  let accBusy = false;
+  let finishRef = () => { };
+
   const show = (key, det = '', focusNav = false) => {
     const i = SECTIONS.findIndex((x) => x.key === key);
     if (i < 0) return;
@@ -1322,6 +1362,7 @@ export async function hubScreen(root, profile, store) {
       current = key;
       lastSection = key;
       if (P.system && key !== 'start') { const sn = P.system.seen || (P.system.seen = []); if (!sn.includes('hub:' + key)) { sn.push('hub:' + key); store?.save?.(P); } }
+      cloudPush();
       center.dataset.sec = key;
     }
     detail = det;
@@ -1471,6 +1512,15 @@ export async function hubScreen(root, profile, store) {
       await s.close(v === 'launch' ? 200 : 240);
       resolve(v);
     };
+    finishRef = finish;
+    if (account) {
+      const off = account.on((type) => {
+        if (s.closed || done) return;
+        if (type === 'status') accStatus();
+        if (type === 'conflict') { toast('Ein anderes Gerät hat einen neueren Spielstand gesichert. Wird abgeglichen …', 'warn'); finish('sync'); }
+      });
+      s.onClose(off);
+    }
     s.on(navEl, 'click', (e) => { const b = e.target.closest('[data-sec]'); if (b) show(b.dataset.sec, ''); });
     s.on(s.inner, 'click', (e) => {
       const g = e.target.closest('[data-goto]');
@@ -1506,6 +1556,8 @@ export async function hubScreen(root, profile, store) {
       const d = e.target.closest('[data-det]');
       if (d && body.contains(d)) { show(current, d.dataset.det); body.focus({ preventScroll: true }); return; }
       if (e.target.closest('[data-back]')) { back(); return; }
+      const ac = e.target.closest('[data-acc]');
+      if (ac && body.contains(ac)) { accountAct(ac.dataset.acc); return; }
       const b = e.target.closest('[data-set]');
       if (b) { onSetting(b); return; }
       if (e.target.closest('[data-hudreset]')) {
@@ -1521,9 +1573,10 @@ export async function hubScreen(root, profile, store) {
     s.on($('[data-logout]'), 'click', () => finish('logout'));
     wireInstall($('[data-install]'), (t) => { const d = document.createElement('div'); d.className = 'hb-install'; d.setAttribute('role', 'dialog'); d.innerHTML = `<div class="ls-panel"><b>ALS APP INSTALLIEREN</b><p>${esc(t)}</p><button type="button" class="ls-btn is-fx">VERSTANDEN</button></div>`; d.querySelector('button').onclick = () => d.remove(); document.body.appendChild(d); });
     s.on(window, 'keydown', (e) => {
-      if (done || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (done || e.metaKey || e.ctrlKey || e.altKey || modalOpen()) return;
       const a = document.activeElement;
       const k = e.key;
+      if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && k !== 'Escape') return; // Tippen in Feldern (z. B. Koop-Code)
       if (k === 'Enter') {
         if (a && a !== document.body && a !== launchBtn && (a.tagName === 'BUTTON' || a.tagName === 'INPUT')) return;
         e.preventDefault();

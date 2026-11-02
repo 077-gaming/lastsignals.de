@@ -7,6 +7,10 @@ import { setSound, blip, chapterCue } from './audio.js';
 import { getSession, getStatus, signOut, isOnline, hasAuthState } from './api.js';
 import { FACTIONS, FX_HEX } from './factions.js';
 
+// Passwort-Link aus einer Mail, die das Spiel angefordert hat, landet hier (Fallback auf die Hauptseite):
+// das Spiel unter /play/ setzt das neue Passwort.
+if (/access_token=/.test(location.hash) && /type=recovery/.test(location.hash)) location.replace('/play/' + location.hash);
+
 const doc = document.documentElement;
 doc.classList.add('js');
 const body = document.body;
@@ -73,6 +77,9 @@ const clockEl = document.querySelector('[data-clock]');
 if (clockEl) { const tick = () => { clockEl.textContent = new Date().toISOString().slice(11, 19); }; tick(); setInterval(() => { if (!document.hidden) tick(); }, 1000); }
 
 const fm = document.querySelector('[data-formations]');
+// Ruhmeshalle: echte Bestenliste (src/hall.js)
+const hallEl = document.querySelector('[data-hall]');
+if (hallEl) import('./hall.js').then((m) => m.initHall(hallEl)).catch(() => {});
 near(fm, () => import('./visuals/formations.js').then((m) => m.initFormations(fm)));
 
 // ---------- Live-Status (ehrlich: Testphase, bis der Spielserver läuft) ----------

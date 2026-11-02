@@ -1312,5 +1312,142 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Neuer Tag: neue Tagesaufträge, Woche bleibt', pr2.contracts.day === '2026-11-03' && !pr2.contracts.daily.some((c) => c.done) && pr2.contracts.week === '2026-W45');
 }
 
+
+// ── Konto und Server-Spielstand (Attrappe statt Netz, Planung/KONTEN.md) ──
+{
+  const L = await import('../net/cloud-logic.js');
+  const { Account } = await import('../net/account.js');
+  const { mockApi } = await import('../net/account-mock.js');
+  const kvMap = (m = new Map()) => ({ get: (k) => (m.has(k) ? m.get(k) : null), set: (k, v) => { if (v == null) m.delete(k); else m.set(k, String(v)); } });
+  const memStore = () => { const all = new Map(); return { get: (c) => { const v = all.get(String(c).toLowerCase()); return v ? JSON.parse(v) : null; }, save: (p) => { p.savedAt = new Date().toISOString(); all.set(p.callsign.toLowerCase(), JSON.stringify(p)); return true; } }; };
+
+  // Regeln ohne Netz
+  const a = newProfile('Kora', 'saturn'), b = JSON.parse(JSON.stringify(a));
+  check('Abgleich: gleiche Daten, andere Schlüsselreihenfolge → gleiche Prüfsumme', L.hashOf(a) === L.hashOf(Object.fromEntries(Object.entries(b).reverse())));
+  b.xp = 900; b.level = 3;
+  check('Abgleich: mehr Stufe/EP gewinnt im Konflikt', L.decideConflict(a, b) === 'remote' && L.decideConflict(b, a) === 'local');
+  const c2 = JSON.parse(JSON.stringify(a)); c2.credits += 500;
+  check('Abgleich: gleicher Fortschritt, andere Daten → nachfragen', L.decideConflict(a, c2) === 'ask');
+  check('Abgleich: erste Verknüpfung mit zwei verschiedenen Ständen → nachfragen', L.decideLogin(a, { data: b, version: 3 }, null) === 'ask');
+  check('Abgleich: lokal unverändert, Server neuer → Server gilt', L.decideLogin(a, { data: b, version: 4 }, { version: 3, hash: L.hashOf(a) }) === 'remote');
+  check('Abgleich: lokal geändert, Server unverändert → hochladen', L.decideLogin(b, { data: a, version: 3 }, { version: 3, hash: L.hashOf(a) }) === 'local');
+  check('Abgleich: nur lokal → hochladen, nur Server → laden', L.decideLogin(a, null, null) === 'local' && L.decideLogin(null, { data: a, version: 1 }, null) === 'remote');
+  const big = newProfile('Gross', 'eris'); big.junk = 'x'.repeat(420 * 1024);
+  check('Spielstand über 400 kB wird nicht hochgeladen', L.payloadOf(big, 1, 'test').ok === false && L.payloadOf(a, 1, 'test').ok === true);
+  check('Fehlertexte deutsch: Passwort, Bestätigung, offline, Rufname',
+    /PASSWORT FALSCH/.test(L.errorText({ code: 'invalid_credentials' })) && /NICHT BESTÄTIGT/.test(L.errorText({ code: 'email_not_confirmed' }))
+    && /KEINE VERBINDUNG/.test(L.errorText({ message: 'Failed to fetch', status: 0 })) && /VERGEBEN/.test(L.errorText({ code: '23505' })));
+  check('Rufname-Regeln wie Datenbank', !L.callsignProblem('Kora_7') && !!L.callsignProblem('ab') && !!L.callsignProblem('7up') && !!L.callsignProblem('Admin'));
+
+  // Ablauf mit Attrappe: zwei Geräte, ein Server
+  const api = mockApi();
+  const devA = new Account({ api, local: memStore(), kv: kvMap(), client: 'test-a' });
+  await devA.init();
+  const su = await devA.signup({ email: 'neu@attrappe.local', password: 'kurz', callsign: 'Kora', faction: 'saturn' });
+  check('Konto anlegen: zu kurzes Passwort abgelehnt', !su.ok && /MINDESTENS/.test(su.error));
+  const su2 = await devA.signup({ email: 'neu@attrappe.local', password: 'sicher123', callsign: 'Kora', faction: 'saturn' });
+  check('Konto anlegen: Bestätigungsmail statt Sitzung', su2.ok && su2.confirm && api.mock.state().mails.some((m) => m.redirect === 'https://lastsignals.de/'));
+  const l0 = await devA.login('neu@attrappe.local', 'sicher123');
+  check('Anmelden vor Bestätigung → klare Meldung', !l0.ok && /NICHT BESTÄTIGT/.test(l0.error));
+  const l1 = await devA.login('neu@attrappe.local', 'falsch999');
+  check('Anmelden mit falschem Passwort → klare Meldung', !l1.ok && /PASSWORT FALSCH/.test(l1.error));
+  api.mock.confirm('neu@attrappe.local');
+  const l2 = await devA.login('neu@attrappe.local', 'sicher123');
+  check('Erste Anmeldung sichert den Rufnamen (claim_callsign)', l2.ok && l2.claimed && devA.pilot.callsign === 'Kora' && devA.pilot.faction === 'saturn');
+  const planA = await devA.loginPlan();
+  check('Neues Konto ohne Stände → neuer Pilot', planA.decision === 'none');
+  const pA = await devA.applyPlan(planA, 'none');
+  check('Neuer Pilot liegt lokal und auf dem Server (Version 1)', !!devA.local.get('Kora') && devA.meta('Kora').version === 1);
+  pA.xp = 2000; pA.level = 4; devA.local.save(pA);
+  const r1 = await devA.push(devA.local.get('Kora'));
+  check('Sichern erhöht die Version', r1.ok && r1.version === 2);
+  check('Unveränderter Stand wird nicht erneut gesendet', (await devA.push(devA.local.get('Kora'))).unchanged === true);
+
+  // Gerät B meldet sich an, hat noch nichts lokal → Server-Stand gilt
+  const devB = new Account({ api: { ...api, getSession: async () => null }, local: memStore(), kv: kvMap(), client: 'test-b' });
+  await devB.init();
+  // Attrappe teilt die Sitzung; für Gerät B neu anmelden
+  await devB.login('neu@attrappe.local', 'sicher123');
+  const planB = await devB.loginPlan();
+  check('Zweites Gerät ohne lokalen Stand lädt den Server-Stand', planB.decision === 'remote');
+  const pB = await devB.applyPlan(planB, 'remote');
+  check('Server-Stand übernommen (Stufe 4)', pB.level === 4 && devB.meta('Kora').version === 2);
+
+  // B spielt weiter und sichert; A (veraltet, weniger EP) sichert danach → Konflikt, Server gewinnt, nichts still verloren
+  pB.xp = 5000; pB.level = 6; devB.local.save(pB); await devB.push(devB.local.get('Kora'));
+  const stA = devA.local.get('Kora'); stA.credits += 77; devA.local.save(stA);
+  const rc = await devA.push(devA.local.get('Kora'));
+  check('Versionskonflikt erkannt, neuere EP/Stufe des anderen Geräts gewinnt', rc.conflict && rc.decision === 'remote' && devA.pending);
+  check('Bei offenem Konflikt wird nicht weiter gesichert', (await devA.push(devA.local.get('Kora'))).skipped === 'pending');
+  const won = await devA.resolve('remote');
+  check('Server-Stand geladen, alter lokaler Stand als Sicherung aufbewahrt', won.level === 6 && devA.lastBackup('Kora')?.data?.credits === stA.credits && !devA.pending);
+
+  // A hat mehr Fortschritt als der Server → A gewinnt automatisch, Server-Stand als Sicherung
+  const moreA = devA.local.get('Kora'); moreA.xp = 9000; moreA.level = 8; devA.local.save(moreA);
+  api.mock.bump('Kora', 100); // anderes Gerät sichert wenig
+  const rl = await devA.push(devA.local.get('Kora'));
+  const srv = await api.loadSave(devA.pilot.id);
+  check('Konflikt mit mehr eigenem Fortschritt: eigener Stand überschreibt', rl.ok && srv.data.level === 8 && srv.version === rl.version);
+
+  // Gleicher Fortschritt, andere Daten → Nachfrage
+  const sameA = devA.local.get('Kora'); sameA.credits += 1; devA.local.save(sameA);
+  const r4 = await api.loadSave(devA.pilot.id); const d4 = JSON.parse(JSON.stringify(r4.data)); d4.tritium += 5;
+  await api.save({ p_data: d4, p_version: r4.version, p_level: d4.level, p_xp: d4.xp, p_honor: 0, p_kills: 0, p_client: 'x' });
+  const ra = await devA.push(devA.local.get('Kora'));
+  check('Konflikt bei gleichem Fortschritt → Spieler wird gefragt', ra.conflict && ra.decision === 'ask');
+  const keep = await devA.resolve('local');
+  const r5 = await api.loadSave(devA.pilot.id);
+  check('Entscheidung „lokal“: eigener Stand liegt auf dem Server', r5.data.credits === keep.credits && !devA.pending);
+
+  // Offline: lokal weiter, später nachsichern
+  api.mock.offline(true);
+  const off = devA.local.get('Kora'); off.honor = 321; devA.local.save(off);
+  const ro = await devA.push(devA.local.get('Kora'));
+  check('Offline: Sichern meldet offline, Stand bleibt lokal markiert', ro.offline && devA.meta('Kora').dirty === true && devA.status.phase === 'offline');
+  const lo = await devA.login('neu@attrappe.local', 'sicher123');
+  check('Offline: Anmeldung meldet keine Verbindung', !lo.ok && /KEINE VERBINDUNG/.test(lo.error));
+  api.mock.offline(false);
+  const rn = await devA.push(devA.local.get('Kora'));
+  check('Wieder online: Stand wird nachgesichert', rn.ok && (await api.loadSave(devA.pilot.id)).data.honor === 321 && !devA.meta('Kora').dirty);
+
+  // Rufname vergeben + anderer Pilot gleichen Namens aus anderer Fraktion
+  const devC = new Account({ api, local: memStore(), kv: kvMap(), client: 'test-c' });
+  await devC.init();
+  const sc = await devC.signup({ email: 'zwei@attrappe.local', password: 'sicher123', callsign: 'kora', faction: 'eris' });
+  check('Konto anlegen: Rufname vergeben (ohne Groß/Klein)', !sc.ok && /VERGEBEN/.test(sc.error));
+  await devC.signup({ email: 'zwei@attrappe.local', password: 'sicher123', callsign: 'Vexa', faction: 'eris' });
+  api.mock.confirm('zwei@attrappe.local');
+  devC.local.save(newProfile('Vexa', 'europa'));
+  await devC.login('zwei@attrappe.local', 'sicher123');
+  const planC = await devC.loginPlan();
+  check('Lokaler Pilot gleichen Namens, andere Fraktion → nachfragen, nie hochladen', planC.decision === 'ask' && planC.mismatch);
+  const pc = await devC.applyPlan(planC, 'local');
+  check('Andere Fraktion: neuer Pilot im Konto, alter lokal gesichert', pc.faction === 'eris' && devC.lastBackup('Vexa')?.data?.faction === 'europa');
+  const foreign = newProfile('Vexa', 'europa'); foreign.level = 30; foreign.xp = 99999;
+  const rForeign = await devC.push(foreign);
+  check('Pilot gleichen Namens aus anderer Fraktion wird nie hochgeladen (auch nicht über „Ohne Konto spielen“)',
+    rForeign.skipped === 'faction' && devC.pushLeave(foreign) === false && (await api.loadSave(devC.pilot.id)).data.faction === 'eris');
+  // Verlassen während eines laufenden Sicherns: kein zweiter Aufruf mit derselben Version (sonst falscher Konflikt)
+  const busyP = devC.local.get('Vexa'); busyP.credits += 3; devC.local.save(busyP);
+  const inFlight = devC.push(devC.local.get('Vexa'));
+  const leaveSent = devC.pushLeave(devC.local.get('Vexa'));
+  const rBusy = await inFlight;
+  check('Verlassen während laufendem Sichern: kein Doppelsenden, kein falscher Konflikt', leaveSent === false && rBusy.ok && !devC.pending);
+  // Erstes Sichern zweier Geräte gleichzeitig (Datenbank meldet doppelten Eintrag): als Konflikt behandeln, nicht „Rufname vergeben“
+  {
+    let first = true;
+    const raceApi = { ...api, async save(a) { if (first) { first = false; await api.save({ ...a, p_data: { ...a.p_data, credits: (a.p_data.credits || 0) + 1 } }); throw { code: '23505', message: 'duplicate key value violates unique constraint "pilot_saves_pkey"' }; } return api.save(a); } };
+    const devD = new Account({ api: raceApi, local: memStore(), kv: kvMap(), client: 'test-d' });
+    await devD.init();
+    const pD = devD.local.get('Vexa') || newProfile('Vexa', 'eris'); pD.level = 40; pD.xp = 1; devD.local.save(pD);
+    const rD = await devD.push(devD.local.get('Vexa'));
+    check('Gleichzeitiges erstes Sichern: doppelter Eintrag wird als Versionskonflikt gelöst', rD.ok && (await api.loadSave(devC.pilot.id)).data.level === 40);
+  }
+  const hof = await devC.hall(null, 'xp', 10);
+  check('Ruhmeshalle (Attrappe): sortiert nach Erfahrung', hof.length === 2 && hof[0].callsign === 'Kora' && hof[0].xp >= hof[1].xp);
+  await devC.logout();
+  check('Abmelden: Pilot nicht mehr verknüpft, lokaler Stand bleibt', !devC.linked('Vexa') && !!devC.local.get('Vexa'));
+}
+
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');
 process.exit(failed ? 1 : 0);

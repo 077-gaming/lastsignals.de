@@ -269,6 +269,8 @@ export function mount(root, name, label, fx, opts = {}) {
     on(t, type, fn, o) { t.addEventListener(type, fn, o); offs.push(() => t.removeEventListener(type, fn, o)); },
     timer(fn, ms) { const id = setTimeout(fn, ms); offs.push(() => clearTimeout(id)); return id; },
     every(fn, ms) { const id = setInterval(fn, ms); offs.push(() => clearInterval(id)); return id; },
+    /** Aufräumen beim Schließen (z. B. Abmeldung von Ereignissen) */
+    onClose(fn) { offs.push(fn); },
     loop(fn) {
       let id = 0;
       const step = (t) => { id = requestAnimationFrame(step); fn(t); };

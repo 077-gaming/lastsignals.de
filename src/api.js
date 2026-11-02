@@ -70,7 +70,18 @@ function client() {
   if (!isOnline()) return Promise.resolve(null);
   if (!clientP) {
     clientP = import('@supabase/supabase-js')
-      .then(({ createClient }) => createClient(URL_, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' } }))
+      .then(async ({ createClient }) => {
+        const sb = createClient(URL_, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' } });
+        // Bestätigungslink eines im Spiel angelegten Kontos (das Spiel nutzt den implicit flow, damit Links auch aus
+        // Electron/Capacitor funktionieren): #access_token=…&refresh_token=…&type=signup. Sitzung übernehmen,
+        // danach Zugangsdaten aus der Adresse entfernen. getSession() sichert dann den Rufnamen aus den Metadaten.
+        const h = new URLSearchParams(location.hash.slice(1));
+        if (h.get('access_token') && h.get('refresh_token')) {
+          try { await sb.auth.setSession({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token') }); } catch (e) { /* abgelaufen */ }
+          try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* egal */ }
+        }
+        return sb;
+      })
       .catch(() => null);
   }
   return clientP;
