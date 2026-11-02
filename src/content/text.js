@@ -87,7 +87,7 @@ export const TEXT = {
         { icon: 'sectors', k: '37', u: 'Sektoren', t: 'Sektoren', d: 'Von den Jupitermonden bis zum Kuipergürtel. Je höher die Zahl, desto gefährlicher der Sektor.' },
         { icon: 'combat', k: '0', u: 'ms Wechsel', t: 'Kampf', d: 'Echtzeit gegen Piraten, den Schwarm und andere Piloten. Munition L1 bis L4, Salven, Raketen und Minen. Gewechselt wird ohne Verzögerung.' },
         { icon: 'gear', k: '12', u: 'Stufen', t: 'Ausrüstung', d: 'Laser, Generatoren, Drohnen und das Begleitschiff SPUTNIK. Jedes Teil wird in zwölf Stufen verbessert und sitzt sichtbar am Schiff.' },
-        { icon: 'events', k: '7', u: 'Tage', t: 'Events', d: 'Jeden Abend CORE RUSH, sonntags SWARM SURGE, einmal im Monat BREACH. Dazu Jahreszeiten-Events, die nie wiederkommen.' },
+        { icon: 'events', k: '7', u: 'Tage', t: 'Events', d: 'Geplant: jeden Abend CORE RUSH, sonntags SWARM SURGE, einmal im Monat BREACH, dazu Jahreszeiten-Events. Noch nicht spielbar.' },
         { icon: 'fair', k: '0', u: 'Stärke für Geld', t: 'Faire Bezahlung', d: 'Für Geld gibt es nur Aussehen. Waffen, Werte und Tritium verdienst du dir im Spiel.' },
       ],
       facts: ['Im Browser', 'Kein Download', 'Deutsch und Englisch', 'Kostenlos spielbar'],
@@ -110,7 +110,7 @@ export const TEXT = {
         },
         {
           id: 'lasers', t: 'Laser bis Gamma', s: 'Pulse, Ion und Plasma kannst du kaufen. Den Gamma Laser musst du dir verdienen.',
-          d: 'Pulse, Ion, Plasma. Den Gamma Laser kann niemand kaufen. Er fällt selten bei Bossen, in Wurmlöchern und auf Battle Maps, oder du baust ihn aus 20 Gamma-Fragmenten. Dazu Salven mit eigener Nachladezeit, drei Raketen und drei Minen.',
+          d: 'Pulse, Ion, Plasma. Den Gamma Laser kann niemand kaufen. Er soll selten bei Bossen, in Wurmlöchern und auf Battle Maps fallen oder aus 20 Gamma-Fragmenten entstehen (geplant). Dazu Salven mit eigener Nachladezeit, drei Raketen und drei Minen.',
           specs: ['4 Laser', 'L1 bis L4', 'Gamma nur erspielt'],
         },
         {
@@ -125,7 +125,7 @@ export const TEXT = {
         },
         {
           id: 'wormholes', t: 'Wurmlöcher zu echten Sternen', s: 'Wurmlöcher führen nach Sirius, Vega und Betelgeuse. Das letzte nach Andromeda: 50 Wellen, ein Leben.',
-          d: 'Sammle Koordinaten und öffne Wurmlöcher nach Sirius, Vega, Rigel, Antares und Betelgeuse. Bis zu 40 Wellen, wenige Leben, am Ende ein Boss. Das letzte Wurmloch führt nach Andromeda: 50 Wellen, ein Leben, und das Ende der Geschichte.',
+          d: 'Geplant, noch nicht spielbar: Koordinaten sammeln und Wurmlöcher nach Sirius, Vega, Rigel, Antares und Betelgeuse öffnen. Bis zu 40 Wellen, wenige Leben, am Ende ein Boss. Das letzte Wurmloch führt nach Andromeda: 50 Wellen, ein Leben, und das Ende der Geschichte.',
           specs: ['6 Ziele', '20 bis 50 Wellen', 'Gruppen ab Antares'],
         },
         {
@@ -134,8 +134,8 @@ export const TEXT = {
           specs: ['Letzter Treffer zählt', 'Alarm für Verteidiger', 'Seltene Top-Beute'],
         },
         {
-          id: 'war', t: 'Battle Maps, Clans, Events', s: 'Battle Maps ohne sichere Zone, Clans über alle Fraktionen und jeden Abend CORE RUSH.',
-          d: 'Auf BM-1 bis BM-3 gibt es keine sichere Zone. Clans nehmen Piloten aus allen drei Fraktionen auf, schließen Bündnisse und erklären Kriege. Jeden Abend CORE RUSH auf BM-2. Einmal im Monat BREACH: Einbruch in die Station des Feindes, in fünf Phasen bis zur Flucht mit dem Data Core.',
+          id: 'war', t: 'Battle Maps, Clans, Events', s: 'Geplant: Battle Maps ohne sichere Zone, Clans über alle Fraktionen und jeden Abend CORE RUSH.',
+          d: 'Geplant, noch nicht spielbar. Auf BM-1 bis BM-3 gibt es keine sichere Zone. Clans nehmen Piloten aus allen drei Fraktionen auf, schließen Bündnisse und erklären Kriege. Jeden Abend CORE RUSH auf BM-2. Einmal im Monat BREACH: Einbruch in die Station des Feindes, in fünf Phasen bis zur Flucht mit dem Data Core.',
           specs: ['Keine sichere Zone', 'Clans über alle Fraktionen', 'Jeden Tag ein Event'],
         },
       ],
@@ -404,7 +404,7 @@ export const TEXT = {
         { icon: 'sectors', k: '37', u: 'Sectors', t: 'Sectors', d: 'From the moons of Jupiter to the Kuiper Belt. The higher the number, the deadlier the sector.' },
         { icon: 'combat', k: '0', u: 'ms switch', t: 'Combat', d: 'Real time against pirates, the Swarm and other pilots. Ammo L1 to L4, salvos, rockets and mines. Switching has zero delay.' },
         { icon: 'gear', k: '12', u: 'Levels', t: 'Equipment', d: 'Lasers, generators, drones and the companion ship SPUTNIK. Every part upgrades through twelve levels and is mounted visibly on your hull.' },
-        { icon: 'events', k: '7', u: 'Days', t: 'Events', d: 'CORE RUSH every evening, SWARM SURGE on Sundays, BREACH once a month. Plus seasonal events that never return.' },
+        { icon: 'events', k: '7', u: 'Days', t: 'Events', d: 'Planned: CORE RUSH every evening, SWARM SURGE on Sundays, BREACH once a month, plus seasonal events. Not playable yet.' },
         { icon: 'fair', k: '0', u: 'Power for money', t: 'Fair payment', d: 'Money buys looks only. Weapons, stats and Tritium are earned in the game.' },
       ],
       facts: ['In your browser', 'No download', 'English and German', 'Free to play'],
@@ -427,7 +427,7 @@ export const TEXT = {
         },
         {
           id: 'lasers', t: 'Lasers up to Gamma', s: 'Pulse, Ion and Plasma are for sale. The Gamma Laser has to be earned.',
-          d: 'Pulse, Ion, Plasma. Nobody can buy the Gamma Laser. It drops rarely from bosses, in wormholes and on Battle Maps, or you build it from 20 Gamma fragments. Plus salvos with their own reload, three rockets and three mines.',
+          d: 'Pulse, Ion, Plasma. Nobody can buy the Gamma Laser. It is planned to drop rarely from bosses, in wormholes and on Battle Maps, or to be built from 20 Gamma fragments. Plus salvos with their own reload, three rockets and three mines.',
           specs: ['4 lasers', 'L1 to L4', 'Gamma earned only'],
         },
         {
@@ -442,7 +442,7 @@ export const TEXT = {
         },
         {
           id: 'wormholes', t: 'Wormholes to real stars', s: 'Wormholes lead to Sirius, Vega and Betelgeuse. The last one to Andromeda: 50 waves, one life.',
-          d: 'Collect coordinates and open wormholes to Sirius, Vega, Rigel, Antares and Betelgeuse. Up to 40 waves, few lives, a boss at the end. The last wormhole leads to Andromeda: 50 waves, one life, and the end of the story.',
+          d: 'Planned, not playable yet: collect coordinates and open wormholes to Sirius, Vega, Rigel, Antares and Betelgeuse. Up to 40 waves, few lives, a boss at the end. The last wormhole leads to Andromeda: 50 waves, one life, and the end of the story.',
           specs: ['6 destinations', '20 to 50 waves', 'Groups from Antares'],
         },
         {
@@ -451,8 +451,8 @@ export const TEXT = {
           specs: ['Last hit wins', 'Alarm for defenders', 'Rare top loot'],
         },
         {
-          id: 'war', t: 'Battle Maps, clans, events', s: 'Battle Maps without a safe zone, clans across all factions and CORE RUSH every evening.',
-          d: 'BM-1 to BM-3 have no safe zone. Clans recruit pilots from all three factions, forge alliances and declare war. CORE RUSH on BM-2 every evening. Once a month BREACH: a raid on the enemy station in five phases, ending with the escape of the Data Core.',
+          id: 'war', t: 'Battle Maps, clans, events', s: 'Planned: Battle Maps without a safe zone, clans across all factions and CORE RUSH every evening.',
+          d: 'Planned, not playable yet. BM-1 to BM-3 have no safe zone. Clans recruit pilots from all three factions, forge alliances and declare war. CORE RUSH on BM-2 every evening. Once a month BREACH: a raid on the enemy station in five phases, ending with the escape of the Data Core.',
           specs: ['No safe zone', 'Clans across factions', 'An event every day'],
         },
       ],
