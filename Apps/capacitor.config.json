@@ -18,5 +18,10 @@
     "backgroundColor": "#000000",
     "allowMixedContent": false,
     "captureInput": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "disable"
+    }
   }
 }

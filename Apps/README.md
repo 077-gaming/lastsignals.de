@@ -9,7 +9,8 @@ Das Spiel aus `Code/` verpackt als App, ohne bezahlte Entwicklerkonten und ohne 
   Status-Leiste, WebView innerhalb der sicheren Bereiche (`ShellViewController` in `SceneDelegate.swift`).
   Unsignierte `.ipa` für Sideloadly/AltStore.
 - **Android** (`android/`): Capacitor 8, Debug-APK (Debug-Schlüssel), Querformat, immersives Vollbild,
-  Viewport-Breite des Spiels wird beachtet (`MainActivity.java`).
+  Viewport-Breite des Spiels wird beachtet, Spielbild rückt von der Kamera-Aussparung ab (`MainActivity.java`,
+  dafür `SystemBars.insetsHandling: "disable"` in `capacitor.config.json`).
 
 Das Spiel wird mit relativer Basis gebaut (`web.mjs` → `www/`, nicht im Repository), liegt komplett in der App und
 startet offline. Koop läuft wie im Browser über Supabase Realtime. In den Hüllen registriert das Spiel keinen Service

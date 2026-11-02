@@ -68,7 +68,7 @@ Die App läuft nur im **Querformat**, im Vollbild ohne Status-Leiste. Notch bzw.
 2. Android fragt nach **Installation aus unbekannten Quellen**: auf **Einstellungen** tippen und für die App, mit der du die Datei geöffnet hast (z. B. Dateien oder Chrome), **Dieser Quelle vertrauen** einschalten. Zurück, **Installieren**.
 3. Google Play Protect kann warnen („App wurde nicht geprüft“): **Weitere Details → Trotzdem installieren**.
 
-Die App läuft im Querformat ohne Status- und Navigationsleiste. Wischen vom Rand blendet die Leisten kurz ein. Es ist eine Debug-Version (mit Testschlüssel signiert); eine spätere Version mit anderer Signatur muss vorher deinstalliert werden.
+Die App läuft im Querformat ohne Status- und Navigationsleiste. Wischen vom Rand blendet die Leisten kurz ein. Eine Kamera-Aussparung (Loch oder Notch) verdeckt nichts: Das Spielbild rückt davon ab, der Rand dort bleibt schwarz. Es ist eine Debug-Version (mit Testschlüssel signiert); eine spätere Version mit anderer Signatur muss vorher deinstalliert werden.
 
 ---
 
