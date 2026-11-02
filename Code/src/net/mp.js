@@ -103,14 +103,13 @@ export class Multiplayer {
   /** Spielerliste für das HUD (ohne mich), nach Entfernung sortiert */
   roster() {
     const p = this.world.player, out = [];
-    const cp = this.world.coop && this.world.coop.code;
     for (const R of this.remotes.values()) {
       if (!R.meta) continue;
       const has = R.ent && R.st;
       out.push({
         sid: R.sid, cs: R.meta.cs, fac: R.meta.fac, lv: R.meta.lv, ship: R.meta.ship, pvp: R.meta.pvp,
         dist: has ? Math.hypot(R.ent.x - p.x, R.ent.z - p.z) : (R.st ? Math.hypot(R.st.x - p.x, R.st.z - p.z) : Infinity),
-        attackable: !!(R.ent && R.ent.pvpOk), coop: !!(cp && R.meta.cp === cp), muted: this.isMuted(R.meta.cs),
+        attackable: !!(R.ent && R.ent.pvpOk), coop: this._isPartner(R), muted: this.isMuted(R.meta.cs),
         invited: !!(this.outInv && this.outInv.to === R.sid), inviting: this.inv.has(R.sid), docked: !!(R.st && R.st.flags & M.FLAG.docked),
         hull: R.st ? R.st.hull : 1, shield: R.st ? R.st.shield : 0, id: 'rp:' + R.sid,
       });
@@ -157,7 +156,7 @@ export class Multiplayer {
     this._send(this.secCh, 'inva', { i: this.sid, to: sid, code: v.code, ok: ok ? 1 : 0 });
     if (ok) {
       this._sys(`Koop mit ${v.cs}: verbinde …`, 'sector');
-      this._startCoop({ role: 'guest', code: v.code, faction: v.fac, sector: v.sec });
+      this._startCoop({ role: 'guest', code: v.code, faction: v.fac, sector: v.sec }, sid);
     }
     this._emit('roster');
   }
@@ -165,6 +164,7 @@ export class Multiplayer {
     const c = this.world.coop;
     if (!c) return;
     c.stop();
+    this.coopSid = null;
     this._sys('Koop verlassen.', 'sector');
     this._trackAt = -1e9;
     this._emit('roster');
@@ -193,6 +193,11 @@ export class Multiplayer {
     // Einladungen verfallen
     if (this.outInv && t - this.outInv.t > INVITE_TTL) { this.outInv = null; this._emit('roster'); }
     for (const [sid, v] of this.inv) if (t - v.t > INVITE_TTL) { this.inv.delete(sid); this._emit('roster'); }
+    // Koop aus einer Einladung: Partner länger weg (verlassen, Flug beendet, getrennt) → Koop beenden, wieder frei
+    if (w.coop && this.coopSid && t - this.coopAt > 12) {
+      this._noAlly = w.entities.get('ally') ? 0 : this._noAlly + dt;
+      if (this._noAlly > 6) { w.coop.stop(); this.coopSid = null; this._trackAt = -1e9; this._sys('Koop beendet: Mitspieler nicht mehr verbunden.', 'sector'); this._emit('roster'); }
+    } else if (!w.coop && this.coopSid) this.coopSid = null;
     if (this.away || !this.secReady) return;
     // Presence-Daten aktuell halten (Schiff, Stufe, PvP, Koop)
     this._metaAcc += dt;
@@ -230,10 +235,16 @@ export class Multiplayer {
     return m;
   }
 
+  /** Ist R mein Koop-Partner (gleicher Koop-Code laut Presence oder per Einladung verbunden, Schiff als 'ally' da)? */
+  _isPartner(R) {
+    const w = this.world, c = w.coop;
+    if (!c || !R.meta) return false;
+    return (R.meta.cp === c.code || (R.sid === this.coopSid && !!w.entities.get('ally')));
+  }
+
   _updateRemote(R, t, dt, me) {
     const w = this.world;
-    const cp = w.coop && w.coop.code;
-    const hide = !R.meta || !R.st || t - R.lastRecv > M.STALE || (cp && R.meta.cp === cp) || (R.st.flags & M.FLAG.docked) || R.hold > 0;
+    const hide = !R.meta || !R.st || t - R.lastRecv > M.STALE || this._isPartner(R) || (R.st.flags & M.FLAG.docked) || R.hold > 0;
     if (R.hold > 0) R.hold--;
     if (hide) { this._dropEnt(R); return; }
     const s = R.ip.sample(t, this._samp);
@@ -489,14 +500,15 @@ export class Multiplayer {
     if (m.ok === 1) {
       if (this.world.coop) return;
       this._sys(`${cs} hat angenommen. Koop-Raum ${code} offen, du bist Gastgeber.`, 'sector');
-      this._startCoop({ role: 'host', code });
+      this._startCoop({ role: 'host', code }, m.i);
     } else this._sys(m.busy ? `${cs} fliegt schon im Koop.` : `${cs} hat die Einladung abgelehnt.`, 'sector');
     this._emit('roster');
   }
 
-  _startCoop(cfg) {
+  _startCoop(cfg, sid) {
     const w = this.world;
     if (w.coop) w.coop.stop();
+    this.coopSid = sid || null; this.coopAt = nowS(); this._noAlly = 0;
     // Gast einer anderen Fraktion: Sektoren des Gastgebers übernehmen (wie Koop aus dem Hub), Position behalten
     if (cfg.role === 'guest' && cfg.faction && cfg.faction !== w._homeFac && FACTIONS[cfg.faction]) {
       const secs = sectorsFor(cfg.faction);
@@ -509,7 +521,7 @@ export class Multiplayer {
       }
     }
     new Coop(w, this.bus, cfg); // trägt sich als world.coop ein, main.js ruft update()
-    this._trackAt = -1e9;
+    this._trackAt = -1e9; this._track(true);
     this._emit('roster');
   }
 

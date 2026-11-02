@@ -24,6 +24,7 @@ import { HudQuest } from './hud-quest.js';
 import { HudMap } from './hud-map.js';
 import { HudMenu, menuHtml } from './hud-menu.js';
 import { questText, radioText } from './hud-text.js';
+import { HudMp, CHAT_BODY, PLAYERS_BODY } from './hud-mp.js';
 
 // ---------- gemeinsame Helfer (auch von station.js genutzt) ----------
 export { fmt };
@@ -234,6 +235,10 @@ const W_MAP = win('map', 'NAV·07', 'KARTE', `
   <div class="hmap-foot"><span class="hmap-leg"><i class="lg-st"></i>STATION<i class="lg-tor"></i>TOR<i class="lg-en"></i>FEIND<i class="lg-grp"></i>GRUPPE</span></div>`,
 { stat: '<span class="hw-stat ls-num" data-r="coords"></span>' });
 
+// Mehrspieler: Chat und Spielerliste (Inhalt und Logik in hud-mp.js)
+const W_CHAT = win('chat', 'COM·10', 'CHAT', CHAT_BODY, { stat: '<span class="hw-stat ls-key">ENTER</span>' });
+const W_PLAYERS = win('players', 'NET·11', 'PILOTEN', PLAYERS_BODY, { stat: '<span class="hw-stat ls-key">P</span>' });
+
 // Linien-Symbole der Fensterleiste (16er Raster, 1,25 px Strich, eckig, keine Füllung)
 const ICON = {
   pilot: '<path d="M5.5 2.5 H10.5 L11.5 4.5 V7 L10 8.5 H6 L4.5 7 V4.5 Z"/><path d="M4.5 5.5 H11.5"/><path d="M2.5 14 V12 L5 10 H11 L13.5 12 V14"/>',
@@ -246,28 +251,32 @@ const ICON = {
   weapons: '<path d="M3 13.5 V6.5 L4.5 4 L6 6.5 V13.5 Z"/><path d="M7 13.5 V6.5 L8.5 4 L10 6.5 V13.5 Z"/><path d="M11 13.5 V6.5 L12.5 4 L14 6.5 V13.5"/><path d="M2 13.5 H14.5"/>',
   nav: '<path d="M8 1.8 L13.4 4.9 V11.1 L8 14.2 L2.6 11.1 V4.9 Z"/><path d="M8 5 V11 M5.4 6.5 L10.6 9.5 M10.6 6.5 L5.4 9.5"/>',
   menu: '<path d="M3 4.5 H13"/><path d="M3 8 H13"/><path d="M3 11.5 H9.5"/>',
+  chat: '<path d="M2.5 3 H13.5 V10.5 H7 L4.5 13 V10.5 H2.5 Z"/><path d="M5 6 H11"/><path d="M5 8.25 H9"/>',
+  players: '<path d="M4 2.5 H7.5 V6 H4 Z"/><path d="M1.8 13 V10 L3.3 8.5 H8.2 L9.7 10 V13"/><path d="M10 3.5 H12.8 V6.5 H10"/><path d="M11 8.5 H12.7 L14.2 10 V13 H11.5"/>',
 };
 const svgIcon = (k) => `<svg class="hb-ic" viewBox="0 0 16 16" aria-hidden="true">${ICON[k]}</svg>`;
 
-// Fenster in Leisten-Reihenfolge: id, Code, Titel. Kurztaste ist Shift + Position (1 bis 9).
+// Fenster in Leisten-Reihenfolge: id, Code, Titel[, Taste]. Kurztaste ist Shift + Position (1 bis 9),
+// Chat (Enter) und Spielerliste (P) haben eigene Tasten.
 const WIN_LIST = [
   ['pilot', 'PIL·01', 'PILOT'], ['wallet', 'FIN·02', 'KONTO'], ['ship', 'SYS·03', 'SCHIFF'],
   ['target', 'TGT·04', 'ZIEL'], ['quest', 'MSN·05', 'MISSION'], ['comms', 'COM·06', 'FUNK'],
   ['map', 'NAV·07', 'KARTE'], ['quick', 'AKT·08', 'SCHNELLLEISTE'], ['nav', 'NAV·00', 'SEKTOR'],
+  ['chat', 'COM·10', 'CHAT', 'ENTER'], ['players', 'NET·11', 'PILOTEN', 'P'],
 ];
 const WIN_BY_DIGIT = {};
-WIN_LIST.forEach(([id], i) => { WIN_BY_DIGIT['Digit' + (i + 1)] = id; });
+WIN_LIST.forEach(([id, , , k], i) => { if (!k && i < 9) WIN_BY_DIGIT['Digit' + (i + 1)] = id; });
 
 const BAR = `<nav class="hd-bar" data-r="bar" aria-label="Fensterleiste">
   <span class="hb-code" aria-hidden="true">HUD</span>
-  ${WIN_LIST.map(([id, , title], i) => `<button class="hb-b" type="button" data-act="wintog" data-id="${id}" aria-label="${title} ein- oder ausblenden, Shift ${i + 1}" aria-pressed="true">${svgIcon(id === 'quick' ? 'weapons' : id)}<span class="hb-tip"><b>${title}</b><i class="hb-st"></i><span class="ls-key">⇧${i + 1}</span></span></button>`).join('')}
+  ${WIN_LIST.map(([id, , title, k], i) => `<button class="hb-b" type="button" data-act="wintog" data-id="${id}" aria-label="${title} ein- oder ausblenden, ${k ? 'Taste ' + k : 'Shift ' + (i + 1)}" aria-pressed="true">${svgIcon(id === 'quick' ? 'weapons' : id)}<span class="hb-tip"><b>${title}</b><i class="hb-st"></i><span class="ls-key">${k || '⇧' + (i + 1)}</span></span></button>`).join('')}
   <i class="hb-sep" aria-hidden="true"></i>
   <button class="hb-b hb-menu" type="button" data-act="menu" aria-label="Bordmenü, Escape" aria-pressed="false">${svgIcon('menu')}<span class="hb-tip"><b>MENÜ</b><span class="ls-key">ESC</span></span></button>
 </nav>`;
 
 const TEMPLATE = `
 <div class="hd-layer" data-r="layer">
-${W_NAV}${W_PILOT}${W_WALLET}${W_SHIP}${W_QUICK}${W_TARGET}${W_QUEST}${W_COMMS}${W_MAP}
+${W_NAV}${W_PILOT}${W_WALLET}${W_SHIP}${W_QUICK}${W_TARGET}${W_QUEST}${W_COMMS}${W_MAP}${W_CHAT}${W_PLAYERS}
 </div>
 ${BAR}
 <div class="hd-mid" data-r="mid"></div>
@@ -361,6 +370,8 @@ export class Hud {
       { id: 'pilot', el: W('pilot'), ax: 'l', ay: 't', ox: 12, oy: 12, toggle: true, mode: 'num' },
       { id: 'wallet', el: W('wallet'), ax: 'l', ay: 't', ox: 12, after: 'pilot' },
       { id: 'comms', el: W('comms'), ax: 'l', ay: 'b', ox: 12, oy: 12 },
+      { id: 'chat', el: W('chat'), ax: 'l', ay: 'b', ox: 12, after: 'comms' },
+      { id: 'players', el: W('players'), ax: 'r', ay: 'b', ox: 12, after: 'map' },
     ], (id) => this._onWinChange(id), q('bar'));
     this.barBtns = el.querySelectorAll('.hb-b[data-act="wintog"]');
     this.barMenu = el.querySelector('.hb-menu');
@@ -459,6 +470,7 @@ export class Hud {
     // Schnellleiste (Tasten 1–0 in der Capture-Phase vor input.js) und Kampf-Lesbarkeit
     this.bar = new HudBar(this, W('quick'), el);
     this.combat = new HudCombat(q('mid'));
+    this.mpUi = new HudMp(this, W('chat'), W('players')); // Mehrspieler: Chat, Spielerliste, Namensschilder
     this.coach = new HudCoach(root, bus, world); // Flug-Coach für neue Piloten (nur erster Flug)
     this.questMark = new HudQuest(root, world, null); // Auftragsmarker im All
     this._zoneAcc = 1;
@@ -631,7 +643,7 @@ export class Hud {
     this._menuOpen = open;
     this.menuEl.classList.toggle('show', open);
     this.sMenuCls.set(open);
-    if (open) { this.menu.syncWins(); this.menu._acc = 1; const o = this.menuEl.querySelector('[data-r="ckfov"]'); if (o && this.renderer?.rig) o.textContent = this.renderer.rig.cockpitFov + '°'; }
+    if (open) { this.menu.syncWins(); this.menu.syncMp(this.mpUi.menuState()); this.menu._acc = 1; const o = this.menuEl.querySelector('[data-r="ckfov"]'); if (o && this.renderer?.rig) o.textContent = this.renderer.rig.cockpitFov + '°'; }
     this.barMenu.classList.toggle('on', open);
     this.barMenu.setAttribute('aria-pressed', open ? 'true' : 'false');
   }
@@ -665,6 +677,7 @@ export class Hud {
     }
     this.coach?.update();
     this.questMark?.update(dt);
+    this.mpUi.update(dt);
     this._updateFeed(dt);
     this._updateFloats(dt);
     this._updateToasts(dt);
@@ -701,6 +714,7 @@ export class Hud {
     this.wins.dispose();
     this.bar.dispose();
     this.combat.dispose();
+    this.mpUi.dispose();
     this.coach?.dispose();
     this.questMark?.dispose();
     this.mid.dispose();
@@ -761,6 +775,8 @@ export class Hud {
       case 'tab': this.menu.setTab(t.dataset.tab); break;
       case 'winvis': this.wins.toggleHidden(t.dataset.id); this.menu.syncWins(); break;
       case 'calm': this.menu.setCalm(!this.menu.calm); break;
+      case 'mppvp': if (w && w.mp) w.mp.setPvp(!w.mp.pvp); this.menu.syncMp(this.mpUi.menuState()); break;
+      case 'mpunmute': if (w && w.mp) w.mp.unmuteAll(); this.menu.syncMp(this.mpUi.menuState()); break;
       case 'ckfov': { const r = this.renderer?.rig; if (r) { const v = r.setCockpitFov(r.cockpitFov + (+t.dataset.d || 0)); const o = this.menuEl.querySelector('[data-r="ckfov"]'); if (o) o.textContent = v + '°'; } break; }
       case 'sysguide': case 'sysdirect': case 'sysrestart':
         window.dispatchEvent(new CustomEvent('ls:system', { detail: { act: t.dataset.act.slice(3) } })); this.menu._helpKey = ''; break;

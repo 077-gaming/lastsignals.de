@@ -265,7 +265,7 @@ const DEV = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
 async function devStart() {
   const mode = DEV.get('dev');
   const faction = DEV.get('f') || 'saturn';
-  const callsign = 'Dev-' + faction;
+  const callsign = (DEV.get('cs') || '').replace(/[^\w-]/g, '').slice(0, 16) || 'Dev-' + faction; // &cs=Name: eigener Testpilot (Mehrspieler-Test)
   let profile = store.get(callsign) || store.create(callsign, faction);
   if (mode === 'hub') {
     for (;;) {

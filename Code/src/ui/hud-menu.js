@@ -76,7 +76,7 @@ function row(label, r, cls = '') {
 
 export function menuHtml(windows) {
   const tabs = TABS.map(([id, no, t], i) => `<button class="mp-tab${i ? '' : ' on'}" type="button" data-act="tab" data-tab="${id}"><i>${no}</i>${t}</button>`).join('');
-  const wins = windows.map(([id, code, title], i) => `<div class="mp-win" data-mw="${id}"><span class="mp-wc">${code}</span><span class="mp-wt">${title}</span><span class="hg-sp"></span><span class="ls-key mp-wk">⇧${i + 1}</span><button class="mp-sw" type="button" data-act="winvis" data-id="${id}"><i>AN</i><i>AUS</i></button></div>`).join('');
+  const wins = windows.map(([id, code, title, k], i) => `<div class="mp-win" data-mw="${id}"><span class="mp-wc">${code}</span><span class="mp-wt">${title}</span><span class="hg-sp"></span><span class="ls-key mp-wk">${k || '⇧' + (i + 1)}</span><button class="mp-sw" type="button" data-act="winvis" data-id="${id}"><i>AN</i><i>AUS</i></button></div>`).join('');
   const ctrl = CONTROLS.map(([g, rows]) => `<div class="mp-cg"><div class="mp-sec">${g}</div>${rows.map(([k, t]) => `<div class="mp-crow"><span class="ls-key">${esc(k)}</span><span>${esc(t)}</span></div>`).join('')}</div>`).join('');
   return `
 <div class="hd-side" data-r="menu" role="dialog" aria-modal="true" aria-label="Bordmenü">
@@ -145,6 +145,10 @@ export function menuHtml(windows) {
         <div class="mp-sec">HUD</div>
         <div class="mp-win"><span class="mp-wt">BEWEGUNG REDUZIEREN</span><span class="hg-sp"></span><button class="mp-sw" type="button" data-act="calm" data-r="calmbtn"><i>AUS</i><i>EIN</i></button></div>
         ${row('SPEICHER', 'store')}
+        <div class="mp-sec">MEHRSPIELER · TESTPHASE</div>
+        <div class="mp-win"><span class="mp-wt">PVP</span><span class="hg-sp"></span><button class="mp-sw" type="button" data-act="mppvp" data-r="pvpbtn" title="Ab Sektor 2 außerhalb der sicheren Zone: Piloten anderer Fraktionen mit PvP an sind angreifbar, du auch"><i>AUS</i><i>AN</i></button></div>
+        <div class="mp-kx"><b>PVP</b><span>Nur wer PvP anschaltet, kann angreifen und angegriffen werden. Gilt ab Sektor 2 außerhalb der sicheren Zone und nur gegen andere Fraktionen. Abschuss bringt Ehre.</span></div>
+        <div class="mp-win"><span class="mp-wt">STUMMGESCHALTET</span><span class="hg-sp"></span><b class="ls-num" data-r="mutecount">0</b><button class="ls-btn mp-unmute" type="button" data-act="mpunmute">ALLE LAUT</button></div>
       </section>
     </div>
     <footer class="mp-foot">
@@ -216,6 +220,14 @@ export class HudMenu {
     this.root.classList.toggle('hd-calm', this.calm);
     this.calmBtn.classList.toggle('is-on', this.calm);
     if (save) { try { localStorage.setItem(CALM_KEY, this.calm ? '1' : '0'); } catch { /* privater Modus */ } }
+  }
+
+  /** Mehrspieler-Schalter (PvP, Stummliste) aus hud-mp.js */
+  syncMp(st) {
+    if (!st) return;
+    const b = this.el.querySelector('[data-r="pvpbtn"]'), n = this.el.querySelector('[data-r="mutecount"]');
+    if (b) b.classList.toggle('is-on', st.pvp);
+    if (n) n.textContent = String(st.muted);
   }
 
   syncWins() {
