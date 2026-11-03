@@ -53,7 +53,7 @@ async function botFight(opts) {
   const L = window.__ls, w = L.world, p = w.player, fi = L.input.fi, cam = L.renderer.camera;
   const D = Math.PI / 180, BOLT = 2400;
   const hist = []; // Zielverlauf für die Reaktionszeit (180 ms)
-  const stats = { frames: 0, worst: 0, shots0: w.stats3.bolts, hits0: w.stats3.boltHits, kills: 0, deaths0: w.profile.stats.deaths, ttk: [], first: new Map(), engaged: 0, onTarget: 0, floats: 0, onLab: 0, onCross: 0 };
+  const stats = { frames: 0, worst: 0, shots0: w.stats3.bolts, hits0: w.stats3.boltHits, kills: 0, deaths0: w.profile.stats.deaths, ttk: [], first: new Map(), engaged: 0, onTarget: 0, floats: 0, onLab: 0, onCross: 0, onNum: 0, onGauge: 0 };
   const mine = new Set();
   const spawn = (i) => {
     const q = w.fl.q, f = [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))];
@@ -98,7 +98,8 @@ async function botFight(opts) {
       // Lesbarkeit (Runde 2): schwebende Zahlen nie auf dem Zielschild und nie auf dem Fadenkreuz (alle 6 Bilder)
       if (stats.frames % 6 === 0 && window.__lsHud) {
         const mid = window.__lsHud.mid, lab = mid && mid.tgt.classList.contains('on') ? mid.lab.getBoundingClientRect() : null;
-        const cx = innerWidth / 2, cy = innerHeight / 2, ax = window.__lsHud.flight.lastAimPx;
+        const cx = innerWidth / 2, cy = innerHeight / 2, ax = window.__lsHud.flight.lastAimPx, Z = window.__lsHud.flight.zones;
+        const seen = [];
         for (const el of document.querySelectorAll('.hf')) {
           if (+el.style.opacity < 0.3) continue;
           const b = el.getBoundingClientRect(); if (!b.width) continue;
@@ -106,6 +107,10 @@ async function botFight(opts) {
           if (lab && lab.width && b.right > lab.left && b.left < lab.right && b.bottom > lab.top && b.top < lab.bottom) stats.onLab++;
           const fx = ax && ax.on ? ax.x : cx, fy = ax && ax.on ? ax.y : cy;
           if (b.right > fx - 24 && b.left < fx + 24 && b.bottom > fy - 24 && b.top < fy + 24) stats.onCross++;
+          // Runde 3: Zahl gegen Zahl und gegen Tempo-/Höhenanzeige (Tempozahl, M/S, Boost, EBENE)
+          for (const o of seen) if (b.right > o.left + 1 && b.left < o.right - 1 && b.bottom > o.top + 1 && b.top < o.bottom - 1) stats.onNum++;
+          seen.push(b);
+          if (Z && Z.on) for (const z of Z.list) if (b.right > z.x0 && b.left < z.x1 && b.bottom > z.y0 && b.top < z.y1) stats.onGauge++;
         }
       }
       if (now - t0 > secs * 1000 || (minKills && stats.ttk.length >= minKills)) { res(); return; }
@@ -192,7 +197,7 @@ async function botFight(opts) {
     secs: +el.toFixed(1), device, fps: +(stats.frames / el).toFixed(1), worstMs: Math.round(stats.worst), shots, hits, hitRate: shots ? +(hits / shots).toFixed(3) : 0,
     kills: stats.kills, deaths: w.profile.stats.deaths - stats.deaths0, ttkMedian: stats.ttk.length ? +stats.ttk[stats.ttk.length >> 1].toFixed(1) : null,
     ttkAll: stats.ttk.map((v) => +v.toFixed(1)), onTarget: +(stats.onTarget / Math.max(1, stats.engaged)).toFixed(2),
-    zahlen: stats.floats, zahlenAufSchild: stats.onLab, zahlenAufFadenkreuz: stats.onCross,
+    zahlen: stats.floats, zahlenAufSchild: stats.onLab, zahlenAufFadenkreuz: stats.onCross, zahlenAufZahl: stats.onNum, zahlenAufAnzeige: stats.onGauge,
   };
 }
 
@@ -334,6 +339,17 @@ async function main() {
   }));
   metrics.flacheKurve = flat;
   check('Maus waagrecht 5 s: reines Gieren (Bug ±3°, mehr als eine Umdrehung)', flat.minP > -3 && flat.maxP < 3 && flat.yawDeg > 360, JSON.stringify(flat));
+  // ── Runde 3: schneller 60°-Ausschlag (Lenkkegel 30°) dreht den Bug 60° – der Überlauf verfällt nicht mehr ──
+  await level(); await sleep(400);
+  const flick = await W(() => new Promise((res) => {
+    const L = window.__ls, w = L.world, q = w.fl.q, fi = L.input.fi;
+    const yawOf = () => Math.atan2(2 * (q[0] * q[2] + q[3] * q[1]), 1 - 2 * (q[0] * q[0] + q[1] * q[1]));
+    const y0 = yawOf(), px = 60 / fi.set.sens;
+    for (let i = 0; i < 4; i++) window.__mv(px / 4, 0); // ein Bild, vier Ereignisse
+    setTimeout(() => { let d = yawOf() - y0; d = Math.atan2(Math.sin(d), Math.cos(d)); res({ deg: Math.round(Math.abs(d) * 57.3), cone: fi.set.cone, rest: +(fi.over * 57.3).toFixed(1) }); }, 1800);
+  }));
+  metrics.ausschlag60 = flick;
+  check('Maus: schneller 60°-Ausschlag dreht den Bug ≥ 50° (Überlauf über den Lenkkegel, Runde 3; vorher 30°)', flick.deg >= 50 && flick.deg <= 64, JSON.stringify(flick));
   // ── Rollen mit Q: ohne Horizont-Hilfe (Standard) bleibt die Lage stehen ──
   await page.keyboard.down('KeyQ'); await sleep(700); await page.keyboard.up('KeyQ'); await sleep(400);
   const r1 = await W(() => window.__ls.world.player.roll3); await sleep(2500);
@@ -393,11 +409,19 @@ async function main() {
   await sleep(1500);
 
   // ── Heap: 20 s ruhiger Flug, Wachstum < 2 MB (B-11) ──
-  const heap0 = await W(() => { if (window.gc) window.gc(); return performance.memory ? performance.memory.usedJSHeapSize : 0; });
+  // Runde 3: gemessen über CDP nach vollständiger Speicherbereinigung (HeapProfiler.collectGarbage, zweimal) und nach 5 s
+  // Vorlauf mit demselben Flug – performance.memory ist gerundet und window.gc() räumt unter Last nicht immer alles
+  // (ein Gutachter-Lauf neben anderen Prüfungen ergab 2,97 MB, allein 0,6–0,8 MB)
+  const cdp = await page.context().newCDPSession(page);
+  const heapNow = async () => { for (let k = 0; k < 2; k++) { await cdp.send('HeapProfiler.collectGarbage'); await sleep(150); } return (await cdp.send('Runtime.getHeapUsage')).usedSize; };
+  await page.keyboard.down('KeyW');
+  for (let i = 0; i < 5; i++) { await W((i) => window.__mv(Math.sin(i) * 20, Math.cos(i) * 10), i); await sleep(1000); }
+  await page.keyboard.up('KeyW');
+  const heap0 = await heapNow();
   await page.keyboard.down('KeyW');
   for (let i = 0; i < 20; i++) { await W((i) => window.__mv(Math.sin(i) * 20, Math.cos(i) * 10), i); await sleep(1000); }
   await page.keyboard.up('KeyW');
-  const heap1 = await W(() => { if (window.gc) window.gc(); return performance.memory ? performance.memory.usedJSHeapSize : 0; });
+  const heap1 = await heapNow();
   metrics.heapWachstumMB = heap0 ? +((heap1 - heap0) / 1048576).toFixed(2) : null;
   check('Heap-Wachstum über 20 s Flug < 2 MB', !heap0 || heap1 - heap0 < 2 * 1048576, `${metrics.heapWachstumMB} MB`);
 
@@ -407,13 +431,15 @@ async function main() {
     w._invulnUntil = 0; p.hp = p.hpMax; p.shield = p.shieldMax;
   });
   // Raider-Rudel vor den Bug (wie im Heimatsektor), bis 5 Abschüsse oder 2 × SECS
-  const mouse = await W(botFight, { secs: SECS * 2, device: 'mouse', pack: true, minKills: 5 });
+  // Runde 3: 7 statt 5 Abschüsse – der Median aus 5 Werten schwankte je Lauf um ±1,5 s (unter Last über der Grenze)
+  const mouse = await W(botFight, { secs: SECS * 3, device: 'mouse', pack: true, minKills: 7 });
   metrics.maus = mouse;
   console.log('     Maus:', JSON.stringify(mouse));
   await shot('verfolger-kampf');
   check(`Kampf (Maus, bis 5 Abschüsse): Abschüsse gegen die 3D-KI`, mouse.kills >= 1, `${mouse.kills} Abschüsse, Median ${mouse.ttkMedian} s`);
   check('Kennzahl: Raider-Abschuss mit Startausrüstung (nur Laser, Maus) im Median ≤ 8 s (FLUGMODELL.md 3)', mouse.ttkMedian != null && mouse.ttkMedian <= 8, `${mouse.ttkMedian} s · ${JSON.stringify(mouse.ttkAll)}`);
   check('Lesbarkeit: schwebende Zahlen nie auf Zielschild oder Fadenkreuz (Runde 2)', mouse.zahlen > 0 && mouse.zahlenAufSchild === 0 && mouse.zahlenAufFadenkreuz === 0, `${mouse.zahlen} Zahlen-Stichproben, ${mouse.zahlenAufSchild} auf dem Schild, ${mouse.zahlenAufFadenkreuz} auf dem Fadenkreuz`);
+  check('Lesbarkeit: Zahlen nie auf einer anderen Zahl, nie auf Tempo- oder Höhenanzeige (Runde 3)', mouse.zahlen > 0 && mouse.zahlenAufZahl === 0 && mouse.zahlenAufAnzeige === 0, `${mouse.zahlen} Stichproben, ${mouse.zahlenAufZahl} Paare überdeckt, ${mouse.zahlenAufAnzeige} auf der Anzeige`);
   // Bolzen melden beim Abfeuern kein Ergebnis: kein DANEBEN-Stapel über dem Ziel
   check('Keine DANEBEN-Zahlen je Bolzen im 3D-Flug', await W(() => [...document.querySelectorAll('.hf.hf-miss')].filter((e) => +getComputedStyle(e).opacity > 0).length === 0));
   // Zielfenster und Zielklammer nennen dieselbe (räumliche) Entfernung
@@ -448,7 +474,7 @@ async function main() {
   await W(() => {
     const w = window.__ls.world, p = w.player; p.hp = p.hpMax; p.shield = p.shieldMax;
   });
-  const pad = await W(botFight, { secs: SECS * 2, device: 'pad', pack: true, minKills: 5 });
+  const pad = await W(botFight, { secs: SECS * 3, device: 'pad', pack: true, minKills: 7 });
   metrics.controller = pad;
   console.log('     Controller:', JSON.stringify(pad));
   await shot('controller-kampf');
