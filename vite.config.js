@@ -3,6 +3,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { renderPage, PAGES } from './src/content/render.js';
+import { SITE, canonical, pageById } from './src/site.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +38,29 @@ function pages(flags) {
   };
 }
 
+// sitemap.xml und robots.txt je Domain: lastsignals.de liefert dist/, lastsignals.online liefert dist/en/ (Rewrite in netlify.toml).
+function seoFiles() {
+  const day = new Date().toISOString().slice(0, 10);
+  const map = (lang) => {
+    const urls = PAGES.filter((p) => p.lang === lang && p.canon).map((p) => {
+      const alt = p.alt ? pageById(p.alt) : null;
+      const links = alt ? [p, alt].map((x) => `<xhtml:link rel="alternate" hreflang="${x.lang}" href="${canonical(x)}"/>`).join('') : '';
+      return `<url><loc>${canonical(p)}</loc><lastmod>${day}</lastmod>${links}</url>`;
+    });
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>\n`;
+  };
+  const robots = (lang) => `User-agent: *\nAllow: /\n\nSitemap: ${SITE[lang]}/sitemap.xml\n`;
+  return {
+    name: 'ls-seo', apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: map('de') });
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots('de') });
+      this.emitFile({ type: 'asset', fileName: 'en/sitemap.xml', source: map('en') });
+      this.emitFile({ type: 'asset', fileName: 'en/robots.txt', source: robots('en') });
+    },
+  };
+}
+
 // Nur im Dev-Server: Standbild der 3D-Szene speichern (?poster=wide|tall).
 function posterSaver() {
   return {
@@ -64,9 +88,11 @@ export default defineConfig(async ({ mode }) => {
   const flags = {
     oauth: await fetchProviders(env),
     reservationOpen: online && String(env.VITE_RESERVATION_OPEN || '').trim() === 'true',
+    // Eigener Mailversand in Supabase > Auth > SMTP (z. B. resend); steuert nur den Text der Datenschutzerklärung
+    mail: String(env.VITE_MAIL_PROVIDER || '').trim().toLowerCase(),
   };
   return {
-  plugins: [pages(flags), posterSaver()],
+  plugins: [pages(flags), posterSaver(), seoFiles()],
   define: { __LS_OAUTH__: JSON.stringify(flags.oauth) },
   server: { port: 5180, strictPort: true, hmr: process.env.LS_NOHMR ? false : undefined },
   preview: { port: 5181, strictPort: true },

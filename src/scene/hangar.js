@@ -1,5 +1,5 @@
-// 3D-Hangar: SATURN-Starter (echtes Modell aus dem Spiel) im Hangar-Licht, drehbar.
-// Alle anderen Schiffe als Blaupause (Linienmodell), bis ihre echten Modelle fertig sind. Laser und Generatoren sichtbar.
+// 3D-Hangar: echte Schiffsmodelle aus dem Spiel (alle drei Fraktionen, Schiff 1–8) im Hangar-Licht, drehbar.
+// Geplante Sonderschiffe als Blaupause (Linienmodell). Laser- und Generator-Fassungen aus den Ankern im Modell (HP_Laser_*, HP_Gen_*).
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -7,7 +7,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 import { FX_INT as FX } from '../factions.js';
-const SHIP_URL = '/models/saturn-starter.glb';
+const shipUrl = (fx, ship) => `/models/${fx}-${ship === 's1' ? 'starter' : 'schiff' + ship.slice(1)}.glb`;
 
 export function initHangar(root, opts = {}) {
   const canvas = root.querySelector('.hg-canvas');
@@ -70,31 +70,28 @@ export function initHangar(root, opts = {}) {
 
   // ---------- Schiffe ----------
   const turn = new THREE.Group(); scene.add(turn);
-  let real = null; const realHP = []; let realLen = 4.2;
+  let real = null, realHP = [];
   const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
-  let wantReal = true;
-  loader.load(SHIP_URL, (gltf) => {
-    const m = gltf.scene;
-    const box = new THREE.Box3().setFromObject(m);
-    const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
-    m.position.sub(c);
-    const s = 5 / Math.max(size.x, size.z);
-    real = new THREE.Group(); real.add(m); real.scale.setScalar(s); real.position.y = 0.05;
-    realLen = Math.max(size.x, size.z) * s;
-    m.traverse((o) => { if (o.isMesh && o.material) o.material.envMapIntensity = 1.1; });
-    // Andockpunkte: im GLB stecken nur die Generator-Fassungen; Laser vorn an den Seiten wie im Spiel (Platzhalter-Layout s1)
-    m.updateMatrixWorld(true);
-    const gen = m.getObjectByName('Generator_Port_Geometry');
-    const gc = gen ? new THREE.Box3().setFromObject(gen).getCenter(new THREE.Vector3()) : new THREE.Vector3(size.x * 0.22, size.y * 0.3, size.z * 0.23);
-    const back = Math.sign(gc.z) || 1;
-    const pts = [
-      ['l', -size.x * 0.4, -size.y * 0.12, -back * size.z * 0.2], ['l', size.x * 0.4, -size.y * 0.12, -back * size.z * 0.2],
-      ['g', gc.x, gc.y + size.y * 0.08, gc.z], ['g', -gc.x, gc.y + size.y * 0.08, gc.z],
-    ];
-    for (const [k, x, y, z] of pts) { const o = new THREE.Object3D(); o.position.set(x, y, z).sub(m.position); m.add(o); realHP.push({ o, k }); }
-    show();
-    opts.onReady?.();
-  }, undefined, () => opts.onFail?.());
+  const models = new Map(); // url → { group, hp } (geladen) bzw. Promise
+  function loadReal(url) {
+    if (models.has(url)) return models.get(url);
+    const pr = new Promise((res, rej) => loader.load(url, (gltf) => {
+      const m = gltf.scene;
+      const box = new THREE.Box3().setFromObject(m);
+      const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+      m.position.sub(c);
+      const s = 5 / Math.max(size.x, size.z);
+      const group = new THREE.Group(); group.add(m); group.scale.setScalar(s); group.position.y = 0.05;
+      m.traverse((o) => { if (o.isMesh && o.material) o.material.envMapIntensity = 1.1; });
+      const hp = [];
+      m.traverse((o) => { const k = /^HP_Laser_/.test(o.name) ? 'l' : /^HP_Gen_/.test(o.name) ? 'g' : null; if (k) hp.push({ o, k }); });
+      const v = { group, hp };
+      models.set(url, v); res(v);
+    }, undefined, rej));
+    models.set(url, pr);
+    return pr;
+  }
+  let wantReal = true, wantUrl = '';
 
   function blueprint(tier, nL, nG, color) {
     const g = new THREE.Group();
@@ -154,11 +151,19 @@ export function initHangar(root, opts = {}) {
       mats.forEach((m) => m.dispose());
       bp = null;
     }
-    const useReal = hasModel && fx === 'saturn' && real;
-    wantReal = hasModel && fx === 'saturn';
+    wantReal = hasModel; wantUrl = hasModel ? shipUrl(fx, ship) : '';
+    const got = wantReal ? models.get(wantUrl) : null;
+    real = got && !(got instanceof Promise) ? got.group : null; realHP = got && got.hp ? got.hp : [];
+    if (wantReal && !got) {
+      const url = wantUrl;
+      loadReal(url).then(() => { if (wantUrl === url) { show(); opts.onReady?.(); } }).catch(() => opts.onFail?.());
+    }
+    // Ladeanzeige, solange das gewünschte Modell noch unterwegs ist (S-05 bis S-08 sind 2–3,6 MB)
+    opts.onLoading?.(!!(wantReal && !real));
+    const useReal = wantReal && real;
     if (useReal) turn.add(real);
-    else { bp = blueprint(tier, viz[0], viz[1], FX[fx]); turn.add(bp); }
-    pitch = useReal ? 0.15 : 0.45;
+    else if (!wantReal) { bp = blueprint(tier, viz[0], viz[1], FX[fx]); turn.add(bp); }
+    pitch = wantReal ? 0.15 : 0.45;
     accent.color.setHex(FX[fx]); floorMat.uniforms.uC.value.setHex(FX[fx]);
     root.style.setProperty('--fx', '#' + FX[fx].toString(16).padStart(6, '0'));
     opts.onShow?.({ real: wantReal });
@@ -211,7 +216,8 @@ export function initHangar(root, opts = {}) {
     const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; t += dt;
     if (!drag) { idle += dt; if (!opts.reduce && idle > 1.2) yaw += dt * 0.18 + vy; vy *= 0.92; }
     if (!opts.reduce || dirty || drag) {
-      const dist = camera.aspect < 1.1 ? 11.5 : 11;
+      // schmale Bühne (Handy): weiter weg, damit lange Schiffe ganz ins Bild passen
+      const dist = camera.aspect < 1.1 ? 11.5 + (1.1 - camera.aspect) * 6 + 2 : 11;
       camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, 0.8 + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
       camera.lookAt(0, 0.1, 0);
       turn.position.y = opts.reduce ? 0 : Math.sin(t * 0.8) * 0.04;

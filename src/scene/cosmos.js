@@ -35,7 +35,7 @@ const STOPS = [
   { pos: SAT.clone().add(V3(95, 32, 110)), at: SAT.clone().add(V3(-25, -6, 0)), au: 9.58 },          // 3 Saturn
   { pos: NEP.clone().add(V3(45, 10, 40)), at: NEP.clone().add(V3(-12, 0, 0)), au: 30.07 },             // 4 Uranus und Neptun
   { pos: V3(-60, 22, -3520), at: V3(-20, 8, -3300), au: 42 },                                         // 5 Kuipergürtel
-  { pos: ERIS.clone().add(V3(11, 4, 13)), at: ERIS.clone().add(V3(-6, -1, 0)), au: 95.9 },        // 6 Eris
+  { pos: ERIS.clone().add(V3(11, 4, 13)), at: ERIS.clone().add(V3(31, 3, 11)), au: 95.9 },        // 6 Eris: Planet und Mond links aus dem Bild, hinter dem Kontoformular nur Sterne
   { pos: V3(0, 1500, -6400), at: V3(0, 0, -1700), au: 120 },                                          // 7 Rand des Systems
 ];
 // Heimaten der Fraktionen (Kapitel 2, beim Darüberfahren)

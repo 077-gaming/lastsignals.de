@@ -101,7 +101,7 @@ const DESC = {
     pulse: 'Standard-Pulslaser der Werft. Robust, billig, ein Schuss pro Sekunde.',
     ion: 'Ionen-Emitter mit höherer Energiedichte. Gleicher Takt, deutlich mehr Durchschlag.',
     plasma: 'Gekühlte Plasmakammer. Wird nur gegen Tritium abgegeben.',
-    gamma: 'Gamma-Emitter aus Wracks. Nicht im Handel, nur als Beute.',
+    gamma: 'Gamma-Emitter, geplant als Beute aus Wracks. Noch nicht erhältlich.',
   },
   gen: {
     dr1: 'Antriebsverstärker. Mehr Schub, schneller an Ziel und Beute.',
@@ -1171,7 +1171,7 @@ export class StationUI {
     const pr = priceFor(kind, id, w);
     const cost = pr ? pr.amount * n : 0;
     const info = { kind, id, name: d.name, cost, currency: pr && pr.currency, pack: pr ? pr.qty : 1, level: d.level || 1, ok: false, reason: '' };
-    if (d.dropOnly) info.reason = 'Nur als seltene Beute zu finden, nicht kaufbar.';
+    if (d.dropOnly) info.reason = 'Noch nicht erhältlich. Geplant als seltene Beute, nicht kaufbar.';
     else if (d.locked) info.reason = `Kommt später (ab Stufe ${info.level}).`;
     else if ((p.level || 1) < info.level) info.reason = `Stufe ${info.level} nötig (du hast Stufe ${p.level}).`;
     else if (info.currency && (p[info.currency] || 0) < cost) info.reason = `Zu wenig ${CUR[info.currency]}.`;
@@ -1308,7 +1308,7 @@ export class StationUI {
   _status(p, kind, id) {
     const d = tableOf(kind)[id];
     const lvl = p.level || 1;
-    if (d.dropOnly) return { text: 'Nur Beute', cls: 'is-lock', lock: true };
+    if (d.dropOnly) return { text: 'Geplant', cls: 'is-lock', lock: true };
     if (kind === 'ship') {
       if (p.ship === id) return { text: 'Aktiv', cls: 'is-on', lock: false };
       if ((p.owned.ships || []).includes(id)) return { text: 'Im Besitz', cls: 'is-own', lock: false };
@@ -1457,7 +1457,7 @@ export class StationUI {
       const label = kind === 'ship' && (p.owned.ships || []).includes(id) ? 'Wechseln' : 'Kaufen';
       action = `<button class="ls-btn is-fx sx-buy" type="button" data-act="buy" data-kind="${kind}" data-id="${id}" data-n="${n}">${label}${cost ? ` · ${fmt(cost)} ${CUR[curr]}` : ''}</button>`;
     } else if (d.dropOnly) {
-      action = `<button class="ls-btn sx-buy is-quiet" type="button" disabled>Nur als Beute</button>`;
+      action = `<button class="ls-btn sx-buy is-quiet" type="button" disabled>Noch nicht erhältlich</button>`;
     } else if (d.locked || lvl < (d.level || 1)) {
       action = `<button class="ls-btn sx-buy is-quiet is-lockd" type="button" disabled>Gesperrt · ab Stufe ${d.level || 1}</button>`;
     } else {

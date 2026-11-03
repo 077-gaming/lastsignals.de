@@ -46,7 +46,9 @@ export function initDownloads() {
   const name = item.querySelector('h2')?.textContent || '';
   rec.querySelector('[data-dl-rec-name]').textContent = name;
   const act = rec.querySelector('[data-dl-rec-act]');
-  const main = item.querySelector('.dl-main');
+  // Dateien noch nicht veröffentlicht: als Empfehlung den Weg zeigen, der heute funktioniert (im Browser spielen)
+  let main = item.querySelector('.dl-main');
+  if (main?.classList.contains('is-pending')) main = document.querySelector('[data-dl="browser"] .dl-main') || main;
   if (main && act) {
     const copy = main.cloneNode(true);
     copy.removeAttribute('id');

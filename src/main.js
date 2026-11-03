@@ -3,6 +3,8 @@
 import './styles/theme.css';
 import './styles/site.css';
 import './styles/cinema.css';
+import './styles/game.css';
+import './styles/feinschliff.css';
 import { setSound, blip, chapterCue } from './audio.js';
 import { getSession, getStatus, signOut, isOnline, hasAuthState } from './api.js';
 import { FACTIONS, FX_HEX } from './factions.js';
@@ -50,15 +52,35 @@ menu?.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(fals
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && menu && !menu.hidden) { setMenu(false); menuBtn.focus(); } });
 
 // ---------- Ton ----------
-const snd = document.querySelector('[data-sound]');
-snd?.addEventListener('click', async () => {
+// Zwei Knöpfe (Kopfleiste, am Handy im Menü), ein Zustand
+const sndBtns = [...document.querySelectorAll('[data-sound]')];
+sndBtns.forEach((snd) => snd.addEventListener('click', async () => {
   const want = snd.getAttribute('aria-pressed') !== 'true';
   const on = await setSound(want);
-  snd.setAttribute('aria-pressed', String(on));
-  const label = on ? snd.dataset.on : snd.dataset.off;
-  snd.setAttribute('aria-label', label); snd.title = label;
+  sndBtns.forEach((b) => {
+    b.setAttribute('aria-pressed', String(on));
+    const label = on ? b.dataset.on : b.dataset.off;
+    b.setAttribute('aria-label', label); b.title = label;
+  });
   if (on) blip('pick');
-});
+}));
+
+// ---------- Bewegung: ein Knopf hält Hintergrund-3D und Hero-Film gemeinsam an ----------
+const motionBtns = [...document.querySelectorAll('[data-scene-toggle]')];
+const motionSubs = new Set();
+let motionPaused = false;
+function setMotionPaused(p) {
+  motionPaused = p;
+  motionBtns.forEach((b) => {
+    b.setAttribute('aria-pressed', String(p));
+    const label = p ? b.dataset.resume : b.dataset.pause;
+    b.setAttribute('aria-label', label); b.title = label;
+  });
+  motionSubs.forEach((fn) => fn(p));
+}
+function motionAdd(fn) { motionSubs.add(fn); motionBtns.forEach((b) => { b.hidden = false; }); fn(motionPaused); }
+function motionRemove(fn) { motionSubs.delete(fn); if (!motionSubs.size) motionBtns.forEach((b) => { b.hidden = true; }); }
+motionBtns.forEach((b) => b.addEventListener('click', () => setMotionPaused(!motionPaused)));
 document.addEventListener('click', (e) => { if (e.target.closest('[data-click], .ls-btn, .hg-ship, .map-btn, .seg-b, .rail a')) blip('click'); });
 
 // ---------- Einblenden und Live-Grafiken ----------
@@ -257,21 +279,50 @@ if (whyEl) {
 
 // ---------- 3D-Hintergrund ----------
 const cosmosEl = document.querySelector('[data-cosmos]');
-const toggle = document.querySelector('[data-scene-toggle]');
-let gl2 = false;
-try { gl2 = !!document.createElement('canvas').getContext('webgl2'); } catch (e) { gl2 = false; }
+// WebGL-Probe: 3D nur auf echten Grafikkarten. Software-Renderer (SwiftShader, llvmpipe) oder ein Browser, der vor
+// großen Leistungseinbußen warnt (failIfMajorPerformanceCaveat), bekommen gleich das Standbild. Die Probe läuft in
+// einem Worker (src/glprobe.js), damit das Anlegen des Kontexts die Seite nie einfriert; danach wird er freigegeben.
+// Ohne Worker/OffscreenCanvas: Probe im Leerlauf auf der Seite. Antwortet die Probe nicht in 4 s, bleibt das Standbild.
+const SOFT_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic/i;
+function probeMain() {
+  try {
+    const g = document.createElement('canvas').getContext('webgl2', { failIfMajorPerformanceCaveat: true, antialias: false, depth: false, powerPreference: 'low-power' });
+    if (!g) return false;
+    const d = g.getExtension('WEBGL_debug_renderer_info');
+    const gpu = String((d ? g.getParameter(d.UNMASKED_RENDERER_WEBGL) : g.getParameter(g.RENDERER)) || '');
+    g.getExtension('WEBGL_lose_context')?.loseContext();
+    return !SOFT_GPU.test(gpu);
+  } catch (e) { return false; }
+}
+const glReady = new Promise((res) => {
+  if (import.meta.env.DEV && params.get('nogl') !== null) return res(false);
+  if (!document.querySelector('[data-cosmos], [data-hangar], [data-map], [data-sg]')) return res(false);
+  if (typeof OffscreenCanvas === 'undefined' || !window.Worker) { idle(() => res(probeMain()), 1500); return; }
+  let w;
+  const done = (v) => { clearTimeout(to); try { w?.terminate(); } catch (e) { /* schon beendet */ } res(v); };
+  const to = setTimeout(() => done(false), 4000);
+  try {
+    w = new Worker(new URL('./glprobe.js', import.meta.url), { type: 'module' });
+    w.onmessage = (e) => done(!!(e.data && e.data.ok) && !SOFT_GPU.test(e.data.gpu || ''));
+    w.onerror = () => done(false);
+    w.postMessage(0);
+  } catch (e) { done(false); }
+});
 const lowDevice = (navigator.deviceMemory || 8) <= 2 || (navigator.hardwareConcurrency || 8) <= 2 || (navigator.connection && navigator.connection.saveData);
 const poster = import.meta.env.DEV ? params.get('poster') : null;
 const marks = { sun: document.querySelector('[data-mark="sun"]'), earth: document.querySelector('[data-mark="earth"]'), swarm: document.querySelector('[data-mark="swarm"]') };
 
+let onMotion = () => {};
 if (poster) makePoster(poster);
-else if (cosmosEl && gl2 && !reduce && !lowDevice && params.get('still') === null) {
-  const go = () => import('./scene/cosmos.js').then(({ startCosmos }) => {
+else if (cosmosEl && !reduce && !lowDevice && params.get('still') === null) {
+  const go = () => glReady.then((ok) => (ok ? import('./scene/cosmos.js') : null)).then((mod) => {
+    if (!mod) return;
+    const { startCosmos } = mod;
     const canvas = cosmosEl.querySelector('.cosmos-canvas');
     cosmos = startCosmos(canvas, {
       mobile,
       // Zu langsam oder GPU-Kontext verloren: endgültig aufs Standbild (auch nach Tab-Wechsel nicht wieder anlaufen)
-      onSlow() { dead = true; cosmos?.stop(); body.classList.remove('is-3d'); if (toggle) toggle.hidden = true; },
+      onSlow() { dead = true; cosmos?.stop(); body.classList.remove('is-3d'); motionRemove(onMotion); },
       onFrame({ sun, earth, swarm, progress }) {
         if (progress > 0.9) return;
         place(marks.sun, sun); place(marks.earth, earth); place(marks.swarm, swarm);
@@ -285,16 +336,8 @@ else if (cosmosEl && gl2 && !reduce && !lowDevice && params.get('still') === nul
     const sync = () => (!dead && !paused && !document.hidden ? cosmos.start() : cosmos.stop());
     document.addEventListener('visibilitychange', sync);
     requestAnimationFrame(() => requestAnimationFrame(() => body.classList.add('is-3d')));
-    if (toggle) {
-      toggle.hidden = false;
-      toggle.addEventListener('click', () => {
-        paused = !paused;
-        toggle.setAttribute('aria-pressed', String(paused));
-        const label = paused ? toggle.dataset.resume : toggle.dataset.pause;
-        toggle.setAttribute('aria-label', label); toggle.title = label;
-        sync();
-      });
-    }
+    onMotion = (p) => { paused = p; sync(); };
+    motionAdd(onMotion);
     window.__lsOther = (on) => { others += on ? 1 : -1; cosmos.setFps(others > 0 ? 30 : 60); };
     sync();
   }).catch(() => {});
@@ -323,14 +366,34 @@ if (hangarEl) {
     ships.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     fxBtns.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.hgFx === state.fx)));
     hangarEl.querySelectorAll('[data-spec]').forEach((s) => { s.hidden = s.dataset.spec !== state.ship; });
-    const real = b.dataset.model === '1' && state.fx === 'saturn';
+    const real = b.dataset.model === '1';
     tag.textContent = real ? tag.dataset.real : tag.dataset.bp;
     tag.classList.toggle('is-bp', !real);
     hangarEl.classList.toggle('is-bp', !real);
     hangarEl.style.setProperty('--fx', FX_HEX[state.fx]);
     if (lenEl) lenEl.textContent = `${b.querySelector('.ls-num').textContent} · ${state.fx.toUpperCase()}`;
     ctl?.set({ ship: state.ship, fx: state.fx, tier: +b.dataset.tier, viz: b.dataset.viz.split(',').map(Number), model: b.dataset.model === '1' });
+    still(b, real);
   }
+  // Ladeanzeige wie auf /schiffe/: Standbild des gewählten Schiffs bleibt sichtbar, bis das 3D-Modell da ist
+  const hgState = hangarEl.querySelector('[data-hg-state]');
+  function loading(on) {
+    hangarEl.classList.toggle('is-loading', on);
+    if (hgState) hgState.textContent = on ? hgState.dataset.loading : '';
+  }
+  // Ohne WebGL: Standbild des gewählten Schiffs der gewählten Fraktion (public/img/schiffe/<fraktion>-<n>-*.webp)
+  function still(b, real) {
+    const n = /^s(\d)$/.exec(b.dataset.ship)?.[1];
+    if (!real || !n) return;
+    const p = hangarEl.querySelector('.hg-fallback-p');
+    const re = /schiffe\/[a-z]+-\d+-/g, to = `schiffe/${state.fx}-${n}-`;
+    p.querySelectorAll('source').forEach((s) => { s.srcset = s.srcset.replace(re, to); });
+    const img = p.querySelector('img');
+    img.src = img.getAttribute('src').replace(re, to);
+    const de = document.documentElement.lang === 'de';
+    img.alt = `${state.fx.toUpperCase()}-${b.querySelector('b').textContent}, ${de ? 'Modell aus dem Spiel' : 'in-game model'}`;
+  }
+  function noGl() { hangarEl.classList.add('is-nogl'); hangarEl.querySelector('[data-nogl]').hidden = false; apply(); }
   ships.forEach((b) => b.addEventListener('click', () => { state.ship = b.dataset.ship; apply(); }));
   fxBtns.forEach((b) => b.addEventListener('click', () => { state.fx = b.dataset.hgFx; apply(); }));
   let slotKind = 'l';
@@ -341,16 +404,16 @@ if (hangarEl) {
   }));
   if (faction) state.fx = faction;
   apply();
-  if (gl2 && !lowDevice) {
-    near(hangarEl, () => import('./scene/hangar.js').then(({ initHangar }) => {
-      ctl = initHangar(hangarEl, { mobile, reduce, onReady() { hangarEl.classList.add('is-3d'); }, onShow({ real }) { if (!real) hangarEl.classList.add('is-3d'); } });
-      if (!ctl) return;
+  if (!lowDevice) {
+    near(hangarEl, () => { loading(true); glReady.then((ok) => (ok ? import('./scene/hangar.js') : Promise.reject(new Error('nogl')))).then(({ initHangar }) => {
+      ctl = initHangar(hangarEl, { mobile, reduce, onLoading: loading, onReady() { hangarEl.classList.add('is-3d'); }, onShow({ real }) { if (!real) hangarEl.classList.add('is-3d'); }, onFail() { loading(false); } });
+      if (!ctl) { loading(false); noGl(); return; }
       ctl.slots(slotKind);
       apply();
       let on = false;
       visible(hangarEl, (v) => { if (v === on) return; on = v; v ? ctl.start() : ctl.stop(); window.__lsOther?.(v); });
-    }), '400px');
-  } else hangarEl.querySelector('[data-nogl]').hidden = false;
+    }).catch(() => { loading(false); noGl(); }); }, '400px');
+  } else noGl();
 }
 
 // ---------- Systemkarte ----------
@@ -365,9 +428,11 @@ if (mapEl) {
   };
   btns.forEach((b) => b.addEventListener('click', () => pick(b.dataset.region)));
   mapEl.querySelector('[data-map-reset]')?.addEventListener('click', () => ctl?.reset());
-  if (gl2 && !lowDevice) {
-    near(mapEl, () => import('./scene/map.js').then(({ initMap }) => {
-      ctl = initMap(mapEl, { mobile, reduce, onPick: (id) => { pick(id); blip('click'); } });
+  if (!lowDevice) {
+    near(mapEl, () => glReady.then((ok) => (ok ? import('./scene/map.js') : null)).then((mod) => {
+      if (!mod) return;
+      const { initMap } = mod;
+      ctl = initMap(mapEl, { mobile, reduce, initial: mapEl.querySelector('[data-region][aria-pressed="true"]')?.dataset.region, onPick: (id) => { pick(id); blip('click'); } });
       if (!ctl) return;
       mapEl.classList.add('is-3d');
       let on = false;
@@ -460,4 +525,81 @@ async function makePoster(kind) {
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(wm);
   await img.decode(); g.drawImage(img, 220, 470, 760, 70);
   out.toBlob((b) => save(b, 'og.jpg'), 'image/jpeg', 0.86);
+}
+
+// ---------- Hero: stumme Spielszene ----------
+// Standbild sofort (LCP). Video (≤ 4 MB) erst nach dem Laden, nur auf großen Bildschirmen und ohne „Bewegung reduzieren“/Datensparen.
+// Auf dem Handy bleibt es beim Standbild, damit die Startseite schlank bleibt. Angehalten wird über den Knopf
+// „Bewegung anhalten“ in der Kopfleiste (derselbe Knopf hält auch den 3D-Hintergrund an).
+const film = document.querySelector('[data-film]');
+if (film) {
+  const v = film.querySelector('video');
+  const save = navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || ''));
+  if (v && !save && !reduce && !mobile) {
+    let inView = true, paused = false;
+    const sync = () => (inView && !paused && !document.hidden ? v.play().catch(() => {}) : v.pause());
+    const start = () => {
+      v.src = v.canPlayType('video/webm; codecs="vp9"') ? v.dataset.srcWebm : v.dataset.srcMp4;
+      v.addEventListener('playing', () => film.classList.add('is-playing'), { once: true });
+      new IntersectionObserver(([e]) => { inView = e.isIntersecting; sync(); }).observe(film);
+      document.addEventListener('visibilitychange', sync);
+      motionAdd((p) => { paused = p; sync(); });
+    };
+    if (document.readyState === 'complete') idle(start, 1200); else addEventListener('load', () => idle(start, 1200), { once: true });
+  }
+}
+
+// ---------- Schiffs-Galerie: 3D-Betrachter (lädt erst bei Sichtbarkeit, Standbild ohne WebGL) ----------
+const sg = document.querySelector('[data-sg]');
+if (sg) {
+  const FXC = { europa: '#d8b25a', saturn: '#e0782a', eris: '#9a52ff' };
+  const fxBtns = [...sg.querySelectorAll('[data-sg-fx]')], shipBtns = [...sg.querySelectorAll('[data-sg-ship]')];
+  const canvas = sg.querySelector('.sg-canvas'), stateEl = sg.querySelector('[data-sg-state]'), curEl = sg.querySelector('[data-sg-cur]');
+  const loadingText = sg.dataset.lang === 'de' ? 'Lade Modell …' : 'Loading model …';
+  let st = { fx: FACTIONS.includes(faction) ? faction : 'europa', ship: 's1' }, viewer = null;
+  const url = () => `/models/${st.fx}-${st.ship === 's1' ? 'starter' : 'schiff' + st.ship.slice(1)}.glb`;
+  function apply(scroll) {
+    fxBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.sgFx === st.fx)));
+    shipBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.sgShip === st.ship)));
+    sg.querySelectorAll('[data-sg-spec]').forEach((x) => { x.hidden = x.dataset.sgSpec !== st.ship; });
+    sg.querySelectorAll('[data-still]').forEach((x) => { x.hidden = x.dataset.still !== `${st.fx}-${st.ship}`; });
+    sg.style.setProperty('--fx', FXC[st.fx]);
+    curEl.textContent = `${st.fx.toUpperCase()} · S-0${st.ship.slice(1)} · ${sg.querySelector(`[data-sg-ship="${st.ship}"] b`)?.textContent || ''}`;
+    if (viewer) {
+      sg.classList.add('is-loading'); stateEl.textContent = loadingText;
+      const want = url();
+      viewer.show(want, { color: parseInt(FXC[st.fx].slice(1), 16), yaw: -0.8, pitch: 0.28 }).then((ok) => {
+        if (!ok || want !== url()) return;
+        sg.classList.remove('is-loading'); sg.classList.add('is-3d'); stateEl.textContent = '';
+      }).catch(() => { sg.classList.remove('is-loading'); stateEl.textContent = ''; });
+    }
+    if (scroll) sg.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }
+  fxBtns.forEach((b) => b.addEventListener('click', () => { st.fx = b.dataset.sgFx; apply(); }));
+  shipBtns.forEach((b) => b.addEventListener('click', () => { st.ship = b.dataset.sgShip; apply(); }));
+  document.querySelectorAll('[data-sg-pick]').forEach((b) => b.addEventListener('click', () => { const [f, s] = b.dataset.sgPick.split('-'); st = { fx: f, ship: s }; apply(true); }));
+  apply();
+  if (!lowDevice) {
+    near(sg, () => glReady.then((ok) => (ok ? import('./scene/viewer.js') : null)).then((mod) => {
+      if (!mod) { sg.querySelector('[data-sg-nogl]').hidden = false; return; }
+      const { createViewer } = mod;
+      viewer = createViewer(canvas, { mobile, reduce, wheel: true, color: parseInt(FXC[st.fx].slice(1), 16), onLost() { sg.classList.remove('is-3d'); } });
+      if (!viewer) { sg.querySelector('[data-sg-nogl]').hidden = false; return; }
+      apply();
+      visible(sg, (on) => (on ? viewer.start() : viewer.stop()));
+    }).catch(() => {}), '300px');
+  } else sg.querySelector('[data-sg-nogl]').hidden = false;
+}
+
+// ---------- Welt: Sektorleiter je Fraktion ----------
+const ladder = document.querySelector('[data-ladder]');
+if (ladder) {
+  const btns = [...ladder.querySelectorAll('[data-lad-fx]')];
+  const pick = (f) => {
+    btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ladFx === f)));
+    ladder.querySelectorAll('[data-lad]').forEach((l) => { if (l.dataset.lad === f) l.removeAttribute('data-off'); else l.setAttribute('data-off', ''); });
+  };
+  btns.forEach((b) => b.addEventListener('click', () => pick(b.dataset.ladFx)));
+  ladder.classList.add('is-js');
+  if (FACTIONS.includes(faction)) pick(faction);
 }

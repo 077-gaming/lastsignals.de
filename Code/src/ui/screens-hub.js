@@ -146,7 +146,7 @@ const ITEM_TEXT = {
   pulse: 'Standardlaser jeder Werft. Zuverlässig und günstig, aber schwach.',
   ion: 'Dichterer Ionenstrahl. Der übliche nächste Schritt nach dem Pulse Laser.',
   plasma: 'Gebündeltes Plasma, bezahlt in Tritium. Stärker als jeder Ion Laser.',
-  gamma: 'Seltene Beute aus Wracks und Frachtkisten. Nicht im Handel.',
+  gamma: 'Geplant als seltene Beute aus Wracks. Noch nicht erhältlich, nicht im Handel.',
   dr1: 'Antriebsverstärker. Mehr Tempo für Verfolgung und Rückzug.',
   sh1: 'Schildgenerator. Fängt Treffer ab, bevor die Hülle Schaden nimmt.',
   L1: 'Grundmunition für alle Laser. Einfacher Schaden, fast geschenkt.',
@@ -181,7 +181,7 @@ function infoOf(ctx, kind, id, n = 1) {
 }
 /** Schild der Zeile: klarer Text, Zustand als Klasse */
 function statusOf(P, info, d) {
-  if (d.dropOnly) return ['NUR ALS BEUTE', 'is-dim'];
+  if (d.dropOnly) return ['NOCH NICHT ERHÄLTLICH', 'is-dim'];
   if (info.kind === 'ship' && info.equipped) return ['IM EINSATZ', 'is-on'];
   if (info.kind === 'ship' && info.owned) return ['IM BESITZ', 'is-own'];
   if (d.locked || (P.level || 1) < (info.level || 1)) return [`AB STUFE ${info.level || 1}`, 'is-dim'];

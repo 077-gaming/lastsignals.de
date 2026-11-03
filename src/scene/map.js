@@ -108,13 +108,14 @@ export function initMap(root, opts = {}) {
     el.className = 'map-lbl'; el.dataset.region = id;
     el.style.setProperty('--c', '#' + p.c.toString(16).padStart(6, '0'));
     const btn = root.querySelector(`[data-region="${id}"]`);
-    el.innerHTML = `<i></i><b>${btn ? btn.querySelector('b').textContent : id}</b><em>${btn ? btn.querySelector('.ls-num').textContent : ''}</em>`;
+    el.innerHTML = `<i></i><b>${btn ? btn.querySelector('b').textContent : id}</b><em>${btn ? (btn.dataset.plan ? btn.dataset.plan : btn.querySelector('.ls-num').textContent) : ''}</em>`;
+    if (btn?.dataset.plan) el.classList.add('is-plan');
     el.addEventListener('click', () => opts.onPick?.(id));
     labels.appendChild(el);
     marks[id] = { g, m, pulse, el, stem };
   }
 
-  let sel = 'stille';
+  let sel = opts.initial && marks[opts.initial] ? opts.initial : 'saturn';
   const focus = { from: null, to: null, t: 1 };
   function select(id, fly = true) {
     sel = id;
@@ -140,7 +141,7 @@ export function initMap(root, opts = {}) {
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = camera.aspect < 1.2 ? 50 : 38; camera.updateProjectionMatrix();
     home.pos.set(0, camera.aspect < 1.2 ? 36 : 34, camera.aspect < 1.2 ? 34 : 44);
   }
-  const ro = new ResizeObserver(size); ro.observe(canvas); size(); camera.position.copy(home.pos);
+  const ro = new ResizeObserver(() => { size(); for (const mk of Object.values(marks)) mk.lw = mk.lh = 0; }); ro.observe(canvas); size(); camera.position.copy(home.pos);
 
   const v = new THREE.Vector3();
   let raf = 0, running = false, last = 0, t = 0, lost = false;
@@ -156,12 +157,30 @@ export function initMap(root, opts = {}) {
     pm.scale.setScalar(1.5 + k * 2.2); pm.material.opacity = opts.reduce ? 0 : (1 - k) * 0.6;
     renderer.render(scene, camera);
     const w = canvas.clientWidth, h = canvas.clientHeight;
+    const pos = [];
     for (const mk of Object.values(marks)) {
       v.copy(mk.g.position); v.y += 1.4; v.project(camera);
       const vis = v.z < 1;
-      mk.el.style.transform = `translate(${((v.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-v.y * 0.5 + 0.5) * h).toFixed(1)}px)`;
+      // Beschriftung bleibt immer ganz im Bild (am Rand anliegen statt abgeschnitten)
+      const lw = mk.lw || (mk.lw = mk.el.offsetWidth || 80), lh = mk.lh || (mk.lh = mk.el.offsetHeight || 30);
+      const x = Math.min(Math.max((v.x * 0.5 + 0.5) * w, 6), w - lw - 2), y = Math.min(Math.max((-v.y * 0.5 + 0.5) * h, 16), h - lh);
       mk.el.style.visibility = vis ? '' : 'hidden';
+      if (vis) pos.push({ mk, x, y, w: lw, h: lh });
     }
+    // Beschriftungen dürfen sich nicht überdecken (Mitte: Stille, Battle Maps, Europa): von oben nach unten
+    // jede Beschriftung unter die schon gesetzten schieben, mit denen sie sich überschneidet
+    pos.sort((p, q) => p.y - q.y);
+    for (let i = 0; i < pos.length; i++) {
+      const p = pos[i];
+      for (let moved = true, n = 0; moved && n < 8; n++) {
+        moved = false;
+        for (let j = 0; j < i; j++) {
+          const q = pos[j];
+          if (p.x < q.x + q.w + 4 && q.x < p.x + p.w + 4 && p.y < q.y + q.h + 2 && q.y < p.y + p.h + 2) { p.y = q.y + q.h + 2; moved = true; }
+        }
+      }
+    }
+    for (const p of pos) p.mk.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
   }
   return {
     start() { if (running) return; running = true; last = 0; if (!lost) raf = requestAnimationFrame(frame); },

@@ -1827,7 +1827,7 @@ export class World {
       info.cost = c;
     }
 
-    if (def.dropOnly) info.reason = 'Nur als seltene Beute zu finden, nicht kaufbar.';
+    if (def.dropOnly) info.reason = 'Noch nicht erhältlich. Geplant als seltene Beute, nicht kaufbar.';
     else if (def.locked) info.reason = `Kommt später (ab Stufe ${level}).`;
     else if (kind === 'ship' && equipped) info.reason = 'Das fliegst du gerade.';
     else if (kind === 'formation' && def.eventOnly) info.reason = 'Nur aus Events und Toren.';

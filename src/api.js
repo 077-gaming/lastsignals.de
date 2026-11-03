@@ -92,15 +92,13 @@ const RESERVED = ['admin', 'administrator', 'mod', 'moderator', 'support', 'staf
   'gamemaster', 'lastsignals', 'lastsignal', 'official', 'offiziell', 'founder', 'swarm', 'schwarm', 'null', 'undefined', 'thefirstsignal'];
 
 // Format sofort im Browser prüfen (gleiche Regel wie die Datenbank: 3–16 Zeichen, Buchstaben, Ziffern, _ und -)
-// code: 'empty' | 'short' | 'long' | 'chars' | 'start' | 'double' | 'reserved' | 'ok'
+// code: 'empty' | 'short' | 'long' | 'chars' | 'reserved' | 'ok'
 export function callsignFormat(raw) {
   const s = String(raw || '').trim();
   if (!s) return { ok: false, code: 'empty' };
   if (s.length < 3) return { ok: false, code: 'short' };
   if (s.length > 16) return { ok: false, code: 'long' };
   if (!/^[A-Za-z0-9_-]+$/.test(s)) return { ok: false, code: 'chars' };
-  if (!/^[A-Za-z]/.test(s)) return { ok: false, code: 'start' };
-  if (/[_-]{2}/.test(s) || /[_-]$/.test(s)) return { ok: false, code: 'double' };
   const low = s.toLowerCase().replace(/[_-]/g, '');
   if (RESERVED.some((r) => low === r || low.startsWith(r + 'team'))) return { ok: false, code: 'reserved' };
   return { ok: true, code: 'ok' };

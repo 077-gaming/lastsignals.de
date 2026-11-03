@@ -2,6 +2,11 @@
 // Quelle der Spielinhalte: Vault-Notiz „30 Ideen/Weltraum-Browserspiel 3D“ (Entscheidungen von Toni)
 // und README/CHANGELOG des Spiels. Keine erfundenen Zahlen, Zitate oder Bewertungen.
 
+import { RELEASE } from './downloads.js';
+
+// Apps erst als verfügbar nennen, wenn das GitHub-Release mit den Dateien veröffentlicht ist (RELEASE.published)
+const APPS = RELEASE.published;
+
 export const TEXT = {
   de: {
     meta: {
@@ -36,9 +41,9 @@ export const TEXT = {
     hero: {
       kicker: 'Übertragung 2391 · Äußeres Sonnensystem',
       lead: 'Die Erde schweigt. Drei Mächte kämpfen um das, was von der Menschheit übrig ist.',
-      sub: 'Weltraum-MMO im Browser. Drei Fraktionen, 37 Sektoren, ein echtes Sonnensystem. Kostenlos, ohne Download. Stärke ist nicht käuflich.',
+      sub: 'Weltraum-MMO im Browser. Drei Fraktionen, je acht Sektoren, acht Schiffsklassen. Kostenlos, ohne Download. Stärke ist nicht käuflich.',
       play: 'Jetzt spielen',
-      playState: 'Öffentliche Testversion 0.1',
+      playState: 'Öffentliche Testversion 0.1.0',
       more: 'Was dich erwartet',
       community: 'Gemeinschaft',
       sector: 'SA-1 · Enceladus',
@@ -84,13 +89,13 @@ export const TEXT = {
       lede: 'Du fliegst dein Schiff in echtem 3D, schräg von oben, per Klick. In fünf Minuten verstanden. Nach Monaten noch Ziele.',
       cells: [
         { icon: 'factions', k: '3', u: 'Fraktionen', t: 'Fraktionen', d: 'EUROPA, SATURN und ERIS. Eigene Geschichte, eigene Heimat, eigenes Menü. Spielerisch gleich stark.' },
-        { icon: 'sectors', k: '37', u: 'Sektoren', t: 'Sektoren', d: 'Von den Jupitermonden bis zum Kuipergürtel. Je höher die Zahl, desto gefährlicher der Sektor.' },
+        { icon: 'sectors', k: '24', u: 'Sektoren', t: 'Sektoren', d: 'Acht je Heimat, von der Station bis zum Boss. Je höher die Zahl, desto gefährlicher der Sektor.' },
         { icon: 'combat', k: '0', u: 'ms Wechsel', t: 'Kampf', d: 'Echtzeit gegen Piraten, den Schwarm und andere Piloten. Munition L1 bis L4, Salven, Raketen und Minen. Gewechselt wird ohne Verzögerung.' },
-        { icon: 'gear', k: '12', u: 'Stufen', t: 'Ausrüstung', d: 'Laser, Generatoren, Drohnen und das Begleitschiff SPUTNIK. Jedes Teil wird in zwölf Stufen verbessert und sitzt sichtbar am Schiff.' },
+        { icon: 'gear', k: '12', u: 'Stufen', t: 'Ausrüstung', d: 'Laser, Generatoren und Drohnen sitzen sichtbar am Schiff. Geplant: Verbesserung in zwölf Stufen und das Begleitschiff SPUTNIK.' },
         { icon: 'events', k: '7', u: 'Tage', t: 'Events', d: 'Geplant: jeden Abend CORE RUSH, sonntags SWARM SURGE, einmal im Monat BREACH, dazu Jahreszeiten-Events. Noch nicht spielbar.' },
         { icon: 'fair', k: '0', u: 'Stärke für Geld', t: 'Faire Bezahlung', d: 'Für Geld gibt es nur Aussehen. Waffen, Werte und Tritium verdienst du dir im Spiel.' },
       ],
-      facts: ['Im Browser', 'Kein Download', 'Deutsch und Englisch', 'Kostenlos spielbar'],
+      facts: ['Im Browser', 'Kein Download', 'Spiel auf Deutsch', 'Kostenlos spielbar'],
     },
     why: {
       code: '03',
@@ -99,42 +104,42 @@ export const TEXT = {
       lede: 'Die Tiefe der großen Browserspiele von damals, gebaut mit der Technik von heute.', more: 'Details', swipe: 'Wischen für mehr',
       reasons: [
         {
-          id: 'system', t: 'Ein echtes Sonnensystem',
-          d: 'Deine Heimat liegt bei den Monden des Jupiter, in den Ringen des Saturn oder am kalten Rand bei Eris. Uranus und Neptun sind die Front. Im Asteroidengürtel liegen die Battle Maps, im Kuipergürtel die Piraten. Dahinter wartet das Endgebiet: das verstummte innere Sonnensystem.',
-          specs: ['37 Sektoren', '8 je Heimat', 'Endgebiet Stille'],
+          id: 'system', t: 'Drei Heimaten, mehr ist geplant', plan: true,
+          d: 'Spielbar sind heute die drei Heimaten mit je acht Sektoren: bei den Monden des Jupiter, in den Ringen des Saturn und am kalten Rand bei Eris. Geplant sind die Front bei Uranus und Neptun, die Battle Maps im Asteroidengürtel, der Kuipergürtel und als Endgebiet das verstummte innere Sonnensystem.',
+          specs: ['24 Sektoren spielbar', '8 je Heimat', '13 weitere geplant'],
         },
         {
-          id: 'ships', t: 'Ein Schiff, das zeigt, was du kannst', s: 'Acht Schiffe bis zum Top-Kampfschiff, dazu Heiler, Tank und Späher. Jedes verbaute Teil sitzt sichtbar am Rumpf.',
-          d: 'Acht Schiffe in der Hauptreihe, vom Starter bis zum Top-Kampfschiff mit 13 Laser- und 13 Generatorplätzen. Ab Stufe 40 kommen Heiler, Tank und Späher dazu. Jeder Laser und jeder Generator sitzt sichtbar am Rumpf. Drei Konfigurationen pro Schiff, im Flug umschaltbar.',
-          specs: ['8 + 3 Schiffe', '13 / 13 Plätze', '3 Konfigurationen'],
+          id: 'ships', t: 'Ein Schiff, das zeigt, was du kannst', s: 'Acht Schiffsklassen vom Starter bis zum Leviathan, jede Fraktion mit eigenen Modellen. Jeder Laser sitzt sichtbar am Rumpf.',
+          d: 'Acht Schiffe in der Hauptreihe, vom Starter bis zum Leviathan mit 13 Laser- und 13 Generatorplätzen. Jeder Laser und jeder Generator sitzt sichtbar am Rumpf. Drei Konfigurationen pro Schiff, im Flug umschaltbar. Geplant und noch nicht im Spiel: Heiler, Tank und Späher ab Stufe 40.',
+          specs: ['8 Schiffsklassen', '13 / 13 Plätze', '3 Konfigurationen'],
         },
         {
-          id: 'lasers', t: 'Laser bis Gamma', s: 'Pulse, Ion und Plasma kannst du kaufen. Den Gamma Laser musst du dir verdienen.',
-          d: 'Pulse, Ion, Plasma. Den Gamma Laser kann niemand kaufen. Er soll selten bei Bossen, in Wurmlöchern und auf Battle Maps fallen oder aus 20 Gamma-Fragmenten entstehen (geplant). Dazu Salven mit eigener Nachladezeit, drei Raketen und drei Minen.',
-          specs: ['4 Laser', 'L1 bis L4', 'Gamma nur erspielt'],
+          id: 'lasers', t: 'Laser, Munition, Raketen', s: 'Pulse, Ion und Plasma kannst du kaufen. Dazu L1 bis L4, Salven, drei Raketen und drei Minen.',
+          d: 'Pulse und Ion für Credits, Plasma für Tritium. Munition L1 bis L4, SAB saugt Schild ab, SAL ist eine Salve mit eigener Nachladezeit. Dazu die Raketen R1 bis R3 und die Minen SPM, BRM und STM. Geplant: der Gamma Laser, nicht käuflich, nur als seltene Beute oder aus 20 Gamma-Fragmenten.',
+          specs: ['3 Laser im Spiel', 'L1 bis L4', 'Gamma geplant'],
         },
         {
-          id: 'drones', t: '16 Drohnen-Formationen', s: 'Bis zu zehn Drohnen in 16 Formationen. Jede verrät von Weitem, was dein Gegner fährt.',
-          d: 'Bis zu zehn Drohnen fliegen um dein Schiff. Ring, Gyro, Dome, Helix, Vortex, Crown und zehn weitere, in echtem 3D. Jede Formation ist von Weitem lesbar. Wer hinsieht, erkennt, was der Gegner gerade fährt.',
+          id: 'drones', t: '16 Drohnen-Formationen', s: 'Bis zu zehn Drohnen, 16 Formationen. Jede verrät von Weitem, was dein Gegner fährt.',
+          d: 'Bis zu zehn Drohnen fliegen um dein Schiff. Ring, Dome, Helix, Wing und zwölf weitere, in echtem 3D. Jede Formation ist von Weitem lesbar. Gyro, Vortex und Crown sollen nur aus Events und Wurmlöchern kommen; beides ist geplant.',
           specs: ['10 Drohnen', '16 Formationen', 'Stufen 1 bis 10'],
         },
         {
-          id: 'depth', t: 'Tiefe, die Jahre trägt', s: 'Deine Pilotenakte wächst aus den Black Boxes deiner Gegner. Dein Rig veredelt Erz, auch wenn du offline bist.',
-          d: 'Aus den Black Boxes zerstörter Schiffe forschst du in deiner Pilotenakte: rund 40 Fähigkeiten in drei Ästen. Dein eigenes Rig im Orbit veredelt Erz zu Alloy, Catalyst, Core und Exotic, auch wenn du offline bist. Du entscheidest, was es herstellt.',
+          id: 'depth', t: 'Pilotenakte und Rig', plan: true, s: 'Geplant: Deine Pilotenakte wächst aus den Black Boxes deiner Gegner. Dein Rig veredelt Erz, auch wenn du offline bist.',
+          d: 'Geplant, noch nicht spielbar. Aus den Black Boxes zerstörter Schiffe forschst du in deiner Pilotenakte: rund 40 Fähigkeiten in drei Ästen. Dein eigenes Rig im Orbit veredelt Erz zu Alloy, Catalyst, Core und Exotic, auch wenn du offline bist.',
           specs: ['3 Äste', 'rund 40 Fähigkeiten', 'Rig arbeitet offline'],
         },
         {
-          id: 'wormholes', t: 'Wurmlöcher zu echten Sternen', s: 'Wurmlöcher führen nach Sirius, Vega und Betelgeuse. Das letzte nach Andromeda: 50 Wellen, ein Leben.',
+          id: 'wormholes', t: 'Wurmlöcher zu echten Sternen', plan: true, s: 'Geplant: Wurmlöcher nach Sirius, Vega und Betelgeuse. Das letzte nach Andromeda: 50 Wellen, ein Leben.',
           d: 'Geplant, noch nicht spielbar: Koordinaten sammeln und Wurmlöcher nach Sirius, Vega, Rigel, Antares und Betelgeuse öffnen. Bis zu 40 Wellen, wenige Leben, am Ende ein Boss. Das letzte Wurmloch führt nach Andromeda: 50 Wellen, ein Leben, und das Ende der Geschichte.',
           specs: ['6 Ziele', '20 bis 50 Wellen', 'Gruppen ab Antares'],
         },
         {
-          id: 'bosses', t: 'Bosse in Feindesland', s: 'Black Shipyard und Star Whale liegen in der Heimat des Feindes. Die Beute gehört dem letzten Treffer.',
-          d: 'Die Black Shipyard liegt tief in den Heimatsektoren jeder Fraktion, bewacht von Reparatur-Schleppern. Der Star Whale zieht auf seiner Route durch alle drei Heimaten. Die Beute bekommt, wer den letzten Treffer setzt. Also fliegst du dorthin, wo der Feind zu Hause ist, und nimmst sie ihm weg.',
-          specs: ['Letzter Treffer zählt', 'Alarm für Verteidiger', 'Seltene Top-Beute'],
+          id: 'bosses', t: 'Drei Bosse in der Tiefe', s: 'Schwarze Werft in Sektor 6, Sternenwal-Ältester in Sektor 7, Dreadnought in Sektor 8. Jeder kommt nach dem Abschuss zurück.',
+          d: 'Jede Heimat hat drei Bosse. Die Schwarze Werft in Sektor 6 ruft laufend Merc-Piraten zur Verstärkung. Der Sternenwal-Älteste in Sektor 7 heilt sich selbst. Der Dreadnought in Sektor 8 ruft Corsairs. Nach dem Abschuss kehren Werft und Wal nach 15 Minuten zurück, der Dreadnought nach 20. Ab Sektor 2 fliegen Piloten aller Fraktionen im selben Raum. Gegner und Bosse rechnet im Mehrspieler-Test jeder Pilot für sich, außer im Koop. Gemeinsame Bosse mit Beute für den letzten Treffer sind geplant.',
+          specs: ['Sektor 6 · 7 · 8', 'Rückkehr nach 15 bis 20 min', 'Gemeinsame Bosse geplant'],
         },
         {
-          id: 'war', t: 'Battle Maps, Clans, Events', s: 'Geplant: Battle Maps ohne sichere Zone, Clans über alle Fraktionen und jeden Abend CORE RUSH.',
+          id: 'war', t: 'Battle Maps, Clans, Events', plan: true, s: 'Geplant: Battle Maps ohne sichere Zone, Clans über alle Fraktionen und jeden Abend CORE RUSH.',
           d: 'Geplant, noch nicht spielbar. Auf BM-1 bis BM-3 gibt es keine sichere Zone. Clans nehmen Piloten aus allen drei Fraktionen auf, schließen Bündnisse und erklären Kriege. Jeden Abend CORE RUSH auf BM-2. Einmal im Monat BREACH: Einbruch in die Station des Feindes, in fünf Phasen bis zur Flucht mit dem Data Core.',
           specs: ['Keine sichere Zone', 'Clans über alle Fraktionen', 'Jeden Tag ein Event'],
         },
@@ -142,17 +147,17 @@ export const TEXT = {
     },
     vis: {
       system: {
-        head: 'Systemkarte', stille: 'Stille', noSig: 'Kein Signal', belt: 'Battle Maps', front: 'Front', kuiper: 'Kuiper',
+        head: 'Systemkarte', stille: 'Stille · geplant', noSig: 'Kein Signal', belt: 'Battle Maps · geplant', front: 'Front · geplant', kuiper: 'Kuiper · geplant', count: '24 Sektoren spielbar · 13 geplant',
         europa: 'Europa · Jupiter', saturn: 'Saturn · Ringe', eris: 'Eris · Rand', per: '8 Sektoren', frontPlanets: 'Uranus · Neptun',
       },
       ships: {
-        head: 'Hangar · Baureihe', model: 'S-01 Starter · SATURN', laser: 'Laserplatz', hull: 'Rumpfkennung', guild: 'Gildenmodul',
+        head: 'Hangar · Baureihe', model: 'S-08 Leviathan · SATURN', laser: 'Laserplatz', hull: 'Rumpfkennung', guild: 'Gildenmodul',
         line: 'Hauptreihe', special: 'Spezial', starter: 'Starter', credits: 'Credits', tritium: 'Tritium', top: 'Top', from40: 'ab Stufe 40',
-        healer: 'Heiler', tank: 'Tank', scout: 'Späher', render: 'Renderbild aus dem Spiel',
+        healer: 'Heiler', tank: 'Tank', scout: 'Späher', render: 'Modell aus dem Spiel', planned: 'geplant',
       },
       lasers: {
         head: 'Waffenkammer', tier: 'Stufe',
-        rows: [['Pulse Laser', 'Credits'], ['Ion Laser', 'Credits'], ['Plasma Laser', 'Tritium'], ['Gamma Laser', 'Nur Drop oder 20 Fragmente']],
+        rows: [['Pulse Laser', 'Credits'], ['Ion Laser', 'Credits'], ['Plasma Laser', 'Tritium'], ['Gamma Laser', 'Geplant: nur Drop oder 20 Fragmente']],
         ammo: 'Munition', ammoList: 'L1 · L2 · L3 · L4 · SAB · SAL', rockets: 'Raketen', rocketList: 'R1 · R2 · R3', mines: 'Minen', mineList: 'SPM · BRM · STM',
       },
       drones: {
@@ -160,11 +165,11 @@ export const TEXT = {
         noJs: 'Die Vorschau der Formationen braucht JavaScript.',
         list: [
           ['Standard', 'Für Credits'], ['Wall', 'Für Credits'], ['Spear', 'Für Credits'],
-          ['Ring', 'Kreist um das Schiff, viel Schild, etwas langsamer'], ['Gyro', 'Zwei gekippte Ringe · nur aus Events und Wurmlöchern'],
+          ['Ring', 'Kreist um das Schiff, viel Schild, etwas langsamer'], ['Gyro', 'Zwei gekippte Ringe · geplant: aus Events und Wurmlöchern'],
           ['Dome', 'Kugel um das Schiff'], ['Helix', 'Spirale, mehr Reichweite'], ['Comet', 'Stärkere Raketen'],
           ['Claw', 'Gegen Spieler'], ['Swarm', 'Gegen Piraten und Aliens'], ['Star', 'Mehrere Ziele'],
-          ['Wing', 'Mehr Tempo'], ['Pulse', 'Schaden um dich herum'], ['Vortex', 'Fängt Raketen ab · nur aus Events und Wurmlöchern'],
-          ['Halo', 'Heilt Verbündete'], ['Crown', 'Mehr Erfahrung und Ehre · nur aus Events und Wurmlöchern'],
+          ['Wing', 'Mehr Tempo'], ['Pulse', 'Schaden um dich herum'], ['Vortex', 'Fängt Raketen ab · geplant: aus Events und Wurmlöchern'],
+          ['Halo', 'Heilt Verbündete'], ['Crown', 'Mehr Erfahrung und Ehre · geplant: aus Events und Wurmlöchern'],
         ],
       },
       depth: {
@@ -176,8 +181,9 @@ export const TEXT = {
         head: 'Wurmlöcher', cols: ['Ziel', 'Wellen', 'Leben', 'Ab Stufe'], group: 'Gruppe', coords: 'Koordinaten',
       },
       bosses: {
-        head: 'Boss-Lage', whale: 'Star Whale · Route', yard: 'Black Shipyard', alarm: 'Alarm · Feind im Boss-Sektor', last: 'Beute: letzter Treffer', you: 'Du', tugs: 'Reparatur-Schlepper',
+        head: 'Boss-Lage', sector: 'Sektor', last: 'Gemeinsame Bosse: geplant', names: { werft: 'Schwarze Werft', wal: 'Sternenwal-Ältester', dread: 'Dreadnought' }, calls: { werft: 'ruft Merc', wal: 'heilt sich', dread: 'ruft Corsair' }, same: 'In allen drei Heimaten gleich',
       },
+
       war: {
         head: 'Einsatzplan', scene: 'BM-2 · CORE RUSH', core: 'Core', noSafe: 'Keine sichere Zone', plan: 'Einsatzplan der Woche', days: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
         rows: [
@@ -197,11 +203,11 @@ export const TEXT = {
       label: 'Fair',
       title: 'Stärke ist nicht käuflich.',
       s: 'Für Geld gibt es nur Aussehen. Alles, was dich stärker macht, verdienst du im Spiel.',
-      p: 'LAST SIGNALS finanziert sich nur über Aussehen. Mit Nova, der Shop-Währung, kaufst du Lackierungen, Laserfarben, Triebwerksspuren und Abzeichen. Alles, was dich stärker macht, verdienst du dir im Spiel.',
-      buy: 'Für Nova',
+      p: 'LAST SIGNALS soll sich nur über Aussehen finanzieren. Einen Shop gibt es in der Testversion noch nicht. Wenn er kommt, gibt es mit Nova, der Shop-Währung, nur Lackierungen, Laserfarben, Triebwerksspuren und Abzeichen. Alles, was dich stärker macht, verdienst du dir im Spiel.',
+      buy: 'Für Nova · Shop geplant',
       buyList: ['Schiffs-Designs ohne Bonus', 'Laserfarben', 'Triebwerksspuren', 'Drohnen-Skins', 'Abzeichen und Clan-Deko'],
       earn: 'Nur erspielt',
-      earnList: ['Waffen und Werte', 'Tritium', 'Erfahrung', 'Booster', 'Designs mit Bonus', 'Gamma Laser'],
+      earnList: ['Waffen und Werte', 'Tritium', 'Erfahrung', 'Booster · geplant', 'Designs mit Bonus · geplant', 'Gamma Laser · geplant'],
       note: 'Keine Zufallskisten gegen echtes Geld.',
     },
     factions: {
@@ -246,7 +252,20 @@ export const TEXT = {
       lede: 'Der echte Stand der Entwicklung. Ohne Schönfärberei.',
       entries: [
         {
-          date: '30.10.2026', tag: 'Patchnotes', title: 'Testversion 0.1',
+          date: '02.11.2026', tag: 'Patchnotes', title: APPS ? 'Konten, Mehrspieler und Apps' : 'Konten, Mehrspieler und Koop',
+          p: 'Die Testversion ist deutlich gewachsen. Alles hier ist spielbar, aber noch im Test: Werte und Abläufe können sich ändern.',
+          list: [
+            'Konto mit E-Mail und Passwort direkt im Spiel, Server-Spielstand für mehrere Geräte',
+            'Ruhmeshalle im Spiel und auf der Website: Ehre, Erfahrung, Abschüsse, Stufe',
+            'Mehrspieler-Test: ab Sektor 2 gemeinsamer Raum aller Fraktionen, Chat, Einladung zum Koop, PvP freiwillig',
+            'Sektoren 4 bis 8 je Fraktion mit neuen Gegnern und drei Bossen',
+            'Neue Modelle für alle acht Schiffsklassen jeder Fraktion',
+            'Controller-Steuerung für Flug, Kampf und Menüs',
+            APPS ? 'Apps als Testversion für Mac, Windows, Android, iPhone und iPad' : 'Apps für Mac, Windows, Android, iPhone und iPad im Bau, die Dateien folgen auf der Download-Seite',
+          ],
+        },
+        {
+          date: '30.10.2026', tag: 'Patchnotes', title: 'Testversion 0.1.0',
           p: 'Der erste spielbare Stand läuft als Einzelspieler-Test. Der Spielstand liegt im Browser. Seit 31.10.2026 für alle spielbar.',
           list: [
             'Ladebildschirm, Anmeldung, Fraktionswahl und Mission Control',
@@ -269,8 +288,8 @@ export const TEXT = {
       road: 'Fahrplan',
       now: 'Aktuell',
       phases: [
-        ['Vertical Slice', 'Einzelspieler-Test'],
-        ['Alpha', 'Mehrspieler-Server, Konten, Schutz gegen Schummeln'],
+        ['Testversion', APPS ? 'Konten, Mehrspieler-Test, Koop, Apps' : 'Konten, Mehrspieler-Test, Koop, Apps folgen'],
+        ['Alpha', 'Eigener Spielserver mit Schutz gegen Schummeln'],
         ['Geschlossene Beta', 'Kleine Testgruppe'],
         ['Offene Beta', 'Mit der Discord-Gemeinschaft'],
         ['Start', 'Für alle'],
@@ -292,13 +311,13 @@ export const TEXT = {
       title: 'Fragen und Antworten',
       items: [
         ['Was ist LAST SIGNALS?', 'Ein Weltraum-Onlinespiel im Browser. Du fliegst dein Schiff in echtem 3D, schräg von oben, per Klick oder mit WASD. Drei Fraktionen kämpfen im äußeren Sonnensystem gegeneinander und gegen den Schwarm.'],
-        ['Kann ich schon spielen?', 'Ja. Die Testversion 0.1 ist für alle offen, direkt im Browser über „Jetzt spielen“. Sie ist ein Einzelspieler-Test, der Spielstand liegt nur in deinem Browser. Als Nächstes kommt die Alpha mit Mehrspieler-Server und echten Konten. Termine nennen wir erst, wenn sie feststehen.'],
-        ['Kostet das Spiel etwas?', 'Nein. LAST SIGNALS wird kostenlos spielbar. Bezahlen kann man nur für Aussehen.'],
-        ['Kann man Stärke kaufen?', 'Nein. Waffen, Werte, Erfahrung, Tritium und Booster gibt es nur im Spiel. Mit Nova kauft man ausschließlich Aussehen. Zufallskisten gegen echtes Geld gibt es nicht.'],
-        ['Brauche ich einen Download?', 'Nein. LAST SIGNALS läuft im Browser, auf dem Computer mit einem aktuellen Chrome, Edge, Firefox oder Safari. Wer lieber eine App möchte: Auf der Download-Seite gibt es Testversionen für Mac, Windows, Android, iPhone und iPad, noch unsigniert und nicht in den App-Stores.'],
-        ['In welchen Sprachen?', 'Deutsch und Englisch.'],
-        ['Mit wie vielen spielt man zusammen?', 'LAST SIGNALS ist als Onlinespiel für viele Piloten gleichzeitig geplant, mit Gruppen bis acht Spieler und Clans über alle Fraktionen. Der Mehrspieler-Server kommt mit der Alpha.'],
-        ['Gibt es ein Wiki?', 'Ein offizielles Wiki mit jedem Gegenstand, jedem Gegner und jedem Event kommt später, direkt aus den Spieldaten erzeugt, damit es immer stimmt.'],
+        ['Kann ich schon spielen?', 'Ja. Die Testversion ist für alle offen, direkt im Browser über „Im Browser spielen“' + (APPS ? ' oder als App von der Download-Seite' : '') + '. Ohne Konto liegt dein Spielstand nur in deinem Browser. Mit einem kostenlosen Konto wird er zusätzlich auf dem Server gesichert, du spielst auf mehreren Geräten weiter und erscheinst in der Ruhmeshalle. Termine für weitere Phasen nennen wir erst, wenn sie feststehen.'],
+        ['Kostet das Spiel etwas?', 'Nein. LAST SIGNALS ist kostenlos spielbar. Einen Shop gibt es noch nicht. Wenn er kommt, verkauft er nur Aussehen.'],
+        ['Kann man Stärke kaufen?', 'Nein. Waffen, Werte, Erfahrung und Tritium gibt es nur im Spiel, ebenso die geplanten Booster. Mit Nova, der geplanten Shop-Währung, soll man ausschließlich Aussehen kaufen. Zufallskisten gegen echtes Geld gibt es nicht.'],
+        ['Brauche ich einen Download?', 'Nein. LAST SIGNALS läuft im Browser, auf dem Computer mit einem aktuellen Chrome, Edge, Firefox oder Safari. ' + (APPS ? 'Wer lieber eine App möchte: Auf der Download-Seite gibt es Testversionen für Mac, Windows, Android, iPhone und iPad, noch unsigniert und nicht in den App-Stores.' : 'Apps für Mac, Windows, Android, iPhone und iPad folgen als Testversion auf der Download-Seite. Bis dahin lässt sich das Spiel auf iPhone, iPad und Android als Web-App auf den Home-Bildschirm legen.')],
+        ['In welchen Sprachen?', 'Die Website gibt es auf Deutsch und Englisch. Das Spiel selbst ist derzeit nur auf Deutsch. Eine englische Fassung ist geplant.'],
+        ['Mit wie vielen spielt man zusammen?', 'In der Testversion bleibt Sektor 1 je Fraktion getrennt, ab Sektor 2 treffen sich Piloten aller Fraktionen im selben Raum, mit Chat für Sektor, Fraktion und alle. Zu zweit fliegst du im Koop, PvP ist freiwillig. Gruppen bis acht Spieler und Clans über alle Fraktionen sind geplant.'],
+        ['Gibt es ein Wiki?', 'Schiffe, Sektoren, Gegner und Bosse stehen schon jetzt auf den Seiten „Schiffe“ und „Welt“, direkt aus den Spieldaten. Ein vollständiges Wiki mit jedem Gegenstand und jedem Event folgt.'],
       ],
     },
     footer: {
@@ -309,12 +328,12 @@ export const TEXT = {
       imprint: ['Impressum', '/impressum/'],
       privacy: ['Datenschutz', '/datenschutz/'],
       copy: '© 2026 LAST SIGNALS',
-      state: 'Testphase · Version 0.1',
+      state: 'Testphase · Version 0.1.0',
     },
     download: {
       kicker: 'DL · Testversion',
       title: 'Download',
-      lede: 'LAST SIGNALS läuft direkt im Browser. Wer lieber eine eigene App möchte, findet hier die Testversionen für Mac, Windows, iPhone, iPad und Android.',
+      lede: APPS ? 'LAST SIGNALS läuft direkt im Browser. Wer lieber eine eigene App möchte, findet hier die Testversionen für Mac, Windows, iPhone, iPad und Android.' : 'LAST SIGNALS läuft direkt im Browser. Die Apps für Mac, Windows, iPhone, iPad und Android folgen hier als Testversion. Noch sind ihre Dateien nicht veröffentlicht.',
       noteHead: 'Stand der Apps',
       notes: [
         'Testversion {v}. Noch nicht im App Store, nicht bei Google Play und nicht auf Steam.',
@@ -326,6 +345,7 @@ export const TEXT = {
       version: 'Version', size: 'Größe', req: 'Voraussetzung', state: 'Status', stateTest: 'Testversion · unsigniert', stateWeb: 'Web-App · immer aktuell',
       download: 'Herunterladen', install: 'Installation', more: 'Weitere Dateien', noDownload: 'kein Download', sideload: 'nur Sideloading',
       release: 'Alle Dateien im GitHub-Release',
+      pending: 'Bald verfügbar', pendingNote: 'Die App-Dateien erscheinen hier, sobald sie veröffentlicht sind. Bis dahin spielst du im Browser, ohne Installation.', pendingAlt: 'bald',
       open: 'Im Browser öffnen',
       platforms: {
         mac: {
@@ -402,7 +422,7 @@ export const TEXT = {
   en: {
     meta: {
       title: 'LAST SIGNALS · Space MMO in your browser',
-      desc: 'Earth has gone silent. Three factions fight for the future of humanity in the outer solar system. A space MMO in your browser, free to play, power never for sale. Now in testing.',
+      desc: 'Earth has gone silent. Three factions fight for the future of humanity in the outer solar system. A space MMO in your browser, free to play, power never for sale. Now in testing, the game is currently in German.',
       ogAlt: 'A SATURN starter ship in front of a ringed gas giant',
     },
     ui: {
@@ -432,9 +452,9 @@ export const TEXT = {
     hero: {
       kicker: 'Transmission 2391 · Outer solar system',
       lead: 'Earth has gone silent. Three powers fight over what is left of humanity.',
-      sub: 'A space MMO in your browser. Three factions, 37 sectors, a real solar system. Free to play, no download. Power is never for sale.',
+      sub: 'A space MMO in your browser. Three factions, eight sectors each, eight ship classes. Free to play, no download. Power is never for sale.',
       play: 'Play now',
-      playState: 'Public test version 0.1',
+      playState: 'Public test version 0.1.0',
       more: 'What awaits you',
       community: 'Community',
       sector: 'SA-1 · Enceladus',
@@ -480,13 +500,13 @@ export const TEXT = {
       lede: 'You fly your ship in true 3D, from an angled top view, point and click. Learned in five minutes. Still chasing goals months later.',
       cells: [
         { icon: 'factions', k: '3', u: 'Factions', t: 'Factions', d: 'EUROPA, SATURN and ERIS. Their own story, home and menu. Equal in power.' },
-        { icon: 'sectors', k: '37', u: 'Sectors', t: 'Sectors', d: 'From the moons of Jupiter to the Kuiper Belt. The higher the number, the deadlier the sector.' },
+        { icon: 'sectors', k: '24', u: 'Sectors', t: 'Sectors', d: 'Eight per home, from the station down to the boss. The higher the number, the deadlier the sector.' },
         { icon: 'combat', k: '0', u: 'ms switch', t: 'Combat', d: 'Real time against pirates, the Swarm and other pilots. Ammo L1 to L4, salvos, rockets and mines. Switching has zero delay.' },
-        { icon: 'gear', k: '12', u: 'Levels', t: 'Equipment', d: 'Lasers, generators, drones and the companion ship SPUTNIK. Every part upgrades through twelve levels and is mounted visibly on your hull.' },
+        { icon: 'gear', k: '12', u: 'Levels', t: 'Equipment', d: 'Lasers, generators and drones are mounted visibly on your ship. Planned: upgrades through twelve levels and the companion ship SPUTNIK.' },
         { icon: 'events', k: '7', u: 'Days', t: 'Events', d: 'Planned: CORE RUSH every evening, SWARM SURGE on Sundays, BREACH once a month, plus seasonal events. Not playable yet.' },
         { icon: 'fair', k: '0', u: 'Power for money', t: 'Fair payment', d: 'Money buys looks only. Weapons, stats and Tritium are earned in the game.' },
       ],
-      facts: ['In your browser', 'No download', 'English and German', 'Free to play'],
+      facts: ['In your browser', 'No download', 'Game in German for now', 'Free to play'],
     },
     why: {
       code: '03',
@@ -495,42 +515,42 @@ export const TEXT = {
       lede: 'The depth of the great browser games of the past, built with the technology of today.', more: 'Details', swipe: 'Swipe for more',
       reasons: [
         {
-          id: 'system', t: 'A real solar system',
-          d: 'Your home lies among the moons of Jupiter, in the rings of Saturn or at the cold edge on Eris. Uranus and Neptune are the front line. The Battle Maps sit in the Asteroid Belt, the pirates in the Kuiper Belt. Beyond waits the endgame: the silent inner solar system.',
-          specs: ['37 sectors', '8 per home', 'Endgame Silence'],
+          id: 'system', t: 'Three homes, more planned', plan: true,
+          d: 'Playable today are the three homes with eight sectors each: among the moons of Jupiter, in the rings of Saturn and at the cold edge on Eris. Planned are the front at Uranus and Neptune, the Battle Maps in the Asteroid Belt, the Kuiper Belt and, as the endgame, the silent inner solar system.',
+          specs: ['24 sectors playable', '8 per home', '13 more planned'],
         },
         {
-          id: 'ships', t: 'A ship that shows what you can do', s: 'Eight ships up to the top warship, plus Healer, Tank and Scout. Every part you fit is visible on the hull.',
-          d: 'Eight ships in the main line, from the starter to the top warship with 13 laser and 13 generator slots. From level 40 the Healer, Tank and Scout join them. Every laser and every generator is mounted visibly on the hull. Three configurations per ship, switchable in flight.',
-          specs: ['8 + 3 ships', '13 / 13 slots', '3 configurations'],
+          id: 'ships', t: 'A ship that shows what you can do', s: 'Eight ship classes from Starter to Leviathan, each faction with its own models. Every laser is visible on the hull.',
+          d: 'Eight ships in the main line, from the Starter to the Leviathan with 13 laser and 13 generator slots. Every laser and every generator is mounted visibly on the hull. Three configurations per ship, switchable in flight. Planned and not in the game yet: Healer, Tank and Scout from level 40.',
+          specs: ['8 ship classes', '13 / 13 slots', '3 configurations'],
         },
         {
-          id: 'lasers', t: 'Lasers up to Gamma', s: 'Pulse, Ion and Plasma are for sale. The Gamma Laser has to be earned.',
-          d: 'Pulse, Ion, Plasma. Nobody can buy the Gamma Laser. It is planned to drop rarely from bosses, in wormholes and on Battle Maps, or to be built from 20 Gamma fragments. Plus salvos with their own reload, three rockets and three mines.',
-          specs: ['4 lasers', 'L1 to L4', 'Gamma earned only'],
+          id: 'lasers', t: 'Lasers, ammo, rockets', s: 'Pulse, Ion and Plasma are for sale. Plus L1 to L4, salvos, three rockets and three mines.',
+          d: 'Pulse and Ion for Credits, Plasma for Tritium. Ammo L1 to L4, SAB drains shields, SAL is a salvo with its own reload. Plus rockets R1 to R3 and the mines SPM, BRM and STM. Planned: the Gamma Laser, not for sale, only as a rare drop or from 20 Gamma fragments.',
+          specs: ['3 lasers in game', 'L1 to L4', 'Gamma planned'],
         },
         {
-          id: 'drones', t: '16 drone formations', s: 'Up to ten drones in 16 formations. Each one tells you from afar what your enemy is running.',
-          d: 'Up to ten drones fly around your ship. Ring, Gyro, Dome, Helix, Vortex, Crown and ten more, in true 3D. Every formation reads from afar. Look closely and you know what your enemy is running.',
+          id: 'drones', t: '16 drone formations', s: 'Up to ten drones, 16 formations. Each one tells you from afar what your enemy is running.',
+          d: 'Up to ten drones fly around your ship. Ring, Dome, Helix, Wing and twelve more, in true 3D. Every formation reads from afar. Gyro, Vortex and Crown are meant to come only from events and wormholes; both are planned.',
           specs: ['10 drones', '16 formations', 'Levels 1 to 10'],
         },
         {
-          id: 'depth', t: 'Depth that lasts for years', s: 'Your Pilot File grows from the Black Boxes of your enemies. Your Rig refines ore, even while you are offline.',
-          d: 'Black Boxes from destroyed ships fuel the research in your Pilot File: around 40 skills in three branches. Your own Rig in orbit refines ore into Alloy, Catalyst, Core and Exotic, even while you are offline. You decide what it produces.',
+          id: 'depth', t: 'Pilot File and Rig', plan: true, s: 'Planned: your Pilot File grows from the Black Boxes of your enemies. Your Rig refines ore, even while you are offline.',
+          d: 'Planned, not playable yet. Black Boxes from destroyed ships fuel the research in your Pilot File: around 40 skills in three branches. Your own Rig in orbit refines ore into Alloy, Catalyst, Core and Exotic, even while you are offline.',
           specs: ['3 branches', 'around 40 skills', 'Rig works offline'],
         },
         {
-          id: 'wormholes', t: 'Wormholes to real stars', s: 'Wormholes lead to Sirius, Vega and Betelgeuse. The last one to Andromeda: 50 waves, one life.',
+          id: 'wormholes', t: 'Wormholes to real stars', plan: true, s: 'Planned: wormholes to Sirius, Vega and Betelgeuse. The last one to Andromeda: 50 waves, one life.',
           d: 'Planned, not playable yet: collect coordinates and open wormholes to Sirius, Vega, Rigel, Antares and Betelgeuse. Up to 40 waves, few lives, a boss at the end. The last wormhole leads to Andromeda: 50 waves, one life, and the end of the story.',
           specs: ['6 destinations', '20 to 50 waves', 'Groups from Antares'],
         },
         {
-          id: 'bosses', t: 'Bosses in enemy territory', s: 'Black Shipyard and Star Whale sit in enemy territory. The loot goes to the last hit.',
-          d: 'The Black Shipyard sits deep in the home sectors of every faction, guarded by repair tugs. The Star Whale travels its route through all three homes. The loot goes to whoever lands the last hit. So you fly to where the enemy lives and take it from them.',
-          specs: ['Last hit wins', 'Alarm for defenders', 'Rare top loot'],
+          id: 'bosses', t: 'Three bosses in the deep', s: 'Black Shipyard in sector 6, Elder Star Whale in sector 7, Dreadnought in sector 8. Each one returns after a kill.',
+          d: 'Every home has three bosses. The Black Shipyard in sector 6 keeps calling Merc pirates as reinforcements. The Elder Star Whale in sector 7 heals itself. The Dreadnought in sector 8 calls Corsairs. After a kill, Shipyard and Whale return after 15 minutes, the Dreadnought after 20. From sector 2 on, pilots of all factions share the same space. In the multiplayer test, each pilot runs their own enemies and bosses, except in co-op. Shared bosses with loot for the last hit are planned.',
+          specs: ['Sector 6 · 7 · 8', 'Back after 15 to 20 min', 'Shared bosses planned'],
         },
         {
-          id: 'war', t: 'Battle Maps, clans, events', s: 'Planned: Battle Maps without a safe zone, clans across all factions and CORE RUSH every evening.',
+          id: 'war', t: 'Battle Maps, clans, events', plan: true, s: 'Planned: Battle Maps without a safe zone, clans across all factions and CORE RUSH every evening.',
           d: 'Planned, not playable yet. BM-1 to BM-3 have no safe zone. Clans recruit pilots from all three factions, forge alliances and declare war. CORE RUSH on BM-2 every evening. Once a month BREACH: a raid on the enemy station in five phases, ending with the escape of the Data Core.',
           specs: ['No safe zone', 'Clans across factions', 'An event every day'],
         },
@@ -538,17 +558,17 @@ export const TEXT = {
     },
     vis: {
       system: {
-        head: 'System map', stille: 'Silence', noSig: 'No signal', belt: 'Battle Maps', front: 'Front', kuiper: 'Kuiper',
+        head: 'System map', stille: 'Silence · planned', noSig: 'No signal', belt: 'Battle Maps · planned', front: 'Front · planned', kuiper: 'Kuiper · planned', count: '24 sectors playable · 13 planned',
         europa: 'Europa · Jupiter', saturn: 'Saturn · Rings', eris: 'Eris · Edge', per: '8 sectors', frontPlanets: 'Uranus · Neptune',
       },
       ships: {
-        head: 'Hangar · Ship line', model: 'S-01 Starter · SATURN', laser: 'Laser mount', hull: 'Hull ID', guild: 'Guild module',
+        head: 'Hangar · Ship line', model: 'S-08 Leviathan · SATURN', laser: 'Laser mount', hull: 'Hull ID', guild: 'Guild module',
         line: 'Main line', special: 'Special', starter: 'Starter', credits: 'Credits', tritium: 'Tritium', top: 'Top', from40: 'from level 40',
-        healer: 'Healer', tank: 'Tank', scout: 'Scout', render: 'In-game render',
+        healer: 'Healer', tank: 'Tank', scout: 'Scout', render: 'in-game model', planned: 'planned',
       },
       lasers: {
         head: 'Armoury', tier: 'Tier',
-        rows: [['Pulse Laser', 'Credits'], ['Ion Laser', 'Credits'], ['Plasma Laser', 'Tritium'], ['Gamma Laser', 'Drop only or 20 fragments']],
+        rows: [['Pulse Laser', 'Credits'], ['Ion Laser', 'Credits'], ['Plasma Laser', 'Tritium'], ['Gamma Laser', 'Planned: drop only or 20 fragments']],
         ammo: 'Ammo', ammoList: 'L1 · L2 · L3 · L4 · SAB · SAL', rockets: 'Rockets', rocketList: 'R1 · R2 · R3', mines: 'Mines', mineList: 'SPM · BRM · STM',
       },
       drones: {
@@ -556,11 +576,11 @@ export const TEXT = {
         noJs: 'The formation preview needs JavaScript.',
         list: [
           ['Standard', 'For Credits'], ['Wall', 'For Credits'], ['Spear', 'For Credits'],
-          ['Ring', 'Orbits the ship, heavy shields, slightly slower'], ['Gyro', 'Two tilted rings · events and wormholes only'],
+          ['Ring', 'Orbits the ship, heavy shields, slightly slower'], ['Gyro', 'Two tilted rings · planned: from events and wormholes'],
           ['Dome', 'A sphere around the ship'], ['Helix', 'Spiral, more range'], ['Comet', 'Stronger rockets'],
           ['Claw', 'Against players'], ['Swarm', 'Against pirates and aliens'], ['Star', 'Multiple targets'],
-          ['Wing', 'More speed'], ['Pulse', 'Damage all around you'], ['Vortex', 'Intercepts rockets · events and wormholes only'],
-          ['Halo', 'Heals allies'], ['Crown', 'More experience and honour · events and wormholes only'],
+          ['Wing', 'More speed'], ['Pulse', 'Damage all around you'], ['Vortex', 'Intercepts rockets · planned: from events and wormholes'],
+          ['Halo', 'Heals allies'], ['Crown', 'More experience and honour · planned: from events and wormholes'],
         ],
       },
       depth: {
@@ -572,8 +592,9 @@ export const TEXT = {
         head: 'Wormholes', cols: ['Target', 'Waves', 'Lives', 'From level'], group: 'Group', coords: 'Coordinates',
       },
       bosses: {
-        head: 'Boss status', whale: 'Star Whale · Route', yard: 'Black Shipyard', alarm: 'Alarm · enemy in boss sector', last: 'Loot: last hit', you: 'You', tugs: 'Repair tugs',
+        head: 'Boss status', sector: 'Sector', last: 'Shared bosses: planned', names: { werft: 'Black Shipyard', wal: 'Elder Star Whale', dread: 'Dreadnought' }, calls: { werft: 'calls Mercs', wal: 'heals itself', dread: 'calls Corsairs' }, same: 'The same in all three homes',
       },
+
       war: {
         head: 'Operations', scene: 'BM-2 · CORE RUSH', core: 'Core', noSafe: 'No safe zone', plan: 'Weekly operations', days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         rows: [
@@ -593,11 +614,11 @@ export const TEXT = {
       label: 'Fair',
       title: 'Power is never for sale.',
       s: 'Money buys looks only. Everything that makes you stronger is earned in the game.',
-      p: 'LAST SIGNALS is funded by looks alone. Nova, the shop currency, buys paint jobs, laser colours, engine trails and badges. Everything that makes you stronger is earned in the game.',
-      buy: 'For Nova',
+      p: 'LAST SIGNALS is meant to be funded by looks alone. There is no shop in the test version yet. When it comes, Nova, the shop currency, will buy only paint jobs, laser colours, engine trails and badges. Everything that makes you stronger is earned in the game.',
+      buy: 'For Nova · shop planned',
       buyList: ['Ship designs without bonus', 'Laser colours', 'Engine trails', 'Drone skins', 'Badges and clan decor'],
       earn: 'Earned only',
-      earnList: ['Weapons and stats', 'Tritium', 'Experience', 'Boosters', 'Designs with bonus', 'Gamma Laser'],
+      earnList: ['Weapons and stats', 'Tritium', 'Experience', 'Boosters · planned', 'Designs with bonus · planned', 'Gamma Laser · planned'],
       note: 'No loot boxes for real money.',
     },
     factions: {
@@ -642,7 +663,20 @@ export const TEXT = {
       lede: 'The real state of development. No spin.',
       entries: [
         {
-          date: '30 Oct 2026', tag: 'Patch notes', title: 'Test version 0.1',
+          date: '2 Nov 2026', tag: 'Patch notes', title: APPS ? 'Accounts, multiplayer and apps' : 'Accounts, multiplayer and co-op',
+          p: 'The test version has grown a lot. Everything here is playable but still in testing: numbers and flows may change.',
+          list: [
+            'Account with email and password right in the game, server save for multiple devices',
+            'Hall of fame in the game and on the website: honor, experience, kills, level',
+            'Multiplayer test: from sector 2 on, one shared space for all factions, chat, co-op invites, opt-in PvP',
+            'Sectors 4 to 8 per faction with new enemies and three bosses',
+            'New models for all eight ship classes of every faction',
+            'Controller support for flight, combat and menus',
+            APPS ? 'Apps as test versions for Mac, Windows, Android, iPhone and iPad' : 'Apps for Mac, Windows, Android, iPhone and iPad in the works, the files will follow on the download page',
+          ],
+        },
+        {
+          date: '30 Oct 2026', tag: 'Patch notes', title: 'Test version 0.1.0',
           p: 'The first playable build runs as a single-player test. Progress is saved in the browser. Open to everyone since 31 Oct 2026.',
           list: [
             'Loading screen, sign-in, faction choice and Mission Control',
@@ -665,8 +699,8 @@ export const TEXT = {
       road: 'Roadmap',
       now: 'Now',
       phases: [
-        ['Vertical slice', 'Single-player test'],
-        ['Alpha', 'Multiplayer server, accounts, anti-cheat'],
+        ['Test version', APPS ? 'Accounts, multiplayer test, co-op, apps' : 'Accounts, multiplayer test, co-op, apps to follow'],
+        ['Alpha', 'Own game server with anti-cheat'],
         ['Closed beta', 'Small test group'],
         ['Open beta', 'With the Discord community'],
         ['Launch', 'For everyone'],
@@ -688,13 +722,13 @@ export const TEXT = {
       title: 'Questions and answers',
       items: [
         ['What is LAST SIGNALS?', 'An online space game in your browser. You fly your ship in true 3D, from an angled top view, by mouse or with WASD. Three factions fight each other and the Swarm in the outer solar system.'],
-        ['Can I play yet?', 'Yes. Test version 0.1 is open to everyone, right in your browser via “Play now”. It is a single-player test; progress is stored only in your browser. Next comes the alpha with a multiplayer server and real accounts. We will name dates once they are certain.'],
-        ['Does it cost anything?', 'No. LAST SIGNALS will be free to play. Money buys looks only.'],
-        ['Can you buy power?', 'No. Weapons, stats, experience, Tritium and boosters exist only in the game. Nova buys appearance and nothing else. There are no loot boxes for real money.'],
-        ['Do I need to download anything?', 'No. LAST SIGNALS runs in the browser, on a computer with a current Chrome, Edge, Firefox or Safari. If you prefer an app: the download page has test builds for Mac, Windows, Android, iPhone and iPad, still unsigned and not in the app stores.'],
-        ['Which languages?', 'English and German.'],
-        ['How many people play together?', 'LAST SIGNALS is planned as an online game for many pilots at once, with groups of up to eight and clans across all factions. The multiplayer server arrives with the alpha.'],
-        ['Is there a wiki?', 'An official wiki with every item, enemy and event will follow, generated straight from the game data so it is always correct.'],
+        ['Can I play yet?', 'Yes. The test version is open to everyone, right in your browser via “Play in browser”' + (APPS ? ' or as an app from the download page' : '') + '. Without an account your progress stays in your browser. With a free account it is also saved on the server, you can continue on other devices and you appear in the hall of fame. We will name dates for later phases once they are certain.'],
+        ['Does it cost anything?', 'No. LAST SIGNALS is free to play. There is no shop yet. When it comes, it will sell looks only.'],
+        ['Can you buy power?', 'No. Weapons, stats, experience and Tritium exist only in the game, and so will the planned boosters. Nova, the planned shop currency, is meant to buy appearance and nothing else. There are no loot boxes for real money.'],
+        ['Do I need to download anything?', 'No. LAST SIGNALS runs in the browser, on a computer with a current Chrome, Edge, Firefox or Safari. ' + (APPS ? 'If you prefer an app: the download page has test builds for Mac, Windows, Android, iPhone and iPad, still unsigned and not in the app stores.' : 'Test builds of the apps for Mac, Windows, Android, iPhone and iPad will follow on the download page. Until then you can add the game to the home screen of your iPhone, iPad or Android device as a web app.')],
+        ['Which languages?', 'The website is in English and German. The game itself is currently available in German only. An English version is planned.'],
+        ['How many people play together?', 'In the test version sector 1 stays separate per faction; from sector 2 on, pilots of all factions meet in the same space, with chat for sector, faction and everyone. Fly as a pair in co-op, PvP is opt-in. Groups of up to eight and clans across all factions are planned.'],
+        ['Is there a wiki?', 'Ships, sectors, enemies and bosses are already on the “Ships” and “World” pages, straight from the game data. A complete wiki with every item and event will follow.'],
       ],
     },
     footer: {
@@ -705,12 +739,12 @@ export const TEXT = {
       imprint: ['Imprint', '/en/imprint/'],
       privacy: ['Privacy', '/en/privacy/'],
       copy: '© 2026 LAST SIGNALS',
-      state: 'In testing · Version 0.1',
+      state: 'In testing · Version 0.1.0',
     },
     download: {
       kicker: 'DL · Test build',
       title: 'Download',
-      lede: 'LAST SIGNALS runs right in your browser. If you prefer an app of its own, here are the test builds for Mac, Windows, iPhone, iPad and Android.',
+      lede: (APPS ? 'LAST SIGNALS runs right in your browser. If you prefer an app of its own, here are the test builds for Mac, Windows, iPhone, iPad and Android.' : 'LAST SIGNALS runs right in your browser. Test builds of the apps for Mac, Windows, iPhone, iPad and Android will follow here; their files are not published yet.') + ' The game itself is currently in German; an English version is planned.',
       noteHead: 'State of the apps',
       notes: [
         'Test build {v}. Not on the App Store, Google Play or Steam yet.',
@@ -722,6 +756,7 @@ export const TEXT = {
       version: 'Version', size: 'Size', req: 'Requires', state: 'Status', stateTest: 'Test build · unsigned', stateWeb: 'Web app · always up to date',
       download: 'Download', install: 'Installation', more: 'More files', noDownload: 'no download', sideload: 'sideloading only',
       release: 'All files in the GitHub release',
+      pending: 'Coming soon', pendingNote: 'The app files will appear here once they are published. Until then, play in your browser, no install needed.', pendingAlt: 'soon',
       open: 'Open in browser',
       platforms: {
         mac: {

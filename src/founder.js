@@ -31,7 +31,9 @@ export function initFounder(form, { getFaction, setFaction }) {
   // Google/Discord: nur aktiv, was der Server wirklich anbietet (GET /auth/v1/settings). Sonst bleibt der Knopf „bald“,
   // gesperrt und ohne Klick-Aktion. Die E-Mail-Reservierung hängt zusätzlich an VITE_RESERVATION_OPEN.
   const oauthNote = form.querySelector('[data-oauth-note]');
-  if (online) {
+  // Nur nachfragen, wenn es etwas zu schalten gibt (Google/Discord gebaut oder E-Mail-Reservierung offen).
+  // Sonst stellt die Seite keine Anfrage an den Anmeldedienst.
+  if (online && (open || form.querySelector('[data-oauth]'))) {
     getProviders().then((pv) => {
       let any = false;
       form.querySelectorAll('[data-oauth]').forEach((b) => {

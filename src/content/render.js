@@ -10,6 +10,7 @@ import { SITE, PAGES, PAGE_IDS, pageById, canonical, href, setLinkMode } from '.
 import { frame, visSystem, visShips, visLasers, visDrones, visDepth, visWormholes, visBosses, visWar, visMonitor, whTable, warTable, FX } from './visuals.js';
 import { legal } from './legal.js';
 import { RELEASE, FILES, PLATFORMS, releaseUrl, releasePage, fileSize } from './downloads.js';
+import { G, heroVideo, features, shotsSection, shipsBody, worldBody, pic, HERO_WIDE, HERO_TALL, HERO_PHONE } from './game.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const pad = (n) => String(n).padStart(2, '0');
@@ -21,7 +22,7 @@ function T(lang) {
 }
 // Seitenlinks; auf der 404-Seite (FROM null) im Produktions-Build immer absolut
 let FROM = null;
-let FLAGS = { reservationOpen: false, oauth: [] };
+let FLAGS = { reservationOpen: false, oauth: [], mail: '' };
 const P = (lang, k) => href(PAGE_IDS[lang][k], FROM);
 const ALT = (alt) => href(alt.id, FROM); // Sprachwechsel: im Produktions-Build absolut auf die andere Domain
 
@@ -51,22 +52,39 @@ function social(id, t, variant) {
 const socials = (t, variant) => LINK_ORDER.map((id) => `<li>${social(id, t, variant)}</li>`).join('');
 
 // ---------- Kopf ----------
+// Vorschaubild je Seite (1200×630, public/img/og/<name>.jpg)
+const OG = { home: 'home', ships: 'ships', world: 'world', download: 'download', wiki: 'world', news: 'home', hall: 'hall', impressum: 'home', imprint: 'home', datenschutz: 'home', privacy: 'home' };
 function head(page, t) {
   const can = canonical(page);
   const alt = page.alt ? pageById(page.alt) : null;
   const isHome = page.id.endsWith('home');
+  const k = page.id.replace(/^(de|en)-/, '');
+  const g = G[page.lang];
   const title = isHome ? t.meta.title : `${pageTitle(page, t)} · LAST SIGNALS`;
+  const desc = isHome ? t.meta.desc : (g.meta[k] || t.meta.desc);
+  const og = `${SITE.de}/img/og/${OG[k] || 'home'}-${page.lang}.jpg`;
   const hreflang = alt ? [page, alt].map((p) => `<link rel="alternate" hreflang="${p.lang}" href="${canonical(p)}">`).join('\n  ')
     + `\n  <link rel="alternate" hreflang="x-default" href="${canonical(page.lang === 'en' ? page : alt)}">` : '';
+  const shots = ['kampf-saturn', 'flug-eris', 'station-europa', 'cockpit-europa', 'boss-dread'].map((n) => `${SITE.de}/img/spiel/${n}-1920.webp`);
   const ld = isHome ? `<script type="application/ld+json">${JSON.stringify({
     '@context': 'https://schema.org', '@type': 'VideoGame', name: 'LAST SIGNALS', url: SITE[page.lang] + '/',
-    description: t.meta.desc, inLanguage: ['de', 'en'], genre: ['MMO', 'Space', 'Action'], gamePlatform: 'Web browser',
-    playMode: 'MultiPlayer', image: SITE.de + '/img/og.jpg', publisher: { '@type': 'Organization', name: '077 GAMING' },
-  })}</script>` : '';
+    description: t.meta.desc, genre: ['MMO', 'Space', 'Action'], inLanguage: 'de', // Spiel derzeit nur auf Deutsch (Website DE/EN)
+    // Apps erst nennen, wenn das Release mit den Dateien veröffentlicht ist
+    gamePlatform: RELEASE.published ? ['Web browser', 'macOS', 'Windows', 'Android', 'iOS'] : ['Web browser'],
+    operatingSystem: RELEASE.published ? 'Web browser, macOS, Windows, Android, iOS' : 'Web browser',
+    applicationCategory: 'Game', playMode: ['SinglePlayer', 'MultiPlayer', 'CoOp'], numberOfPlayers: { '@type': 'QuantitativeValue', minValue: 1 },
+    offers: { '@type': 'Offer', price: 0, priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: SITE[page.lang] + SITE.play },
+    image: og, screenshot: shots,
+    trailer: { '@type': 'VideoObject', name: page.lang === 'de' ? 'LAST SIGNALS · Spielszene' : 'LAST SIGNALS · gameplay', description: g.hero.video,
+      thumbnailUrl: `${SITE.de}/img/spiel/hero-1280.webp`, contentUrl: `${SITE.de}/media/hero-loop.mp4`, uploadDate: '2026-11-03', duration: 'PT8S' },
+    author: { '@type': 'Organization', name: '077 GAMING' }, publisher: { '@type': 'Organization', name: '077 GAMING' },
+  }).replace(/</g, '\\u003c')}</script>` : '';
+  const pre = (name, ws, media) => `<link rel="preload" as="image" type="image/avif" media="${media}" imagesrcset="${ws.map((w) => `/img/spiel/${name}-${w}.avif ${w}w`).join(', ')}" imagesizes="100vw" fetchpriority="high">`;
+  const preload = isHome ? `${pre('hero-tall', HERO_TALL, HERO_PHONE)}\n  ${pre('hero', HERO_WIDE, '(min-width: 721px)')}` : '';
   return `<meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>${esc(title)}</title>
-  <meta name="description" content="${esc(t.meta.desc)}">
+  <meta name="description" content="${esc(desc)}">
   ${page.id === 'not-found' ? '<meta name="robots" content="noindex">' : ''}
   ${can ? `<link rel="canonical" href="${can}">` : ''}
   ${hreflang}
@@ -77,15 +95,19 @@ function head(page, t) {
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="LAST SIGNALS">
   <meta property="og:title" content="${esc(title)}">
-  <meta property="og:description" content="${esc(t.meta.desc)}">
+  <meta property="og:description" content="${esc(desc)}">
   ${can ? `<meta property="og:url" content="${can}">` : ''}
-  <meta property="og:image" content="${SITE.de}/img/og.jpg">
+  <meta property="og:image" content="${og}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="${esc(t.hero.alt)}">
+  <meta property="og:image:alt" content="${esc(isHome ? g.hero.ogAlt : title)}">
   <meta property="og:locale" content="${page.lang === 'de' ? 'de_DE' : 'en_US'}">
+  ${alt ? `<meta property="og:locale:alternate" content="${alt.lang === 'de' ? 'de_DE' : 'en_US'}">` : ''}
   <meta name="twitter:card" content="summary_large_image">
-  ${isHome ? '<link rel="preload" as="image" href="/img/hero-poster.webp" type="image/webp" fetchpriority="high" media="(min-aspect-ratio: 1/1)">\n  <link rel="preload" as="image" href="/img/hero-poster-tall.webp" type="image/webp" fetchpriority="high" media="(max-aspect-ratio: 1/1)">' : ''}
+  <meta name="twitter:title" content="${esc(title)}">
+  <meta name="twitter:description" content="${esc(desc)}">
+  <meta name="twitter:image" content="${og}">
+  ${preload}
   ${ld}
   <script type="module" src="/src/main.js"></script>`;
 }
@@ -93,7 +115,7 @@ function head(page, t) {
 function pageTitle(page, t) {
   const k = page.id.replace(/^(de|en)-/, '');
   const de = page.lang === 'de';
-  return ({ impressum: 'Impressum', imprint: 'Imprint', datenschutz: 'Datenschutz', privacy: 'Privacy', news: t.news.title, wiki: t.wiki.title, hall: t.hall.title, download: t.download.title })[k]
+  return ({ impressum: 'Impressum', imprint: 'Imprint', datenschutz: 'Datenschutz', privacy: 'Privacy', news: t.news.title, wiki: t.wiki.title, hall: t.hall.title, download: t.download.title, ships: G[page.lang].ships.title, world: G[page.lang].world.title })[k]
     || (page.id === 'not-found' ? t.nf.title : (de ? 'Startseite' : 'Home'));
 }
 
@@ -106,15 +128,24 @@ function chapterHref(page, t, key) {
   return (onHome ? '' : P(page.lang, 'home')) + '#' + t.ids[key];
 }
 
+const NAV = ['ships', 'world', 'download', 'hall', 'news', 'wiki'];
+const navLabel = (lang, t, k) => (k === 'ships' || k === 'world' ? G[lang].nav[k] : t.pages[k]);
+const discordUrl = () => linkUrl('discord');
 function header(page, t) {
   const lang = page.lang;
   const h = t.hdr;
   const alt = page.alt ? pageById(page.alt) : pageById(lang === 'de' ? 'en-home' : 'de-home');
   const cur = page.id.replace(/^(de|en)-/, '');
-  const pageNav = ['download', 'wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}"${cur === k ? ' aria-current="page"' : ''}>${esc(t.pages[k])}</a></li>`).join('');
+  const pageNav = NAV.map((k) => `<li><a href="${P(lang, k)}"${cur === k ? ' aria-current="page"' : ''}>${esc(navLabel(lang, t, k))}</a></li>`).join('');
+  const g = G[lang].hero;
+  // Kopfleiste: am Handy bleibt „Spielen“ sichtbar (kurzer Text, ganz oben im Menü der volle Knopf); Ton und „Bewegung anhalten“ wandern dort ins Menü
   const play = SITE.status === 'live'
-    ? `<a class="ls-btn is-primary is-gold hdr-play" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(h.play)}</span></a>`
+    ? `<a class="ls-btn is-primary is-gold hdr-play" href="${SITE.play}" data-click>${ICONS.play}<span class="hp-l">${esc(h.play)}</span><span class="hp-s">${esc(h.playShort)}</span></a>`
     : `<span class="ls-btn hdr-play is-locked" aria-disabled="true" title="${esc(t.hero.playState)}">${ICONS.lock}<span>${esc(h.play)}</span><em>${esc(h.playLocked)}</em></span>`;
+  const isHome = page.id.endsWith('home');
+  const langLabel = `${t.ui.langCur} / ${t.ui.langShort} – ${t.ui.langOther}`;
+  const sound = (cls = '') => `<button class="snd ${cls}" type="button" aria-pressed="false" data-sound data-on="${esc(h.soundOff)}" data-off="${esc(h.soundOn)}" aria-label="${esc(h.soundOn)}" title="${esc(h.soundOn)}"><span class="snd-off">${ICONS.soundOff}</span><span class="snd-on">${ICONS.soundOn}</span><span class="snd-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button>`;
+  const motion = (cls = '') => (isHome ? `<button class="snd scene-btn ${cls}" type="button" data-scene-toggle hidden data-pause="${esc(t.hud.pause)}" data-resume="${esc(t.hud.resume)}" aria-pressed="false" aria-label="${esc(t.hud.pause)}" title="${esc(t.hud.pause)}"><span class="sc-pause">${ICONS.pause}</span><span class="sc-play">${ICONS.play}</span></button>` : '');
   return `<a class="skip" href="#main">${esc(t.ui.skip)}</a>
 <header class="hdr" data-hdr>
   <div class="hdr-in">
@@ -122,24 +153,28 @@ function header(page, t) {
     <nav class="nav" aria-label="${lang === 'de' ? 'Seiten' : 'Pages'}"><ul>${pageNav}</ul></nav>
     <div class="hdr-right">
       <span class="live" data-live aria-live="polite"><i aria-hidden="true"></i><span class="live-k">${esc(h.status)}</span><b data-live-text>${esc(h.statusTest)}</b></span>
+      ${discordUrl() ? `<a class="hdr-dc" href="${esc(discordUrl())}" target="_blank" rel="noopener noreferrer">${ICONS.discord}<span>Discord</span><span class="sr"> (${esc(t.ui.newTab)})</span></a>` : ''}
       ${play}
       <a class="hdr-auth" href="${chapterHref(page, t, 'founder')}" data-auth data-label-in="${esc(h.signIn)}">${ICONS.user}<span data-auth-name>${esc(h.signIn)}</span></a>
-      <a class="lang" href="${ALT(alt)}" hreflang="${alt.lang}" lang="${alt.lang}" aria-label="${esc(t.ui.langOther)}"><span aria-hidden="true"><b>${t.ui.langCur}</b><i>/</i>${t.ui.langShort}</span></a>
-      <button class="snd" type="button" aria-pressed="false" data-sound data-on="${esc(h.soundOff)}" data-off="${esc(h.soundOn)}" aria-label="${esc(h.soundOn)}" title="${esc(h.soundOn)}"><span class="snd-off">${ICONS.soundOff}</span><span class="snd-on">${ICONS.soundOn}</span><span class="snd-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button>
-      ${page.id.endsWith('home') ? `<button class="snd scene-btn" type="button" data-scene-toggle hidden data-pause="${esc(t.hud.pause)}" data-resume="${esc(t.hud.resume)}" aria-pressed="false" aria-label="${esc(t.hud.pause)}" title="${esc(t.hud.pause)}"><span class="sc-pause">${ICONS.pause}</span><span class="sc-play">${ICONS.play}</span></button>` : ''}
+      <a class="lang" href="${ALT(alt)}" hreflang="${alt.lang}" lang="${alt.lang}" aria-label="${esc(langLabel)}"><span aria-hidden="true"><b>${t.ui.langCur}</b><i>/</i>${t.ui.langShort}</span></a>
+      ${sound('hdr-ctl')}
+      ${motion('hdr-ctl')}
       <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu" data-open="${esc(t.ui.menu)}" data-close="${esc(t.ui.close)}" aria-label="${esc(t.ui.menu)}"><span class="mb-open">${ICONS.menu}</span><span class="mb-close">${ICONS.close}</span></button>
     </div>
   </div>
   <div class="menu" id="menu" hidden>
+    <div class="menu-top">
+      ${SITE.status === 'live' ? `<a class="ls-btn is-primary is-gold is-big menu-play" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(g.play)}</span></a>` : ''}
+      <div class="menu-ctl"><span class="menu-ctl-i"><span class="ls-label" aria-hidden="true">${esc(h.sound)}</span>${sound('menu-snd')}</span>${isHome ? `<span class="menu-ctl-i"><span class="ls-label" aria-hidden="true">${esc(t.hud.scene)}</span>${motion('menu-scene')}</span>` : ''}<a class="ls-btn menu-lang" href="${ALT(alt)}" hreflang="${alt.lang}" lang="${alt.lang}">${esc(t.ui.langOther)}</a></div>
+    </div>
     <div class="menu-cols">
       <nav aria-label="${esc(h.chapters)}"><span class="ls-label">${esc(h.chapters)}</span><ol class="menu-nav">${t.chapters.map(([k, n, l]) => `<li><a href="${chapterHref(page, t, k)}"><span class="ls-num">${n}</span>${esc(l)}</a></li>`).join('')}</ol></nav>
       <div class="menu-side">
         <div class="menu-meta"><span class="live"><i aria-hidden="true"></i><b>${esc(h.statusTest)}</b></span><a class="ls-btn" href="${chapterHref(page, t, 'founder')}">${ICONS.user}<span>${esc(h.signIn)}</span></a></div>
         <span class="ls-label">${lang === 'de' ? 'Seiten' : 'Pages'}</span>
-        <ul class="menu-pages">${['download', 'wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}">${esc(t.pages[k])}</a></li>`).join('')}</ul>
+        <ul class="menu-pages">${NAV.map((k) => `<li><a href="${P(lang, k)}">${esc(navLabel(lang, t, k))}</a></li>`).join('')}</ul>
         <span class="ls-label">${esc(t.footer.channels)}</span>
         <ul class="soc soc-rows">${socials(t, 'row')}</ul>
-        <a class="ls-btn" href="${ALT(alt)}" hreflang="${alt.lang}" lang="${alt.lang}">${esc(t.ui.langOther)}</a>
       </div>
     </div>
   </div>
@@ -149,14 +184,18 @@ function header(page, t) {
 function footer(page, t) {
   const lang = page.lang;
   const alt = page.alt ? pageById(page.alt) : pageById(lang === 'de' ? 'en-home' : 'de-home');
+  const de = lang === 'de';
   return `<footer class="ftr">
   <div class="wrap">
     <div class="ftr-top">
-      <div class="ftr-brand">${brand(lang, 'brand-lg')}<p>${esc(t.footer.tag)}</p><p class="ftr-by">${lang === 'de' ? 'Ein Spiel von 077 GAMING' : 'A game by 077 GAMING'}</p></div>
-      <nav class="ftr-col" aria-label="${esc(t.hdr.chapters)}"><span class="ls-label">${esc(t.hdr.chapters)}</span><ul>${t.chapters.map(([k, , l]) => `<li><a href="${chapterHref(page, t, k)}">${esc(l)}</a></li>`).join('')}</ul></nav>
+      <div class="ftr-brand">${brand(lang, 'brand-lg')}<p>${esc(t.footer.tag)}</p><p class="ftr-by">${de ? 'Ein Spiel von 077 GAMING' : 'A game by 077 GAMING'}</p>
+        <div class="ftr-cta"><a class="ls-btn is-primary" href="${SITE.play}">${ICONS.play}<span>${esc(G[lang].hero.play)}</span></a><a class="ls-btn" href="${P(lang, 'download')}">${ICONS.download}<span>${esc(G[lang].hero.download)}</span></a></div></div>
+      <nav class="ftr-col" aria-label="${de ? 'Spiel' : 'Game'}"><span class="ls-label">${de ? 'Spiel' : 'Game'}</span><ul>
+        ${['ships', 'world', 'wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}">${esc(navLabel(lang, t, k))}</a></li>`).join('')}
+        <li><a href="${chapterHref(page, t, 'founder')}">${esc(G[lang].nav.account)}</a></li>
+      </ul></nav>
       <div class="ftr-col"><span class="ls-label">${esc(t.footer.channels)}</span><ul class="soc soc-rows">${socials(t, 'row')}</ul></div>
-      <nav class="ftr-col" aria-label="${esc(t.footer.legal)}"><span class="ls-label">${lang === 'de' ? 'Seiten' : 'Pages'}</span><ul>
-        ${['download', 'wiki', 'news', 'hall'].map((k) => `<li><a href="${P(lang, k)}">${esc(t.pages[k])}</a></li>`).join('')}
+      <nav class="ftr-col" aria-label="${esc(t.footer.legal)}"><span class="ls-label">${esc(t.footer.legal)}</span><ul>
         <li><a href="${P(lang, 'imprint')}">${esc(t.footer.imprint[0])}</a></li>
         <li><a href="${P(lang, 'privacy')}">${esc(t.footer.privacy[0])}</a></li>
         <li><a href="${ALT(alt)}" hreflang="${alt.lang}" lang="${alt.lang}">${esc(t.ui.langOther)}</a></li>
@@ -185,7 +224,7 @@ function cosmos(t) {
   return `<div class="cosmos" aria-hidden="true" data-cosmos>
   <picture>
     <source media="(max-aspect-ratio: 1/1)" srcset="/img/hero-poster-tall.webp">
-    <img class="cosmos-poster" src="/img/hero-poster.webp" alt="" width="1920" height="1080" fetchpriority="high" decoding="async">
+    <img class="cosmos-poster" src="/img/hero-poster.webp" alt="" width="1920" height="1080" fetchpriority="low" decoding="async">
   </picture>
   <canvas class="cosmos-canvas"></canvas>
   <div class="cosmos-tint"></div>
@@ -211,29 +250,41 @@ function hud(t) {
 
 function hero(t) {
   const h = t.hero;
+  const g = G[t.lang].hero;
   const live = SITE.status === 'live';
   const play = live
-    ? `<a class="ls-btn is-primary is-gold is-big" href="${SITE.play}" data-click>${ICONS.play}${esc(h.play)}</a>`
-    : `<span class="ls-btn is-primary is-big is-locked" aria-disabled="true">${ICONS.lock}${esc(h.play)}</span>`;
+    ? `<a class="ls-btn is-primary is-gold is-big" href="${SITE.play}" data-click>${ICONS.play}${esc(g.play)}</a>`
+    : `<span class="ls-btn is-primary is-big is-locked" aria-disabled="true">${ICONS.lock}${esc(g.play)}</span>`;
+  const dc = linkUrl('discord');
   return `<section class="hero" id="top" aria-labelledby="hero-title" data-ch="0">
-  <p class="sr">${esc(h.alt)}</p>
-  <div class="hero-marks" aria-hidden="true">
-    <span class="mk mk-earth" data-mark="earth"><i></i><b>${esc(h.earth)}</b><em>${esc(h.earthState)}</em></span>
-    <span class="mk mk-swarm" data-mark="swarm"><i></i><b>${esc(h.swarm)}</b><em data-swarm-n>${esc(h.swarmState)}</em></span>
-  </div>
+  ${heroVideo(t.lang)}
   <div class="hero-in">
     <p class="hero-kicker"><i aria-hidden="true"></i>${esc(h.kicker)}<span class="hero-clock" aria-hidden="true"><span data-clock>--:--:--</span> UTC</span></p>
     <h1 id="hero-title" class="hero-wm">${wordmark({ layout: 'line', cls: 'wm-hero', title: 'LAST SIGNALS', id: 'wm-hero' })}</h1>
     <p class="hero-head">${h.head}</p>
-    <p class="hero-sub">${esc(h.sub)}</p>
     <div class="hero-cta">
-      ${live ? play : `<a class="ls-btn is-primary is-big" href="#${t.ids.founder}" data-click>${ICONS.signal}${esc(h.reserve)}</a>`}
-      <a class="ls-btn is-big hero-apps" href="${P(t.lang, 'download')}" data-click>${ICONS.download}${esc(h.apps)}</a>
-      ${live ? '' : `<div class="play-slot">${play.replace('is-primary ', '')}<span class="play-state"><i aria-hidden="true"></i>${esc(h.playState)}</span></div>`}
+      ${play}
+      <a class="ls-btn is-big hero-apps" href="${P(t.lang, 'download')}" data-click>${ICONS.download}${esc(g.download)}</a>
+      ${dc ? `<a class="ls-btn is-big hero-dc" href="${esc(dc)}" target="_blank" rel="noopener noreferrer">${ICONS.discord}<span>${esc(g.discord)}</span><span class="sr"> (${esc(t.ui.newTab)})</span></a>` : ''}
     </div>
-    ${live ? `<p class="hero-trust">${esc(h.trust)}</p><a class="hero-alt" href="#${t.ids.founder}" data-click>${esc(h.reserve)} →</a>` : ''}
   </div>
   <a class="hero-scroll" href="#${t.ids.silence}"><span>${esc(h.scroll)}</span>${ICONS.down}</a>
+</section>
+${intro(t)}`;
+}
+
+// Direkt unter dem Hero: ein Satz, was das Spiel ist, und die Merkmale, die es heute wirklich gibt
+function intro(t) {
+  const g = G[t.lang];
+  return `<section class="intro" aria-labelledby="intro-h">
+  <div class="wrap intro-in">
+    <div class="intro-txt rv">
+      <h2 class="ls-label intro-k" id="intro-h">${esc(g.feat.label)}</h2>
+      <p class="intro-sub">${esc(g.hero.sub)}</p>
+      <p class="hero-trust">${esc(g.hero.trust)}</p>
+    </div>
+    ${features(t.lang)}
+  </div>
 </section>`;
 }
 
@@ -296,7 +347,8 @@ function why(t) {
   const V = { system: visSystem, ships: visShips, lasers: visLasers, drones: visDrones, depth: visDepth, wormholes: visWormholes, bosses: visBosses, war: visWar };
   const extra = { wormholes: whTable, war: warTable };
   const f = t.fair;
-  const list = w.reasons.filter((r) => r.id !== 'system');
+  // Schiffe haben ein eigenes Kapitel (04 Hangar): hier nicht doppelt zeigen
+  const list = w.reasons.filter((r) => r.id !== 'system' && r.id !== 'ships');
   const fair = `<div class="ledger ls-panel">
           <div class="ls-head"><span class="ls-code">LDG·08</span><span class="ls-title">Nova</span></div>
           <div class="ledger-cols">
@@ -306,16 +358,16 @@ function why(t) {
           <p class="fair-note">${ICONS.cross}<span>${esc(f.note)}</span></p>
           <span class="ls-corners" aria-hidden="true"></span>
         </div>`;
-  const items = list.map((r, i) => ({ rid: r.id, title: r.t, s: r.s, vis: frame(`VIS·${pad(i + 1)}`, t.vis[r.id].head, V[r.id](t), { cls: 'vis-' + r.id, label: r.t }),
+  const items = list.map((r, i) => ({ rid: r.id, plan: r.plan, title: r.t, s: r.s, vis: frame(`VIS·${pad(i + 1)}`, t.vis[r.id].head, V[r.id](t), { cls: 'vis-' + r.id, label: r.t }),
     det: `<p>${esc(r.d)}</p><ul class="specs">${r.specs.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${extra[r.id] ? extra[r.id](t) : ''}` }));
   items.push({ rid: 'fair', title: f.title, s: f.s, vis: fair, det: `<p>${esc(f.p)}</p>` });
   return `<section class="sec ch ch-why" id="${id}" aria-labelledby="${id}-h" data-ch="3">
   <div class="wrap">
     ${secHead(w.code, w.label, w.title, w.lede, id + '-h')}
     <div class="why rv" data-why>
-      <ol class="why-tabs" aria-label="${esc(w.label)}">${items.map((it, i) => `<li><button type="button" class="why-tab" data-why-tab="${i}" aria-controls="${id}-${it.rid}" aria-pressed="${i === 0}"><span class="ls-num">${pad(i + 1)}</span><b>${esc(it.title)}</b></button></li>`).join('')}</ol>
+      <ol class="why-tabs" aria-label="${esc(w.label)}">${items.map((it, i) => `<li><button type="button" class="why-tab${it.plan ? ' is-plan' : ''}" data-why-tab="${i}" aria-controls="${id}-${it.rid}" aria-pressed="${i === 0}"><span class="ls-num">${pad(i + 1)}</span><b>${esc(it.title)}</b>${it.plan ? `<em class="plan-tag">${esc(t.map.planned)}</em>` : ''}</button></li>`).join('')}</ol>
       <div class="why-panels">${items.map((it, i) => `<article class="why-panel" id="${id}-${it.rid}" data-why-panel="${i}"${i === 0 ? '' : ' hidden'} aria-label="${esc(it.title)}">
-        <p class="why-s"><span class="ls-num">${pad(i + 1)}/${pad(items.length)}</span>${esc(it.s)}</p>
+        <p class="why-s"><span class="ls-num">${pad(i + 1)}/${pad(items.length)}</span>${it.plan ? `<em class="plan-tag">${esc(t.map.planned)}</em> ` : ''}${esc(it.s)}</p>
         <div class="why-vis">${it.vis}</div>
         ${more(w.more, it.det)}
       </article>`).join('')}</div>
@@ -352,7 +404,7 @@ function hangar(t) {
       <div class="ls-head"><span class="ls-code">HGR·04</span><span class="ls-title">${esc(h.head)}</span><span class="ls-spacer"></span><span class="hg-tag" data-hg-tag data-real="${esc(h.real)}" data-bp="${esc(h.blueprint)}">${esc(h.real)}</span></div>
       <div class="hg-grid">
         <div class="hg-stage">
-          <img class="hg-fallback" src="/img/saturn-starter.webp" srcset="/img/saturn-starter-640.webp 640w, /img/saturn-starter.webp 1280w" sizes="(max-width: 900px) 100vw, 60vw" alt="${esc(lang === 'de' ? 'SATURN-Starter, Renderbild aus dem Spiel' : 'SATURN starter, in-game render')}" loading="lazy" decoding="async">
+          ${pic('schiffe/saturn-1', lang === 'de' ? 'SATURN-Starter, Modell aus dem Spiel' : 'SATURN starter, in-game model', { imgCls: 'hg-fallback', cls: 'hg-fallback-p', sizes: '(max-width: 900px) 100vw, 60vw' })}
           <canvas class="hg-canvas" aria-hidden="true"></canvas>
           <div class="hg-pins" aria-hidden="true" data-pins data-l="${esc(h.laserSlot)}" data-g="${esc(h.genSlot)}"></div>
           <div class="hg-over" aria-hidden="true">
@@ -362,6 +414,7 @@ function hangar(t) {
   <div class="hg-slotsel"><span class="ls-label" id="hg-slots-l">${esc(h.slotsLabel)}</span>
             <div class="seg" role="group" aria-labelledby="hg-slots-l">${[['l', h.laserSlot], ['g', h.genSlot], ['off', h.slotsOff]].map(([k, l]) => `<button type="button" class="seg-b" data-hg-slot="${k}" aria-pressed="${k === 'l'}">${esc(l)}</button>`).join('')}</div>
           </div>
+          <p class="hg-state" data-hg-state role="status" aria-live="polite" data-loading="${esc(G[lang].ships.loading)}"></p>
           <p class="hg-nogl" hidden data-nogl>${esc(h.noGl)}</p>
         </div>
         <div class="hg-side">
@@ -378,6 +431,7 @@ function hangar(t) {
       </div>
       <span class="ls-corners" aria-hidden="true"></span>
     </div>
+    <p class="hg-more rv"><a class="ls-btn is-big" href="${P(lang, 'ships')}">${esc(G[lang].shots.more)}</a></p>
     ${more(h.gearMore, `<ul class="gear">${h.gearList.map(([a, b], i) => `<li><span class="ls-num">${pad(i + 1)}</span><b>${esc(a)}</b><span>${esc(b)}</span></li>`).join('')}</ul>
     <p class="plan-note">${esc(h.planNote)}</p>`, 'rv')}
   </div>
@@ -388,8 +442,10 @@ function mapSec(t) {
   const m = t.map;
   const id = t.ids.system;
   const lang = t.lang;
-  const info = (r) => `<article class="map-info" data-info="${r.id}"${r.id === 'stille' ? '' : ' hidden'}>
-    <p class="hg-spec-code"><span class="ls-num">${esc(r.code)}</span><span>${esc(r.sub)}</span></p>
+  const tag = (r) => (r.plan ? `<em class="plan-tag">${esc(m.planned)}</em>` : '');
+  const first = 'saturn';
+  const info = (r) => `<article class="map-info${r.plan ? ' is-plan' : ''}" data-info="${r.id}"${r.id === first ? '' : ' hidden'}>
+    <p class="hg-spec-code"><span class="ls-num">${esc(r.code)}</span><span>${esc(r.sub)}</span>${tag(r)}</p>
     <h3${r.home ? ` style="color:${FX[r.home]}"` : ''}>${esc(r.name)}</h3>
     <p class="map-p">${esc(r.p)}</p>
     <dl class="hg-dl">
@@ -398,15 +454,16 @@ function mapSec(t) {
     </dl>
     ${more(m.more, `<dl class="hg-dl">
       <div><dt>${esc(m.enemies)}</dt><dd>${esc(r.enemies)}</dd></div>
-      <div><dt>${esc(m.hazard)}</dt><dd>${esc(r.hazard)}</dd></div>
+      ${r.hazard ? `<div><dt>${esc(m.hazard)}</dt><dd>${esc(r.hazard)}</dd></div>` : ''}
       <div><dt>${esc(m.safe)}</dt><dd>${esc(r.safe)}</dd></div>
     </dl>${r.home ? `<table class="sec-table"><caption class="sr">${esc(m.sectors)} ${esc(r.name)}</caption><thead><tr><th scope="col">${esc(m.sectors)}</th><th scope="col">${esc(m.level)}</th><th scope="col">${esc(m.enemies)}</th></tr></thead><tbody>${homeSectors(r.home, lang).map((s) => `<tr><th scope="row"><b class="ls-num">${s.code}</b> ${esc(s.name)}</th><td class="ls-num">${s.level}</td><td>${esc(s.enemies)}</td></tr>`).join('')}</tbody></table>` : ''}`)}
   </article>`;
   return `<section class="sec ch ch-system" id="${id}" aria-labelledby="${id}-h" data-ch="5">
   <div class="wrap">
     ${secHead(m.code, m.label, m.title, m.lede, id + '-h')}
+    <p class="hg-more rv"><a class="ls-btn is-big" href="${P(lang, 'world')}">${esc(G[lang].shots.world)}</a></p>
     <div class="map ls-panel rv" data-map>
-      <div class="ls-head"><span class="ls-code">NAV·05</span><span class="ls-title">${esc(m.head)}</span><span class="ls-spacer"></span><button type="button" class="map-reset" data-map-reset>${ICONS.reset}<span>${esc(m.reset)}</span></button></div>
+      <div class="ls-head"><span class="ls-code">NAV·05</span><span class="ls-title">${esc(m.head)}</span><span class="ls-spacer"></span><button type="button" class="map-reset" data-map-reset aria-label="${esc(m.reset)}" title="${esc(m.reset)}">${ICONS.reset}<span>${esc(m.reset)}</span></button></div>
       <div class="map-grid">
         <div class="map-stage">
           <div class="map-svg" data-map-svg>${visSystem(t)}</div>
@@ -416,7 +473,7 @@ function mapSec(t) {
         </div>
         <div class="map-side">
           <span class="ls-label">${esc(m.pick)}</span>
-          <ol class="map-list">${m.regions.map((r) => `<li><button type="button" class="map-btn" data-region="${r.id}" aria-pressed="${r.id === 'stille'}"${r.home ? ` style="--fx:${FX[r.home]}"` : ''}><span class="ls-num">${esc(r.code)}</span><b>${esc(r.name)}</b><em>${esc(r.level)}</em></button></li>`).join('')}</ol>
+          <ol class="map-list">${m.regions.map((r) => `<li><button type="button" class="map-btn${r.plan ? ' is-plan' : ''}" data-region="${r.id}"${r.plan ? ` data-plan="${esc(m.planned)}"` : ''} aria-pressed="${r.id === first}"${r.home ? ` style="--fx:${FX[r.home]}"` : ''}><span class="ls-num">${esc(r.code)}</span><b>${esc(r.name)}</b><em>${r.plan ? esc(m.planned) : esc(r.level)}</em></button></li>`).join('')}</ol>
           <div class="map-infos" aria-live="polite">${m.regions.map(info).join('')}</div>
         </div>
       </div>
@@ -457,7 +514,7 @@ function founder(t) {
         <p class="fd-closed" data-fd-closed${open ? ' hidden' : ''} role="note">${ICONS.lock}<span>${esc(f.closed)}</span></p>
         <div class="fld">
           <label for="fd-cs">${esc(f.callsign)}</label>
-          <div class="fld-in"><input id="fd-cs" name="callsign" type="text" inputmode="text" autocomplete="username" spellcheck="false" autocapitalize="off" maxlength="16" required aria-describedby="fd-cs-h fd-cs-s" data-cs><span class="fld-mark" aria-hidden="true"></span></div>
+          <div class="fld-in"><input id="fd-cs" name="callsign" type="text" placeholder="${esc(f.callsignPh)}" inputmode="text" autocomplete="username" spellcheck="false" autocapitalize="off" maxlength="16" required aria-describedby="fd-cs-h fd-cs-s" data-cs><span class="fld-mark" aria-hidden="true"></span></div>
           <p class="fld-state" id="fd-cs-s" aria-live="polite" data-cs-state></p>
           <p class="fld-hint" id="fd-cs-h">${esc(f.callsignHint)}</p>
         </div>
@@ -472,12 +529,12 @@ function founder(t) {
           <p class="fld-hint" id="fd-mail-h">${esc(f.emailHint)}</p>
         </div>
         ${consentBox}
-        <button class="ls-btn is-primary is-big fd-submit" type="submit" data-click>${ICONS.signal}<span>${esc(f.submit)}</span></button>` : `${consentBox}<button class="ls-btn is-big fd-submit is-soon" type="button" disabled>${ICONS.lock}<span>${esc(f.soonBtn)}</span></button>`}
-        <p class="fd-or"><span>${esc(f.or)}</span></p>
+        <button class="ls-btn is-primary is-big fd-submit" type="submit" data-click>${ICONS.signal}<span>${esc(f.submit)}</span></button>` : `${consentBox}<a class="ls-btn is-primary is-big fd-submit" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(f.soonBtn)}</span></a>`}
+        ${FLAGS.oauth.length ? `<p class="fd-or"><span>${esc(f.or)}</span></p>
         <div class="fd-oauth">
-          ${['google', 'discord'].map((k) => `<button type="button" class="ls-btn is-soon" data-oauth="${k}" disabled>${ICONS[k]}<span>${esc(f[k])}</span><em data-soon>${esc(f.soon)}</em></button>`).join('\n          ')}
+          ${FLAGS.oauth.map((k) => `<button type="button" class="ls-btn is-soon" data-oauth="${k}" disabled>${ICONS[k]}<span>${esc(f[k])}</span><em data-soon>${esc(f.soon)}</em></button>`).join('\n          ')}
         </div>
-        <p class="fld-hint" data-oauth-note data-on="${esc(f.oauthNote)}">${esc(f.oauthSoon)}</p>
+        <p class="fld-hint" data-oauth-note data-on="${esc(f.oauthNote)}">${esc(f.oauthSoon)}</p>` : ''}
         <p class="fd-msg" data-fd-msg role="status" aria-live="polite"></p>
       </div>
       <span class="ls-corners" aria-hidden="true"></span>
@@ -518,6 +575,7 @@ ${rail(t)}
 ${hud(t)}
 <main id="main" class="cine">
 ${hero(t)}
+${shotsSection(t.lang, { ships: P(t.lang, 'ships'), world: P(t.lang, 'world') })}
 ${silence(t)}
 ${choose(t)}
 ${why(t)}
@@ -531,8 +589,16 @@ ${footer(page, t)}`;
 }
 
 // ---------- Unterseiten ----------
+// Jede Unterseite hat ihr eigenes Spielbild im Kopf (Aufnahmen aus dem Spiel, HUD aus)
+const SUB_IMG = { ships: 'spiel/flug-saturn', world: 'spiel/kampf-europa', news: 'spiel/tor-saturn', download: 'spiel/flug-europa', hall: 'spiel/boss-dread', wiki: 'spiel/station-saturn', impressum: 'spiel/station-eris', imprint: 'spiel/station-eris', datenschutz: 'spiel/station-eris', privacy: 'spiel/station-eris' };
+function subHero(page, low) {
+  const key = SUB_IMG[page.id.replace(/^(de|en)-/, '')];
+  if (!key) return '<div class="sub-bg" aria-hidden="true"></div>';
+  return `<div class="sub-bg is-plain" aria-hidden="true"></div>
+<div class="sub-hero${low ? ' is-low' : ''}" aria-hidden="true">${pic(key, '', { sizes: '100vw', eager: true, high: true })}</div>`;
+}
 function subShell(page, t, kicker, title, lede, inner) {
-  return `<div class="sub-bg" aria-hidden="true"></div>
+  return `${subHero(page)}
 ${header(page, t)}
 <main id="main" class="sub">
   <div class="wrap">
@@ -549,8 +615,10 @@ ${footer(page, t)}`;
 
 function newsBody(page, t) {
   const l = t.log;
+  const imgs = G[t.lang].newsImg;
   return subShell(page, t, t.news.kicker, t.news.title, l.lede, `<div class="log-grid">
-      <ol class="log-list">${l.entries.map((e) => `<li class="log-entry">
+      <ol class="log-list">${l.entries.map((e, i) => `<li class="log-entry${imgs[i] ? ' has-img' : ''}">
+        ${imgs[i] ? `<figure class="log-img">${pic(imgs[i][0], imgs[i][1], { sizes: '(max-width: 900px) 100vw, 280px' })}</figure>` : ''}
         <article>
           <p class="log-meta"><time class="ls-num">${esc(e.date)}</time><span class="log-tag">${esc(e.tag)}</span></p>
           <h2>${esc(e.title)}</h2>
@@ -595,14 +663,22 @@ function wikiBody(page, t) {
 function hallBody(page, t) {
   const h = t.hall;
   const L = h.live;
-  const cta = `${P(t.lang, 'home')}#${t.ids.founder}`;
+  const iv = h.invite;
   const orders = ['honor', 'xp', 'kills', 'level'];
   const fx = ['europa', 'saturn', 'eris'];
   const FXC = { europa: '#d8b25a', saturn: '#e0782a', eris: '#9a52ff' }; // wie src/factions.js FX_HEX
-  // Tafel wird von src/hall.js mit echten Daten gefüllt (hall_of_fame). Ohne JavaScript: leere Plätze wie bisher.
+  // Leere Tafel: Einladung statt leerer Plätze. src/hall.js füllt die Tafel mit echten Daten (hall_of_fame)
+  // und zeigt die Einladung wieder, solange niemand eingetragen ist.
+  const invite = `<li class="hall-invite"><div class="hi-in">
+    <p class="ls-label"><span class="ls-num">01</span> ${esc(iv.kicker)}</p>
+    <p class="hi-title">${esc(iv.title)}</p>
+    <p class="hi-p">${esc(iv.p)}</p>
+    <ol class="hi-steps">${iv.steps.map((x, i) => `<li><span class="ls-num">${pad(i + 1)}</span>${esc(x)}</li>`).join('')}</ol>
+    <div class="hi-act"><a class="ls-btn is-primary is-gold is-big" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(iv.play)}</span></a>${RELEASE.published ? `<a class="ls-btn is-big" href="${P(t.lang, 'download')}">${ICONS.download}<span>${esc(iv.dl)}</span></a>` : ''}</div>
+  </div></li>`;
   return subShell(page, t, h.kicker, h.title, h.lede, `<div class="hall-grid">
     <section class="plaque ls-panel" aria-labelledby="plaque-h" data-hall data-lang="${t.lang}"
-      data-t="${esc(JSON.stringify({ loading: L.loading, pilots: L.pilots, empty: L.empty, offline: L.offline, cols: L.cols }))}">
+      data-t="${esc(JSON.stringify({ loading: L.loading, pilots: L.pilots, empty: L.empty, offline: L.offline, cols: L.cols, open: h.open }))}">
       <div class="ls-head"><span class="ls-code">HOF·01</span><span class="ls-title" id="plaque-h">${esc(h.plaque)}</span><span class="ls-spacer"></span><span class="hall-state"><i aria-hidden="true"></i><span data-hall-state>${esc(h.open)}</span></span></div>
       <div class="hall-ctl">
         <div class="hall-seg" role="group" aria-label="${esc(h.kicker)}">${orders.map((o, i) => `<button type="button" class="${i === 0 ? 'on' : ''}" aria-pressed="${i === 0}" data-hall-order="${o}">${esc(L.tabs[i])}</button>`).join('')}</div>
@@ -610,19 +686,19 @@ function hallBody(page, t) {
       </div>
       <div class="plaque-in">
         <svg class="plaque-crest" viewBox="0 0 120 120" aria-hidden="true"><path d="M60 6L106 32V88L60 114L14 88V32Z" class="pq-l"/><path d="M60 20L94 39V81L60 100L26 81V39Z" class="pq-l2"/><path d="M30 60H50L55 44L62 78L67 60H90" class="pq-sig"/></svg>
-        <ol class="plaque-rows" data-hall-rows>
-          <li class="is-first"><span class="ls-num">01</span><b>${esc(h.first)}</b><a class="ls-btn is-primary" href="${cta}" data-click>${esc(h.cta)}</a></li>
-          ${[2, 3, 4, 5].map((n) => `<li><span class="ls-num">${pad(n)}</span><i aria-hidden="true"></i><span class="sr">${esc(h.slot)} ${n}: ${esc(h.open)}</span></li>`).join('')}
-        </ol>
+        <ol class="plaque-rows" data-hall-rows>${invite}</ol>
+        <template data-hall-invite>${invite}</template>
         <p class="plaque-note">${esc(L.note)}</p>
       </div>
       <span class="ls-corners" aria-hidden="true"></span>
     </section>
     <aside class="hall-cats" aria-labelledby="cats-h">
       <h2 class="ls-label" id="cats-h">${esc(h.listsHead)}</h2>
-      <ol class="cat-list">${h.lists.map((l, i) => `<li><span class="ls-num">${pad(i + 1)}</span>${esc(l)}</li>`).join('')}</ol>
-      <p class="plan-note">${esc(h.periods)}. ${esc(h.note)}</p>
-      <p class="plan-note">${esc(h.firstNote)} <a href="${cta}" data-click>${esc(h.cta)}</a></p>
+      <p class="hc-sub">${esc(h.nowHead)}</p>
+      <ol class="cat-list">${h.now.map((l, i) => `<li><span class="ls-num">${pad(i + 1)}</span>${esc(l)}</li>`).join('')}</ol>
+      <p class="hc-sub">${esc(h.planHead)}</p>
+      <ol class="cat-list is-plan">${h.lists.map((l, i) => `<li><span class="ls-num">${pad(i + 5)}</span>${esc(l)}</li>`).join('')}</ol>
+      <p class="plan-note">${esc(h.periods)} ${esc(h.note)}</p>
     </aside>
   </div>`);
 }
@@ -640,8 +716,14 @@ function dlTile(p, i, t) {
   const verCell = isWeb && !p.alt.length ? SITE.version : RELEASE.version;
   const mainMeta = isWeb ? '' : `${extOf(p.main)} · ${mainSize}`;
   const mainLabel = isWeb ? (p.id === 'browser' ? t.hdr.play : d.open) : d.download;
-  const mainBtn = `<a class="ls-btn is-primary is-big dl-main" href="${esc(mainHref)}"${isWeb ? '' : ` data-file="${esc(FILES[p.main].file)}"`} data-click>${isWeb ? ICONS.play : ICONS.download}<span>${esc(mainLabel)}</span>${mainMeta ? `<em class="ls-num">${esc(mainMeta)}</em>` : ''}</a>`;
-  const alts = p.alt.length ? `<ul class="dl-alts">${p.alt.map((k) => `<li><a class="dl-alt" href="${esc(releaseUrl(k))}" data-file="${esc(FILES[k].file)}">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(extOf(k))} · ${esc(fileSize(k, lang))}</em></a></li>`).join('')}</ul>` : '';
+  // Release noch nicht veröffentlicht: keine Links ins Leere, sondern ehrlich „bald verfügbar“
+  const live = RELEASE.published;
+  const mainBtn = isWeb || live
+    ? `<a class="ls-btn is-primary is-big dl-main" href="${esc(mainHref)}"${isWeb ? '' : ` data-file="${esc(FILES[p.main].file)}"`} data-click>${isWeb ? ICONS.play : ICONS.download}<span>${esc(mainLabel)}</span>${mainMeta ? `<em class="ls-num">${esc(mainMeta)}</em>` : ''}</a>`
+    : `<span class="ls-btn is-big dl-main is-pending" aria-disabled="true">${ICONS.download}<span>${esc(d.pending)}</span></span>`;
+  const alts = p.alt.length ? `<ul class="dl-alts">${p.alt.map((k) => live
+    ? `<li><a class="dl-alt" href="${esc(releaseUrl(k))}" data-file="${esc(FILES[k].file)}">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(extOf(k))} · ${esc(fileSize(k, lang))}</em></a></li>`
+    : `<li><span class="dl-alt is-pending">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(d.pendingAlt)} · ${esc(extOf(k))}</em></span></li>`).join('')}</ul>` : '';
   const state = isWeb && !p.alt.length ? d.stateWeb : p.id === 'iphone' || p.id === 'ipad' ? `${d.stateWeb} / .ipa: ${d.sideload}` : d.stateTest;
   return `<li class="dl-item" data-dl="${p.id}" id="dl-${p.id}">
     <article class="dl ls-panel" aria-labelledby="dl-${p.id}-h">
@@ -674,15 +756,24 @@ function downloadBody(page, t) {
     <ul class="dl-grid" data-dl-grid>${PLATFORMS.map((p, i) => dlTile(p, i, t)).join('')}</ul>
     <aside class="dl-note ls-panel" aria-labelledby="dl-note-h">
       <div class="ls-head"><span class="ls-code">DL·INF</span><span class="ls-title" id="dl-note-h">${esc(d.noteHead)}</span></div>
-      <ul class="dl-notes">${d.notes.map((n) => `<li>${esc(n.replace('{v}', RELEASE.version))}</li>`).join('')}</ul>
-      <p class="dl-release"><a class="ls-btn" href="${esc(releasePage())}" target="_blank" rel="noopener noreferrer">${esc(d.release)}${ICONS.out}<span class="sr"> (${esc(t.ui.newTab)})</span></a></p>
+      <ul class="dl-notes">${RELEASE.published ? '' : `<li><b>${esc(d.pendingNote)}</b></li>`}${d.notes.map((n) => `<li>${esc(n.replace('{v}', RELEASE.version))}</li>`).join('')}</ul>
+      ${RELEASE.published ? `<p class="dl-release"><a class="ls-btn" href="${esc(releasePage())}" target="_blank" rel="noopener noreferrer">${esc(d.release)}${ICONS.out}<span class="sr"> (${esc(t.ui.newTab)})</span></a></p>` : `<p class="dl-release"><a class="ls-btn is-primary" href="${SITE.play}">${ICONS.play}<span>${esc(G[t.lang].hero.play)}</span></a></p>`}
       <span class="ls-corners" aria-hidden="true"></span>
     </aside>`);
 }
 
+function shipsPage(page, t) {
+  const g = G[page.lang].ships;
+  return subShell(page, t, g.kicker, g.title, g.lede, shipsBody(page.lang));
+}
+function worldPage(page, t) {
+  const g = G[page.lang].world;
+  return subShell(page, t, g.kicker, g.title, g.lede, worldBody(page.lang, t.factions.list));
+}
+
 function legalBody(page, t) {
   const L = legal(page.id, FLAGS);
-  return `<div class="sub-bg" aria-hidden="true"></div>
+  return `${subHero(page, true)}
 ${header(page, t)}
 <main id="main" class="legal">
   <div class="wrap legal-wrap">
@@ -707,8 +798,8 @@ ${header(page, t)}
 ${footer(page, t)}`;
 }
 
-export function renderPage(id, { mode = 'dev', reservationOpen = false, oauth = [] } = {}) {
-  FLAGS = { reservationOpen, oauth };
+export function renderPage(id, { mode = 'dev', reservationOpen = false, oauth = [], mail = '' } = {}) {
+  FLAGS = { reservationOpen, oauth, mail };
   const page = pageById(id);
   if (!page) throw new Error('Unbekannte Seite: ' + id);
   setLinkMode(mode);
@@ -720,6 +811,8 @@ export function renderPage(id, { mode = 'dev', reservationOpen = false, oauth = 
       : k === 'wiki' ? wikiBody(page, t)
         : k === 'hall' ? hallBody(page, t)
           : k === 'download' ? downloadBody(page, t)
+          : k === 'ships' ? shipsPage(page, t)
+          : k === 'world' ? worldPage(page, t)
           : page.id === 'not-found' ? notFoundBody(page, t) : legalBody(page, t);
   return `<!doctype html>
 <html lang="${page.lang}" data-page="${page.id}">
