@@ -30,6 +30,8 @@ import {
   resetEvents, updateEvents, startEvent, eventEnemyKilled, eventCrateOpened, freighterDestroyed, whereText, rewardText,
 } from './events.js';
 import * as C from './config.js';
+import * as F from './world3d.js';
+import { tacticalReach } from '../flight/aim.js';
 
 const AMMO_KEYS = ['L1', 'L2', 'L3', 'L4', 'SAB', 'SAL'];
 const MAX_LASERS = 16;
@@ -57,6 +59,7 @@ function makeEntity(id, kind) {
   return {
     id, kind, type: null, faction: null,
     x: 0, z: 0, vx: 0, vz: 0, rot: 0, radius: 10,
+    y: 0, vy: 0, py: 0, pitch: 0,     // Höhe und Steigrate (3D-Flug, Planung/FLUGMODELL.md); im Taktikweg ohne Wirkung
     hp: 0, hpMax: 0, shield: 0, shieldMax: 0,
     targetId: null, attacking: false,
     alive: true, safe: false,
@@ -225,6 +228,9 @@ export class World {
     // Combo: schnelle Abschüsse hintereinander (Anzeige: world.combo = { count, timeLeft, mult, xp, credits })
     this.combo = { count: 0, timeLeft: 0, mult: 0, xp: 0, credits: 0, honor: 0, best: 0 };
     this._lastAimOk = true;
+    // 3D-Flug (Planung/FLUGMODELL.md): false = Taktikweg (alter Klickflug, bitgleich), true = Flugkern src/flight
+    this.flight3d = false;
+    F.initWorld3d(this, opts);
 
     // Spieler
     const p = makeEntity('player', 'player');
@@ -242,6 +248,7 @@ export class World {
     // der Flugrichtung (m/s²), slip = seitliches Driften (m/s, > 0 = nach rechts), aim = Nase folgt dem Ziel (Angriff)
     p.bank = 0; p.pitch = 0; p.turnRate = 0; p.accel = 0; p.slip = 0; p.aim = false;
     this.player = p;
+    F.initPlayer3d(this, p);
     this._abilityHit = false;        // Schaden aus Extras/Techs/Minen (kein VMP-Heilen, keine Laser-Regeln)
     initAbilities(this);
     this._refreshStats();
@@ -280,9 +287,9 @@ export class World {
     this.profile.stats.playSeconds += dt;
 
     // Position vor dem Schritt (für weiche Darstellung)
-    p.px = p.x; p.pz = p.z; p.prot = p.rot;
+    p.px = p.x; p.pz = p.z; p.prot = p.rot; p.py = p.y;
     const en = this.enemies;
-    for (let i = 0; i < en.length; i++) { const e = en[i]; e.px = e.x; e.pz = e.z; e.prot = e.rot; }
+    for (let i = 0; i < en.length; i++) { const e = en[i]; e.px = e.x; e.pz = e.z; e.prot = e.rot; e.py = e.y; }
     const wr = this.wrecks;
     for (let i = 0; i < wr.length; i++) { const e = wr[i]; e.px = e.x; e.pz = e.z; e.prot = e.rot; }
     const mv = this.movers;
@@ -306,6 +313,7 @@ export class World {
         if (!e.temp && t >= e.respawnAt) this._respawnEnemy(e);
         continue;
       }
+      if (e.drill) { e.drill(this, e, dt); continue; } // Übungsdrohne (Fluglabor): feste Bahn, schießt nicht
       if (e.rank === 'alpha') this._alphaTick(e, dt);
       if (e.def.brood || e.def.regen || e.def.jam) this._traitTick(e, dt);
       e.thinkCd -= dt;
@@ -337,6 +345,7 @@ export class World {
     this._updateCombo(dt);
 
     this._updateRockets(dt);
+    if (this.bolts.n) F.updateBolts(this, dt);
 
     // Wracks verfallen
     for (let i = wr.length - 1; i >= 0; i--) {
@@ -346,14 +355,14 @@ export class World {
     const cr = this.crates;
     for (let i = 0; i < cr.length; i++) {
       const c = cr[i];
-      if (!c.alive && !c.temp && t >= c.respawnAt) { this._itemPoint(false); c.x = c.px = this._pt.x; c.z = c.pz = this._pt.z; this._revive(c); }
+      if (!c.alive && !c.temp && t >= c.respawnAt) { this._itemPoint(false); c.x = c.px = this._pt.x; c.z = c.pz = this._pt.z; c.y = c.py = F.itemY(this, false); this._revive(c); }
     }
     const ore = this.ores;
     for (let i = 0; i < ore.length; i++) {
       const o = ore[i];
       if (!o.alive && t >= o.respawnAt) {
         this._itemPoint(this.rng.next() < C.ORE_IN_FIELDS);
-        o.x = o.px = this._pt.x; o.z = o.pz = this._pt.z;
+        o.x = o.px = this._pt.x; o.z = o.pz = this._pt.z; o.y = o.py = F.itemY(this, true);
         o.amount = this.rng.int(C.ORE_CHUNK[0], C.ORE_CHUNK[1]);
         this._revive(o);
       }
@@ -394,13 +403,15 @@ export class World {
 
     const tgt = p.targetId ? this.entities.get(p.targetId) : null;
     if (this.docked) { this._haltPlayer(); p.hasMove = false; }
-    else this._movePlayer(dt, tgt);
+    else if (this.flight3d) F.flyPlayer(this, dt, tgt);
+    else { this._movePlayer(dt, tgt); if (p.y !== 0 || p.vy !== 0) F.planeCatch(this, dt); }
 
     this._updateZones();
 
-    // außerhalb der Karte
+    // außerhalb der Karte (3D-Flug: Warnung ab 83 %, jenseits schiebt ein Navigationsfeld zurück, ohne Schaden)
     const size = this.sector.size;
-    if (Math.abs(p.x) > size || Math.abs(p.z) > size) {
+    const out3 = this.flight3d ? F.edge3d(this, dt) : false;
+    if (this.flight3d ? out3 : Math.abs(p.x) > size || Math.abs(p.z) > size) {
       this._msg('Achtung: Du bist außerhalb der Karte! Dein Schiff nimmt Schaden. Flieg zurück.', 'warn', 'oob', 3);
       if (t >= this._invulnUntil) {
         const d = p.hpMax * C.OUT_OF_MAP_DAMAGE * dt;
@@ -416,7 +427,7 @@ export class World {
     } else { this._outTick = 0; this._outAcc = 0; }
 
     // Schild und Leben nachladen
-    if (p.shield < p.shieldMax && t - this._lastHit >= C.SHIELD_REGEN_DELAY) {
+    if (p.shield < p.shieldMax && t - this._lastHit >= C.SHIELD_REGEN_DELAY && !(this.flight3d && F.reiseActive(this))) {
       p.shield += p.shieldMax * C.SHIELD_REGEN * dt;
       if (p.shield > p.shieldMax) p.shield = p.shieldMax;
     }
@@ -432,7 +443,9 @@ export class World {
     }
 
     this._updatePending(dt);
-    this._updateLasers(dt, tgt);
+    if (this.flight3d) F.updateGuns(this, dt, tgt);
+    else this._updateLasers(dt, tgt);
+    if (this.flight3d) F.tractor(this, dt);
     this._pickups();
   }
 
@@ -565,8 +578,9 @@ export class World {
   }
 
   /** Stoß auf den Spieler (Rammangriff). Richtung (dx, dz), Stärke in m/s. */
-  knockPlayer(dx, dz, v) {
+  knockPlayer(dx, dz, v, dy = 0) {
     const p = this.player;
+    if (this.flight3d) { F.knock3d(this, dx, dy, dz, v); return; }
     p.vx += dx * v; p.vz += dz * v;
     p.fs *= 0.6;
   }
@@ -576,25 +590,28 @@ export class World {
     p.vx = 0; p.vz = 0; p.fs = 0; p.speed = 0; p.thrust = 0;
     p.bank = 0; p.pitch = 0; p.turnRate = 0; p.accel = 0; p.slip = 0; p.aim = false; p.course = p.rot;
     this._spool = 0;
+    if (this.fl) F.halt3d(this);
   }
 
   /** Sichere Zone und nahes Sprungtor neu bestimmen. */
   _updateZones() {
     const p = this.player;
     const st = this.station;
+    // 3D-Flug: Zonen als Zylinder (2D-Abstand und |Δy| ≤ 400 m), Taktikweg wie bisher 2D
+    const zy = this.flight3d ? F.ZONE_DY : Infinity;
     if (st) {
       const dx = p.x - st.x, dz = p.z - st.z;
-      this.inSafeZone = dx * dx + dz * dz <= C.SAFE_RADIUS * C.SAFE_RADIUS;
+      this.inSafeZone = dx * dx + dz * dz <= C.SAFE_RADIUS * C.SAFE_RADIUS && Math.abs(p.y - st.y) <= zy;
     } else this.inSafeZone = false;
     p.safe = this.inSafeZone;
     // Reparatur auch an jedem Sprungtor (Werftbake, 450 m): nicht nur in der Heimatstation (Toni 31.10.)
     this.atGate = false;
-    for (let i = 0; i < this.portals.length; i++) { const o = this.portals[i], gx = p.x - o.x, gz = p.z - o.z; if (gx * gx + gz * gz <= C.GATE_REPAIR_RADIUS * C.GATE_REPAIR_RADIUS) { this.atGate = true; break; } }
+    for (let i = 0; i < this.portals.length; i++) { const o = this.portals[i], gx = p.x - o.x, gz = p.z - o.z; if (gx * gx + gz * gz <= C.GATE_REPAIR_RADIUS * C.GATE_REPAIR_RADIUS && Math.abs(p.y - o.y) <= zy) { this.atGate = true; break; } }
     let np = null;
     for (let i = 0; i < this.portals.length; i++) {
       const o = this.portals[i];
       const dx = p.x - o.x, dz = p.z - o.z;
-      if (dx * dx + dz * dz <= C.PORTAL_RADIUS * C.PORTAL_RADIUS) { np = o; break; }
+      if (dx * dx + dz * dz <= C.PORTAL_RADIUS * C.PORTAL_RADIUS && Math.abs(p.y - o.y) <= zy) { np = o; break; }
     }
     this.nearPortal = np;
   }
@@ -630,8 +647,13 @@ export class World {
         p.attacking = false;
       } else {
         const dx = tgt.x - p.x, dz = tgt.z - p.z;
-        dist = Math.sqrt(dx * dx + dz * dz);
+        // fremder Spieler (PvP): räumlich messen und nur in der Ebene treffen – ein 3D-Pilot 500 m höher ist für den
+        // Klickflug außer Reichweite (das Opfer prüft dieselbe Regel, mp-core.js tacticalReach). Gegner wie bisher
+        // in der Ebene (Taktik-Goldtest bitgleich).
+        const pvpT = tgt.kind === 'player', dy = pvpT ? (tgt.y || 0) - (p.y || 0) : 0;
+        dist = Math.sqrt(dx * dx + dz * dz + dy * dy);
         if (dist > C.PLAYER_RANGE) this._rangeMsg(tgt, 'Ziel ist zu weit weg. Flieg näher ran (650 m).', false);
+        else if (pvpT && !tacticalReach(p, tgt)) this._rangeMsg(tgt, 'Ziel fliegt zu hoch oder zu tief. In der Draufsicht trifft der Laser nur in der Ebene.', false);
         else {
           this._rangeWarnId = null;
           // Laser feuern nach vorn: Ziel muss vor der Nase liegen (die Nase dreht im Angriff selbst zum Ziel)
@@ -711,14 +733,15 @@ export class World {
     if (this.cloaked) breakCloak(this, 'Angriff');
     let chance = this.hitChance(p, C.PLAYER_RANGE, tgt);
     if (tgt.jinkT > 0 && chance > C.JINK_HIT) chance = C.JINK_HIT;
+    if (this.flight3d && !src) chance *= F.AUTO_K; // Feuerleitrechner im 3D-Flug: Handzielen lohnt sich immer
     let hit = this.rng.next() < chance;
     this._lastCombat = this.time;
     let dx = tgt.x - p.x, dz = tgt.z - p.z;
     const d = Math.sqrt(dx * dx + dz * dz) || 1;
     dx /= d; dz /= d;
     // Ziel in Deckung hinter einem Asteroiden: der Schuss schlägt im Brocken ein
-    if (segRock(this.rocks, p.x, p.z, tgt.x, tgt.z, 2, this._pt)) {
-      this.bus.emit('shot', { from, to: tgt.id, laser: laserId, ammo: ammoKey, hit: false, idx, x: this._pt.x, z: this._pt.z, dx, dz, blocked: true, drone: !!src });
+    if (this.flight3d ? F.segRock3(this, p, tgt, 2, this._pt) : segRock(this.rocks, p.x, p.z, tgt.x, tgt.z, 2, this._pt)) {
+      this.bus.emit('shot', { from, to: tgt.id, laser: laserId, ammo: ammoKey, hit: false, idx, x: this._pt.x, z: this._pt.z, y: this._pt.y, dx, dz, blocked: true, drone: !!src });
       this._msg(`${tgt.name} ist in Deckung hinter einem Asteroiden. Flieg zur Seite für freie Schussbahn.`, 'info', 'cover', 8);
       this._provoke(tgt);
       return;
@@ -727,12 +750,14 @@ export class World {
     const off = hit ? side * tgt.radius * 0.5 : (side < 0 ? -1 : 1) * tgt.radius * (1.4 + this.rng.next());
     const hx = tgt.x - dx * tgt.radius * (hit ? 0.7 : 0) - dz * off;
     const hz = tgt.z - dz * tgt.radius * (hit ? 0.7 : 0) + dx * off;
-    this.bus.emit('shot', { from, to: tgt.id, laser: laserId, ammo: ammoKey, hit, idx, x: hx, z: hz, dx, dz, drone: !!src });
+    this.bus.emit('shot', { from, to: tgt.id, laser: laserId, ammo: ammoKey, hit, idx, x: hx, z: hz, y: tgt.y, dx, dz, drone: !!src });
     if (!hit) { this._provoke(tgt); return; }
     this._hitFrom = from;
     // kritischer Treffer der Schiffslaser: 1,5-facher Schaden (SAL-Salven zeigen sich weiter als kritisch, ohne Zuschlag)
     const cm = crit && ammoKey !== 'SAL' ? C.CRIT_MULT : 1;
-    this._hitEnemy(tgt, rollDamage(this.rng, src ? src.damage : L.damage, mult * cm), shieldOnly, crit, dx, dz, hx, hz);
+    // Feuerleitrechner im 3D-Flug gegen NPC: Schaden × AUTO_PVE (Runde 3, params.js); Taktik und Drohnen unverändert
+    const k3 = this.flight3d && !src && tgt.kind === 'enemy' ? F.AUTO_PVE : 1;
+    this._hitEnemy(tgt, rollDamage(this.rng, src ? src.damage : L.damage, mult * cm) * k3, shieldOnly, crit, dx, dz, hx, hz);
     this._hitFrom = null;
   }
 
@@ -742,6 +767,7 @@ export class World {
    * Ausweichen zahlen sich so für beide Seiten aus. shooter/tgt: { x, z, vx, vz }.
    */
   hitChance(shooter, range, tgt) {
+    if (this.flight3d) return F.hitChance3d(this, shooter, range, tgt);
     const dx = tgt.x - shooter.x, dz = tgt.z - shooter.z;
     const d = Math.sqrt(dx * dx + dz * dz) || 1;
     const k = d / (range > 1 ? range : 1);
@@ -761,14 +787,14 @@ export class World {
     if (e.kind === 'player') {
       if (this.mp && e.pvpOk) this.mp.hit(e, dmg, shieldOnly, crit, rocket);
       this._lastCombat = this.time;
-      this.bus.emit('damage', { id: e.id, hull: Math.round(dmg), shield: 0, x: e.x, z: e.z, crit, dx, dz, hx, hz, from: this._hitFrom || 'player' });
+      this.bus.emit('damage', { id: e.id, hull: Math.round(dmg), shield: 0, x: e.x, z: e.z, y: e.y, hy: this._hy ?? e.y, crit, dx, dz, hx, hz, from: this._hitFrom || 'player' });
       this._hitFrom = null;
       return;
     }
     // Koop-Gast: Schaden rechnet der Gastgeber (eine Wahrheit für beide), hier nur melden und anzeigen
     if (this.coop && this.coop.guest && !this.coop.applying) {
       this.coop.hit(e, dmg, shieldOnly);
-      this.bus.emit('damage', { id: e.id, hull: Math.round(dmg), shield: 0, x: e.x, z: e.z, crit, dx, dz, hx, hz, from: this._hitFrom || 'player' });
+      this.bus.emit('damage', { id: e.id, hull: Math.round(dmg), shield: 0, x: e.x, z: e.z, y: e.y, hy: this._hy ?? e.y, crit, dx, dz, hx, hz, from: this._hitFrom || 'player' });
       return;
     }
     const p = this.player;
@@ -787,8 +813,8 @@ export class World {
     if (!rocket && !this._abilityHit) leech(this, hull + shield); // VMP
     const from = this._hitFrom || 'player';
     this._hitFrom = null;
-    this.bus.emit('damage', { id: e.id, hull, shield, x: e.x, z: e.z, crit, dx, dz, hx, hz, from, guard: e.guardT > 0, drone: from !== 'player' || undefined });
-    this._hitReact(e, hull + shield, dx, dz, crit, rocket);
+    this.bus.emit('damage', { id: e.id, hull, shield, x: e.x, z: e.z, y: e.y, hy: this._hy ?? e.y, crit, dx, dz, hx, hz, from, guard: e.guardT > 0, drone: from !== 'player' || undefined });
+    this._hitReact(e, hull + shield, dx, dz, crit, rocket, this._hdy || 0);
     if (e.perk === 'reflect' && hull + shield > 0) this._reflect(e, hull + shield, dx, dz);
     this._provoke(e);
     if (e.hp <= 0) { this._killEnemy(e); return; }
@@ -797,7 +823,7 @@ export class World {
   }
 
   /** Treffer-Reaktion: Stoß in Schussrichtung, Taumeln, manchmal seitliches Ausweichen. */
-  _hitReact(e, dmg, dx, dz, crit, rocket = false) {
+  _hitReact(e, dmg, dx, dz, crit, rocket = false, dy = 0) {
     e.hitAt = this.time;
     const pool = e.hpMax + e.shieldMax || 1;
     // schwerer Treffer (Rakete, kritisch, ≥ 10 % Leben+Schild) bricht das Aufladen eines Spezialangriffs ab
@@ -813,10 +839,11 @@ export class World {
     if (e.def.speed <= 0) return; // Nest: nur Pulsieren
     const kick = C.HIT_KNOCK * s * (e.rank === 'alpha' ? 0.35 : e.rank === 'elite' ? 0.7 : 1);
     e.vx += dx * kick; e.vz += dz * kick;
+    if (dy) e.vy += dy * kick;
     if (e.dodgeCd <= 0 && !e.spPhase && this.rng.next() < C.DODGE_CHANCE * (0.5 + aiOf(e).dodge) * (e.rank === 'normal' ? 1 : 1.4)) {
       const side = this.rng.sign(), v = e.def.speed * 0.3;
       e.vx -= dz * side * v; e.vz += dx * side * v;
-      jink(this, e, -dx, -dz);
+      jink(this, e, -dx, -dz, -dy);
     }
   }
 
@@ -863,6 +890,10 @@ export class World {
 
   /** Für events.js */
   provoke(e) { this._provoke(e); }
+  /** Frachter zerstört (3D-Gegnerfeuer) */
+  _freighterDown(t) { freighterDestroyed(this, t); }
+  /** Ansicht wechseln: true = 3D-Flug (Verfolger, Cockpit), false = Taktik (Klickflug in der Ebene) */
+  setFlight3d(on) { F.setFlight3d(this, !!on); }
 
   /**
    * PvP-Treffer eines fremden Spielers am eigenen Schiff (mp.js hat Regeln, Entfernung und Rate geprüft).
@@ -888,6 +919,7 @@ export class World {
   /** Von ai.js aufgerufen: Gegner feuert einen Schuss auf den Spieler (oder einen Frachter).
    *  → false, wenn er nicht feuern konnte (Bug nicht im Feuerbogen: Abklingzeit bleibt, er schießt, sobald er ausgerichtet ist). */
   enemyFire(e, tgt = this.player) {
+    if (this.flight3d) return F.enemyFire3d(this, e, tgt);
     const p = this.player;
     const toPlayer = tgt === p;
     if (toPlayer ? !this.playerTargetable() : !tgt.alive) return true;
@@ -929,7 +961,7 @@ export class World {
     if (e.def.boss) this._msg(`${e.name} ist gefallen. Die Beute gehört dem letzten Treffer.`, 'quest');
     this.entities.delete(e.id);
     if (p.targetId === e.id) { p.targetId = null; p.attacking = false; }
-    this.bus.emit('explode', { id: e.id, x: e.x, z: e.z, size: this.explodeSize(e), kind: 'enemy', rank: e.rank || null });
+    this.bus.emit('explode', { id: e.id, x: e.x, z: e.z, y: e.y, size: this.explodeSize(e), kind: 'enemy', rank: e.rank || null });
     this.bus.emit('despawn', { id: e.id });
     if (this._alpha === e) this._alpha = null;
     if (this._announce === e) this._announce = null;
@@ -1027,7 +1059,10 @@ export class World {
   }
 
   /** Sichtlinie a→b durch einen großen Asteroiden verdeckt? (für ai.js) */
-  losBlocked(ax, az, bx, bz, pad = 0) { return segRock(this.rocks, ax, az, bx, bz, pad, null); }
+  losBlocked(ax, az, bx, bz, pad = 0, ay = 0, by = 0) {
+    if (this.flight3d) return F.segRock3xyz(this, ax, ay, az, bx, by, bz, pad, null);
+    return segRock(this.rocks, ax, az, bx, bz, pad, null);
+  }
 
   /** Spezialangriff trifft den Spieler (ai.js). */
   specialHit(e, dmg, dx, dz, hx, hz, kind) {
@@ -1042,7 +1077,7 @@ export class World {
   }
 
   /** Gefahrenzone anlegen (Säurewolke). Grafik liest world.hazards (active = true). */
-  addHazard(kind, x, z, radius, duration, dps, from) {
+  addHazard(kind, x, z, radius, duration, dps, from, y = 0) {
     let h = null, oldest = null;
     for (let i = 0; i < this.hazards.length; i++) {
       const o = this.hazards[i];
@@ -1050,7 +1085,7 @@ export class World {
       if (!oldest || o.t < oldest.t) oldest = o;
     }
     if (!h) h = oldest;
-    h.active = true; h.kind = kind; h.x = x; h.z = z; h.radius = radius; h.t = duration; h.duration = duration;
+    h.active = true; h.kind = kind; h.x = x; h.z = z; h.y = y; h.radius = radius; h.t = duration; h.duration = duration;
     h.dps = dps; h.from = from; h.acc = 0; h.tick = 0;
     return h;
   }
@@ -1063,9 +1098,9 @@ export class World {
       const h = this.hazards[i];
       if (!h.active) continue;
       h.t -= dt;
-      const dx = p.x - h.x, dz = p.z - h.z;
+      const dx = p.x - h.x, dz = p.z - h.z, dy = this.flight3d ? p.y - (h.y || 0) : 0;
       const r = h.radius + p.radius * 0.5;
-      if (ok && dx * dx + dz * dz < r * r) h.acc += h.dps * dt;
+      if (ok && dx * dx + dz * dz + dy * dy < r * r) h.acc += h.dps * dt;
       h.tick += dt;
       if ((h.tick >= 0.5 || h.t <= 0) && h.acc >= 1) {
         applyDamage(p, Math.round(h.acc), false, HIT);
@@ -1116,6 +1151,7 @@ export class World {
       e.rot = this.rng.range(-Math.PI, Math.PI);
     }
     e.px = e.homeX = e.x; e.pz = e.homeZ = e.z; e.prot = e.rot;
+    F.respawnY(this, e, L, g);
     e.vx = 0; e.vz = 0; e.speed = 0; e.thrust = 0;
     e.stagger = 0; e.wob = 0; e.bank = 0;
     this._rollRank(e);
@@ -1229,8 +1265,9 @@ export class World {
   }
 
   /** Vorübergehenden Gegner erzeugen (Falle, Ereignis, Verstärkung). Für events.js. */
-  spawnTemp(type, x, z) {
+  spawnTemp(type, x, z, y = null) {
     const e = makeEnemy(`t${++this._tempSeq}`, type);
+    e.y = e.py = e.homeY = y != null ? y : F.tempY(this);
     e.temp = true;
     e.phase = this.rng.next() * Math.PI * 2;
     e.x = e.px = e.homeX = e.wx = x;
@@ -1298,7 +1335,7 @@ export class World {
         const R = ROCKETS[r.rocket] || ROCKETS.R1;
         const lck = this.abilities.LCK.activeFor > 0;
         // Asteroid dazwischen oder Ziel weicht aus: Rakete verfehlt (Tech LCK: trifft immer)
-        if (!lck && segRock(this.rocks, p.x, p.z, e.x, e.z, 2, this._pt)) {
+        if (!lck && (this.flight3d ? F.segRock3(this, p, e, 2, this._pt) : segRock(this.rocks, p.x, p.z, e.x, e.z, 2, this._pt))) {
           this.bus.emit('rocketMiss', { to: e.id, rocket: R.name, x: this._pt.x, z: this._pt.z, blocked: true });
           this._msg(`${R.name} schlägt im Asteroiden ein: ${e.name} ist in Deckung.`, 'info', 'rocketMiss', 2);
         } else if (!rocketHits(this, e)) {
@@ -1322,8 +1359,8 @@ export class World {
     const wr = this.wrecks;
     for (let i = wr.length - 1; i >= 0; i--) {
       const w = wr[i];
-      const dx = w.x - p.x, dz = w.z - p.z;
-      if (dx * dx + dz * dz > C.WRECK_PICKUP * C.WRECK_PICKUP) continue;
+      const dx = w.x - p.x, dz = w.z - p.z, dy = this.flight3d ? w.y - p.y : 0;
+      if (dx * dx + dz * dz + dy * dy > C.WRECK_PICKUP * C.WRECK_PICKUP) continue;
       if (w.owner !== 'player' && t < w.protectedUntil) continue;
       pr.credits += w.credits;
       pr.tritium += w.tritium;
@@ -1337,8 +1374,8 @@ export class World {
     for (let i = cr.length - 1; i >= 0; i--) {
       const c = cr[i];
       if (!c || !c.alive) continue;
-      const dx = c.x - p.x, dz = c.z - p.z;
-      if (dx * dx + dz * dz > C.CRATE_PICKUP * C.CRATE_PICKUP) continue;
+      const dx = c.x - p.x, dz = c.z - p.z, dy = this.flight3d ? c.y - p.y : 0;
+      if (dx * dx + dz * dz + dy * dy > C.CRATE_PICKUP * C.CRATE_PICKUP) continue;
       this._openCrate(c);
     }
 
@@ -1346,8 +1383,8 @@ export class World {
     for (let i = 0; i < ores.length; i++) {
       const o = ores[i];
       if (!o.alive) continue;
-      const dx = o.x - p.x, dz = o.z - p.z;
-      if (dx * dx + dz * dz > C.ORE_PICKUP * C.ORE_PICKUP) continue;
+      const dx = o.x - p.x, dz = o.z - p.z, dy = this.flight3d ? o.y - p.y : 0;
+      if (dx * dx + dz * dz + dy * dy > C.ORE_PICKUP * C.ORE_PICKUP) continue;
       const free = this.cargoMax - this.cargoUsed;
       if (free <= 0) { this._msg('Laderaum voll. Verkaufe dein Erz in der Station.', 'warn', 'cargoFull', 6); continue; }
       const take = Math.min(free, o.amount);
@@ -1426,7 +1463,7 @@ export class World {
     w.kind = 'wreck';
     w.type = e.type;
     w.name = `Wrack (${e.def.name})`;
-    w.x = w.px = e.x; w.z = w.pz = e.z;
+    w.x = w.px = e.x; w.z = w.pz = e.z; w.y = w.py = e.y; w.vy = 0;
     w.vx = 0; w.vz = 0;
     w.rot = w.prot = e.rot;
     w.radius = 14;
@@ -1487,10 +1524,11 @@ export class World {
 
   // ───────────────────────── Befehle ─────────────────────────
 
-  moveTo(x, z) {
+  moveTo(x, z, y = null) {
     const p = this.player;
     if (!p.alive || this.docked) return;
     p.tx = x; p.tz = z; p.hasMove = true;
+    p.ty = y != null ? y : (this.flight3d ? F.moveY(this, x, z) : 0);
   }
 
   stopMove() {
@@ -1507,7 +1545,7 @@ export class World {
     // Ziel: Rand der sicheren Zone auf der Seite des Spielers (außerhalb des Stationsrumpfs, innerhalb der 400 m)
     const dx = p.x - st.x, dz = p.z - st.z, d = Math.hypot(dx, dz) || 1, r = Math.min(C.SAFE_RADIUS * 0.6, Math.max(st.radius + p.radius + 40, d));
     p.attacking = false;
-    this.moveTo(st.x + (dx / d) * r, st.z + (dz / d) * r);
+    this.moveTo(st.x + (dx / d) * r, st.z + (dz / d) * r, st.y || 0);
     this.homing = true;
     this._msg(d <= C.SAFE_RADIUS ? `Du bist in der sicheren Zone von ${st.name} – hier wird repariert.` : `Autopilot: Kurs auf ${st.name} (${fmt(Math.round(d / 10) * 10)} m). In der sicheren Zone wird repariert.`, 'info', 'home', 1);
     return true;
@@ -1530,6 +1568,7 @@ export class World {
     const tgt = p.targetId ? this.entities.get(p.targetId) : null;
     if (!this._validTarget(tgt)) { this._msg('Kein Ziel ausgewählt. Klicke einen Gegner an.', 'info', 'noTarget', 1.5); return; }
     p.attacking = true;
+    if (this.flight3d) this._msg('Feuerleitrechner an: feuert gewürfelt (Trefferchance × 0,8) und führt die Zielrichtung, solange du nicht selbst zielst. Selbst zielen trifft stärker.', 'info', 'autofire', 30);
   }
 
   selectAmmo(key) {
@@ -1553,8 +1592,8 @@ export class World {
     if (!(pr.ammo.SAL >= 1)) { this._msg('Keine SAL-Munition. Kaufe Nachschub in der Station.', 'warn', 'noSal', 2); return; }
     const tgt = p.targetId ? this.entities.get(p.targetId) : null;
     if (!this._validTarget(tgt)) { this._msg('Kein Ziel ausgewählt. Klicke einen Gegner an.', 'info', 'noTarget', 1.5); return; }
-    const dx = tgt.x - p.x, dz = tgt.z - p.z;
-    if (dx * dx + dz * dz > C.PLAYER_RANGE * C.PLAYER_RANGE) { this._rangeMsg(tgt, 'Ziel ist zu weit weg. Flieg näher ran (650 m).', true); return; }
+    const dx = tgt.x - p.x, dz = tgt.z - p.z, dy = this.flight3d ? tgt.y - p.y : 0;
+    if (dx * dx + dz * dz + dy * dy > C.PLAYER_RANGE * C.PLAYER_RANGE) { this._rangeMsg(tgt, 'Ziel ist zu weit weg. Flieg näher ran (650 m).', true); return; }
     if (!this._canShoot(false)) return;
     const lasers = p.loadout.lasers;
     const n = Math.min(lasers.length, pr.ammo.SAL);
@@ -1563,8 +1602,9 @@ export class World {
     this.salReadyIn = this._salCd;
     p.attacking = true;
     pr.ammo.SAL -= n;
-    // erster Laser sofort, die übrigen kurz nacheinander (Salve statt Gleichtakt)
-    this._fireLaser(lasers[0], tgt, 'SAL', AMMO.SAL.mult, false, true, 0);
+    // erster Laser sofort, die übrigen kurz nacheinander (Salve statt Gleichtakt); im 3D-Flug als schnelle Bolzensalve
+    if (this.flight3d) F.salBolt(this, lasers[0], tgt, 0);
+    else this._fireLaser(lasers[0], tgt, 'SAL', AMMO.SAL.mult, false, true, 0);
     for (let i = 1; i < n && tgt.alive; i++) {
       const q = this._pending[i];
       q.active = true; q.t = i * C.SAL_STAGGER; q.laser = lasers[i]; q.targetId = tgt.id; q.idx = i;
@@ -1583,9 +1623,10 @@ export class World {
       s.active = false;
       const tgt = this.entities.get(s.targetId);
       if (!this._validTarget(tgt) || !this._canShoot(true)) continue;
-      const dx = tgt.x - this.player.x, dz = tgt.z - this.player.z;
-      if (dx * dx + dz * dz > C.PLAYER_RANGE * C.PLAYER_RANGE * 1.2) continue;
-      this._fireLaser(s.laser, tgt, 'SAL', AMMO.SAL.mult, false, true, s.idx);
+      const dx = tgt.x - this.player.x, dz = tgt.z - this.player.z, dy = this.flight3d ? tgt.y - this.player.y : 0;
+      if (dx * dx + dz * dz + dy * dy > C.PLAYER_RANGE * C.PLAYER_RANGE * 1.2) continue;
+      if (this.flight3d) F.salBolt(this, s.laser, tgt, s.idx);
+      else this._fireLaser(s.laser, tgt, 'SAL', AMMO.SAL.mult, false, true, s.idx);
     }
   }
 
@@ -1600,8 +1641,8 @@ export class World {
     if (!(pr.ammo[key] >= 1)) { this._msg(`Keine ${key} mehr. Kaufe Nachschub in der Station.`, 'warn', 'noRocket', 2); return false; }
     const tgt = p.targetId ? this.entities.get(p.targetId) : null;
     if (!this._validTarget(tgt)) { this._msg('Kein Ziel ausgewählt. Klicke einen Gegner an.', 'info', 'noTarget', 1.5); return false; }
-    const dx = tgt.x - p.x, dz = tgt.z - p.z;
-    if (dx * dx + dz * dz > C.ROCKET_RANGE * C.ROCKET_RANGE) { this._rangeMsg(tgt, 'Ziel ist zu weit weg für eine Rakete (650 m).', true); return false; }
+    const dx = tgt.x - p.x, dz = tgt.z - p.z, dy = this.flight3d ? tgt.y - p.y : 0;
+    if (dx * dx + dz * dz + dy * dy > C.ROCKET_RANGE * C.ROCKET_RANGE) { this._rangeMsg(tgt, 'Ziel ist zu weit weg für eine Rakete (650 m).', true); return false; }
     if (!this._canShoot(false)) return false;
     let slot = null;
     for (let i = 0; i < this._rockets.length; i++) if (!this._rockets[i].active) { slot = this._rockets[i]; break; }
@@ -1612,7 +1653,7 @@ export class World {
     this.rocketReadyIn = this._rocketCd;
     this._lastCombat = this.time;
     if (this.cloaked) breakCloak(this, 'Angriff');
-    this.bus.emit('rocket', { from: 'player', to: tgt.id, rocket: key });
+    this.bus.emit('rocket', { from: 'player', to: tgt.id, rocket: key, y: this.player.y });
     this._provoke(tgt);
     this._emitProfile();
     return true;
@@ -1636,7 +1677,7 @@ export class World {
     j.progress = 0; j.t = 0; j.portal = portal; j.to = portal.type; j.dur = C.JUMP_TIME; j.jmp = false;
     this.jump = j;
     this.bus.emit('jumpStart', { seconds: C.JUMP_TIME });
-    this._msg(`Sprung nach ${this.sectors[portal.type].name} wird geladen …`, 'info');
+    this._msg(this.flight3d ? `Sprung nach ${this.sectors[portal.type].name} wird geladen … Das Sprungfeld hält das Schiff, Boost bricht ab.` : `Sprung nach ${this.sectors[portal.type].name} wird geladen …`, 'info');
   }
 
   _updateJump(dt) {
@@ -1645,7 +1686,9 @@ export class World {
     if (!p.alive) { this.jump = null; return; }
     if (j.portal) {
       const dx = p.x - j.portal.x, dz = p.z - j.portal.z;
-      if (dx * dx + dz * dz > C.PORTAL_RADIUS * C.PORTAL_RADIUS) {
+      // 3D-Flug: Das Sprungfeld hält das Schiff (world3d.js jumpHold), abgebrochen wird erst bei 2 × Torradius
+      const R = this.flight3d ? F.JUMP_ABORT_R : C.PORTAL_RADIUS;
+      if (dx * dx + dz * dz > R * R || (this.flight3d && Math.abs(p.y - j.portal.y) > F.ZONE_DY)) {
         this.jump = null;
         this._msg('Sprung abgebrochen: zu weit vom Sprungtor weg.', 'warn');
         return;
@@ -1679,6 +1722,7 @@ export class World {
     this.docked = true;
     this.jump = null;
     this._haltPlayer(); p.hasMove = false; p.attacking = false;
+    F.docked(this);
     this.bus.emit('docked', {});
     this._msg(`Angedockt an ${this.station.name}.`, 'info');
     this._ammoAid();
@@ -1688,6 +1732,7 @@ export class World {
   undock() {
     if (!this.docked) return;
     this.docked = false;
+    F.undocked(this);
     this.bus.emit('undocked', {});
   }
 
@@ -1720,6 +1765,7 @@ export class World {
     }
     p.px = p.x; p.pz = p.z;
     this._haltPlayer(); p.hasMove = false;
+    F.placed(this);
     p.hp = p.hpMax; p.shield = p.shieldMax;
     p.alive = true;
     p.attacking = false; p.targetId = null;
@@ -1768,7 +1814,7 @@ export class World {
     resetAbilities(this, true);
     dronesOnDeath(this);
     this.combo.timeLeft = 0; this.combo.count = 0; this.combo.mult = 0;
-    this.bus.emit('explode', { id: 'player', x: p.x, z: p.z, size: 2 });
+    this.bus.emit('explode', { id: 'player', x: p.x, z: p.z, y: p.y, size: 2 });
     this.bus.emit('playerDead', {});
     this._msg('Dein Schiff wurde zerstört. Wähle, wo du repariert werden willst.', 'warn');
     this.save();
@@ -2250,6 +2296,7 @@ export class World {
     else this._placeAtSpawn();
     p.px = p.x; p.pz = p.z; p.prot = p.rot;
     this._haltPlayer(); p.hasMove = false;
+    F.placed(this);
     p.targetId = null; p.attacking = false;
     for (let i = 0; i < this._rockets.length; i++) this._rockets[i].active = false;
     for (let i = 0; i < this._pending.length; i++) this._pending[i].active = false;
@@ -2378,6 +2425,7 @@ export class World {
       }
     }
     this.entities.set('player', this.player);
+    F.assignHeights(this);
     resetEvents(this);
   }
 
@@ -2410,6 +2458,7 @@ export class World {
     const p = this.player;
     p.px = p.x; p.pz = p.z;
     p.rot = p.prot = headingOf(-p.x, -p.z);
+    F.placed(this);
   }
 
   /** Spieler bei (x, z) etwas zur Kartenmitte versetzt hinstellen. */

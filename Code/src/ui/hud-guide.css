@@ -23,3 +23,13 @@
 
 /* Bordmenü offen: Karte weicht */
 .hd-menu .lsg, .hd-menu ~ .lsg, .hd-menu ~ * .lsg { display: none; }
+/* Cockpit: Karte über den Konsolen (die linke Konsole SCHIFF beginnt auf halber Höhe) */
+html[data-view="cockpit"] .lsg { top: 196px; transform: none; }
+/* Runde 3: im Cockpit nur Titel und Ziel (der Erzähltext stellte die Sicht nach außen zu); die Wahl im ersten Flug bleibt ganz */
+html[data-view="cockpit"] .lsg-card:not(.lsg-choice) .lsg-text, html[data-view="cockpit"] .lsg-card:not(.lsg-choice) .lsg-seg,
+html[data-view="cockpit"] .lsg-card:not(.lsg-choice) .lsg-foot { display: none; }
+
+/* 3D-Flug auf Touch (Handy, Tablet, Runde 2): Karte kompakt oben rechts zwischen Auftrag und Knopfraster,
+   nur Titel und Ziel – vorher lag sie mit Erzähltext links mitten im Spielfeld */
+html[data-flight="3d"] body.is-touch .lsg { top: 124px; left: auto; right: 8px; transform: scale(.8); transform-origin: 100% 0; }
+html[data-flight="3d"] body.is-touch .lsg-card:not(.lsg-choice) .lsg-text, html[data-flight="3d"] body.is-touch .lsg-card:not(.lsg-choice) .lsg-foot { display: none; }

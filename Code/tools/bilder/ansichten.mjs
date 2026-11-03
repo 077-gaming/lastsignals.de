@@ -38,6 +38,11 @@ const VIEWS = [
   ['kampf-eris-s6', '/?dev=game&f=eris', 12000, 'kampf6'],
   // Runde 3: Schiff 8 Eris im Kampf (großer dunkler Rumpf vor Nebel: Plattenstruktur lesbar?)
   ['kampf-eris-s8', '/?dev=game&f=eris', 12000, 'kampf8'],
+  // 3D-Flug (Planung/FLUGMODELL.md 13): Kurvenkampf und Modelle von unten, Himmel an den Polen des Rundumbilds
+  ['kurvenkampf-unten', '/?dev=game&f=saturn&flug=3d', 12000, 'kurveUnten'],
+  ['modelle-unten', '/?dev=game&f=eris&flug=3d', 12000, 'modelleUnten'],
+  ['himmel-oben', '/?dev=game&f=europa&flug=3d', 10000, 'himmelOben'],
+  ['himmel-unten', '/?dev=game&f=europa&flug=3d', 10000, 'himmelUnten'],
 ];
 // Fester Ablauf je Vorbereitung (gleiche Lage, gleicher Kurs, gleiche Gegnerzahl)
 const PREP = {
@@ -75,6 +80,26 @@ const PREP = {
     ['larva', 'spiker', 'larva'].forEach((t, i) => { const e = w.spawnTemp(t, w.player.x - Math.sin(0.6) * (380 + i * 60) + (i - 1) * 90, w.player.z - Math.cos(0.6) * (380 + i * 60)); w.provoke(e); if (!i) w.setTarget(e.id); });
     w.toggleAttack();
   },
+  // 3D-Lage setzen: Gieren a, Nicken b (Bug hoch +), Rollen c; Zielrichtung auf den neuen Bug
+  kurveUnten: () => {
+    const w = __ls.world, p = w.player, q = w.fl.q, a = 0.6, b = 0.6, c = 0.7;
+    const cy = Math.cos(a / 2), sy = Math.sin(a / 2), cx = Math.cos(b / 2), sx = Math.sin(b / 2), cz = Math.cos(c / 2), sz = Math.sin(c / 2);
+    const q0 = [cy * sx, sy * cx, -sy * sx, cy * cx]; // Gieren · Nicken
+    q[0] = q0[0] * cz + q0[1] * sz; q[1] = q0[1] * cz - q0[0] * sz; q[2] = q0[3] * sz + q0[2] * cz; q[3] = q0[3] * cz - q0[2] * sz;
+    w.fl.pq.set(q); p.x += 1400; w.fl.p[0] = p.x;
+    const f = [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))];
+    for (let i = 0; i < 3; i++) { const d = 380 + i * 70; const e = w.spawnTemp('raider', p.x + f[0] * d + (i - 1) * 90, p.z + f[2] * d, p.y + f[1] * d + 60); w.provoke(e); if (!i) w.setTarget(e.id); }
+    __ls.input.fi.resetAim(); w.toggleAttack();
+  },
+  modelleUnten: () => {
+    const w = __ls.world, p = w.player, q = w.fl.q, b = 0.75;
+    q[0] = Math.sin(b / 2); q[1] = 0; q[2] = 0; q[3] = Math.cos(b / 2); w.fl.pq.set(q); p.x += 1200; w.fl.p[0] = p.x;
+    ['raider', 'spiker', 'larva'].forEach((t, i) => { const e = w.spawnTemp(t, p.x + (i - 1) * 140, p.z - 260, p.y + 330 + i * 20); e.rot = e.prot = 0.4 * i; });
+    __ls.input.fi.resetAim();
+  },
+  // Himmel: weg von der Station (sonst schiebt die Stationsfreihaltung die Kamera über das Schiff)
+  himmelOben: () => { const w = __ls.world, p = w.player, q = w.fl.q, b = 1.45; p.x += 1500; w.fl.p[0] = p.x; q[0] = Math.sin(b / 2); q[1] = 0; q[2] = 0; q[3] = Math.cos(b / 2); w.fl.pq.set(q); __ls.input.fi.resetAim(); },
+  himmelUnten: () => { const w = __ls.world, p = w.player, q = w.fl.q, b = -1.45; p.x += 1500; w.fl.p[0] = p.x; q[0] = Math.sin(b / 2); q[1] = 0; q[2] = 0; q[3] = Math.cos(b / 2); w.fl.pq.set(q); __ls.input.fi.resetAim(); },
   cockpit: () => { const w = __ls.world, r = __ls.renderer; w.player.x += 900; w.player.rot = 1.2; for (let i = 0; i < 3 && r.viewMode !== 'cockpit'; i++) r.toggleCamera(); },
 };
 

@@ -6,7 +6,7 @@
 // Abdocken → Sprung, dazu Tastenhinweise, Rückwechsel auf Tastatur und Touch-Knöpfe. Ergebnis: Liste der Prüfungen,
 // Konsolenfehler, Bilder in tools/playtest/berichte/controller-<zeit>/.
 //
-//   node tools/playtest/controller.mjs [--url http://localhost:5196] [--stil xbox|ps] [--sichtbar]
+//   node tools/playtest/controller.mjs [--url http://localhost:5196] [--stil xbox|ps|nin] [--sichtbar]
 import { chromium } from 'playwright-core';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -25,6 +25,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const IDS = {
   xbox: 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)',
   ps: 'DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)',
+  nin: 'Pro Controller (STANDARD GAMEPAD Vendor: 057e Product: 2009)',
 };
 const B = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, VIEW: 8, MENU: 9, L3: 10, R3: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 
@@ -136,6 +137,25 @@ async function main() {
   // wieder an
   await press('LEFT'); await press('A');
   check('Vibration wieder an', await ev(() => JSON.parse(localStorage.getItem('ls.pad') || '{}').rumble === true));
+  // Runde 2: Einstellungszeilen zeilenweise – von ZIELHILFE „HOCH“ führt ▴ in die Zeile darüber (vorher sprang der Fokus
+  // zu SICHTFELD 90°, RECHTER STICK war so nicht erreichbar)
+  {
+    const sel = '[data-set="fl.assist"][data-val="3"]';
+    let at = false;
+    for (let i = 0; i < 60 && !at; i++) {
+      at = await ev((sel) => document.activeElement?.matches(sel), sel);
+      if (at) break;
+      const where = await ev((sel) => { const a = document.activeElement; const t = document.querySelector(sel); if (!a || !t) return 'down'; const r = a.getBoundingClientRect(), q = t.getBoundingClientRect(); if (Math.abs(q.top - r.top) < 8) return q.left > r.left ? 'right' : 'left'; return q.top > r.top ? 'down' : 'up'; }, sel);
+      await press(where === 'right' ? 'RIGHT' : where === 'left' ? 'LEFT' : where === 'up' ? 'UP' : 'DOWN', 60, 90);
+    }
+    await press('UP', 60, 120);
+    const up1 = await ev(() => document.activeElement?.dataset?.set || '');
+    await press('UP', 60, 120);
+    const up2 = await ev(() => document.activeElement?.dataset?.set || '');
+    await press('DOWN', 60, 120); await press('DOWN', 60, 120);
+    const back = await ev(() => document.activeElement?.dataset?.set || '');
+    check('Einstellungen zeilenweise: ▴ von ZIELHILFE → HORIZONT-HILFE → RECHTER STICK, ▾▾ zurück', at && up1 === 'fl.padHorizon' && up2 === 'fl.padMode' && back === 'fl.assist', `${at} ${up1} ${up2} ${back}`);
+  }
   // zum Shop
   for (let i = 0; i < 12 && sec !== 'shop'; i++) { await press('LT'); sec = await ev(() => document.querySelector('button[data-sec].is-on')?.dataset.sec); }
   check('Shop erreicht (LT)', sec === 'shop');
@@ -155,7 +175,7 @@ async function main() {
   await sleep(4000);
   await shot('flug');
 
-  // ---------- 3) Flug ----------
+  // ---------- 3) Flug im Hauptmodus (3D, Planung/FLUGMODELL.md 5.3) ----------
   const W = (fn, a) => ev(fn, a);
   await W(() => { const w = window.__ls.world; w.player.hp = w.player.hpMax; });
   // Einführungswahl (falls offen) mit Controller: „Direkt spielen“
@@ -165,61 +185,108 @@ async function main() {
     await press('A');
     check('Einführungswahl mit Controller beantwortet', await W(() => !document.querySelector('.lsg-choice')));
   }
-  // Station-Sicherheitszone verlassen: Ziel weit weg setzen ist nicht nötig – Schub testen
-  const sp0 = await W(() => window.__ls.world.player.fs || 0);
-  await setBtn(B.RT, 1); await sleep(2200);
-  const sp1 = await W(() => window.__ls.world.player.fs || 0);
-  check('RT gibt Schub', sp1 > sp0 + 40, `${Math.round(sp0)} → ${Math.round(sp1)} m/s`);
-  const rot0 = await W(() => window.__ls.world.player.rot);
-  await setAxes([1, 0, 0, 0]); await sleep(1200);
-  const rot1 = await W(() => window.__ls.world.player.rot);
-  check('Linker Stick lenkt (rechts)', Math.abs(rot1 - rot0) > 0.3, `${rot0.toFixed(2)} → ${rot1.toFixed(2)}`);
-  await setAxes([0, 0, 0, 0]);
-  await setBtn(B.RT, 0.5); await sleep(2500);
-  const half = await W(() => window.__ls.world.player.fs / window.__ls.world._speed);
-  check('RT halb = etwa halbes Tempo (stufenlos)', half > 0.25 && half < 0.75, half.toFixed(2));
-  await setBtn(B.RT, 0);
-  await setBtn(B.LT, 1); await sleep(1500); await setBtn(B.LT, 0);
-  const sp2 = await W(() => window.__ls.world.player.fs || 0);
-  check('LT bremst', sp2 < sp1 * 0.5, `${Math.round(sp2)} m/s`);
-  // Kamera: rechter Stick im Verfolger
+  check('Flug startet im 3D-Hauptmodus (Verfolger)', await W(() => window.__ls.renderer.viewMode === 'chase' && window.__ls.world.flight3d === true));
+  // aus der sicheren Zone heraus, Gegner weit weg (ruhiger Prüfraum)
+  const away = () => W(() => { const w = window.__ls.world, p = w.player; p.x += 2600; p.z += 600; p.y = 0; w.fl.p[0] = p.x; w.fl.p[1] = 0; w.fl.p[2] = p.z; w.fl.v.fill(0); p.hasMove = false; w._updateZones(); for (const e of w.enemies) if (Math.hypot(e.x - p.x, e.z - p.z) < 1800) { e.x += 3000; e.px = e.x; } });
+  await away();
+  const spd = () => W(() => window.__ls.world.player.speed || 0);
+  await setAxes([0, -1, 0, 0]); await sleep(2200);
+  const s1 = await spd();
+  check('Linker Stick vor gibt Schub (3D)', s1 > 150, `${Math.round(s1)} m/s`);
+  await setAxes([0, -0.62, 0, 0]); await sleep(3000);
+  const half = await W(() => window.__ls.world.player.speed / window.__ls.world._speed);
+  check('Linker Stick halb = Teilschub (stufenlos)', half > 0.12 && half < 0.85, half.toFixed(2));
+  await setAxes([0, 0, 0, 0]); await sleep(2600);
+  const s2 = await spd();
+  check('Stick loslassen: Flugrechner bremst (gekoppelt)', s2 < 25, `${Math.round(s2)} m/s`);
+  const a0 = await W(() => { const p = window.__ls.world.player, a = window.__ls.input.fi.aim; return { rot: p.rot, ax: a[0], az: a[2] }; });
+  await setAxes([0, 0, 1, 0]); await sleep(900); await setAxes([0, 0, 0, 0]); await sleep(500);
+  const a1 = await W(() => { const p = window.__ls.world.player, a = window.__ls.input.fi.aim; return { rot: p.rot, ax: a[0], az: a[2] }; });
+  check('Rechter Stick zielt (Fadenkreuz), das Schiff folgt', Math.abs(a1.ax - a0.ax) + Math.abs(a1.az - a0.az) > 0.2 && Math.abs(a1.rot - a0.rot) > 0.2, `rot ${a0.rot.toFixed(2)} → ${a1.rot.toFixed(2)}`);
+  // Voller Ausschlag 0,3 s angetippt – das Schiff dreht kaum nach (früher 29° nach 19°: Fadenkreuz lief 30° voraus)
+  await away(); await sleep(400);
+  const tap = await W(() => new Promise((res) => {
+    const w = window.__ls.world, q = w.fl.q, yawOf = () => Math.atan2(2 * (q[0] * q[2] + q[3] * q[1]), 1 - 2 * (q[0] * q[0] + q[1] * q[1]));
+    let last = yawOf(), hold = 0, after = 0, still = 0; const t0 = performance.now();
+    window.__gp.axes = [0, 0, 1, 0];
+    const f = () => {
+      const y = yawOf(); let d = y - last; d = Math.atan2(Math.sin(d), Math.cos(d)); last = y;
+      const t = performance.now() - t0;
+      if (t < 300) hold += d; else { if (window.__gp.axes[2]) window.__gp.axes = [0, 0, 0, 0]; after += d; still = Math.abs(d) < 1e-4 ? still + 1 : 0; }
+      if (t > 300 && (still > 5 || t > 2500)) { res({ hold: +(Math.abs(hold) * 57.3).toFixed(1), after: +(Math.abs(after) * 57.3).toFixed(1), mode: window.__ls.input.fi.set.padMode }); return; }
+      requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }));
+  check('Rechter Stick 0,3 s voll: kaum Nachdrehen nach dem Loslassen (≤ 12°)', tap.after <= 12 && tap.hold > 5, JSON.stringify(tap));
+  await setBtn(B.RB, 1); await sleep(450);
+  const rr = await W(() => window.__ls.world.player.roll3);
+  await setBtn(B.RB, 0); await sleep(150);
+  check('RB rollt rechts', rr < -0.2, rr.toFixed(2));
+  await setBtn(B.LB, 1); await sleep(300);
+  const rl = await W(() => window.__ls.world.fl.w[2]);
+  await setBtn(B.LB, 0); await sleep(1600);
+  check('LB rollt links', rl > 0.3, rl.toFixed(2));
+  await setBtn(B.LB, 1); await setBtn(B.RB, 1); await setAxes([0, -1, 0, 0]); await sleep(900);
+  const vy = await W(() => window.__ls.world.fl.v[1]);
+  await setAxes([0, 0, 0, 0]); await setBtn(B.LB, 0); await setBtn(B.RB, 0); await sleep(1200);
+  check('LB+RB + linker Stick: hoch schieben (Schwebemodus)', vy > 20, `${Math.round(vy)} m/s`);
+  await setAxes([0, -1, 0, 0]); await press('L3'); await sleep(500);
+  const bo = await W(() => window.__ls.world.fl.boostOn);
+  await setAxes([0, 0, 0, 0]); await sleep(1500);
+  check('L3: Boost (wie Sprinten)', bo === true);
+  // REISE ist im Kampf gesperrt und ein Treffer bricht das Hochlaufen ab: Gegner vorher weit weg (sonst flackert die
+  // Prüfung, sobald ein Raider während der 0,8 s trifft)
+  await W(() => { const w = window.__ls.world, p = w.player; for (const e of w.enemies) if (e.alive && Math.hypot(e.x - p.x, e.z - p.z, (e.y || 0) - p.y) < 3000) { e.x += 5000 * Math.sign(e.x - p.x || 1); e.px = e.x; e.targetId = null; } for (const b of [w.bolts]) if (b) b.on.fill(0); w._lastCombat = -99; });
+  await setBtn(B.MENU, 1); await sleep(800); await setBtn(B.MENU, 0); await sleep(150);
+  const md = await W(() => ({ want: window.__ls.world.fl.modeWant, menu: window.__ls.hud._menuOpen }));
+  check('MENU halten: REISE (ohne Bordmenü)', md.want === 1 && !md.menu, JSON.stringify(md));
+  await setBtn(B.MENU, 1); await sleep(800); await setBtn(B.MENU, 0); await sleep(1000);
+  check('MENU halten: zurück auf KAMPF', await W(() => window.__ls.world.fl.modeWant === 0));
+  await setBtn(B.X, 1); await sleep(800); await setBtn(B.X, 0); await sleep(150);
+  const dec = await W(() => window.__ls.world.fl.coupled);
+  await setBtn(B.X, 1); await sleep(800); await setBtn(B.X, 0); await sleep(150);
+  check('X halten: entkoppelt und wieder gekoppelt', dec === false && (await W(() => window.__ls.world.fl.coupled)) === true);
+  await setAxes([0, -1, 0, 0]); await sleep(1800); await setAxes([0, 0, 0, 0]);
+  await setBtn(B.B, 1); await sleep(700);
+  const sb = await spd(); await sleep(400); const sb2 = await spd();
+  await setBtn(B.B, 0); await sleep(150);
+  check('B halten: Raumbremse', sb2 < sb || sb2 < 5, `${Math.round(sb)} → ${Math.round(sb2)} m/s`);
+  await setBtn(B.LT, 1); await sleep(400);
+  check('LT: Präzisionszielen (Sichtfeld enger)', await W(() => window.__ls.renderer.rig.precise > 0.5));
+  await setBtn(B.LT, 0); await sleep(200);
+  // Kamera: R3 kurz wechselt, R3 halten = umsehen
   const view0 = await W(() => window.__ls.renderer.viewMode);
-  await setAxes([0, 0, 1, 0]); await sleep(500);
-  const ly = await W(() => window.__ls.renderer.rig.lookYaw);
-  check('Rechter Stick schwenkt Kamera (Verfolger)', view0 !== 'chase' || ly < -1, `${view0} lookYaw ${ly.toFixed(2)}`);
-  await setAxes([0, 0, 0, 0]); await sleep(900);
-  const ly2 = await W(() => window.__ls.renderer.rig.lookYaw);
-  check('Kamera federt zurück', Math.abs(ly2) < 0.25, ly2.toFixed(2));
   await press('R3');
   const view1 = await W(() => window.__ls.renderer.viewMode);
   check('R3 wechselt Kamera', view1 !== view0, `${view0} → ${view1}`);
-  if (view1 === 'cockpit') {
-    await setAxes([0, 0, 1, 0]); await sleep(400);
-    check('Cockpit: rechter Stick sieht sich um (lookBy)', await W(() => window.__ls.renderer.rig.lookYaw < -0.5));
-    await setAxes([0, 0, 0, 0]); await sleep(300);
-    await shot('cockpit');
-  }
-  // zurück zum Verfolger (V über Tastatur: Tastatur bleibt bedienbar)
+  await setBtn(B.R3, 1); await sleep(400); await setAxes([0, 0, 1, 0]); await sleep(400);
+  const ly = await W(() => window.__ls.renderer.rig.lookYaw);
+  check('R3 halten + rechter Stick: umsehen', ly < -0.3, ly.toFixed(2));
+  await setAxes([0, 0, 0, 0]); await setBtn(B.R3, 0); await sleep(900);
+  check('Kamera federt zurück', Math.abs(await W(() => window.__ls.renderer.rig.lookYaw)) < 0.25);
+  if (view1 === 'cockpit') await shot('cockpit');
   while ((await W(() => window.__ls.renderer.viewMode)) !== 'chase') await press('R3', 60, 300);
-  // Ziele: Gegner in die Nähe holen
+  // Ziele und Waffen: Gegner vor den Bug holen
   await W(() => {
-    const w = window.__ls.world, p = w.player;
-    const en = [...w.entities.values()].filter((e) => e.kind === 'enemy' && e.alive).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
-    if (en[0]) { p.x = en[0].x + 380; p.z = en[0].z + 380; p.vx = p.vz = 0; p.fs = 0; }
+    const w = window.__ls.world, p = w.player, a = window.__ls.input.fi.aim;
+    const en = [...w.entities.values()].filter((e) => e.kind === 'enemy' && e.alive).sort((x, y) => Math.hypot(x.x - p.x, x.z - p.z) - Math.hypot(y.x - p.x, y.z - p.z));
+    const f = [0, 0, -1]; const q = w.fl.q;
+    // Bug aus der Lage
+    const x = q[0], y = q[1], z = q[2], ww = q[3];
+    f[0] = -(2 * (x * z + ww * y)); f[1] = -(2 * (y * z - ww * x)); f[2] = -(1 - 2 * (x * x + y * y));
+    a[0] = f[0]; a[1] = f[1]; a[2] = f[2];
+    for (let i = 0; i < 2 && i < en.length; i++) { const e = en[i]; e.x = e.px = p.x + f[0] * (380 + i * 90) + i * 60; e.y = e.py = p.y + f[1] * (380 + i * 90); e.z = e.pz = p.z + f[2] * (380 + i * 90); e.vx = e.vz = e.vy = 0; }
+    w.setTarget(null);
   });
-  await sleep(400);
-  await press('RB');
-  const t1 = await W(() => window.__ls.world.player.targetId);
-  check('RB wählt Ziel', t1 != null, String(t1));
-  await press('RB');
-  const t2 = await W(() => window.__ls.world.player.targetId);
-  check('RB wählt nächstes Ziel', t2 != null && t2 !== t1, `${t1} → ${t2}`);
-  await press('LB');
-  const t3 = await W(() => window.__ls.world.player.targetId);
-  check('LB wählt voriges Ziel', t3 === t1, `${t2} → ${t3}`);
+  await sleep(250);
   await press('A');
-  check('A: Angriff an', await W(() => window.__ls.world.player.attacking === true));
-  await W(() => { window.__rk = 0; window.__ls.bus.on('rocket', (e) => { if (e.from === 'player') window.__rk++; }); window.__gp.effects.length = 0; });
+  const t1 = await W(() => window.__ls.world.player.targetId);
+  check('A wählt Ziel im Fadenkreuz', t1 != null, String(t1));
+  await W(() => { window.__bolts = 0; window.__ls.bus.on('shot', (e) => { if (e.from === 'player' && e.bolt) window.__bolts++; }); });
+  await setBtn(B.RT, 1); await sleep(900); await setBtn(B.RT, 0);
+  check('RT feuert Laser (Bolzen)', await W(() => window.__bolts > 2), String(await W(() => window.__bolts)));
+  await W(() => { window.__rk = 0; window.__ls.bus.on('rocket', (e) => { if (e.from === 'player') window.__rk++; }); window.__gp.effects.length = 0; window.__ls.world._rocketCd = 0; });
   await press('X'); await sleep(200);
   check('X: Rakete', await W(() => window.__rk > 0));
   check('Vibration beim Raketenstart', await W(() => window.__gp.effects.some((e) => e.t === 'dual-rumble')));
@@ -227,10 +294,8 @@ async function main() {
   await sleep(150);
   check('Vibration bei Treffer am eigenen Schiff', await W(() => window.__gp.effects.length >= 2), String(await W(() => window.__gp.effects.length)));
   await press('B');
-  check('B: Angriff aus', await W(() => window.__ls.world.player.attacking === false));
-  await press('B');
   check('B: Ziel gelöst', await W(() => window.__ls.world.player.targetId == null));
-  // Schnellleiste
+  // Schnellleiste ohne Tastenkombination
   const bar = () => W(() => ({ cur: window.__ls.hud.bar.cur, sel: window.__ls.hud.bar.padSel }));
   const b0 = await bar();
   await press('RIGHT'); await press('RIGHT');
@@ -240,15 +305,11 @@ async function main() {
   await press('DOWN');
   const b2 = await bar();
   check('Steuerkreuz ▾ wechselt Leiste', b2.cur !== b1.cur, `${b1.cur} → ${b2.cur}`);
-  await press('UP');
-  await W(() => { const pr = window.__ls.world.profile; window.__am = pr.selectedAmmo; });
-  // Platz 3 (L3) auslösen: RB halten + A
-  await press('LEFT'); // sel = 1 (L2)
-  await setBtn(B.RB, 1); await sleep(80); await press('A'); await setBtn(B.RB, 0); await sleep(150);
+  await W(() => window.__ls.hud.bar.setBar(0));
+  for (let i = 0; i < 12 && (await bar()).sel !== 1; i++) await press('LEFT');
+  await press('UP'); await sleep(150);
   const am = await W(() => window.__ls.world.profile.selectedAmmo);
-  const tAfter = await W(() => window.__ls.world.player.targetId);
-  check('RB+A löst gewählten Platz aus (L2)', am === 'L2', `Munition ${am}`);
-  check('RB+A wechselt dabei nicht das Ziel', tAfter == null);
+  check('Steuerkreuz ▴ löst den gewählten Platz aus (L2, ohne Kombination)', am === 'L2', `Munition ${am}`);
   await W(() => window.__ls.world.selectAmmo('L1'));
   // Karte
   const map0 = await W(() => window.__ls.hud.wins.isHidden('map'));
@@ -268,26 +329,29 @@ async function main() {
   const tabB = await W(() => window.__ls.hud.menu.tab);
   check('RB wechselt Reiter im Bordmenü', tabA !== tabB, `${tabA} → ${tabB}`);
   check('Reiter STEUERUNG zeigt Controller-Belegung', await W(() => window.__ls.hud.menu.tab !== 'steuerung' || !!document.querySelector('.mp-padsec .gp-row .ls-key')?.textContent));
+  // Belegungstabelle: Symbole der Bauart, nicht noch einmal als Tastatur-Kappe umgeschlüsselt (früher X → B)
+  const GL = { xbox: { A: 'A', B: 'B', X: 'X', Y: 'Y' }, ps: { A: '\u00D7', B: '○', X: '□', Y: '△' }, nin: { A: 'B', B: 'A', X: 'Y', Y: 'X' } }[STYLE] || { A: 'A', B: 'B', X: 'X', Y: 'Y' };
+  const tabBad = await W((G) => { const r = [...document.querySelectorAll('[data-r="menu"] .gp-row .ls-key[data-pk]')]; return r.filter((e) => G[e.dataset.pk] && e.textContent !== G[e.dataset.pk]).map((e) => e.dataset.pk + '→' + e.textContent); }, GL);
+  check(`Bordmenü STEUERUNG (${STYLE}): Tasten A/B/X/Y richtig beschriftet`, tabBad.length === 0, tabBad.join(' '));
   await shot('bordmenue');
   await press('DOWN'); await press('DOWN');
   check('Steuerkreuz bewegt Fokus im Bordmenü', await W(() => document.querySelector('[data-r="menu"]').contains(document.activeElement)), await active());
   await press('B');
   check('B schließt Bordmenü', await W(() => window.__ls.hud._menuOpen === false));
   // Andocken
-  await W(() => { const w = window.__ls.world, st = w.station || w.sector.station; const p = w.player; p.x = st.x + 160; p.z = st.z + 160; p.vx = p.vz = 0; p.fs = 0; w.player.hasMove = false; });
+  await W(() => { const w = window.__ls.world, st = w.station || w.sector.station; const p = w.player; p.x = st.x + 160; p.z = st.z + 160; p.y = 0; w.fl.p[0] = p.x; w.fl.p[1] = 0; w.fl.p[2] = p.z; w.fl.v.fill(0); p.vx = p.vz = 0; p.fs = 0; w.player.hasMove = false; w._updateZones(); });
   await sleep(400);
   await press('Y', 90, 400);
   check('Y dockt an (sichere Zone)', await W(() => window.__ls.world.docked === true));
   await sleep(1200);
   await shot('station');
   check('Fokus in der Station', await W(() => !!document.querySelector('.sx')?.contains(document.activeElement)), await active());
-  check('Station: Abdock-Hinweis zeigt B', await W(() => document.querySelector('.sx-undock .ls-key')?.textContent === (window.__pad.style === 'ps' ? '\u25CB' : 'B')));
+  check('Station: Abdock-Hinweis zeigt B', await W(() => document.querySelector('.sx-undock .ls-key')?.textContent === (window.__pad.style === 'ps' ? '○' : window.__pad.style === 'nin' ? 'A' : 'B')));
   const st0 = await W(() => document.querySelector('.sx-tab[aria-selected="true"], .sx-tab.on, .sx-tab.is-on')?.dataset.tab);
   await press('RB'); await sleep(300);
   const st1 = await W(() => document.querySelector('.sx-tab[aria-selected="true"], .sx-tab.on, .sx-tab.is-on')?.dataset.tab);
   check('RB wechselt Stations-Reiter', st0 !== st1, `${st0} → ${st1}`);
   for (let i = 0; i < 3 && (await W(() => document.querySelector('.sx-tab[aria-selected="true"], .sx-tab.on, .sx-tab.is-on')?.dataset.tab)) !== 'shop'; i++) { await press('RB'); await sleep(250); }
-  // Kaufen: Fokus auf einen Kaufknopf bewegen
   const cr0 = await W(() => ({ c: window.__ls.world.profile.credits, a: JSON.stringify(window.__ls.world.profile.ammo) }));
   let buy = false;
   for (let i = 0; i < 40 && !buy; i++) {
@@ -307,32 +371,73 @@ async function main() {
   check('B dockt ab', await W(() => window.__ls.world.docked === false));
   await sleep(500);
   // Sprung: ans Tor
-  await W(() => { const w = window.__ls.world, p = w.player; const pt = (w.sector.portals || [])[0]; if (pt) { p.x = pt.x + 60; p.z = pt.z + 60; p.vx = p.vz = 0; p.fs = 0; } });
+  await W(() => { const w = window.__ls.world, p = w.player; const pt = (w.sector.portals || [])[0]; if (pt) { p.x = pt.x + 60; p.z = pt.z + 60; p.y = 0; w.fl.p[0] = p.x; w.fl.p[1] = 0; w.fl.p[2] = p.z; w.fl.v.fill(0); p.vx = p.vz = 0; p.fs = 0; w._updateZones(); } });
   await sleep(400);
   const hasPortal = await W(() => !!window.__ls.world.nearPortal);
   if (hasPortal) { await press('Y', 90, 300); check('Y springt am Tor', await W(() => !!window.__ls.world.jump)); await W(() => { window.__ls.world.jump = null; }); }
   else check('Sprungtor in Reichweite für Y', false, 'kein Tor gefunden');
   // Beute anfliegen
-  const crate = await W(() => { const w = window.__ls.world, p = w.player; const c = (w.crates || []).find((c) => c && c.alive); if (!c) return null; p.x = c.x + 500; p.z = c.z; p.vx = p.vz = 0; p.fs = 0; p.hasMove = false; return { x: c.x, z: c.z }; });
+  const crate = await W(() => { const w = window.__ls.world, p = w.player; const c = (w.crates || []).find((c) => c && c.alive); if (!c) return null; p.x = c.x + 500; p.z = c.z; p.y = c.y; w.fl.p[0] = p.x; w.fl.p[1] = p.y; w.fl.p[2] = p.z; w.fl.v.fill(0); p.vx = p.vz = 0; p.fs = 0; p.hasMove = false; return { x: c.x, z: c.z }; });
   if (crate) {
     await sleep(300);
+    // Ziel des Kontexts vorher merken: liegt ein Wrack im Traktorbereich, wandert es bis zur Prüfung (früher flackerte
+    // die Prüfung dann mit hit: false, weil sie die Beute erst nach dem Tastendruck suchte)
+    const want = await W(() => { const l = window.__ls.input.nearestLoot(1500); return l ? { x: l.x, z: l.z } : null; });
     await press('Y', 90, 200);
-    const mv = await W(() => {
-      const w = window.__ls.world, p = w.player;
-      const loot = [...(w.wrecks || []), ...(w.crates || []).filter((c) => c && c.alive), ...(w.ores || []).filter((o) => o && o.alive)];
-      return { m: p.hasMove, hit: loot.some((o) => Math.hypot(o.x - p.tx, o.z - p.tz) < 1) };
-    });
-    check('Y fliegt Beute an', mv.m && mv.hit, JSON.stringify(mv));
+    const mv = await W((want) => {
+      const p = window.__ls.world.player;
+      return { m: p.hasMove, hit: !!want && Math.hypot(want.x - p.tx, want.z - p.tz) < 1 };
+    }, want);
+    check('Y fliegt Beute an (Autopilot in 3D)', mv.m && mv.hit, JSON.stringify(mv));
   }
   // Y halten = Autopilot
-  await W(() => { const w = window.__ls.world; w.player.x += 2500; w.player.hasMove = false; });
+  await W(() => { const w = window.__ls.world; w.player.x += 2500; w.fl.p[0] = w.player.x; w.player.hasMove = false; });
   await setBtn(B.Y, 1); await sleep(800); await setBtn(B.Y, 0); await sleep(200);
   check('Y halten: Autopilot zur Station', await W(() => window.__ls.world.homing === true));
-  // Taktisch: linker Stick bildbezogen
+
+  // ---------- 3b) Taktikmodus (Nebenmodus): alte Belegung unverändert ----------
   while ((await W(() => window.__ls.renderer.viewMode)) !== 'tactical') await press('R3', 60, 300);
+  check('Taktisch: Klickflug-Weg aktiv (kein 3D-Flug)', await W(() => window.__ls.world.flight3d === false));
+  await away();
+  await W(() => { const w = window.__ls.world; w.homing = false; w.player.hasMove = false; });
+  await sleep(1200);
+  const tsp0 = await W(() => window.__ls.world.player.fs || 0);
+  await setAxes([0.7, -0.7, 0, 0]); await sleep(2200);
+  const tsp1 = await W(() => window.__ls.world.player.fs || 0);
+  check('Taktisch: linker Stick gibt Schub (bildbezogen, Ausschlag = Tempo)', tsp1 > tsp0 + 40, `${Math.round(tsp0)} → ${Math.round(tsp1)} m/s`);
+  await setBtn(B.LT, 1); await setAxes([0, 0, 0, 0]); await sleep(1500); await setBtn(B.LT, 0);
+  check('Taktisch: LT bremst', (await W(() => window.__ls.world.player.fs || 0)) < tsp1 * 0.5);
   await W(() => { const p = window.__ls.world.player; p.hasMove = false; window.__z0 = p.z; window.__ls.world.homing = false; });
   await setAxes([0, -1, 0, 0]); await sleep(1500); await setAxes([0, 0, 0, 0]);
   check('Taktisch: Stick oben fliegt Bild-oben (−z)', await W(() => window.__ls.world.player.tz < window.__z0 - 50));
+  const z0 = await W(() => window.__ls.renderer.targetDist);
+  await setAxes([0, 0, 0, 1]); await sleep(500); await setAxes([0, 0, 0, 0]);
+  check('Taktisch: rechter Stick zoomt', Math.abs((await W(() => window.__ls.renderer.targetDist)) - z0) > 20);
+  await W(() => {
+    const w = window.__ls.world, p = w.player;
+    const en = [...w.entities.values()].filter((e) => e.kind === 'enemy' && e.alive).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
+    for (let i = 0; i < 2 && i < en.length; i++) { const e = en[i]; e.x = e.px = p.x + 300 + i * 120; e.z = e.pz = p.z + 200; }
+    w.setTarget(null);
+  });
+  await sleep(300);
+  await press('RB');
+  const tt1 = await W(() => window.__ls.world.player.targetId);
+  check('Taktisch: RB wählt Ziel', tt1 != null, String(tt1));
+  await press('RB');
+  const tt2 = await W(() => window.__ls.world.player.targetId);
+  check('Taktisch: RB wählt nächstes Ziel', tt2 != null && tt2 !== tt1, `${tt1} → ${tt2}`);
+  await press('LB');
+  check('Taktisch: LB wählt voriges Ziel', (await W(() => window.__ls.world.player.targetId)) === tt1);
+  await press('A');
+  check('Taktisch: A Angriff an', await W(() => window.__ls.world.player.attacking === true));
+  await press('B');
+  check('Taktisch: B Angriff aus', await W(() => window.__ls.world.player.attacking === false));
+  await W(() => window.__ls.world.setTarget(null));
+  await W(() => window.__ls.hud.bar.setBar(0));
+  for (let i = 0; i < 12 && (await bar()).sel !== 2; i++) await press('RIGHT');
+  await setBtn(B.RB, 1); await sleep(80); await press('A'); await setBtn(B.RB, 0); await sleep(150);
+  check('Taktisch: RB+A löst gewählten Platz aus (L3), Ziel bleibt', (await W(() => window.__ls.world.profile.selectedAmmo)) === 'L3' && (await W(() => window.__ls.world.player.targetId)) == null);
+  await W(() => window.__ls.world.selectAmmo('L1'));
   while ((await W(() => window.__ls.renderer.viewMode)) !== 'chase') await press('R3', 60, 300);
 
   // ---------- 4) Tastatur unverändert, Hinweise zurück ----------
@@ -358,7 +463,7 @@ async function main() {
   await setBtn(B.RT, 1); await setAxes([1, 0, 0, 0]); await sleep(600);
   await ev(() => window.__gpDisconnect()); await sleep(300);
   check('Abstecken ohne Fehler', await W(() => window.__pad.connected === 0 && window.__pad.index === -1));
-  check('Abstecken mitten im Flug: Controller-Schub und Lenkung genullt', await W(() => { const s = window.__ls.input.pad; return !s.active && s.rt === 0 && s.lx === 0; }));
+  check('Abstecken mitten im Flug: Controller-Schub und Lenkung genullt', await W(() => { const s = window.__ls.input.pad, f = window.__ls.input.fi.pad; return !s.active && s.rt === 0 && s.lx === 0 && !f.active && f.tz === 0 && !f.fire; }));
   await setBtn(B.RT, 0); await setAxes([0, 0, 0, 0]);
   await ev(() => window.__gpConnect()); await sleep(200);
   await press('A'); await sleep(150);

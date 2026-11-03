@@ -533,6 +533,11 @@
   visibility: hidden; opacity: 0;
 }
 .hd-banner.show { visibility: visible; opacity: 1; animation: ls-wipe .18s var(--ls-ease) both; }
+/* 3D-Flug (Runde 3): Belohnungen und Auftragsmeldungen oben unter der Sektorleiste, kleiner – die Bildmitte gehört
+   Fadenkreuz, Ziel und Neigungsleiter (vorher bei 27 % genau über Ziel, Kursband und Randwarnung) */
+html[data-flight="3d"] .hd .hd-banner { top: 106px; min-width: 300px; padding: 6px 22px 8px; }
+html[data-flight="3d"] .hd .hd-banner .hb-main { font-size: 22px; line-height: 26px; }
+html[data-view="cockpit"] .hd .hd-banner { top: 52px; }
 .hb-cap { color: var(--fx); }
 .hb-main { font-family: var(--ls-display); font-size: 34px; line-height: 38px; letter-spacing: .14em; margin-top: 3px; }
 .hb-sub { font-family: var(--ls-display); font-size: 13px; letter-spacing: .16em; color: var(--ls-tx-2); }
@@ -546,6 +551,7 @@
   visibility: hidden; opacity: 0; transition: opacity .3s, visibility 0s linear .3s;
 }
 .hd-lootline.show { visibility: visible; opacity: 1; transition: none; animation: ls-wipe .18s var(--ls-ease) both; }
+.hd-lootline.is-f3 { left: 12px; transform: none; background: linear-gradient(90deg, rgba(4, 8, 6, .72) 88%, transparent); }
 .hd-lootline b { font-family: var(--ls-digits); font-weight: 400; font-size: 15px; color: var(--ls-tx); letter-spacing: 0; }
 .hd-lootline .is-tri b, .hd-lootline .is-tri { color: var(--ls-loot); }
 .hl-code { font-family: var(--ls-mono); font-size: 11px; color: var(--ls-loot); letter-spacing: .08em; padding-top: 6px; }
@@ -717,8 +723,17 @@
 /* Steuerung: zweispaltig, dicht */
 .mp-ctrl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
 .mp-cg:first-child { grid-row: span 2; }
-.mp-crow { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 8px; height: 24px; font-size: 12.5px; white-space: nowrap; color: var(--hd-sub); border-bottom: 1px solid rgba(255, 255, 255, .04); }
-.mp-crow .ls-key { justify-self: start; height: 17px; font-size: 10px; }
+/* Runde 2: Taste darf breiter sein (LEERTASTE / STRG, RECHTSKLICK HALTEN, OPTION+C lagen über dem Text), Text bricht um,
+   Gruppen nicht abgeschnitten (.mp-cg erbte white-space: nowrap der Kontaktliste: „Hinflieg“, „Direkt s“); schmal einspaltig */
+.mp-crow { display: grid; grid-template-columns: minmax(58px, max-content) 1fr; align-items: center; gap: 8px; min-height: 24px; padding: 2px 0; font-size: 12.5px; line-height: 1.25; color: var(--hd-sub); border-bottom: 1px solid rgba(255, 255, 255, .04); }
+.mp-crow .ls-key { justify-self: start; height: auto; min-height: 17px; font-size: 10px; white-space: nowrap; }
+.mp-ctrl .mp-cg { white-space: normal; min-width: 0; }
+@media (max-width: 900px), (max-height: 500px) { .mp-ctrl { grid-template-columns: 1fr; } .mp-cg:first-child { grid-row: auto; } }
+/* Touch (Handy, Tablet): die Seite skaliert über den Viewport, Medienabfragen in px greifen dort nicht */
+body.is-touch .mp-ctrl { grid-template-columns: 1fr; }
+body.is-touch .mp-cg:first-child { grid-row: auto; }
+/* offene Ebene: Joystick und Knöpfe nicht über dem Bordmenü (der Joystick lag sichtbar über dem Reiter STEUERUNG) */
+body.is-touch:has(.hd-side.show) .ht-stick, body.is-touch:has(.hd-side.show) .ht-tgt { visibility: hidden; }
 .mp-foot {
   flex-shrink: 0; padding: 12px 16px 16px; border-top: 1px solid var(--ls-line);
   display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; /* SPEICHERN · HUB-SHOP · FLUG BEENDEN, darunter WEITER über volle Breite */
@@ -864,3 +879,17 @@
 .mp-step { width: 28px; justify-content: center; }
 .mp-step i { min-width: 26px; padding: 2px 0 0; }
 .mp-fov { min-width: 40px; text-align: center; }
+
+/* 3D-Flug (Verfolger, Cockpit): Tempo und Generatoren zeigt das Flug-HUD an der Tempoleiter. Das Schiffsfenster wird
+   flach (Hülle und Schild nebeneinander), damit es das eigene Schiff in der Verfolgersicht nicht verdeckt (früher mit
+   fünf Generatorzeilen bis auf Höhe der Rumpfmitte). Im Cockpit stehen Hülle und Schild auf der linken Konsole: das
+   Fenster entfällt dort und gibt die mittlere Konsole FLUG frei. */
+html[data-flight="3d"] [data-win="ship"] .cs-drv { display: none; }
+html[data-flight="3d"] [data-win="ship"] .cs { grid-template-columns: 386px; }
+html[data-flight="3d"] [data-win="ship"] .cs-def { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding-right: 0; }
+html[data-flight="3d"] [data-win="ship"] .cs-def::after { display: none; }
+html[data-view="cockpit"] [data-win="ship"] { display: none !important; }
+
+/* Controller und Touch (Runde 3): Tastaturkürzel (⇧1–⇧9) in den Hinweisen der Fensterleiste ausblenden */
+html[data-input="pad"] .hb-tip .ls-key, body.is-touch .hb-tip .ls-key { display: none; }
+html[data-input="pad"] .dd-oh .ls-key, body.is-touch .dd-oh .ls-key { display: none; }

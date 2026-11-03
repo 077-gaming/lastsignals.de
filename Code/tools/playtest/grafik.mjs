@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 
 const args = process.argv.slice(2);
 const arg = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 && args[i + 1] ? args[i + 1] : d; };
-const BASE = arg('url', 'http://localhost:5173');
+const BASE = arg('url', process.env.LS_URL || 'http://localhost:5173');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let failed = 0, total = 0;
 function check(name, ok, extra = '') {
@@ -30,7 +30,7 @@ async function waitFor(page, fn, a, ms = 20000) {
   }
 }
 
-const browser = await chromium.launch({ channel: 'chrome', headless: false, args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'] });
+const browser = await chromium.launch({ channel: 'chrome', headless: !process.argv.includes('--sichtbar'), args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'] });
 const errors = [];
 async function newPage(init) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });

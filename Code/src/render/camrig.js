@@ -4,13 +4,21 @@
 // Wackeln ab (Sichtfeld-Kick bleibt gedämpft), „Bewegung reduzieren“ dämpft auf ein Drittel.
 // Keine Speicher-Neuanlage pro Bild: alle Vektoren liegen fest im Objekt.
 import * as THREE from 'three';
+import { flightSettings, setFlightSetting, isPhone } from '../input/flightsettings.js';
 
 const KEY = 'ls.settings';
 // Sicherung der Kamerawahl: der Hub schreibt 'ls.settings' derzeit nur mit seinen eigenen Schlüsseln neu
 // (screens-kit loadSettings), dabei ginge 'camera' verloren
 const KEY_CAM = 'ls.camera';
 const TAU = Math.PI * 2;
-export const FOV_TAC = 40, FOV_CHASE = 58;
+export const FOV_TAC = 40, FOV_CHASE = 70;
+// 3D-Verfolger (Planung/FLUGMODELL.md 6): Neigung 6° über der Kameraachse, Schiff im unteren Drittel
+// Runde 3: Schiff tiefer im Bild (NDC −0,3 → −0,42, Mitte bei ≈ 71 % der Bildhöhe) und Blick 8° statt 6° von oben:
+// ein Ziel genau voraus lag sonst hinter dem eigenen Rumpf bzw. im Triebwerksglühen (S3, Sektor 4)
+const CH3_ELEV = 8 * Math.PI / 180, CH3_SHIP_Y = -0.42;
+const _f3 = new THREE.Vector3(), _u3 = new THREE.Vector3(), _r3 = new THREE.Vector3(), _a3 = new THREE.Vector3(), _w3 = new THREE.Vector3();
+const _m3 = new THREE.Matrix4(), _q3 = new THREE.Quaternion(), _q4 = new THREE.Quaternion(), _e3 = new THREE.Euler(0, 0, 0, 'YXZ');
+const WUP = new THREE.Vector3(0, 1, 0);
 // Verfolger: Höhe über dem Schiff (Grad), Abstand in Schiffsradien, Blickpunkt vor dem Schiff
 const CH_ELEV = 15 * Math.PI / 180, CH_ELEV_FIGHT = 21 * Math.PI / 180;
 const CH_DIST = 4.1;
@@ -39,8 +47,28 @@ const BLEND_T = 0.9; // Sekunden für den Wechsel
 function wrap(a) { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; }
 const smooth = (k) => k * k * (3 - 2 * k);
 
+/**
+ * Einmalige Umstellung (3D-Flug ist der Hauptmodus): eine gespeicherte Wahl „taktisch“ wird einmal auf den
+ * Verfolger gestellt, Taktik bleibt per V wählbar. Touch-Telefone starten weiter taktisch (FLUGMODELL.md 5.4).
+ */
+function migrateCam() {
+  const f = flightSettings();
+  if (f.migrated) return;
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
+    const phone = isPhone();
+    const c = s.camera || localStorage.getItem(KEY_CAM);
+    if (phone && !c) { s.camera = 'tactical'; localStorage.setItem(KEY, JSON.stringify(s)); localStorage.setItem(KEY_CAM, 'tactical'); }
+    else if (!phone && c === 'tactical') { s.camera = 'chase'; s.cockpit = false; localStorage.setItem(KEY, JSON.stringify(s)); localStorage.setItem(KEY_CAM, 'chase'); }
+    // altes Standard-Sichtfeld 58° des Verfolgers → 70° (3D-Flug)
+    if (s.gfx && s.gfx.fovChase === 58) { s.gfx.fovChase = 70; localStorage.setItem(KEY, JSON.stringify(s)); }
+  } catch { /* privater Modus */ }
+  setFlightSetting('migrated', true);
+}
+
 export function readCamSettings() {
-  // Standard ist die Verfolger-Kamera (Entscheidung Toni 30.10.2026); Taktisch nur, wenn so gewählt
+  // Standard ist die Verfolger-Kamera mit 3D-Flug (Hauptmodus); Taktisch nur, wenn so gewählt
+  migrateCam();
   const o = { mode: 'chase', shake: true, reduced: false, cockpit: false, cockpitFov: 74 };
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
@@ -99,6 +127,10 @@ export class CameraRig {
     this._tmp = new THREE.Vector3();
     this.up = new THREE.Vector3(0, 1, 0);
     this.reset = true;
+    // 3D-Verfolger: gefederte Kameralage (Quaternion) und Abstands-Feder im Kamerarahmen
+    this.q3 = new THREE.Quaternion(); this.off3 = new THREE.Vector3(); this.off3V = new THREE.Vector3();
+    this._out3Pos = new THREE.Vector3(); this._out3Q = new THREE.Quaternion();
+    this.reset3 = true; this.precise = 0;
   }
 
   _apply(s) {
@@ -109,6 +141,9 @@ export class CameraRig {
   refresh() {
     const s = readCamSettings();
     this._apply(s);
+    // ?flug=taktik|3d erzwingt die Ansicht für die ganze Sitzung (bis V): früher stellte diese Prüfung je Sekunde die
+    // gespeicherte Wahl wieder her, und ?flug=taktik hielt keine Sekunde (tief.mjs --flug=taktik lief im 3D-Flug)
+    if (this.forced) { this.mode = this.forced.mode; this.cockpit = this.forced.cockpit; this.cockpitFov = s.cockpitFov; return; }
     if (s.mode !== this.mode) this.mode = s.mode;
     this.cockpit = s.cockpit;
     this.cockpitFov = s.cockpitFov;
@@ -126,6 +161,7 @@ export class CameraRig {
   }
   /** Taste V: Verfolger → Cockpit → Taktisch → Verfolger, Wahl speichern. Gibt die neue Ansicht zurück. */
   toggle() {
+    this.forced = null;
     if (this.mode === 'chase' && !this.cockpit) this.cockpit = true;
     else if (this.cockpit) { this.cockpit = false; this.mode = 'tactical'; }
     else this.mode = 'chase';
@@ -253,6 +289,81 @@ export class CameraRig {
     this._outPos.set(cx, cy, cz);
     this._outLook.set(cx + hx * cp * 100, cy + sp * 100, cz + hz * cp * 100);
     return n;
+  }
+
+  /**
+   * 3D-Verfolger (FLUGMODELL.md 6): Kameralage folgt der Schiffslage gefedert, Blick 35 % zur Zielrichtung (Option
+   * „Kamera folgt der Zielrichtung“: 100 %), Rollen zu 70 %, Neigung 6°, Schiff im unteren Drittel, Rückzug bei Schub
+   * und Boost, Vorrücken beim Bremsen, Seitenversatz gegen Seitenschub. pos: Schiffsort (Zeichenkoordinaten),
+   * qs: Schiffslage, aim: Zielrichtung (Welt), st: Flugzustand (thr, boostOn), tanH: tan(halbes Sichtfeld).
+   * Ergebnis in this._out3Pos / this._out3Q.
+   */
+  chasePose3d(dt, pos, qs, e, aim, st, maxSpeed, tanH, radius) {
+    const set = flightSettings();
+    let mix = set.cam === 'aim' ? 1 : 0.35;
+    const rollK = (this.motion < 1 ? 0.3 : set.camRoll);
+    _f3.set(0, 0, -1).applyQuaternion(qs);
+    if (aim) {
+      _a3.set(aim[0], aim[1], aim[2]);
+      // Zielt das Fadenkreuz unter den Bug, folgt die Kamera stärker (bis 85 %): sonst wanderte es auf das eigene Schiff
+      // im unteren Bilddrittel, und Ziele unter dem Bug lagen hinter dem Rumpf
+      _u3.set(0, 1, 0).applyQuaternion(qs);
+      const down = -_a3.dot(_u3);
+      if (down > 0 && mix < 0.85) mix += (0.85 - mix) * Math.min(1, down / 0.5);
+      _f3.lerp(_a3, mix).normalize();
+    }
+    _u3.set(0, 1, 0).applyQuaternion(qs);
+    _u3.multiplyScalar(rollK).addScaledVector(WUP, 1 - rollK);
+    if (_u3.lengthSq() < 1e-6 || Math.abs(_u3.clone().normalize().dot(_f3)) > 0.995) _u3.set(0, 1, 0).applyQuaternion(qs);
+    _r3.crossVectors(_f3, _u3).normalize();
+    _u3.crossVectors(_r3, _f3).normalize();
+    _m3.makeBasis(_r3, _u3, _w3.copy(_f3).negate());
+    _q3.setFromRotationMatrix(_m3);
+    // gefedert nachdrehen: S1 ≈ 10/s, S8 ≈ 5/s (Masse sichtbar)
+    const r = Math.max(14, radius || 20), rate = Math.max(5, Math.min(10, 10 - (r - 25) * 0.08));
+    if (this.reset3 || this.reset) { this.q3.copy(_q3); this.off3V.set(0, 0, 0); }
+    else this.q3.slerp(_q3, 1 - Math.exp(-dt * rate));
+    // Umsehen: Kamera kreist um das Schiff
+    const lk = 1 - this.kc;
+    if (this.lookYaw || this.lookPitch) { _e3.set(this.lookPitch * 0.8 * lk, this.lookYaw * lk, 0, 'YXZ'); _q4.setFromEuler(_e3); this.q3.multiply(_q4); }
+    // Abstand: Rahmung je Klasse, Zoom, Rückzug bei Schub (+8 %) und Boost (+10 %), Vorrücken beim Bremsen (−5 %)
+    const fr = this.frame[e.ship];
+    const spd = typeof e.speed === 'number' ? e.speed : 0;
+    const n = Math.min(1.25, spd / (maxSpeed || 320));
+    const thr = st ? st.thr : null;
+    const push = thr ? thr[4] : 0, brake = thr ? thr[5] : 0, side = thr ? thr[0] - thr[1] : 0, vert = thr ? thr[2] - thr[3] : 0;
+    const boost = st && st.boostOn ? 1 : 0;
+    const base = fr ? fr.d : Math.max(r * 1.45, CH_R0 * Math.pow(r / CH_R0, CH_EXP) * CH_DIST);
+    const D = Math.max(r * 1.25, base * this.zoom * (1 + 0.04 * n + (0.08 * push + 0.1 * boost - 0.05 * brake) * this.motion));
+    // Zielversatz im Kamerarahmen (gefedert): hinter dem Schiff, 6° darüber, gegen Seiten- und Vertikalschub versetzt
+    const ox = -side * 0.04 * D * this.motion, oy = D * Math.sin(CH3_ELEV) + r * 0.12 - vert * 0.03 * D * this.motion, oz = D * Math.cos(CH3_ELEV);
+    if (this.reset3 || this.reset) this.off3.set(ox, oy, oz);
+    else spring(this.off3, this.off3V, ox, oy, oz, 9 - (r > 60 ? 3 : 0), dt);
+    _w3.copy(this.off3).applyQuaternion(this.q3);
+    this._out3Pos.copy(pos).add(_w3);
+    // Schiff ins untere Drittel: Blick leicht über das Schiff (Neigung um den Unterschied zur Sollhöhe)
+    const want = Math.atan(-CH3_SHIP_Y * tanH) - Math.atan2(oy, oz);
+    _e3.set(want * 0.9, 0, 0, 'YXZ'); _q4.setFromEuler(_e3);
+    this._out3Q.copy(this.q3).multiply(_q4);
+    this.reset3 = false;
+    this.frameY = 0;
+    return n;
+  }
+
+  /** 3D-Cockpit: Kamera am Pilotenauge mit voller Schiffslage, Umsehen, Kopfträgheit gegen die Beschleunigung */
+  cockpitPose3d(eye, qs, st, out, outQ) {
+    _e3.set(this.lookPitch, this.lookYaw, 0, 'YXZ'); _q4.setFromEuler(_e3);
+    outQ.copy(qs).multiply(_q4);
+    out.copy(eye);
+    if (st && this.shakeOn) {
+      // Kopf wird bis 6 cm gegen die Beschleunigung gedrückt (Körperrahmen → Welt)
+      const a = st.accB, k = 0.0006 * this.motion;
+      _w3.set(-a[0] * k, -a[1] * k, -a[2] * k);
+      if (_w3.length() > 0.06) _w3.setLength(0.06);
+      _w3.applyQuaternion(qs);
+      out.add(_w3);
+    }
+    return out;
   }
 
   /** Sichtfeld-Kick, Nachbrenner-Zittern, Stöße fortschreiben; n = Tempoanteil, ab = Nachbrenner 0..1 */

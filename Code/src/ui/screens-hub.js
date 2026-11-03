@@ -2,6 +2,7 @@
 // oben eine schlanke Pilotenleiste, links die Bereiche als Liste mit großen Symbolen, in der Mitte immer nur EIN Bereich.
 // Start = 3D-Szene (Heimatstation, eigenes Schiff) mit großem START-Knopf und drei Kurzinfos. Jeder andere Bereich:
 // klare Überschrift, wenige große Kacheln, Details erst auf Klick. Bildsprache: Planung/UI_STIL.md.
+import { flightHelp, flightPractice, touchHelp, FLIGHT, keyName, label, applyDownKey } from '../input/bindings.js';
 import { wireInstall } from './install.js';
 import { newCode, waitForHost } from '../net/coop.js';
 import {
@@ -22,6 +23,7 @@ import { Bus } from '../core/events.js';
 import { hallBoard, statusText, toast, modalOpen, clearHallCache } from './account-ui.js';
 import { openAccount } from './account-flow.js';
 import { padSettings, setPadSetting, pad as gamepad } from '../input/gamepad.js';
+import { flightSettings, setFlightSetting } from '../input/flightsettings.js';
 import { padMapHtml, paintPadKeys, padStatus, PAD_ROWS } from './pad-map.js';
 
 const BEHAVIOR = {
@@ -805,6 +807,7 @@ function kontoSection(P, account) {
 function einstView(P, ctx) {
   const s = settings();
   const ps = padSettings();
+  const fs = flightSettings(); applyDownKey(fs.down);
   const h = hudState();
   return `<div class="st">
     <div class="st-c">
@@ -837,6 +840,20 @@ function einstView(P, ctx) {
         ${sub('VS', 'VORSCHAU HUD')}
         ${hudPreview()}
       </section>
+      <!-- Controller links (Runde 2): rechts stand alles untereinander, links blieb beim Scrollen eine leere Hälfte -->
+      <section class="ak-sec">
+        ${sub('CT', 'CONTROLLER', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}
+        <div class="mc-set st-set">
+          ${setRow('RECHTER STICK', 'Zielrichtung: der Stick schiebt das Fadenkreuz kurz vor den Bug, das Schiff folgt sofort. Drehrate: der Stick dreht das Schiff direkt.', seg('fl.padMode', [['aim', 'ZIELRICHTUNG'], ['rate', 'DREHRATE']], fs.padMode))}
+          ${setRow('HORIZONT-HILFE', 'Am Controller: in Ruhe richtet sich das Schiff langsam waagrecht aus, nie während eines Manövers.', seg('fl.padHorizon', [[false, 'AUS'], [true, 'AN']], fs.padHorizon))}
+          ${setRow('ZIELHILFE', 'Bremst nahe der Vorhaltemarke, zieht sanft mit und richtet die Laser im Waffenkegel auf die Marke. Gegen Spieler höchstens NIEDRIG.', seg('fl.assist', [[0, 'AUS'], [1, 'NIEDRIG'], [2, 'STANDARD'], [3, 'HOCH']], fs.assist))}
+          ${setRow('EMPFINDLICHKEIT', 'Lenken und Umsehen mit den Sticks.', seg('pad.sens', [[0.7, 'NIEDRIG'], [1, 'MITTEL'], [1.3, 'HOCH'], [1.6, 'SEHR HOCH']], ps.sens))}
+          ${setRow('Y-ACHSE UMKEHREN', 'Rechter Stick: nach oben drücken schaut nach unten.', seg('pad.invertY', [[false, 'AUS'], [true, 'AN']], ps.invertY))}
+          ${setRow('TOTZONE', 'Ab welchem Ausschlag die Sticks reagieren. Höher bei driftenden Sticks.', seg('pad.dead', [[0.08, '8 %'], [0.15, '15 %'], [0.22, '22 %'], [0.3, '30 %']], ps.dead))}
+          ${setRow('VIBRATION', 'Treffer am eigenen Schiff, Explosionen in der Nähe, Raketenstart.', seg('pad.rumble', [[true, 'AN'], [false, 'AUS']], ps.rumble))}
+        </div>
+        ${padMapHtml()}
+      </section>
     </div>
     <div class="st-c">
       <section class="ak-sec">
@@ -859,14 +876,18 @@ function einstView(P, ctx) {
         </div>
       </section>
       <section class="ak-sec">
-        ${sub('CT', 'CONTROLLER', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}
+        ${sub('FL', 'FLUG 3D', '<span class="ls-label">SOFORT</span>')}
         <div class="mc-set st-set">
-          ${setRow('EMPFINDLICHKEIT', 'Lenken und Umsehen mit den Sticks.', seg('pad.sens', [[0.7, 'NIEDRIG'], [1, 'MITTEL'], [1.3, 'HOCH'], [1.6, 'SEHR HOCH']], ps.sens))}
-          ${setRow('Y-ACHSE UMKEHREN', 'Rechter Stick: nach oben drücken schaut nach unten.', seg('pad.invertY', [[false, 'AUS'], [true, 'AN']], ps.invertY))}
-          ${setRow('TOTZONE', 'Ab welchem Ausschlag die Sticks reagieren. Höher bei driftenden Sticks.', seg('pad.dead', [[0.08, '8 %'], [0.15, '15 %'], [0.22, '22 %'], [0.3, '30 %']], ps.dead))}
-          ${setRow('VIBRATION', 'Treffer am eigenen Schiff, Explosionen in der Nähe, Raketenstart.', seg('pad.rumble', [[true, 'AN'], [false, 'AUS']], ps.rumble))}
+          ${setRow('MAUS', 'Mausziel: Fadenkreuz sofort, das Schiff folgt. Virtueller Stick: Zeigerausschlag dreht das Schiff (Trackpad).', seg('fl.mouse', [['aim', 'MAUSZIEL'], ['vjoy', 'VIRT. STICK']], fs.mouse))}
+          ${setRow('MAUS-EMPFINDLICHKEIT', 'Grad je Mauspunkt beim Zielen.', seg('fl.sens', [[0.04, 'SEHR NIEDRIG'], [0.055, 'NIEDRIG'], [0.07, 'MITTEL'], [0.09, 'HOCH'], [0.12, 'SEHR HOCH']], fs.sens))}
+          ${setRow('LENKKEGEL', 'So weit darf das Fadenkreuz der Nase vorauslaufen.', seg('fl.cone', [[15, '15°'], [22, '22°'], [30, '30°'], [45, '45°'], [70, '70°']], fs.cone))}
+          ${setRow('SICHTFELD', 'Verfolgersicht.', seg('fl.fov', [[60, '60°'], [70, '70°'], [80, '80°'], [90, '90°']], fs.fov))}
+          ${setRow('Y-ACHSE UMKEHREN', 'Maus nach oben: Nase nach unten.', seg('fl.invertY', [[false, 'AUS'], [true, 'AN']], fs.invertY))}
+          ${setRow('KURVENROLLEN', 'Das Schiff legt sich in die Kurve. Aus: reines Gieren wie im Simulator.', seg('fl.autoRoll', [[false, 'AUS'], [true, 'AN']], fs.autoRoll))}
+          ${setRow('HORIZONT-HILFE', 'In Ruhe richtet sich das Schiff langsam waagrecht aus. Nie während eines Manövers.', seg('fl.horizon', [[false, 'AUS'], [true, 'AN']], fs.horizon))}
+          ${setRow('TASTE RUNTER', `Automatisch: im Browser unter Windows C (Strg+W schließt dort den Tab), sonst Strg. Mit C liegt der Tempomat auf ${label('KeyY')}. Jetzt: ${keyName('down')}.`, seg('fl.down', [['auto', 'AUTOMATISCH'], ['ctrl', 'STRG'], ['c', 'C']], fs.down))}
+          ${setRow('KAMERA', 'Verfolger: Mischung aus Bug und Zielrichtung oder ganz der Zielrichtung nach.', seg('fl.cam', [['mix', 'MISCHUNG'], ['aim', 'ZIELRICHTUNG']], fs.cam))}
         </div>
-        ${padMapHtml()}
       </section>
     </div>
   </div>`;
@@ -876,7 +897,13 @@ const EINST = { overview: (P, store, ctx) => einstView(P, ctx), details: {} };
 // ---------------------------------------------------------------- Steuerung
 
 const KEYS = [
-  ['flug', 'FLUG UND KAMERA', [
+  // Hauptmodus 3D-Flug (Verfolger, Cockpit): Belegung aus input/bindings.js (je Aufruf neu: die Taste „runter“ ist
+  // einstellbar, Runde 3)
+  ['flug3d', 'FLUG 3D', () => flightHelp().map(([k, t]) => [[k], t])],
+  // Flugpraxis und Touch (Runde 2): Sprung aus voller Fahrt, Sektorrand ohne Schaden, Kurvenkampf, Feuerleitrechner
+  ['praxis', 'FLUGPRAXIS 3D', () => flightPractice().map(([k, t]) => [[k], t])],
+  ['touch', 'TOUCH', touchHelp().flatMap(([g, rows]) => rows.map(([k, t]) => [[k], `${g.replace('TOUCH · ', '')}: ${t}`]))],
+  ['flug', 'TAKTIK · DRAUFSICHT', [
     [['LMB'], 'Hinfliegen, Klick ins All'],
     [['LMB', 'HALTEN'], 'Dem Mauszeiger folgen'],
     [['W', 'A', 'S', 'D'], 'Direkt steuern, auch Pfeiltasten'],
@@ -885,7 +912,7 @@ const KEYS = [
     [['E'], 'Andocken in der sicheren Zone, angedockt: Abdocken'],
     [['ESC'], 'Bordmenü'],
   ]],
-  ['kampf', 'KAMPF', [
+  ['kampf', 'KAMPF · TAKTIK', [
     [['LMB'], 'Gegner anklicken: Ziel wählen'],
     [['2×LMB'], 'Ziel wählen und angreifen'],
     [['TAB'], 'Nächster Gegner als Ziel'],
@@ -904,25 +931,26 @@ const KEYS = [
     [['ESC'], 'Zurück, dann zur Startseite'],
   ]],
 ];
-const KB = [
+// Tastatur im Hauptmodus (3D-Flug, QWERTZ); die Taktik-Belegung steht in der Liste darunter
+const KB = (c) => [
   [['ESC', 'MENÜ', 1.5], ['1', 'L1'], ['2', 'L2'], ['3', 'L3'], ['4', 'L4'], ['5', 'SAB'], ['6', 'SAL'], ['7'], ['8'], ['9'], ['0']],
-  [['TAB', 'ZIEL', 1.5], ['Q'], ['W', 'VOR'], ['E', 'DOCK'], ['R', 'R1'], ['T'], ['Z'], ['U'], ['I'], ['O'], ['P']],
-  [['⇪', '', 1.75], ['A', 'LINKS'], ['S', 'ZURÜCK'], ['D', 'RECHTS'], ['F'], ['G'], ['H', 'HEIM'], ['J', 'SPRUNG'], ['K'], ['L'], ['Ö', '', 0.75]],
-  [['⇧', '', 2.25], ['Y'], ['X'], ['C'], ['V'], ['B', 'SHOP'], ['N'], ['M'], ['⇧', '', 2.25]],
-  [['STRG', 'ANGRIFF', 1.5], ['⌥', '', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'RAKETE', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
+  [['TAB', 'ZIEL', 1.5], ['Q', 'ROLLEN'], ['W', 'VOR'], ['E', 'ROLLEN'], ['R', 'R1'], ['T', 'ZIEL+'], c ? ['Z', 'TEMPOMAT'] : ['Z'], ['U'], ['I'], ['O'], ['P']],
+  [['⇪', '', 1.75], ['A', 'LINKS'], ['S', 'ZURÜCK'], ['D', 'RECHTS'], ['F', 'KONTEXT'], ['G'], ['H', 'HEIM'], ['J', 'SPRUNG'], ['K'], ['L'], ['Ö', '', 0.75]],
+  [['⇧', 'BOOST', 2.25], ['Y', 'UMSEHEN'], ['X', 'BREMSE'], c ? ['C', 'RUNTER'] : ['C', 'TEMPOMAT'], ['V', 'KAMERA'], ['B', 'REISE'], ['N', 'LANDUNG'], ['M'], ['⇧', '', 2.25]],
+  [c ? ['STRG', '', 1.5] : ['STRG', 'RUNTER', 1.5], ['⌥', 'ZEIGER', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'HOCH', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
 ];
 function keyboard() {
-  return `<div class="mc-kb" aria-hidden="true">${KB.map((row) => `<div class="mc-kb-r" style="grid-template-columns:${row.map((r) => `${r[2] || 1}fr`).join(' ')}">${row.map(([k, fn]) =>
+  return `<div class="mc-kb" aria-hidden="true">${KB(FLIGHT.down[0] === 'KeyC').map((row) => `<div class="mc-kb-r" style="grid-template-columns:${row.map((r) => `${r[2] || 1}fr`).join(' ')}">${row.map(([k, fn]) =>
     `<span class="mc-kb-k${fn ? ' on' : ''}"><b>${k}</b>${fn ? `<i>${fn}</i>` : ''}</span>`).join('')}</div>`).join('')}</div>`;
 }
 const STEUERUNG = {
   overview() {
     const nPad = PAD_ROWS.reduce((n, [, r]) => n + r.length, 0);
-    return `${keyboard()}${tiles(...KEYS.map(([id, t, rows]) => tile(id, t, `${pad2(rows.length)}<i> BEFEHLE</i>`, esc(rows[0][1]), { wide: id === 'mc' })),
+    return `${keyboard()}${tiles(...KEYS.map(([id, t, r0]) => [id, t, typeof r0 === 'function' ? r0() : r0]).map(([id, t, rows]) => tile(id, t, `${pad2(rows.length)}<i> BEFEHLE</i>`, esc(rows[0][1]), { wide: id === 'mc' })),
       tile('controller', 'CONTROLLER', `${pad2(nPad)}<i> BELEGUNGEN</i>`, 'Xbox, PlayStation, Switch Pro: Flug, Kampf und Menüs ohne Maus', { wide: true }))}`;
   },
   details: {
-    ...Object.fromEntries(KEYS.map(([id, t, rows]) => [id, [t, () => `<div class="hb-keys">${rows.map(([keys, txt]) =>
+    ...Object.fromEntries(KEYS.map(([id, t, r0]) => [id, [t, () => `<div class="hb-keys">${(typeof r0 === 'function' ? r0() : r0).map(([keys, txt]) =>
       `<div class="mc-key"><span class="mc-key-k">${keys.map((k) => (k === '…' ? '<span class="ls-label">BIS</span>' : `<span class="ls-key">${k}</span>`)).join('')}</span><span>${esc(txt)}</span></div>`).join('')}</div>`]])),
     controller: ['CONTROLLER', () => `<div class="hb-pad">${sub('CT', 'BELEGUNG', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}${padMapHtml()}</div>`],
   },
@@ -1427,6 +1455,11 @@ export async function hubScreen(root, profile, store, account = null) {
     let val = b.dataset.val;
     if (key === 'hudMode') { hudSet((v) => { for (const id of HUD_TOGGLE) v.win[id] = { ...(v.win[id] || { collapsed: false }), mode: val }; }); }
     else if (key === 'hudLock') { val = val === 'true'; hudSet((v) => { v.locked = val; }); }
+    else if (key.startsWith('fl.')) {
+      const k = key.slice(3);
+      val = val === 'true' ? true : val === 'false' ? false : /^-?\d+(\.\d+)?$/.test(val) ? Number(val) : val;
+      setFlightSetting(k, val);
+    }
     else if (key.startsWith('pad.')) {
       const k = key.slice(4);
       val = k === 'invertY' || k === 'rumble' ? val === 'true' : Number(val);

@@ -8,12 +8,12 @@
 import './hud-mid.css';
 import { ENEMIES } from '../core/data.js';
 import { PLAYER_RANGE } from '../sim/config.js';
-import { fmt, clamp01, TextSlot, ClassSlot, Bar } from './hud-parts.js';
+import { fmt, clamp01, TextSlot, ClassSlot, Bar, ring3, ring3Free } from './hud-parts.js';
 
 const EDGE = 44;          // Abstand der Randmarke zum Bildschirmrand
 const STEP = 12;          // Schrittweite beim Zurücklaufen aus einem Fenster
 const BOX_MIN = 22, BOX_MAX = 84;
-const LAB_W = 150, LAB_H = 46;
+const LAB_W = 184, LAB_H = 46; // breit genug für lange Namen (ÜBUNGSDROHNE 320 M wurde abgeschnitten)
 const HOT_SECS = 4;
 const FLASH_SECS = 1.6;
 const LOW = 0.3;
@@ -244,12 +244,14 @@ export class HudMid {
 
     // ---------- eigenes Schiff: zwei Bögen ----------
     const pv = views && views.get(pl.id);
-    const px = pv ? pv.rx : pl.x, pz = pv ? pv.rz : pl.z;
-    const s = r.toScreen(px, pz, this._scr);
+    const px = pv ? pv.rx : pl.x, pz = pv ? pv.rz : pl.z, py = pv ? (pv.ry || 0) : 0;
+    this._py = py;
+    const s = r.toScreen(px, pz, this._scr, py);
     const pr = pv && pv.vr ? pv.vr : 30;
-    const s2 = r.toScreen(px + pr, pz, this._scr2);
+    const s2 = r.toScreen(px + pr, pz, this._scr2, py);
     const prs = Math.abs(s2.x - s.x);
-    this.sShipOn.set(s.visible);
+    // 3D-Flug: Bögen unter dem Schiff aus (Mitte gehört Fadenkreuz und Vorhalt, Werte im Fenster SCHIFF)
+    this.sShipOn.set(s.visible && !(w.flight3d && r.rig && r.rig.k > 0.5));
     this._cx = s.x; this._cy = s.y;
     if (s.visible) {
       let size = Math.round(Math.max(64, Math.min(150, prs * 2.6)) / 4) * 4;
@@ -303,10 +305,10 @@ export class HudMid {
       this._bs = NaN;
     }
     const ev = views && views.get(id);
-    const ex = ev ? ev.rx : e.x, ez = ev ? ev.rz : e.z;
-    const t = r.toScreen(ex, ez, this._scr);
+    const ex = ev ? ev.rx : e.x, ez = ev ? ev.rz : e.z, ey = ev ? (ev.ry || 0) : 0;
+    const t = r.toScreen(ex, ez, this._scr, ey);
     const tx = t.x, ty = t.y;
-    const dist = Math.hypot(e.x - pl.x, e.z - pl.z);
+    const dist = Math.hypot(e.x - pl.x, e.z - pl.z, w.flight3d ? (e.y || 0) - pl.y : 0);
     const atk = !!(pl.attacking && pl.targetId === id);
     const out = dist > PLAYER_RANGE;
     this.sAtk.set(atk);
@@ -317,22 +319,26 @@ export class HudMid {
     const covered = inView && !!winAt(wins, tx, ty, 4);
     const showBox = inView && !covered;
     this.sTgtOn.set(showBox);
+    const LR = this.labRect || (this.labRect = { on: false, x0: 0, y0: 0, x1: 0, y1: 0 }); // Zielschild für hud.js (Zahlen ausweichen)
+    LR.on = false;
     this.sArrOn.set(!showBox);
     this.sArrPeil.set(covered);
 
     if (showBox) {
       const er = ev && ev.vr ? ev.vr : (e.radius || 20);
-      const t2 = r.toScreen(ex + er, ez, this._scr2);
-      let half = Math.abs(t2.x - tx) * 1.25 + 8;
+      const t2 = r.toScreen(ex + er, ez, this._scr2, ey);
+      let half = Math.hypot(t2.x - tx, t2.y - ty) * 1.25 + 8;
       half = half < BOX_MIN ? BOX_MIN : half > BOX_MAX ? BOX_MAX : half;
       half = Math.round(half / 2) * 2;
       const bx = Math.round(tx), by = Math.round(ty);
-      // Schild: unter der Klammer; stößt es an ein Fenster oder den Rand, über die Klammer, dann seitlich
+      // Schild: unter der Klammer; stößt es an ein Fenster oder den Rand, über die Klammer, dann seitlich.
+      // Verfolgersicht im 3D-Flug: zuerst über der Klammer – darunter sitzt dort das eigene Schiff.
       let lx = 0, ly = half + 8;
       const below = by + ly, above = by - half - 8 - LAB_H;
-      if (below + LAB_H > H - 8 || rectHit(wins, bx - LAB_W / 2, below, bx + LAB_W / 2, below + LAB_H)) {
-        if (above > 8 && !rectHit(wins, bx - LAB_W / 2, above, bx + LAB_W / 2, above + LAB_H)) ly = -half - 8 - LAB_H;
-      }
+      // (Cockpit ebenso: darunter liegt die mittlere Konsole, Runde 2)
+      const up3 = !!w.flight3d;
+      const okAbove = above > 8 && !rectHit(wins, bx - LAB_W / 2, above, bx + LAB_W / 2, above + LAB_H);
+      if (up3 ? okAbove : (below + LAB_H > H - 8 || rectHit(wins, bx - LAB_W / 2, below, bx + LAB_W / 2, below + LAB_H)) && okAbove) ly = -half - 8 - LAB_H;
       const o = rectHit(wins, bx - LAB_W / 2, by + ly, bx + LAB_W / 2, by + ly + LAB_H);
       if (o) lx = o.x + o.w / 2 < bx ? Math.round(o.x + o.w + 10 - (bx - LAB_W / 2)) : Math.round(o.x - 10 - (bx + LAB_W / 2));
       if (bx + lx - LAB_W / 2 < 8) lx = 8 - (bx - LAB_W / 2);
@@ -343,6 +349,7 @@ export class HudMid {
         this.tgt.style.transform = 'translate3d(' + bx + 'px,' + by + 'px,0)';
       }
       if (lx !== this._lx || ly !== this._ly) { this._lx = lx; this._ly = ly; this.lab.style.transform = 'translate3d(' + lx + 'px,' + ly + 'px,0)'; }
+      LR.on = true; LR.x0 = bx + lx - LAB_W / 2; LR.y0 = by + ly; LR.x1 = LR.x0 + LAB_W; LR.y1 = LR.y0 + LAB_H;
       if (dq !== this._distQ) { this._distQ = dq; this.sDist.set(fmt(dq * 10) + ' M'); }
       if (e.hpMax > 0) {
         this.bHull.set(clamp01((e.hp || 0) / e.hpMax), dt);
@@ -363,7 +370,16 @@ export class HudMid {
     // Richtung vom eigenen Schiff zum Ziel in der Welt (Draufsicht: Bild-x ≈ Welt-x, Bild-y ≈ Welt-z)
     const cx = this._cx, cy = this._cy;
     let dx, dy, ax, ay;
-    if (covered) {
+    if (w.flight3d && r.rig && r.rig.k > 0.5) {
+      // 3D-Flug (Runde 2): Peilmarke auf einem Ring um die Bildmitte (Richtung aus der Projektion, hinter der Kamera
+      // gespiegelt) – nie am Bildrand unter den Fenstern, die Richtung stimmt auch bei Ziel über/unter dem Schiff
+      // (vorher Weltrichtung x/z vom eigenen Schiff aus, wie in der Draufsicht)
+      dx = tx - W / 2; dy = ty - H / 2;
+      if (t.behind) { dx = -dx; dy = -dy; }
+      if (!dx && !dy) dy = -1;
+      const o = ring3Free(W, H, dx, dy, 1, this._ring || (this._ring = { x: 0, y: 0 }));
+      ax = o.x; ay = o.y;
+    } else if (covered) {
       // Ziel liegt unter einem Fenster: vom Ziel Richtung Schiff laufen, bis die Fensterkante erreicht ist
       dx = tx - cx; dy = ty - cy;
       const len = Math.hypot(dx, dy) || 1;
@@ -409,7 +425,7 @@ export class HudMid {
       const op = Math.round(k * k * 100) / 100;
       if (op !== h.op) { h.op = op; h.el.style.opacity = String(op); }
       if (op <= 0) continue;
-      const q = r.toScreen(px + h.ux * 60, pz + h.uz * 60, this._scr2);
+      const q = r.toScreen(px + h.ux * 60, pz + h.uz * 60, this._scr2, this._py || 0);
       const ang = Math.round(Math.atan2(q.y - this._cy, q.x - this._cx) * 180 / Math.PI);
       if (ang !== h.ang || size !== h.size) {
         h.ang = ang;
@@ -456,8 +472,8 @@ export class HudMid {
       const T = this.threats[i];
       const fresh = this._hitAt.has(e.id);
       const ev = views && views.get(e.id);
-      const ex = ev ? ev.rx : e.x, ez = ev ? ev.rz : e.z;
-      const t = r.toScreen(ex, ez, this._scr2);
+      const ex = ev ? ev.rx : e.x, ez = ev ? ev.rz : e.z, ey = ev ? (ev.ry || 0) : 0;
+      const t = r.toScreen(ex, ez, this._scr2, ey);
       const tx = t.x, ty = t.y;
       const inView = t.visible && tx > 0 && tx < W && ty > 0 && ty < H;
       const covered = inView && !!winAt(wins, tx, ty, 4);
@@ -466,7 +482,7 @@ export class HudMid {
       if (inView && !covered) {
         T.sA.set(false);
         const er = ev && ev.vr ? ev.vr : (e.radius || 20);
-        const t2 = r.toScreen(ex + er, ez, this._scr);
+        const t2 = r.toScreen(ex + er, ez, this._scr, ey);
         let half = Math.abs(t2.x - tx) * 1.6 + 12;
         half = half < T_MIN ? T_MIN : half > T_MAX ? T_MAX : half;
         half = Math.round(half / 2) * 2;
@@ -487,12 +503,20 @@ export class HudMid {
       let ux = e.x - pl.x, uz = e.z - pl.z;
       const wl = Math.hypot(ux, uz) || 1;
       ux /= wl; uz /= wl;
-      const q = r.toScreen(px + ux * 60, pz + uz * 60, this._scr);
+      const q = r.toScreen(px + ux * 60, pz + uz * 60, this._scr, this._py || 0);
       let dx = q.x - cx, dy = q.y - cy;
       const len = Math.hypot(dx, dy) || 1;
       dx /= len; dy /= len;
       let ax, ay;
-      if (covered) {
+      if (w.flight3d && r.rig && r.rig.k > 0.5) {
+        // 3D-Flug (Runde 2): Bedrohungspfeile auf dem Ring um die Bildmitte (wie Peil- und Auftragsmarke)
+        let gx = tx - W / 2, gy = ty - H / 2;
+        if (t.behind) { gx = -gx; gy = -gy; }
+        if (!gx && !gy) gy = -1;
+        const a = Math.atan2(gy, gx); dx = Math.cos(a); dy = Math.sin(a);
+        const o = ring3Free(W, H, dx, dy, 1.05, this._ring2 || (this._ring2 = { x: 0, y: 0 }));
+        ax = o.x; ay = o.y;
+      } else if (covered) {
         ax = tx; ay = ty;
         for (let k = 0; k < 80 && winAt(wins, ax, ay, 16); k++) { ax -= dx * STEP; ay -= dy * STEP; }
       } else {

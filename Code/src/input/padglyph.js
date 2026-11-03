@@ -30,16 +30,27 @@ const FULL = { // zusätzlich für Quest-Karten und Hinweise, die eine einzelne 
   1: 'DLR RB+A', 2: 'DLR RB+A', 3: 'DLR RB+A', 4: 'DLR RB+A', 5: 'DLR RB+A', 6: 'DLR RB+A', 7: 'DLR RB+A', 8: 'DLR RB+A', 9: 'DLR RB+A', 0: 'DLR RB+A',
 };
 
+// 3D-Flug (html[data-flight="3d"]): andere Controller-Belegung (Planung/FLUGMODELL.md 5.3)
+const SAFE3 = { ...SAFE, F: 'Y', E: 'Y', TAB: 'A', T: 'A', STRG: 'RT', LINKSKLICK: 'RT', R: 'X', LEER: 'X', LEERTASTE: 'X', X: 'B', UMSCHALT: 'L3', N: 'L3' };
+const FULL3 = {
+  ...FULL, ...SAFE3, W: 'LS', S: 'LS', A: 'LS', D: 'LS', MAUS: 'RS', KLICK: 'A', H: 'Y',
+  1: 'DLR DU', 2: 'DLR DU', 3: 'DLR DU', 4: 'DLR DU', 5: 'DLR DU', 6: 'DLR DU', 7: 'DLR DU', 8: 'DLR DU', 9: 'DLR DU', 0: 'DLR DU',
+  'ALT+1': 'DD', 'ALT+2': 'DD', 'ALT+3': 'DD', 'ALT+4': 'DD', 'ALT+5': 'DD',
+};
+const f3 = () => typeof document !== 'undefined' && document.documentElement.dataset.flight === '3d';
+
 /** Hinweistext für eine Tastatur-Beschriftung: im Controller-Modus das Symbol, sonst unverändert */
 export function keyHint(label, full = true) {
   if (pad.mode !== 'pad' || label == null) return label;
-  const m = (full ? FULL : SAFE)[String(label).trim()];
+  const m = (f3() ? (full ? FULL3 : SAFE3) : (full ? FULL : SAFE))[String(label).trim()];
   return m ? glyph(m) : label;
 }
 export const padMode = () => pad.mode === 'pad';
 
 // Tabellen und Grafiken, die bewusst die Tastatur zeigen (Steuerungsübersichten), bleiben unverändert
-const KEEP = '.mc-kb, .hb-keys, .mp-ctrl, .gp-map, .qs-k, [data-nopad]';
+// (.gp-tab: Belegungstabelle des Controllers – ihre Kappen tragen schon das Symbol der Bauart über data-pk; die
+// Tastatur-Umschlüsselung hätte sie ein zweites Mal getauscht, z. B. X → B für die Raumbremse)
+const KEEP = '.mc-kb, .hb-keys, .mp-ctrl, .gp-map, .gp-tab, .qs-k, [data-nopad], [data-pk]';
 
 /** Tastenkappen unter root auf die aktuelle Eingabeart umstellen (billig: nur geänderte Kappen werden geschrieben) */
 export function applyKeyHints(root, force = false) {
@@ -58,7 +69,7 @@ export function applyKeyHints(root, force = false) {
     if (ours || el.closest(KEEP)) continue;
     const k = String(ds.kb).trim();
     // Station und Fernhandel: Abdocken/Schließen liegt auf B (Zurück), nicht auf Y
-    const m = (k === 'E' || k === 'Esc' || k === 'ESC') && el.closest('.sx') ? 'B' : SAFE[k];
+    const m = (k === 'E' || k === 'Esc' || k === 'ESC') && el.closest('.sx') ? 'B' : (f3() ? SAFE3 : SAFE)[k];
     if (!m) continue;
     const t = glyph(m);
     ds.pd = t;
@@ -72,5 +83,6 @@ const roots = () => [document.getElementById('hud'), document.getElementById('sc
 function sweep(force) { for (const r of roots()) applyKeyHints(r, force === true); }
 if (typeof window !== 'undefined') {
   window.addEventListener('ls:inputmode', () => sweep(true));
+  window.addEventListener('ls:flightview', () => sweep(true)); // 3D-Flug ↔ Taktik: andere Controller-Belegung
   setInterval(() => { if (pad.mode === 'pad') sweep(); }, 300);
 }

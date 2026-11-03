@@ -21,3 +21,12 @@
 .hud-coach.done > b::after { content: ' · OK'; }
 @media (prefers-reduced-motion: reduce) { .hud-coach { transition: none; } }
 .hud-coach .hc-text b { color: #fff; font-weight: 600; }
+/* Nach 12 s leise: nur Schritt und Titel, kleiner und halb durchsichtig (Runde 2: die Karte stand minutenlang groß
+   über dem Kampf). */
+.hud-coach.is-quiet { opacity: .5; padding: 5px 12px 6px 10px; }
+.hud-coach.is-quiet .hc-text { display: none; }
+.hud-coach.is-quiet > b { font-size: 12px; }
+/* 3D-Flug (Runde 2): oben links, wo Pilot und Konto im Flug-HUD aus sind – mittig lag die Karte auf der Serie-Anzeige
+   und über dem Kursband */
+html[data-flight="3d"] .hud-coach { left: 12px; top: 56px; max-width: min(440px, 40vw); transform: translate(0, -8px); }
+html[data-flight="3d"] .hud-coach.on { transform: none; }

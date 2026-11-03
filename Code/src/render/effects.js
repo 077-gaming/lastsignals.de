@@ -76,6 +76,7 @@ class Particles {
       blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
     this.points = new THREE.Points(g, this.mat);
+    this.yOff = 0; // Höhe des Ereignisses (3D-Flug), gesetzt von Effects._setY
     this.points.frustumCulled = false;
     this.points.renderOrder = additive ? 20 : 19;
   }
@@ -83,7 +84,7 @@ class Particles {
     if (this.n >= this.cap) return;
     const i = this.n++;
     const i3 = i * 3, i4 = i * 4;
-    this.pos[i3] = x; this.pos[i3 + 1] = y; this.pos[i3 + 2] = z;
+    this.pos[i3] = x; this.pos[i3 + 1] = y + this.yOff; this.pos[i3 + 2] = z;
     this.vel[i3] = vx; this.vel[i3 + 1] = vy; this.vel[i3 + 2] = vz;
     this.col[i4] = r; this.col[i4 + 1] = g; this.col[i4 + 2] = b; this.col[i4 + 3] = a;
     this.a0[i] = a; this.s0[i] = s0; this.s1[i] = s1; this.size[i] = s0;
@@ -138,13 +139,14 @@ class Sparks {
     g.setAttribute('position', this.aP); g.setAttribute('color', this.aC);
     g.setDrawRange(0, 0);
     this.mat = new THREE.LineBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+    this.yOff = 0;
     this.lines = new THREE.LineSegments(g, this.mat);
     this.lines.frustumCulled = false; this.lines.renderOrder = 21;
   }
   emit(x, y, z, vx, vy, vz, r, g, b, life, drag, len) {
     if (this.n >= this.cap) return;
     const i = this.n++, i3 = i * 3;
-    this.p[i3] = x; this.p[i3 + 1] = y; this.p[i3 + 2] = z;
+    this.p[i3] = x; this.p[i3 + 1] = y + this.yOff; this.p[i3 + 2] = z;
     this.v[i3] = vx; this.v[i3 + 1] = vy; this.v[i3 + 2] = vz;
     this.c[i3] = r; this.c[i3 + 1] = g; this.c[i3 + 2] = b;
     this.life[i] = life; this.max[i] = life; this.drag[i] = drag; this.len[i] = len;
@@ -457,7 +459,7 @@ export class Effects {
       vertexShader: BOLT_VS, fragmentShader: BOLT_FS,
       blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, side: THREE.DoubleSide,
     });
-    this.boltPool = new InstancePool(this.boltGeo, this.boltMat, 256);
+    this.boltPool = new InstancePool(this.boltGeo, this.boltMat, 900); // 256 Effekt-Bolzen + Simulationsbolzen (3D-Flug)
     this.boltPool.mesh.renderOrder = 21;
     this.group.add(this.boltPool.mesh);
     this.bolts = [];
@@ -682,15 +684,22 @@ export class Effects {
     let any = false;
     for (let k = 0; k < ION_N; k++) {
       const i = Math.min(k, I.n - 1), a = Math.max(0, i - 1), b = Math.min(I.n - 1, i + 1);
-      let tx = I.x[a] - I.x[b], tz = I.z[a] - I.z[b];
-      const L = Math.hypot(tx, tz) || 1; tx /= L; tz /= L;
+      let tx = I.x[a] - I.x[b], ty = I.y[a] - I.y[b], tz = I.z[a] - I.z[b];
+      // Band quer zur Bahn und zur Blickrichtung (im 3D-Flug sonst eine flache Scheibe in der Ebene)
+      const cam = this.host.camera;
+      let sx = -tz, sy = 0, sz = tx;
+      if (cam && (this.host.yK || 0) > 0.01) {
+        const vx = I.x[i] - cam.position.x, vy = I.y[i] - cam.position.y, vz = I.z[i] - cam.position.z;
+        sx = ty * vz - tz * vy; sy = tz * vx - tx * vz; sz = tx * vy - ty * vx;
+      }
+      const sl = Math.hypot(sx, sy, sz) || 1; sx /= sl; sy /= sl; sz /= sl;
       const age = this.time - I.t[i];
       const f = Math.max(0, 1 - age / 0.5);
       const al = k < I.n ? f * f * I.k[i] : 0;
       if (al > 0.01) any = true;
       const w = I.w * (0.55 + 0.45 * f);
-      P[k * 6] = I.x[i] - tz * w; P[k * 6 + 1] = I.y[i]; P[k * 6 + 2] = I.z[i] + tx * w;
-      P[k * 6 + 3] = I.x[i] + tz * w; P[k * 6 + 4] = I.y[i]; P[k * 6 + 5] = I.z[i] - tx * w;
+      P[k * 6] = I.x[i] + sx * w; P[k * 6 + 1] = I.y[i] + sy * w; P[k * 6 + 2] = I.z[i] + sz * w;
+      P[k * 6 + 3] = I.x[i] - sx * w; P[k * 6 + 4] = I.y[i] - sy * w; P[k * 6 + 5] = I.z[i] - sz * w;
       A[k * 2] = al; A[k * 2 + 1] = al;
     }
     this.ionPos.needsUpdate = true; this.ionA.needsUpdate = true;
@@ -743,6 +752,8 @@ export class Effects {
   // ---------- Auslöser ----------
   shot(p) {
     if (!p) return;
+    // 3D-Flug: der Bolzen selbst kommt aus der Simulation (world.bolts, simBolts); hier nur der Mündungsblitz
+    if (p.bolt) { this._muzzle(p); return; }
     // Mehrere Laser desselben Schützen im selben Bild: je Laser ≈ 55 ms versetzt
     if (p.from === this._lastShotFrom && this.time === this._lastShotT) this._shotN++;
     else { this._shotN = 0; this._lastShotFrom = p.from; this._lastShotT = this.time; }
@@ -821,6 +832,55 @@ export class Effects {
       if (from === 'player') { this.host.shake(4); this.host.recoil?.(from, 0.9); }
     }
   }
+  /** Mündungsblitz eines Simulationsbolzens (Spieler: am Laseranker, Gegner: am Bug) */
+  _muzzle(p) {
+    const H = this.host;
+    if (!H.getMuzzle(p.from, p.laser, _v, typeof p.idx === 'number' ? p.idx : -1)) return;
+    let hex = p.laser ? LASERS[p.laser]?.color : null;
+    if (hex == null) { const fe = H.entity(p.from); hex = (fe && ENEMIES[fe.type]?.accent) ?? 0xff4a4a; }
+    _c.setHex(hex);
+    const mpp = H.metersPerPixel ? H.metersPerPixel() : 0.4;
+    const k = p.sal ? 1.6 : 1;
+    this._flash(_v.x, _v.y, _v.z, Math.max(18, 40 * mpp) * k, p.sal ? 0.12 : 0.06, 0xffffff, 1.8 * k, null, _c.r, _c.g, _c.b);
+    if (rand() < 0.5 * this.density) {
+      const dx = p.dx || 0, dy = p.dy || 0, dz = p.dz || 0;
+      for (let i = 0; i < 2; i++) { const sp = 300 + rand() * 400; this.sparks.emit(_v.x, _v.y, _v.z, (dx + (rand() - 0.5) * 0.5) * sp, (dy + (rand() - 0.5) * 0.3) * sp, (dz + (rand() - 0.5) * 0.5) * sp, 1.2 + _c.r, 1 + _c.g, 0.8 + _c.b, 0.06, 2, 0.02); }
+    }
+  }
+  /** Einschlag eines Simulationsbolzens (Treffer am Ziel oder am Brocken) bei (x, y, z) in Zeichenkoordinaten */
+  boltImpact(x, y, z, hex, dx, dy, dz, shield, big) {
+    _c.setHex(hex ?? 0xffd0a0);
+    const n = this._n(big ? 24 : 10);
+    for (let i = 0; i < n; i++) {
+      const sp = 160 + rand() * 420, b = shield ? -0.4 : 0.6;
+      this.sparks.emit(x, y, z, (dx * b + (rand() - 0.5) * 1.2) * sp, (dy * b + (rand() - 0.5) * 1.2) * sp, (dz * b + (rand() - 0.5) * 1.2) * sp,
+        shield ? 0.9 + _c.r * 0.5 : 3, shield ? 1.6 + _c.g * 0.5 : 2.3, shield ? 2.8 + _c.b * 0.5 : 1.4, 0.12 + rand() * 0.2, 2, 0.025);
+    }
+    this.glowP.emit(x, y, z, 0, 0, 0, _c.r * 2.4, _c.g * 2.4, _c.b * 2.4, 1, big ? 40 : 22, big ? 60 : 36, 0.11, 0);
+    this._flash(x, y, z, big ? 46 : 26, 0.1, 0xffffff, 1.5, null, _c.r, _c.g, _c.b);
+  }
+  /** Bolzen der Simulation (3D-Flug) zeichnen: Ort aus dem letzten Sim-Schritt, um den Bildanteil a vorgerechnet */
+  simBolts(B, a, step, yK, bw) {
+    if (!B || !B.n) return;
+    for (let i = 0; i < B.cap; i++) {
+      if (!B.on[i]) continue;
+      const vx = B.vx[i], vy = B.vy[i], vz = B.vz[i], sp = Math.hypot(vx, vy, vz) || 1;
+      const ex = (a - 1) * step;
+      const hx = B.x[i] + vx * ex, hy = (B.y[i] + vy * ex) * yK, hz = B.z[i] + vz * ex;
+      const enemy = B.kind[i] !== 1;
+      const sal = B.sal[i] === 1;
+      const len = Math.min((enemy ? 70 : 120) * (sal ? 1.4 : 1), (B.age[i] + a * step) * sp + 6);
+      _w.set(vx / sp, vy / sp * yK, vz / sp).normalize();
+      _v.set(hx - _w.x * len * 0.5, hy - _w.y * len * 0.5, hz - _w.z * len * 0.5);
+      _q.setFromUnitVectors(_fz, _w);
+      const th = enemy ? 1.4 : sal ? 2.2 : 1;
+      _s.set(bw * th, bw * th, len);
+      _m.compose(_v, _q, _s);
+      const hex = enemy ? (ENEMIES[B.type[i]]?.accent ?? 0xff4a3a) : (LASERS[B.type[i]]?.color ?? 0xff4a4a);
+      _c.setHex(hex).multiplyScalar(enemy ? 3.6 : 3.2 * (sal ? 1.6 : 1));
+      this.boltPool.push(_m, _c);
+    }
+  }
   // SAB: Saugstrahl zwischen Schütze und Ziel, Schildenergie fließt als Lichtpakete zurück
   _beam(from, to, laser, hit, slot = -1) {
     const H = this.host;
@@ -883,6 +943,10 @@ export class Effects {
   // style: 'metal' (Piraten, Frachter: Trümmer, Feuer), 'swarm' (Aliens: grüner Schleim, Fetzen, Säurenebel), 'ship'
   explode(p, style = 'metal') {
     if (!p) return;
+    this._setY(this._yOf(p));
+    try { this._explode(p, style); } finally { this._setY(0); }
+  }
+  _explode(p, style) {
     const size = Math.max(0.5, Math.min(4, p.size || 1));
     const x = p.x ?? 0, z = p.z ?? 0;
     const r = Math.max(14, this.host.visualRadius ? this.host.visualRadius(p.id) || 0 : 0) || 20 * Math.sqrt(size);
@@ -979,7 +1043,7 @@ export class Effects {
     for (let i = 0; i < this.timers.length; i++) {
       const T = this.timers[i];
       if (T.on) continue;
-      T.on = true; T.t = t; T.kind = kind; T.x = x; T.z = z; T.size = size; T.a = a; T.b = b;
+      T.on = true; T.t = t; T.kind = kind; T.x = x; T.z = z; T.size = size; T.a = a; T.b = b; T.y = this.yOff;
       return;
     }
     // Pool voll: sofort ausführen
@@ -1042,6 +1106,10 @@ export class Effects {
 
   damage(p) {
     if (!p || !p.crit) return;
+    this._setY(this._yOf({ y: p.hy ?? p.y }));
+    try { this._damage(p); } finally { this._setY(0); }
+  }
+  _damage(p) {
     const x = p.x ?? 0, z = p.z ?? 0;
     const has = typeof p.dx === 'number' && typeof p.dz === 'number' && (p.dx || p.dz);
     const L = has ? Math.hypot(p.dx, p.dz) : 1, dx = has ? p.dx / L : 0, dz = has ? p.dz / L : 0;
@@ -1056,6 +1124,10 @@ export class Effects {
 
   loot(p) {
     if (p.x === undefined) return;
+    this._setY(this._yOf(p));
+    try { this._loot(p); } finally { this._setY(0); }
+  }
+  _loot(p) {
     const n = this._n(22);
     const tri = p.tritium > 0; // Tritium glitzert grün, sonst Gold
     const cr = tri ? 0.9 : 2.4, cg = tri ? 2.2 : 2.0, cb = tri ? 1.4 : 0.8;
@@ -1129,16 +1201,19 @@ export class Effects {
     f.col.setHex(hex);
     if (tr !== undefined) { f.col.r = f.col.r * 0.4 + tr * 0.6; f.col.g = f.col.g * 0.4 + tg * 0.6; f.col.b = f.col.b * 0.4 + tb * 0.6; }
     f.col.multiplyScalar(k);
-    f.s.position.set(x, y, z); f.s.visible = true;
+    f.s.position.set(x, y + this.yOff, z); f.s.visible = true;
     f.m.color.copy(f.col);
   }
+  /** Höhe des laufenden Ereignisses (3D-Flug): Effekte mit fester Höhe (Explosion, Ring, Beute) setzen darauf auf */
+  _setY(y) { this.yOff = y || 0; this.glowP.yOff = this.smokeP.yOff = this.sparks.yOff = this.yOff; }
+  _yOf(p) { return p && typeof p.y === 'number' && this.host.ry ? this.host.ry(p.y) : 0; }
   _ring(x, z, from, to, dur, hex, k, follow) {
     let r = null;
     for (let i = 0; i < RINGS - 1; i++) if (!this.rings[i].on) { r = this.rings[i]; break; }
     if (!r) r = this.rings[(rand() * (RINGS - 1)) | 0];
     r.on = true; r.t = 0; r.dur = dur; r.from = from; r.to = to; r.follow = follow; r.alpha = 1;
     r.col.setHex(hex).multiplyScalar(k);
-    r.r.position.set(x, 1, z); r.r.visible = true;
+    r.r.position.set(x, 1 + this.yOff, z); r.r.visible = true;
   }
   _blast(x, z, size, mpp = 0, small = false) {
     let b = null;
@@ -1146,7 +1221,7 @@ export class Effects {
     if (!b) { let best = -1; for (const c of this.blasts) if (c.t > best) { best = c.t; b = c; } }
     b.on = true; b.t = 0; b.size = size; b.x = x; b.z = z; b.minR = 40 * mpp; b.minS = 70 * mpp;
     b.fm.uniforms.uSeed.value = rand() * 50; b.sm.uniforms.uSeed.value = rand() * 50;
-    b.fire.position.set(x, 4, z); b.shell.position.set(x, 4, z);
+    b.fire.position.set(x, 4 + this.yOff, z); b.shell.position.set(x, 4 + this.yOff, z);
     b.fire.rotation.set(rand() * 6, rand() * 6, 0); b.shell.rotation.set(rand() * 6, rand() * 6, 0);
     b.small = small;
     b.fire.visible = true; b.shell.visible = !small; b.sm.uniforms.uAge.value = small ? 1 : 0;
@@ -1159,7 +1234,7 @@ export class Effects {
     // Piraten: jedes vierte größere Trümmerteil brennt eine Weile nach (Feuer + Rauch)
     c.burn = !goo && big >= 1 && rand() < 0.28 ? 1.2 + rand() * 1.2 : 0;
     const a = rand() * Math.PI * 2, sp = (60 + rand() * 240) * Math.sqrt(size) * speed;
-    c.on = true; c.x = x; c.y = y; c.z = z;
+    c.on = true; c.x = x; c.y = y + this.yOff; c.z = z;
     c.vx = Math.cos(a) * sp + dx; c.vz = Math.sin(a) * sp + dz; c.vy = (rand() - 0.3) * 70 * speed;
     c.rx = rand() * 6; c.ry = rand() * 6; c.rz = rand() * 6;
     c.wx = (rand() - 0.5) * 9; c.wy = (rand() - 0.5) * 9; c.wz = (rand() - 0.5) * 9;
@@ -1172,7 +1247,7 @@ export class Effects {
     L.l.color.setHex(hex);
     L.on = true; L.t = 0; L.dur = 0.8 + size * 0.15; L.peak = 5200 * size;
     L.l.distance = 700 + 320 * size;
-    L.l.position.set(x, 70, z);
+    L.l.position.set(x, 70 + this.yOff, z);
   }
   _shield(id, dur, hx, hy, hz, big, full = false) {
     const r0 = this.host.getRadius(id);
@@ -1217,7 +1292,9 @@ export class Effects {
       T.t -= dt;
       if (T.t > 0) continue;
       T.on = false;
+      this._setY(T.y || 0);
       if (T.kind === 2) this._mainBlast(T.x, T.z, T.size, T.b); else if (T.kind === 3) this._gooBurst(T.x, T.z, T.size, T.b); else this._pop(T.x, T.z, T.size, T.a);
+      this._setY(0);
     }
     // SAB-Saugstrahlen folgen Schütze und Ziel
     for (let i = 0; i < this.beams.length; i++) {
@@ -1292,6 +1369,8 @@ export class Effects {
       _c.copy(b.color).multiplyScalar(b.fade);
       this.boltPool.push(_m, _c);
     }
+    const W = H.world;
+    if (W && W.bolts && W.bolts.n) this.simBolts(W.bolts, H._alpha ?? 1, 1 / 60, H.yK ?? 1, bw);
     this.boltPool.end();
 
     // Raketen

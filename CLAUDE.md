@@ -10,12 +10,13 @@
 
 ## Befehle
 
-- Spiel: `cd Code && npm ci && npm run dev` (Port 5173). Abkürzungen: `?dev=hub&f=saturn`, `?dev=game&f=europa`, `?dev=dock&f=eris`.
+- Spiel: `cd Code && npm ci && npm run dev` (Port 5173). Abkürzungen: `?dev=hub&f=saturn`, `?dev=game&f=europa`, `?dev=dock&f=eris`, Fluglabor `?dev=fluglabor` (Regler F4, Übungsdrohnen); `&flug=taktik|3d` erzwingt die Ansicht.
 - Selbsttest: `cd Code && npm test` (vor jedem Build), alles zusammen: `npm run check`
 - Spiel für /play/ bauen: `cd Code && npx vite build --base=/play/`, dann `dist/index.html` und `dist/assets/` nach `public/play/`, `dist/fonts/` nach `public/play/fonts/`. `VITE_ALLOWED_CALLSIGNS` nie setzen (Spiel ist öffentlich).
 - Website: `npm ci && npm run build` (Port 5180 dev, 5181 Vorschau)
 - Test-Pilot: `cd Code && node tools/playtest/spielen.mjs --minuten 2 --fraktion alle` (Dev-Server und Google Chrome nötig)
-- Vergleichsansichten: `cd Code && Q=high node tools/bilder/ansichten.mjs <ordner> [basis-url]` (HUD aus, 15 feste Ansichten inkl. Kampf, Cockpit, Hangar, Asteroidenfeld und Sprungtor, Bildzeit/Draw Calls/Dreiecke/Speicher in `bericht.json`; `ONLY=name,name` für eine Auswahl, `HUD=1` mit HUD)
+- 3D-Flug prüfen (Maus und Controller, flache Kurve, Rollen ohne Rückdrehen, Boost, entkoppelt, Tempomat mit Begrenzer, Sektorrand ohne Schaden, Höhenband, Autopilot in REISE, Kampf mit Kennzahl Abschuss ≤ 8 s, Lesbarkeit der Zahlen (Zielschild, Fadenkreuz, Zahl gegen Zahl, Tempoanzeige), 60°-Mausausschlag, Sprungtor aus voller Fahrt, Bilder Verfolger/Cockpit, `bericht.json`): `cd Code && node tools/playtest/flug.mjs --url <dev-url>`; Mehrspieler (headless, `--sichtbar` mit Fenstern): `node tools/mehrspieler/test.mjs --url <dev-url>`; Tiefentest `node tools/playtest/tief.mjs 25 saturn --url <dev-url> [--flug=taktik]`
+- Vergleichsansichten: `cd Code && Q=high node tools/bilder/ansichten.mjs <ordner> [basis-url]` (HUD aus, 21 feste Ansichten inkl. Kampf, Cockpit, Hangar, Asteroidenfeld, Sprungtor, Kurvenkampf und Modelle von unten, Himmel steil oben/unten, Bildzeit/Draw Calls/Dreiecke/Speicher in `bericht.json`; `ONLY=name,name` für eine Auswahl, `HUD=1` mit HUD)
 - Schiffe je Klasse (Hangar, Verfolger, nah, Cockpit, Bildzeit in `bericht.json`): `cd Code && Q=high node tools/bilder/schiffe.mjs <ordner> [basis-url]` (`KLASSEN=s1,s8`, `ANSICHT=hangar,nah`); je Klasse fünf Hangar-Nahaufnahmen; Umlauf aller 24 Rümpfe in 4K: `tools/bilder/umlauf.mjs`, Größenstaffelung `tools/bilder/groessen.mjs` (`KAMPF=1`, `HUD=1`; Abgleich der Verfolger-Rahmung `tools/bilder/rahmung.mjs`), Hangarkran gegen Rumpf `tools/bilder/kran.mjs` (Strahlentest, Soll 0 Treffer), Grafikspeicher `tools/bilder/speicher.mjs`, Cockpit `tools/bilder/cockpit.mjs` (bricht bei zu dunklem Innenraum ab), Flug/Kampf/Schildtreffer mit HUD `tools/bilder/kampf.mjs`, Materialkanäle einzeln `tools/bilder/diag-hangar.mjs`; `groessen.mjs` bricht ab, wenn Fläche oder Höhe je Stufe nicht um 8 % wächst; Materialkarten (Bänderungsprüfung), Kennungen, 4K-Stufe und Größen: `Planung/SCHIFFSQUALITAET.md`
 - Einbauprüfung der Modelle über die Spiel-Fabrik (mit Lasern/Generatoren an den Ankern): `cd Code && node tools/models/einbau.mjs schiffe <ordner>`
 - Textprüfung: `node Code/tools/texte/floskeln.mjs`
@@ -27,8 +28,9 @@
 - Sektoren 1–8 je Fraktion: `sectorsFor()` in `data.js`; tiefe Gegner nutzen `look` (Grundform eines vorhandenen Typs), Eigenheiten `brood`, `regen`, `jam`, Bosse mit `boss`/`respawn`.
 - Modelle: eigenes Schiff, Laser/Generatoren des Loadouts und Drohnen vor dem Flug; Gegner, Station, Tor, Requisiten und Ausrüstung erst, wenn der Sektor sie braucht (`EXTRA_MODELS`/`_need` in `render/renderer.js`), Meshy-Requisiten mit LOD-Stufe (`-lod1.glb`).
 - Konto und Server-Spielstand: `Planung/KONTEN.md` (`src/net/account*.js`, `src/ui/account-*.js`); Browser-Test ohne echte Konten mit `?konto=attrappe`.
-- Kamera: V wechselt Verfolger → Cockpit → Taktisch (`render/camrig.js`); Cockpit ist eine eigene Ebene (`render/cockpit.js`).
-- Controller (Gamepad-API): `src/input/` (gamepad, padflight, padnav, padglyph), Belegung und Regeln in `Planung/CONTROLLER.md`. Prüfung ohne Controller: `cd Code && node tools/playtest/controller.mjs --url <dev-url>`.
+- Flug: Verfolger und Cockpit sind der 3D-Hauptmodus (Flugkern `src/flight/`, Welt `sim/world3d.js`, KI `sim/ai3d.js`, Eingabe `input/flightinput.js` und `input/bindings.js`, Einstellungen `ls.flight`), Taktisch ist der alte Klickflug (bitgleich, Goldtest `sim/goldtest.mjs`). V wechselt Verfolger → Cockpit → Taktisch (`render/camrig.js`); Cockpit ist eine eigene Ebene (`render/cockpit.js`). Entwurf und Regeln: `Planung/FLUGMODELL.md`.
+- Controller (Gamepad-API): `src/input/` (gamepad, padflight, padnav, padglyph), Belegung und Regeln in `Planung/CONTROLLER.md`. Prüfung ohne Controller: `cd Code && node tools/playtest/controller.mjs --url <dev-url> [--stil xbox|ps|nin]`.
+- Flug-Einstellungen für Spieler (Maus, Lenkkegel, Sichtfeld, Kurvenrollen, Horizont-Hilfe, Controller-Modus, Horizont-Hilfe am Controller, Zielhilfe, Taste runter): Mission Control → Einstellungen, Schlüssel `ls.flight` (`src/input/flightsettings.js`, Stand `rev: 3`). Fensterprofile je Ansicht: Taktik, Verfolger, Cockpit (`hud-win.js setProfile`). Landeprobe im Fluglabor (Boden + Schwerkraft). Spieler-Anleitung im Spiel: Mission Control → STEUERUNG (FLUG 3D, FLUGPRAXIS 3D, TOUCH, Taktik, Controller; Inhalte aus `input/bindings.js`).
 
 ## Regeln
 

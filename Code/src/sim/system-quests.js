@@ -11,15 +11,15 @@ export const SYSTEM_CHAPTERS = { 1: 'Fliegen', 2: 'Zielen und Angreifen', 3: 'Mu
 // mine {ids, count}
 // key: Tastenschild in der Karte; keys werden in der Anzeige aus der Belegung gelesen, soweit vorhanden.
 export const SYSTEM_QUESTS = [
-  { id: 'sys01', ch: 1, title: 'Signal empfangen', text: 'Station hier, wir hören dich. W gibt Schub, bis zum vollen Tempo dauert es ein paar Sekunden.', goal: { type: 'fly', meters: 300 }, key: 'W', reward: { credits: 500, xp: 200 } },
-  { id: 'sys02', ch: 1, title: 'Die Maus lenkt', text: 'Im Verfolger folgt die Nase dem Mauszeiger. Halt die Maustaste oder W und flieg eine weite Kurve.', goal: { type: 'fly', meters: 1500, camera: 'chase' }, key: 'MAUS', reward: { credits: 500, xp: 300 } },
-  { id: 'sys03', ch: 1, title: 'Vollbremsung', text: 'S bremst. Erst auf Tempo kommen, dann aus voller Fahrt anhalten.', goal: { type: 'brake', fromSpeed: 150 }, key: 'S', reward: { credits: 500, xp: 300 } },
-  { id: 'sys04', ch: 1, title: 'Von oben', text: 'V schaltet auf die taktische Ansicht. Von oben fliegst du per Klick.', goal: { type: 'camera', target: 'tactical' }, key: 'V', reward: { credits: 500, xp: 300 } },
-  { id: 'sys05', ch: 1, title: 'Klick und weg', text: 'Klick in Richtung Wegpunkt, den Rest macht der Autopilot. Richtung und Entfernung stehen hier in der Karte.', goal: { type: 'reach', dx: 1200, dz: 600, r: 180 }, key: 'KLICK', reward: { credits: 800, xp: 400 } },
-  { id: 'sys06', ch: 1, title: 'Zurück hinters Schiff', text: 'V noch einmal, du sitzt wieder hinter dem Schiff.', goal: { type: 'camera', target: 'chase' }, key: 'V', reward: { credits: 500, xp: 300 } },
+  { id: 'sys01', ch: 1, title: 'Signal empfangen', text: 'Station hier, wir hören dich. {steer} gibt Schub, bis zum vollen Tempo dauert es ein paar Sekunden.', goal: { type: 'fly', meters: 300 }, key: 'W', k2: 'steer', t3: 'Station hier, wir hören dich. {thrustHow}, bis zum vollen Tempo dauert es ein paar Sekunden. Zielen und lenken macht {aimDev}.', k3: 'fwd', reward: { credits: 500, xp: 200 } },
+  { id: 'sys02', ch: 1, title: 'Die Maus lenkt', text: 'Im Verfolger folgt die Nase dem Mauszeiger. Halt die Maustaste oder W und flieg eine weite Kurve.', goal: { type: 'fly', meters: 1500, camera: 'chase', turn: 270 }, key: 'MAUS', t3: 'Im 3D-Flug zielt {aimDev}: das Fadenkreuz folgt sofort, das Schiff dreht hinterher. Gib mit {fwd} Schub und flieg Kurven, auch nach oben und unten, bis die Bahn sich um 270° gedreht hat.', k3: 'MAUS', reward: { credits: 500, xp: 300 } },
+  { id: 'sys03', ch: 1, title: 'Vollbremsung', text: 'S bremst. Erst auf Tempo kommen, dann aus voller Fahrt anhalten.', goal: { type: 'brake', fromSpeed: 150 }, key: 'S', t3: '{stopHow} Erst auf Tempo kommen, dann anhalten.', k3: 'brake', reward: { credits: 500, xp: 300 } },
+  { id: 'sys04', ch: 1, title: 'Von oben', text: '{camera} schaltet auf die taktische Ansicht. Von oben fliegst du {tacFly}.', goal: { type: 'camera', target: 'tactical' }, key: 'V', k2: 'camera', t3: '{camera} wechselt die Ansicht: erst ins Cockpit, beim zweiten Mal in die taktische Ansicht von oben, den Nebenmodus. Von oben fliegst du {tacFly}.', k3: 'camera', reward: { credits: 500, xp: 300 } },
+  { id: 'sys05', ch: 1, title: 'Klick und weg', text: '{tacGo}, den Rest macht der Autopilot. Richtung und Entfernung stehen hier in der Karte.', goal: { type: 'reach', dx: 1200, dz: 600, r: 180 }, key: 'KLICK', k2: 'KLICK', reward: { credits: 800, xp: 400 } },
+  { id: 'sys06', ch: 1, title: 'Zurück hinters Schiff', text: '{camera} noch einmal, du sitzt wieder hinter dem Schiff.', goal: { type: 'camera', target: 'chase' }, key: 'V', k2: 'camera', reward: { credits: 500, xp: 300 } },
   { id: 'sys07', ch: 1, title: 'Weiter draußen', text: 'Der nächste Wegpunkt liegt außerhalb der sicheren Zone. Unten rechts auf der Karte siehst du, wo du bist.', goal: { type: 'reach', dx: -1800, dz: -1400, r: 220 }, key: 'KARTE', reward: { credits: 1000, xp: 500 } },
-  { id: 'sys08', ch: 2, title: 'Ziel erfassen', text: 'Kontakt. Tab erfasst den nächsten Gegner, ein Klick auf ihn geht auch. Hülle und Schild stehen im Fenster ZIEL.', goal: { type: 'target' }, key: 'TAB', reward: { credits: 800, xp: 400 } },
-  { id: 'sys09', ch: 2, title: 'Feuer frei', text: 'Strg startet den Angriff, noch einmal stoppt ihn. Ein Doppelklick auf den Gegner geht auch. Die Laser feuern nur, wenn die Nase zum Ziel zeigt.', goal: { type: 'attack' }, key: 'STRG', reward: { credits: 800, xp: 400 } },
+  { id: 'sys08', ch: 2, title: 'Ziel erfassen', text: 'Kontakt. Tab erfasst den nächsten Gegner, ein Klick auf ihn geht auch. Hülle und Schild stehen im Fenster ZIEL.', goal: { type: 'target' }, key: 'TAB', t3: 'Kontakt. {targetHow} Hülle und Schild stehen im Fenster ZIEL.', k3: 'next', reward: { credits: 800, xp: 400 } },
+  { id: 'sys09', ch: 2, title: 'Feuer frei', text: 'Strg startet den Angriff, noch einmal stoppt ihn. Ein Doppelklick auf den Gegner geht auch. Die Laser feuern nur, wenn die Nase zum Ziel zeigt.', goal: { type: 'attack' }, key: 'STRG', t3: '{fireHow} Leg das Fadenkreuz auf die Raute vor dem Gegner, das ist der Vorhalt, dann treffen die Bolzen. {autoHint}', k3: 'fire', reward: { credits: 800, xp: 400 } },
   { id: 'sys10', ch: 2, title: 'Erster Abschuss', text: 'Erst fällt der Schild, dann die Hülle. Bring ihn runter.', goal: { type: 'kill', count: 1 }, reward: { credits: 1500, xp: 800, honor: 5 } },
   { id: 'sys11', ch: 2, title: 'Das Rudel', text: 'Raider jagen im Rudel und kommen von mehreren Seiten. Bleib in Bewegung und hol dir drei.', goal: { type: 'kill', target: 'raider', count: 3 }, reward: { credits: 2000, xp: 1000, honor: 10 } },
   { id: 'sys12', ch: 2, title: 'Die Brut', text: 'Larven bewachen die Felder. Wer näher als 300 Meter kommt, wird angesprungen. Räum vier weg.', goal: { type: 'kill', target: 'larva', count: 4 }, reward: { credits: 2000, xp: 1000, tritium: 5, honor: 10 } },
@@ -29,7 +29,7 @@ export const SYSTEM_QUESTS = [
   { id: 'sys16', ch: 3, title: 'Schwere Ladung', text: 'L4 auf Taste 4, vierfacher Schaden. Teuer, also nur für harte Ziele. 10 Treffer.', goal: { type: 'shoot', ammo: 'L4', count: 10 }, key: '4', reward: { credits: 1000, xp: 700, tritium: 20 } },
   { id: 'sys17', ch: 3, title: 'Schildsauger', text: 'SAB auf Taste 5 trifft nur Schilde und füllt deinen eigenen. 10 Treffer.', goal: { type: 'shoot', ammo: 'SAB', count: 10 }, key: '5', reward: { credits: 1000, xp: 700, tritium: 15 } },
   { id: 'sys18', ch: 3, title: 'Ein Schuss, der sitzt', text: 'Taste 6 feuert SAL: sechsfacher Schaden mit eigener Ladezeit, danach läuft deine Munition weiter. 3 Treffer.', goal: { type: 'shoot', ammo: 'SAL', count: 3 }, key: '6', reward: { credits: 1500, xp: 800, tritium: 20 } },
-  { id: 'sys19', ch: 4, title: 'Rakete los', text: 'Leertaste oder R schickt eine R1 aufs Ziel, danach lädt der Werfer 3 Sekunden. Weicht das Ziel aus oder steht ein Brocken dazwischen, geht sie vorbei. 3 Treffer.', goal: { type: 'rocket', rocket: 'R1', count: 3 }, key: 'LEER', reward: { credits: 1500, xp: 800, honor: 5 } },
+  { id: 'sys19', ch: 4, title: 'Rakete los', text: 'Leertaste oder R schickt eine R1 aufs Ziel, danach lädt der Werfer 3 Sekunden. Weicht das Ziel aus oder steht ein Brocken dazwischen, geht sie vorbei. 3 Treffer.', goal: { type: 'rocket', rocket: 'R1', count: 3 }, key: 'LEER', t3: '{rocketHow} Danach lädt der Werfer 3 Sekunden. Weicht das Ziel aus oder steht ein Brocken dazwischen, geht sie vorbei. 3 Treffer.', k3: 'rocket', reward: { credits: 1500, xp: 800, honor: 5 } },
   { id: 'sys20', ch: 5, title: 'Arsenal', text: 'Rechts an der Schnellleiste liegt ARSENAL. Dort ist alles, was du an Bord hast. Mach es auf.', goal: { type: 'arsenal' }, key: 'ARSENAL', reward: { credits: 500, xp: 200 } },
   { id: 'sys21', ch: 5, title: 'Zweite Leiste', text: 'Alt+2 schaltet auf Leiste 2. Alt+1 bringt dich zurück.', goal: { type: 'bar', bar: 2 }, key: 'ALT+2', reward: { credits: 500, xp: 300 } },
   { id: 'sys22', ch: 5, title: 'Leiste belegen', text: 'Zieh vier Dinge aus dem Arsenal auf Leiste 2, zum Beispiel R3, SPM, BRM und TRN. Rechtsklick leert einen Platz wieder.', goal: { type: 'place', bar: 2, count: 4 }, key: 'ZIEHEN', reward: { credits: 800, xp: 400 } },
@@ -50,7 +50,7 @@ export const SYSTEM_QUESTS = [
   { id: 'sys37', ch: 9, title: 'Frachtkisten', text: 'Frachtkisten treiben überall, der Inhalt ist Zufall. Manchmal ist es eine Piratenfalle. Sammle drei.', goal: { type: 'crate', count: 3 }, reward: { credits: 1000, xp: 600, tritium: 10 } },
   { id: 'sys38', ch: 10, title: 'Nickel', text: 'Die grauen Brocken sind Nickel. Flieg dicht ran, dann landet es im Laderaum. 20 Einheiten.', goal: { type: 'ore', ore: 'nickel', count: 20 }, reward: { credits: 1000, xp: 600 } },
   { id: 'sys39', ch: 10, title: 'Cobalt', text: 'Blau ist Cobalt und doppelt so viel wert. 10 Einheiten. Wie viel noch passt, steht im Fenster SCHIFF.', goal: { type: 'ore', ore: 'cobalt', count: 10 }, reward: { credits: 1500, xp: 600 } },
-  { id: 'sys40', ch: 11, title: 'Andocken', text: 'Zurück zur Station. In der sicheren Zone dockst du mit E an. Dort heilt die Hülle von selbst.', goal: { type: 'dock' }, key: 'E', reward: { credits: 800, xp: 400 } },
+  { id: 'sys40', ch: 11, title: 'Andocken', text: 'Zurück zur Station. In der sicheren Zone dockst du mit E an. Dort heilt die Hülle von selbst.', goal: { type: 'dock' }, key: 'E', t3: 'Zurück zur Station. In der sicheren Zone dockst du mit {context} an. Dort heilt die Hülle von selbst.', k3: 'context', reward: { credits: 800, xp: 400 } },
   { id: 'sys41', ch: 11, title: 'Erz verkaufen', text: 'Reiter ERZ: verkauf deine Ladung.', goal: { type: 'sell' }, key: 'ERZ', reward: { credits: 500, xp: 300 } },
   { id: 'sys42', ch: 11, title: 'Nachschub', text: 'Im Shop gibt es Munition in Packungen. Hol dir eine Packung L2.', goal: { type: 'buy', id: 'L2' }, key: 'SHOP', reward: { credits: 800, xp: 300 } },
   { id: 'sys43', ch: 11, title: 'Ion Laser', text: 'Der Ion Laser macht mehr Schaden als der Pulse Laser. Kauf einen, er kommt auf einen freien oder den schwächsten Platz.', goal: { type: 'buy', id: 'ion' }, key: 'SHOP', reward: { credits: 3000, xp: 1200 } },
@@ -61,8 +61,8 @@ export const SYSTEM_QUESTS = [
   { id: 'sys48', ch: 12, title: 'Swarm', text: 'Swarm ist gegen Piraten und Schwarm gebaut. Zerstöre vier Gegner mit Swarm.', goal: { type: 'kill', count: 4, formation: 'swarm' }, reward: { credits: 2000, xp: 1200, honor: 10 } },
   { id: 'sys49', ch: 13, title: 'Hinaus', text: 'Das Tor liegt am anderen Ende des Sektors. Bis auf 150 Meter ran, dann J. Drüben wird es härter.', goal: { type: 'jump', sector: 2 }, key: 'J', reward: { credits: 3000, xp: 1500 } },
   { id: 'sys50', ch: 14, title: 'Schakale', text: 'Jackals lauern getarnt und springen an, wenn du unter 70 % fällst. EMP holt sie raus. Zerstöre drei.', goal: { type: 'kill', target: 'jackal', count: 3 }, reward: { credits: 4000, xp: 2500, tritium: 20, honor: 15 } },
-  { id: 'sys51', ch: 14, title: 'Salve', text: 'Leuchtet ein Gegner auf, lädt er einen Spezialangriff, die Bahn liegt am Boden. Kurs oder Tempo ändern, und die Salve geht vorbei. Zweimal.', goal: { type: 'dodge', kind: 'volley', count: 2 }, reward: { credits: 2000, xp: 1500, honor: 10 } },
-  { id: 'sys52', ch: 14, title: 'Rammangriff', text: 'Jackals rammen in gerader Linie. Raus zur Seite, sobald die Bahn erscheint.', goal: { type: 'dodge', kind: 'ram', count: 1 }, reward: { credits: 2000, xp: 1500, honor: 10 } },
+  { id: 'sys51', ch: 14, title: 'Salve', text: 'Leuchtet ein Gegner auf, lädt er einen Spezialangriff, die Bahn liegt am Boden. Kurs oder Tempo ändern, und die Salve geht vorbei. Zweimal.', goal: { type: 'dodge', kind: 'volley', count: 2 }, t3: 'Leuchtet ein Gegner auf, lädt er einen Spezialangriff, die Bahn leuchtet im Raum. Kurs, Höhe oder Tempo ändern, und die Salve geht vorbei. Zweimal.', reward: { credits: 2000, xp: 1500, honor: 10 } },
+  { id: 'sys52', ch: 14, title: 'Rammangriff', text: 'Jackals rammen in gerader Linie. Raus zur Seite, sobald die Bahn erscheint.', goal: { type: 'dodge', kind: 'ram', count: 1 }, t3: 'Jackals rammen in gerader Linie. Raus zur Seite, nach oben oder unten, sobald die Bahn erscheint.', reward: { credits: 2000, xp: 1500, honor: 10 } },
   { id: 'sys53', ch: 14, title: 'Abgebrochen', text: 'Eine Rakete oder ein schwerer Treffer bricht das Aufladen ab. Stopp einen Angriff, bevor er kommt.', goal: { type: 'interrupt', count: 1 }, key: 'R', reward: { credits: 2500, xp: 1500, tritium: 10, honor: 10 } },
   { id: 'sys54', ch: 14, title: 'Tiefer', text: 'Weiter durch das zweite Tor. In Sektor 3 fliegt alles ab Stufe 6, bleib erst mal nah am Tor.', goal: { type: 'jump', sector: 3 }, key: 'J', reward: { credits: 3000, xp: 2000 } },
   { id: 'sys55', ch: 14, title: 'Säure', text: 'Spiker spucken Säure aus der Ferne. Raus aus dem grünen Kreis, bevor er sich schließt.', goal: { type: 'dodge', kind: 'acid', count: 1 }, reward: { credits: 2000, xp: 1500, honor: 10 } },
@@ -83,6 +83,25 @@ export const SYSTEM_QUESTS = [
 ];
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
+
+/**
+ * Text und Tastenschild eines Auftrags je Ansicht (Planung/FLUGMODELL.md 5.1): im 3D-Flug gilt t3/k3, Tastennamen
+ * kommen aus input/bindings.js ({fwd}, {fire} … werden ersetzt, k3 ist eine Aktion oder ein fester Text).
+ */
+export function questView(q, flight3d, keyName) {
+  if (!q) return { text: '', key: '' };
+  // keyName(action, mode): Name je Gerät (Tastatur, Controller, Touch); {aktion} in text (Taktik) und t3 (3D-Flug)
+  const fill = (t, mode) => (keyName && t ? t.replace(/\{(\w+)\}/g, (m, a) => keyName(a, mode)) : t);
+  if (!flight3d || !q.t3) {
+    const k = q.key || '';
+    return { text: fill(q.text, 'tactic'), key: keyName && q.k2 ? keyName(q.k2, 'tactic') : k, act: q.k2 || '' };
+  }
+  const text = fill(q.t3, 'flight');
+  const k = q.k3 || q.key || '';
+  const act = /^[a-z]/.test(k) || k === 'MAUS' ? k : '';
+  const key = keyName && act ? keyName(k, 'flight') : k;
+  return { text, key, act };
+}
 
 export class SystemSeries {
   // cameraMode: Funktion, die 'chase' oder 'tactical' liefert (Grafik), damit die Simulation die Ansicht nicht kennt
@@ -200,6 +219,14 @@ export class SystemSeries {
       case 'fly':
         if (g.camera && this.cameraMode() !== g.camera) return;
         if (g.config && this._config !== g.config) return;
+        if (g.turn && w.flight3d) {
+          // 3D-Flug (Runde 3): „weite Kurve“ heißt wirklich kurven – gezählt wird die Drehung der Flugbahn in Grad
+          // (vorher reichten 1.500 m geradeaus mit W, ohne die Maus zu bewegen)
+          const vx = p.vx || 0, vy = p.vy || 0, vz = p.vz || 0, v = Math.hypot(vx, vy, vz), l = this._lastV;
+          if (v > 40 && l) { const c = (vx * l[0] + vy * l[1] + vz * l[2]) / v; this._add(Math.acos(Math.max(-1, Math.min(1, c))) * 180 / Math.PI, g.turn); }
+          this._lastV = v > 40 ? [vx / v, vy / v, vz / v] : null;
+          break;
+        }
         this._add(speed * dt, g.meters);
         break;
       case 'brake':
@@ -213,7 +240,7 @@ export class SystemSeries {
         break;
       }
       case 'target': if (p.targetId) this._add(1, 1); break;
-      case 'attack': if (p.attacking && p.targetId) this._add(1, 1); break;
+      case 'attack': if ((p.attacking || (w.flight3d && w.aimInfo && w.aimInfo.fire)) && p.targetId) this._add(1, 1); break;
       default: break;
     }
   }

@@ -14,8 +14,10 @@ import { HudTouch } from './ui/hud-touch.js';
 import { Coop } from './net/coop.js';
 import { Multiplayer } from './net/mp.js';
 import { Input } from './input.js';
+import { flightSettings, isTouchOnly } from './input/flightsettings.js';
+import { loadLayout } from './input/bindings.js';
 import { PadFlight } from './input/padflight.js';
-import './input/padnav.js';      // Controller: Menü-Navigation überall (Titel, Hub, Station, Dialoge)
+import { topModal } from './input/padnav.js'; // Controller: Menü-Navigation überall (Titel, Hub, Station, Dialoge)
 import './input/padglyph.js';    // Controller: Tastenhinweise tauschen
 import './input/pad.css';
 import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
@@ -27,6 +29,7 @@ import './ui/theme.css';
 import { initAccount, linkPilot, settle, resolvePending, openAccount } from './ui/account-flow.js';
 import { toast } from './ui/account-ui.js';
 
+loadLayout(); // Tastatur-Layout für die Tastennamen (Chrome, Edge, Electron)
 const CLOUD_EVERY = 120; // s: im Flug alle 2 Minuten auf dem Server sichern (nur mit Konto)
 
 const STEP = 1 / 60;          // feste Simulationsschrittweite
@@ -94,7 +97,11 @@ function playSession(profile, opts = {}) {
     // Koop (Hub hat Raum gewählt): Gast spielt in den Sektoren des Gastgebers
     let coopCfg = null;
     try { coopCfg = JSON.parse(sessionStorage.getItem('ls.coop') || 'null'); } catch { coopCfg = null; }
-    const world = new World(profile, bus, coopCfg && coopCfg.role === 'guest' ? { coopFaction: coopCfg.faction, coopSector: coopCfg.sector } : {});
+    const Q = new URLSearchParams(location.search);
+    const fs0 = flightSettings();
+    const wopts = coopCfg && coopCfg.role === 'guest' ? { coopFaction: coopCfg.faction, coopSector: coopCfg.sector } : {};
+    wopts.enemyBolts = fs0.enemyBolts || Q.get('gbolzen') === '1'; // Etappe 2: echte Gegnerbolzen (Schalter)
+    const world = new World(profile, bus, wopts);
     if (coopCfg) new Coop(world, bus, coopCfg); // trägt sich als world.coop ein (Einladung im Flug startet ihn später)
     // Mehrspieler: gemeinsame Sektoren, Chat, Einladung, PvP (Realtime, ohne Datenbank). ?mp=0 schaltet ab.
     let mp = null;
@@ -121,10 +128,14 @@ function playSession(profile, opts = {}) {
     canvas.addEventListener('webglcontextlost', onCtxLost, { once: true });
     if (sessionCap < 3) renderer.setQualityCap(sessionCap);
     renderer.setWorld(world);
-    // Flug erst zeigen, wenn das eigene Schiffsmodell da ist (höchstens 5 s), sonst sähe man den Platzhalter-Wechsel
+    // Flug erst zeigen, wenn das eigene Schiffsmodell und die Modelle des ersten Bildes (Station, Gegner, Brocken) da
+    // und eingetauscht sind (höchstens 5 s), sonst sähe man den Platzhalter-Wechsel. Bis dahin steht die Simulation
+    // und die Eingabe ruht (live = false): Das Eintauschen kostet einmalig 200–500 ms, und das darf kein Flugbild sein.
     canvas.style.opacity = '0';
-    const showCanvas = () => { canvas.style.transition = 'opacity 180ms'; canvas.style.opacity = '1'; };
-    Promise.race([renderer.ownModelReady || Promise.resolve(), new Promise((r) => setTimeout(r, 5000))])
+    let live = false;
+    const showCanvas = () => { live = true; canvas.style.transition = 'opacity 180ms'; canvas.style.opacity = '1'; };
+    const twoFrames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    Promise.race([Promise.all([renderer.ownModelReady || Promise.resolve(), renderer.sectorReady || Promise.resolve()]).then(twoFrames), new Promise((r) => setTimeout(r, 5000))])
       .then(() => setTimeout(showCanvas, 250));
     perfHud.setRenderer(renderer);
     if (import.meta.env.DEV) import('./perf/bench.js').then((m) => m.installBench(renderer, world)).catch(() => {});
@@ -139,12 +150,23 @@ function playSession(profile, opts = {}) {
     const story = new SystemSeries(world, bus, () => renderer.cameraMode, { quests: STORY_QUESTS, chapters: STORY_CHAPTERS, key: 'story', label: 'FUNK', mode: 'guided' });
     const guide = new SystemGuide(hudRoot, series, world, story);
     const contracts = new Contracts(world, bus); // Tages- und Wochenaufträge
+    // ?flug=taktik: im Taktikmodus starten (alter Klickflug), ?flug=3d: im 3D-Flug (Verfolger)
+    // (rig.forced: gilt bis zum ersten V, die gespeicherte Kamerawahl bleibt unberührt)
+    if (Q.get('flug') === 'taktik') { renderer.rig.forced = { mode: 'tactical', cockpit: false }; if (renderer.rig.mode !== 'tactical') { renderer.rig.mode = 'tactical'; renderer.rig.cockpit = false; renderer.rig.k = renderer.rig.kRaw = 0; } }
+    else if (Q.get('flug') === '3d') { renderer.rig.forced = { mode: 'chase', cockpit: renderer.rig.cockpit && renderer.rig.mode === 'chase' }; if (renderer.rig.mode !== 'chase') { renderer.rig.mode = 'chase'; renderer.rig.k = renderer.rig.kRaw = 1; } }
+    world.setFlight3d(renderer.cameraMode === 'chase');
+    // Feuerleitrechner (Autofeuer): auf Touch-Geräten Standard (Flug vereinfacht), sonst Strg rechts
+    world.autofireDefault = fs0.autofire != null ? fs0.autofire : isTouchOnly();
     const input = new Input(canvas, world, renderer, bus);
     const touch = new HudTouch(hudRoot, world, renderer, input); // iPad/Tablet: Joystick, Knöpfe, Zielanzeige
     const padFlight = new PadFlight(input, hud, bus); // Controller im Flug (Planung/CONTROLLER.md)
+    input.menuOpen = () => !!(hud._menuOpen || topModal());
+    hud.setInput(input);
     const audio = new AudioSystem(bus, world, renderer);
     audio.start();
     if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio, series, mp, input, padFlight }; // nur Entwicklung: Test-Pilot (tools/playtest)
+    // Fluglabor (nur Entwicklung): Regler F4, Übungsdrohnen, Heimatsektor ohne Gegner
+    if (import.meta.env.DEV && Q.get('dev') === 'fluglabor') import('./ui/fluglabor.js').then((m) => { window.__lab = m.installLab({ world, renderer, input, bus, root: hudRoot }); }).catch((err) => console.warn('Fluglabor', err));
 
     // Dauerhaft unter 50 Bilder/s: eine Stufe tiefer, mit kurzer Meldung. Automatische Wahl → gespeichert,
     // eigene Wahl → nur für diese Sitzung (die Einstellung im Hub bleibt, wie der Spieler sie gesetzt hat).
@@ -218,12 +240,17 @@ function playSession(profile, opts = {}) {
       try { frameBody(now); } catch (err) { if (onFrameError(err)) return; }
       if (running) frameId = requestAnimationFrame(frame);
     };
+    const rootEl = document.documentElement;
     const frameBody = (now) => {
       let dt = (now - last) / 1000;
       last = now;
       if (dt > MAX_FRAME) dt = MAX_FRAME;
       if (dt < 0) dt = 0;
       const tf = performance.now();
+      if (!live) { world.update(0); renderer.render(0, 0); hud.update(dt); return; } // Start: Modelle tauschen noch ein
+      // Handy hochkant (Runde 3): hinter dem Hinweis „Bitte das Handy quer halten“ steht die Simulation still (vorher
+      // lief der Kampf weiter, Schild und Hülle gingen verloren bis zum Tod)
+      if (rootEl.classList.contains('is-portrait-phone')) { world.update(0); hud.update(dt); return; }
       input.update(dt);
       // Ein einziger Akkumulator (in World.update, feste 1/60-s-Schritte, höchstens MAX_STEPS_PER_UPDATE je Bild).
       // Vorher rechnete main.js zusätzlich mit eigenem Akkumulator: bis zu 15 Schritte je Bild auf schwachen Geräten.
@@ -304,7 +331,7 @@ function playSession(profile, opts = {}) {
   });
 }
 
-// Abkürzungen nur für Tests (Entwicklungsserver): ?dev=hub|game|dock&f=europa|saturn|eris
+// Abkürzungen nur für Tests (Entwicklungsserver): ?dev=hub|game|dock|fluglabor&f=europa|saturn|eris
 const DEV = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
 
 async function devStart() {

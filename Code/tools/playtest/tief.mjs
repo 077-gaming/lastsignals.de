@@ -1,16 +1,23 @@
 // Tiefe Sektoren 4–8 im echten Spiel durchkämpfen (Entwicklungsserver, Google Chrome): je Sektor Referenz-Schiff mit
 // Plasma-Lasern und Schildgeneratoren, Stufe am Sektorbeginn, dann automatisch Ziel wählen, angreifen, umkreisen.
-// Aufruf: node tools/playtest/tief.mjs [sekunden_je_sektor=70] [fraktion=saturn]
+// Aufruf: node tools/playtest/tief.mjs [sekunden_je_sektor=70] [fraktion=saturn] [--url http://127.0.0.1:5287] [--sichtbar]
+// Läuft unsichtbar (headless) auf einem frei wählbaren Entwicklungsserver (Standard: Umgebungsvariable LS_URL,
+// sonst http://localhost:5173). Mit --flug=taktik fliegt der Bot im Taktikmodus (alter Klickflug), sonst im 3D-Flug.
 import { chromium } from 'playwright-core';
 
-const SEC = Number(process.argv[2] || 70), F = process.argv[3] || 'saturn';
+const ARGS = process.argv.slice(2), POS = ARGS.filter((a) => !a.startsWith('--') && !/^https?:/.test(a));
+const opt = (n, d) => { const i = ARGS.indexOf('--' + n); if (i >= 0 && ARGS[i + 1] && !ARGS[i + 1].startsWith('--')) return ARGS[i + 1]; const e = ARGS.find((a) => a.startsWith('--' + n + '=')); return e ? e.split('=')[1] : d; };
+const SEC = Number(POS[0] || 70), F = POS[1] || 'saturn';
+const BASE = opt('url', process.env.LS_URL || 'http://localhost:5173');
+const HEADLESS = !ARGS.includes('--sichtbar');
+const FLUG = opt('flug', '3d');
 const P = { saturn: 'SA', europa: 'EU', eris: 'ER' }[F];
 // Sektor, Stufe, Schiff (wie tools/balance/sektoren.mjs)
 const PLAN = (process.env.S3 ? [[3, 8, 's2']] : []).concat([[4, 11, 's3'], [5, 16, 's4'], [6, 22, 's5'], [7, 29, 's6'], [8, 35, 's7']]);
-const browser = await chromium.launch({ channel: 'chrome', headless: false, args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
+const browser = await chromium.launch({ channel: 'chrome', headless: HEADLESS, args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
 const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
-await page.goto(`http://localhost:5173/?dev=game&f=${F}`); await page.waitForTimeout(8000);
+await page.goto(`${BASE}/?dev=game&f=${F}${FLUG === 'taktik' ? '&flug=taktik' : ''}`); await page.waitForTimeout(8000);
 const out = [];
 for (const [n, lvl, ship] of PLAN) {
   const r = await page.evaluate(async ([sec, lvl, ship, secs]) => {
@@ -44,11 +51,19 @@ for (const [n, lvl, ship] of PLAN) {
         w.setTarget(best.id); t = best;
       }
       if (!p.attacking) w.toggleAttack();
+      if (w.flight3d) {
+        // 3D-Flug: kein Klickflug (der Autopilot zeigte die Nase auf den Wegpunkt, nie aufs Ziel); der Feuerleitrechner
+        // führt die Zielrichtung, der Bot gibt nur Schub, solange das Ziel weit weg ist
+        if (p.hasMove) w.stopMove();
+        const d3 = Math.hypot(t.x - p.x, (t.y || 0) - p.y, t.z - p.z), want = d3 > 160; // Schub fast immer: im Stand dreht ein großes Schiff gegen kreisende Gegner nicht schnell genug
+        if (want !== !!window.__tiefW) { window.__tiefW = want; window.dispatchEvent(new KeyboardEvent(want ? 'keydown' : 'keyup', { code: 'KeyW', bubbles: true })); }
+        continue;
+      }
       ang += 0.35;
       w.moveTo(t.x + Math.cos(ang) * 380, t.z + Math.sin(ang) * 380);
     }
     off();
-    return { sector: w.sector.id, name: w.sector.name, lvl, ship, kills, deaths, shots, dps: Math.round(dealt / secs), takenPs: Math.round(taken / secs), minHull: +minHull.toFixed(2), fps: +(frames / secs).toFixed(1), worstMs: Math.round(worst) };
+    return { sector: w.sector.id, name: w.sector.name, view: __ls.renderer.viewMode, f3: !!w.flight3d, lvl, ship, kills, deaths, shots, dps: Math.round(dealt / secs), takenPs: Math.round(taken / secs), minHull: +minHull.toFixed(2), fps: +(frames / secs).toFixed(1), worstMs: Math.round(worst) };
   }, [`${P}-${n}`, lvl, ship, SEC]);
   console.log(JSON.stringify(r));
   out.push(r);

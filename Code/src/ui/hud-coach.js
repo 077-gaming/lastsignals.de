@@ -4,29 +4,67 @@
 // Erfahrene Piloten (Stufe > 1 oder schon Abschüsse) sehen ihn nie.
 import './hud-coach.css';
 import { glyph, padMode } from '../input/padglyph.js';
+import { keyName } from '../input/bindings.js';
+import { isTouchOnly } from '../input/flightsettings.js';
 
+// Vier Schritte; der Text hängt von Ansicht (3D-Flug oder Taktik) und Gerät (Tastatur/Maus, Controller, Touch) ab.
+// Tastennamen kommen aus der Belegung (input/bindings.js), Controller-Symbole aus padglyph.js – nie fester Text.
 const STEPS = [
-  { key: 'fly', title: 'FLIEGEN', text: 'Maus zeigt die Richtung · <kbd>W</kbd> Schub · <kbd>S</kbd> bremsen · Linke Maustaste halten = fliegen' },
-  { key: 'target', title: 'ZIEL WÄHLEN', text: '<kbd>TAB</kbd> wählt den nächsten Gegner · oder Gegner anklicken' },
-  { key: 'attack', title: 'ANGREIFEN', text: 'Gegner <b>doppelt anklicken</b> oder <kbd>STRG</kbd> = Angriff · <kbd>LEERTASTE</kbd> = Rakete · in der sicheren Zone sind Waffen gesperrt' },
-  { key: 'loot', title: 'BEUTE', text: 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · einfach drüberfliegen · <kbd>H</kbd> = Autopilot zur Station (Reparatur)' },
+  { key: 'fly', title: 'FLIEGEN' },
+  { key: 'target', title: 'ZIEL WÄHLEN' },
+  { key: 'attack', title: 'ANGREIFEN' },
+  { key: 'loot', title: 'BEUTE' },
 ];
-// Touch (iPad): gleiche Schritte, Texte für Finger und Knöpfe
-const TOUCH = {
-  fly: '<b>Joystick</b> links ziehen = fliegen · oder Finger auf die Spielfläche · zwei Finger = Zoom · <b>ANSICHT</b> wechselt die Kamera',
-  target: 'Gegner antippen = Ziel · oder Knopf <b>ZIEL</b>',
-  attack: 'Gegner <b>zweimal antippen</b> oder Knopf <b>LASER</b> · <b>RAKETE</b> feuert · in der sicheren Zone sind Waffen gesperrt',
-  loot: 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · drüberfliegen · Knopf <b>HEIM</b> = Autopilot zur Station',
-};
-if (typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1)) for (const s of STEPS) if (TOUCH[s.key]) s.text = TOUCH[s.key];
-// Controller (sobald benutzt): gleiche Schritte, Symbole der jeweiligen Bauart
+const kb = (a, mode) => `<kbd>${keyName(a, mode)}</kbd>`;
 const k = (n) => `<kbd>${glyph(n)}</kbd>`;
-const PAD = {
-  fly: () => `<b>Linker Stick</b> lenkt · ${k('RT')} Schub · ${k('LT')} bremsen · ${k('L3')} Dauerschub · rechter Stick: umsehen`,
-  target: () => `${k('RB')} wählt den nächsten Gegner · ${k('LB')} den vorigen`,
-  attack: () => `${k('A')} = Angriff an, aus · ${k('X')} = Rakete · in der sicheren Zone sind Waffen gesperrt`,
-  loot: () => `Zerstörte Gegner hinterlassen ein Wrack mit Credits · drüberfliegen oder ${k('Y')} fliegt hin · ${k('Y')} halten = Autopilot zur Station`,
+const SAFE = 'in der sicheren Zone sind Waffen gesperrt';
+const TEXT = {
+  // Hauptmodus 3D-Flug (Verfolger, Cockpit)
+  f3: {
+    fly: () => `Maus zielt, das Schiff folgt · ${kb('fwd')} Schub · ${kb('back')} zurück · ${kb('left')}/${kb('right')} seitlich · ${kb('boost')} Boost · ${kb('brake')} Raumbremse`,
+    target: () => `${kb('aimTarget')} Ziel unter dem Fadenkreuz · ${kb('next')} nächster Gegner`,
+    attack: () => `${kb('fire')} halten = Laser · auf die Raute vor dem Gegner zielen (Vorhalt) · ${kb('rocket')} Rakete · ${SAFE}`,
+    loot: () => `Der Traktor zieht Wracks heran, einfach in die Nähe fliegen · ${kb('context')} fliegt zur Beute · ${kb('home')} Autopilot zur Station`,
+  },
+  pad3: {
+    fly: () => `Rechter Stick zielt, das Schiff folgt · linker Stick Schub und seitlich · ${k('LB')}/${k('RB')} rollen · ${k('L3')} Boost`,
+    target: () => `${k('A')} Ziel im Fadenkreuz, sonst den nächsten Gegner`,
+    attack: () => `${k('RT')} = Laser · auf die Raute vor dem Gegner zielen (Vorhalt) · ${k('X')} Rakete · ${k('LT')} halten schaltet auf · ${SAFE}`,
+    loot: () => `Der Traktor zieht Wracks heran · ${k('Y')} fliegt zur Beute · ${k('Y')} halten = Autopilot zur Station`,
+  },
+  touch3: {
+    fly: () => '<b>Joystick</b> zielt, das Schiff folgt · <b>SCHUB</b> an, aus · <b>BOOST</b> halten für kurze Sprints · <b>ANSICHT</b> wechselt die Kamera',
+    target: () => 'Knopf <b>ZIEL</b> wählt den nächsten Gegner',
+    attack: () => `Knopf <b>LASER</b> schaltet das Autofeuer an, aus · <b>RAKETE</b> feuert · ${SAFE}`,
+    loot: () => 'Der Traktor zieht Wracks heran · Knopf <b>HEIM</b> = Autopilot zur Station (Reparatur)',
+  },
+  // Nebenmodus Taktik (Draufsicht, Klickflug)
+  tac: {
+    fly: () => `Klick ins All = hinfliegen · Linke Maustaste halten = dem Zeiger folgen · ${kb('steer', 'tactic')} Schub`,
+    target: () => `${kb('next', 'tactic')} wählt den nächsten Gegner · oder Gegner anklicken`,
+    attack: () => `Gegner <b>doppelt anklicken</b> oder ${kb('attack', 'tactic')} = Angriff · ${kb('rocket', 'tactic')} = Rakete · ${SAFE}`,
+    loot: () => `Zerstörte Gegner hinterlassen ein Wrack mit Credits · einfach drüberfliegen · ${kb('home', 'tactic')} = Autopilot zur Station (Reparatur)`,
+  },
+  padTac: {
+    fly: () => `<b>Linker Stick</b> fliegt bildbezogen · ${k('RT')} Schub · ${k('LT')} bremsen · ${k('L3')} Dauerschub · rechter Stick: Zoom`,
+    target: () => `${k('RB')} wählt den nächsten Gegner · ${k('LB')} den vorigen`,
+    attack: () => `${k('A')} = Angriff an, aus · ${k('X')} = Rakete · ${SAFE}`,
+    loot: () => `Zerstörte Gegner hinterlassen ein Wrack mit Credits · drüberfliegen oder ${k('Y')} fliegt hin · ${k('Y')} halten = Autopilot zur Station`,
+  },
+  touchTac: {
+    fly: () => '<b>Joystick</b> links ziehen = fliegen · oder Finger auf die Spielfläche · zwei Finger = Zoom · <b>ANSICHT</b> wechselt die Kamera',
+    target: () => 'Gegner antippen = Ziel · oder Knopf <b>ZIEL</b>',
+    attack: () => `Gegner <b>zweimal antippen</b> oder Knopf <b>LASER</b> · <b>RAKETE</b> feuert · ${SAFE}`,
+    loot: () => 'Zerstörte Gegner hinterlassen ein Wrack mit Credits · drüberfliegen · Knopf <b>HEIM</b> = Autopilot zur Station',
+  },
 };
+const touchDev = () => typeof window !== 'undefined' && (isTouchOnly() || (matchMedia('(pointer: coarse)').matches && navigator.maxTouchPoints > 1));
+/** Textsatz für Ansicht und Gerät */
+function textSet(f3) {
+  if (padMode()) return f3 ? TEXT.pad3 : TEXT.padTac;
+  if (touchDev()) return f3 ? TEXT.touch3 : TEXT.touchTac;
+  return f3 ? TEXT.f3 : TEXT.tac;
+}
 
 export class HudCoach {
   constructor(root, bus, world) {
@@ -40,6 +78,7 @@ export class HudCoach {
     this.offs = [];
     if (this.i >= STEPS.length) return;
     this._onMode = () => { if (this.el && this.el.classList.contains('on') && !this.el.classList.contains('done')) this._show(); };
+    this._sig = '';
     window.addEventListener('ls:inputmode', this._onMode);
     this.el = document.createElement('div');
     this.el.className = 'hud-coach';
@@ -59,10 +98,14 @@ export class HudCoach {
   _show() {
     const s = STEPS[this.i];
     if (!s || !this.el) return;
-    const text = padMode() && PAD[s.key] ? PAD[s.key]() : s.text;
+    const f3 = !!(this.world && this.world.flight3d);
+    const set = textSet(f3);
+    this._sig = `${f3 ? 3 : 2}|${padMode() ? 'pad' : touchDev() ? 'touch' : 'kb'}`;
+    const text = set[s.key]();
     this.el.innerHTML = `<span class="hc-step">${this.i + 1}/${STEPS.length}</span><b>${s.title}</b><span class="hc-text">${text}</span>`;
-    this.el.classList.remove('done');
+    this.el.classList.remove('done', 'is-quiet');
     this.el.classList.add('on');
+    this._shownAt = performance.now();
   }
 
   _next() {
@@ -91,7 +134,14 @@ export class HudCoach {
     if (sys && sys.mode === 'guided') { this.i = STEPS.length; w.profile.tut = STEPS.length; this.el.classList.remove('on'); return; }
     if (!p || w.docked || w.playerDead || (sys && sys.mode == null)) { this.el.classList.toggle('hidden', true); return; }
     this.el.classList.toggle('hidden', false);
+    // Ansicht oder Gerät gewechselt: Text neu (3D-Flug und Taktik haben andere Tasten)
+    if (this._sig !== `${w.flight3d ? 3 : 2}|${padMode() ? 'pad' : touchDev() ? 'touch' : 'kb'}`) this._show();
+    // Nach 12 s tritt die Karte zurück (nur Titel, leise), nach 40 s ist der Hinweis gelesen: Beute-Schritt endet
+    // dann von selbst (Runde 2: „BEUTE 4/4“ stand minutenlang groß über dem Kampf, wenn der Traktor nichts einsammelte)
+    const age = (performance.now() - (this._shownAt || 0)) / 1000;
+    this.el.classList.toggle('is-quiet', age > 12);
     const key = STEPS[this.i].key;
+    if (key === 'loot' && age > 40) { this._next(); return; }
     if (key === 'fly') {
       if (this.startX === null) { this.startX = p.x; this.startZ = p.z; }
       if (Math.hypot(p.x - this.startX, p.z - this.startZ) > 300) this._next();

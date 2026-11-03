@@ -92,6 +92,8 @@
   outline: 1px dashed rgba(255, 255, 255, .14); outline-offset: -1px;
 }
 .qs.is-free .qs-k { opacity: .5; }
+/* Controller und Touch (Runde 3): keine Zifferntasten auf den Plätzen – gewählt wird mit dem Steuerkreuz bzw. Tippen */
+html[data-input="pad"] .qs-k, body.is-touch .qs-k { display: none; }
 .qs.is-free .qs-m, .qs.is-free .wp-edge { display: none; }
 
 /* keine Munition mehr */

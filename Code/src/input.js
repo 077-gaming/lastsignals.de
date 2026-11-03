@@ -9,6 +9,10 @@
 //   Doppelklick = Ziel + Angriff, Klick auf Kiste/Wrack/Tor/Station = hinfliegen.
 // Taktische Kamera: Linksklick = hinfliegen (gedrückt halten = folgen), WASD/Pfeile bildbezogen (W = Bild oben).
 // Controller: input/padflight.js setzt this.pad (Sticks, Trigger) und ruft die Befehle unten (attack, rocket, context …).
+import { FlightInput } from './input/flightinput.js';
+import { keyName } from './input/bindings.js';
+import { isTouchOnly } from './input/flightsettings.js';
+
 const AMMO_KEYS = { Digit1: 'L1', Digit2: 'L2', Digit3: 'L3', Digit4: 'L4', Digit5: 'SAB' };
 const STEER_KEYS = {
   KeyW: [0, -1], ArrowUp: [0, -1],
@@ -37,6 +41,8 @@ export class Input {
     this.steer = new Set();
     this.touches = new Map(); this.primary = null; this.pinch = 0; // Touch: Finger, Lenk-Finger, Pinch-Abstand
     this.pad = null;            // Controller-Zustand (input/padflight.js): { active, lx, ly, lt, rt, sens }
+    this.fi = new FlightInput(this); // 3D-Flug (Verfolger, Cockpit): Zeigerfang, Mausziel, Steuerrahmen
+    this.menuOpen = null;            // main.js: () => Bordmenü oder Dialog offen
 
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -45,7 +51,7 @@ export class Input {
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
     this.onContext = (e) => e.preventDefault();
-    this.onBlur = () => { this.mouseDown = false; this.steer.clear(); };
+    this.onBlur = () => { this.mouseDown = false; this.steer.clear(); this.fi.release(); };
 
     canvas.addEventListener('pointerdown', this.onMouseDown);
     window.addEventListener('pointermove', this.onMouseMove);
@@ -59,6 +65,8 @@ export class Input {
   }
 
   get chase() { return this.renderer.cameraMode === 'chase'; }
+  /** 3D-Flug aktiv (Verfolger oder Cockpit, nicht angedockt) */
+  get flight3d() { return !!(this.world && this.world.flight3d); }
 
   typing(e) {
     const t = e.target;
@@ -72,6 +80,18 @@ export class Input {
       if (this.touches.size === 2) { this.mouseDown = false; this.pinch = this._pinchDist(); return; }
       if (this.touches.size > 2) return;
       this.primary = e.pointerId;
+    }
+    // 3D-Flug: Zeigerfang, Feuern, Raketen-Aufschaltung, Umsehen (input/flightinput.js)
+    if (this.flight3d && !this.world.docked && !this.world.playerDead) {
+      if (e.pointerType === 'touch') {
+        // Touch im 3D-Flug: Antippen wählt ein Ziel (gelenkt wird mit dem Joystick)
+        const hit = this.renderer.pick(e.clientX, e.clientY);
+        const ent = hit && hit.kind === 'entity' ? this.world.entities.get(hit.id) : null;
+        if (ent && (ent.kind === 'enemy' || (ent.kind === 'player' && ent.pvpOk))) this.world.setTarget(ent.id);
+        return;
+      }
+      if (this.fi.mouseDown(e)) return;
+      return;
     }
     // Cockpit: mittlere Maustaste halten = umsehen (Kurs bleibt)
     if (e.button === 1 && this.renderer.viewMode === 'cockpit') { e.preventDefault(); this.look = true; this.renderer.rig.looking = true; this.lookX = e.clientX; this.lookY = e.clientY; return; }
@@ -128,11 +148,13 @@ export class Input {
     }
     if (e.button === 0) this.mouseDown = false;
     if (e.button === 1 && this.look) { this.look = false; this.renderer.rig.looking = false; }
+    this.fi.mouseUp(e);
   }
   _pinchDist() { const [a, b] = [...this.touches.values()]; return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0; }
 
   onWheel(e) {
     e.preventDefault();
+    if (this.flight3d && this.fi.wheel(e)) return; // 3D-Flug: Begrenzer (Alt+Mausrad: Kameraabstand)
     this.renderer.setZoom(e.deltaY);
   }
 
@@ -140,10 +162,11 @@ export class Input {
   nearestEnemy(players = false) {
     const p = this.world.player;
     let best = null, bestD = Infinity;
+    const y3 = this.flight3d;
     for (const ent of this.world.entities.values()) {
       if (!ent.alive || !(ent.kind === 'enemy' || (players && ent.kind === 'player' && ent.pvpOk))) continue;
-      const dx = ent.x - p.x, dz = ent.z - p.z;
-      const d = dx * dx + dz * dz;
+      const dx = ent.x - p.x, dz = ent.z - p.z, dy = y3 ? (ent.y || 0) - p.y : 0;
+      const d = dx * dx + dz * dz + dy * dy;
       if (d < bestD && ent.id !== p.targetId) { bestD = d; best = ent; }
     }
     return best;
@@ -152,6 +175,9 @@ export class Input {
   onKeyDown(e) {
     if (this.typing(e)) return;
     const w = this.world;
+    // 3D-Flug: eigene Belegung (input/bindings.js); was dort nicht belegt ist (H, V, Zahlen …), läuft weiter unten
+    if (this.flight3d && !w.playerDead && this.fi.keyDown(e)) return;
+    if (STEER_KEYS[e.code] && this.flight3d) return;
     if (STEER_KEYS[e.code]) {
       e.preventDefault();
       if (!e.repeat && this.chase && !w.docked && !w.playerDead) {
@@ -201,18 +227,24 @@ export class Input {
     if (w.docked || !this.renderer.toggleCamera) return;
     const m = this.renderer.toggleCamera();
     this.cruise = false;
-    const pd = this.pad && this.pad.active;
+    this.syncView();
+    if (m !== 'tactical') this.fi.requestLock(); // V ist die Nutzergeste für den Zeigerfang
+    const pd = this.pad && this.pad.active, tc = isTouchOnly();
+    const k = (a) => keyName(a);
     this.bus.emit('message', {
       kind: 'info',
-      text: pd
-        ? (m === 'cockpit' ? 'Kamera: Cockpit – linker Stick lenkt, rechter Stick sieht sich um (R3 wechselt).'
-          : m === 'chase' ? 'Kamera: Verfolger – linker Stick lenkt, RT Schub, LT bremsen (R3 wechselt).'
+      text: tc
+        ? (m === 'tactical' ? 'Kamera: Taktisch – Joystick fliegt, Gegner antippen wählt, zwei Finger zoomen (ANSICHT wechselt).'
+          : `Kamera: ${m === 'cockpit' ? 'Cockpit' : 'Verfolger'} – Joystick zielt, SCHUB gibt Gas, LASER schaltet das Autofeuer, BOOST halten (ANSICHT wechselt).`)
+        : pd
+        ? (m === 'cockpit' ? 'Kamera: Cockpit – rechter Stick zielt, linker Stick schiebt, R3 halten sieht sich um (R3 wechselt).'
+          : m === 'chase' ? 'Kamera: Verfolger – rechter Stick zielt, linker Stick schiebt, RT feuert, LB/RB rollen (R3 wechselt).'
             : 'Kamera: Taktisch – linker Stick fliegt bildbezogen, rechter Stick zoomt (R3 wechselt).')
         : m === 'cockpit'
-          ? 'Kamera: Cockpit – Steuerung wie Verfolger, Instrumente auf der Konsole (V wechselt).'
+          ? `Kamera: Cockpit – Maus zielt, ${k('fwd')}/${k('back')} Schub, ${k('rollL')}/${k('rollR')} rollen, Instrumente auf der Konsole (${k('camera')} wechselt).`
           : m === 'chase'
-            ? 'Kamera: Verfolger – Maus lenkt, W Schub, S bremsen, Klick wählt Gegner (V wechselt).'
-            : 'Kamera: Taktisch – Klick fliegt hin, WASD bildbezogen (V wechselt).',
+            ? `Kamera: Verfolger – Maus zielt, Klick feuert, ${k('fwd')} Schub, ${k('boost')} Boost, ${k('rollL')}/${k('rollR')} rollen (${k('camera')} wechselt).`
+            : 'Kamera: Taktisch – Klick fliegt hin, WASD bildbezogen, Strg Angriff (V wechselt).',
     });
   }
   /** Ziele der Reihe nach: dir +1 = nächstes, −1 = voriges; ohne Ziel der nächste Gegner. Die Reihenfolge (nach
@@ -231,7 +263,8 @@ export class Input {
       list = [];
       // wie Tab: Gegner und fremde Spieler, solange PvP zwischen beiden gilt (Mehrspieler)
       for (const ent of w.entities.values()) if (ent.alive && (ent.kind === 'enemy' || (ent.kind === 'player' && ent.pvpOk))) list.push(ent);
-      list.sort((a, b) => ((a.x - p.x) ** 2 + (a.z - p.z) ** 2) - ((b.x - p.x) ** 2 + (b.z - p.z) ** 2));
+      const y3 = this.flight3d;
+      list.sort((a, b) => ((a.x - p.x) ** 2 + (a.z - p.z) ** 2 + (y3 ? ((a.y || 0) - p.y) ** 2 : 0)) - ((b.x - p.x) ** 2 + (b.z - p.z) ** 2 + (y3 ? ((b.y || 0) - p.y) ** 2 : 0)));
     }
     if (!list.length) return;
     const i = list.findIndex((e) => e.id === p.targetId);
@@ -258,7 +291,7 @@ export class Input {
     const l = this.nearestLoot(1500);
     if (l) {
       this.cruise = false;
-      w.moveTo(l.x, l.z);
+      w.moveTo(l.x, l.z, l.y);
       this.bus.emit('message', { kind: 'info', text: `Kurs auf ${l.label} (${Math.round(l.d / 10) * 10} m).` });
       return;
     }
@@ -268,7 +301,8 @@ export class Input {
     const w = this.world, p = w.player;
     let best = null, bd = max * max;
     const t = w.time, full = (w.cargoMax || 0) - (w.cargoUsed || 0) <= 0;
-    const test = (o, label) => { const d = (o.x - p.x) ** 2 + (o.z - p.z) ** 2; if (d < bd) { bd = d; best = { x: o.x, z: o.z, label, d: 0 }; } };
+    const y3 = this.flight3d;
+    const test = (o, label) => { const d = (o.x - p.x) ** 2 + (o.z - p.z) ** 2 + (y3 ? ((o.y || 0) - p.y) ** 2 : 0); if (d < bd) { bd = d; best = { x: o.x, z: o.z, y: o.y || 0, label, d: 0 }; } };
     for (const o of w.wrecks || []) if (o && (o.owner === 'player' || !(t < o.protectedUntil))) test(o, 'Wrack');
     for (const o of w.crates || []) if (o && o.alive) test(o, 'Frachtkiste');
     if (!full) for (const o of w.ores || []) if (o && o.alive) test(o, 'Erz');
@@ -276,14 +310,30 @@ export class Input {
     return best;
   }
 
-  onKeyUp(e) { this.steer.delete(e.code); }
+  onKeyUp(e) { this.steer.delete(e.code); this.fi.keyUp(e); }
+
+  /** Ansicht und Steuerweg abgleichen: Verfolger/Cockpit = 3D-Flug, Taktisch = Klickflug */
+  syncView() {
+    const w = this.world;
+    if (!w || !w.setFlight3d) return;
+    const want = this.renderer.cameraMode === 'chase';
+    if (want !== w.flight3d) { w.setFlight3d(want); this.fi.resetAim(); this.mouseDown = false; this.steer.clear(); if (!want) this.fi.exitLock(true); }
+    const vm = this.renderer.viewMode || 'chase', de = document.documentElement;
+    let ch = false;
+    if (de.dataset.view !== vm) { de.dataset.view = vm; ch = true; } // Cockpit: eigenes Fensterprofil (hud-win.js „cock“)
+    const f = want ? '3d' : 'taktik';
+    if (de.dataset.flight !== f) { de.dataset.flight = f; ch = true; }
+    if (ch) try { window.dispatchEvent(new CustomEvent('ls:flightview', { detail: { flight: f, view: vm } })); } catch { /* alt */ }
+  }
 
   update(dt) {
     const w = this.world;
-    // Verfolger: Fadenkreuz-Zeiger (die Maus lenkt), taktisch der normale Zeiger
-    const cur = this.chase ? 'crosshair' : '';
+    this.syncView();
+    // 3D-Flug: Zeiger gefangen (unsichtbar) bzw. Fadenkreuz-Zeiger bis zum ersten Klick; taktisch der normale Zeiger
+    const cur = this.flight3d ? (this.fi.locked ? 'none' : 'crosshair') : this.chase ? 'crosshair' : '';
     if (this._cur !== cur) { this._cur = cur; this.canvas.style.cursor = cur; }
-    if (w.docked || w.playerDead || !w.player) { this.cruise = false; return; }
+    if (w.docked || w.playerDead || !w.player) { this.cruise = false; this.fi.update(dt); if (w.docked && this.fi.locked) this.fi.exitLock(true); return; }
+    if (this.flight3d) { this.fi.update(dt); return; }
     if (this.chase) { this.chaseUpdate(dt); return; }
     this.cruise = false;
     // Controller (taktisch): linker Stick fliegt bildbezogen (oben = Bild oben), LT bremst
@@ -371,6 +421,7 @@ export class Input {
   }
 
   dispose() {
+    this.fi.dispose();
     const c = this.canvas;
     c.removeEventListener('pointerdown', this.onMouseDown);
     window.removeEventListener('pointermove', this.onMouseMove);

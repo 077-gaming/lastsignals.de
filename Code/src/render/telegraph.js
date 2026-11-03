@@ -169,9 +169,13 @@ export class Telegraph {
   update(dt) {
     this.time.value += dt;
     const H = this.host;
+    // 3D-Flug (Runde 2): Boden-Bahnen und -Kreise liegen auf der Ebene y = 0 und wurden im Verfolger zu großen roten
+    // Flächen nahe der Kamera; dort warnen Bedrohungsbögen und Text im Flug-HUD, das Aufladeleuchten am Gegner bleibt
+    const f3 = !!(H.world && H.world.flight3d && H.rig && H.rig.k > 0.5);
     for (const m of this.list) {
       if (!m.on) continue;
       m.t += dt;
+      if (m.ground.visible || m.mesh.visible || f3 !== !!m._f3) { m._f3 = f3; m.ground.visible = !f3 && (!m.line || m.linger > 0 && m.t > m.dur); m.mesh.visible = !f3 && !!m.line; }
       const v = m.id !== null ? H.views.get(m.id) : null;
       if (m.follow && v && m.t < m.dur) { m.x = v.rx; m.z = v.rz; }
       const k = Math.min(1, m.t / m.dur);

@@ -4,15 +4,14 @@
 import * as THREE from 'three';
 
 const N = 900;
-const BOX = new THREE.Vector3(560, 190, 560);
+const BOX = new THREE.Vector3(560, 420, 560);
 
 const VS = /* glsl */`
 attribute float aEnd; attribute float aB;
 uniform vec3 uCam; uniform vec3 uBox; uniform vec3 uVel; uniform float uLen; uniform float uK;
 varying float vA; varying float vS;
 void main() {
-  vec3 p = mod(position - uCam + 0.5 * uBox, uBox) - 0.5 * uBox + uCam;
-  p.y = position.y;                       // Höhe fest (Ebene ± 95 m), nur waagrecht gewickelt
+  vec3 p = mod(position - uCam + 0.5 * uBox, uBox) - 0.5 * uBox + uCam; // 3D-Flug: in allen Achsen gewickelt
   float streak = step(0.92, aB);
   vec3 dir = uVel / max(length(uVel), 1.0);
   p -= (uVel * uLen * (1.0 + streak * 2.6) + dir * 0.8) * aEnd;
@@ -20,8 +19,8 @@ void main() {
   gl_Position = projectionMatrix * mv;
   float dz = -mv.z;
   float fade = smoothstep(6.0, 34.0, dz) * (1.0 - smoothstep(200.0, 290.0, dz));
-  vec2 q = abs(p.xz - uCam.xz) / (0.5 * uBox.xz);
-  float edge = 1.0 - smoothstep(0.7, 1.0, max(q.x, q.y));
+  vec3 q = abs(p - uCam) / (0.5 * uBox);
+  float edge = 1.0 - smoothstep(0.7, 1.0, max(max(q.x, q.y), q.z));
   vA = uK * fade * edge * (0.3 + 0.7 * aB) * (1.0 - aEnd * 0.92) * (1.0 + streak * 1.6);
   vS = streak;
 }`;
@@ -41,7 +40,7 @@ export class SpeedDust {
     let s = 7;
     const R = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
     for (let i = 0; i < N; i++) {
-      const x = R() * BOX.x, y = -BOX.y * 0.45 + R() * BOX.y, z = R() * BOX.z, b = R();
+      const x = R() * BOX.x, y = R() * BOX.y, z = R() * BOX.z, b = R();
       for (let k = 0; k < 2; k++) {
         const o = (i * 2 + k) * 3;
         pos[o] = x; pos[o + 1] = y; pos[o + 2] = z;
@@ -86,7 +85,7 @@ export class SpeedDust {
     if (!on) return;
     const U = this.mat.uniforms;
     U.uCam.value.copy(cam.position);
-    this._vel.set(e.vx || 0, 0, e.vz || 0);
+    this._vel.set(e.vx || 0, (e.vy || 0) * K, e.vz || 0);
     U.uVel.value.lerp(this._vel, 1 - Math.exp(-dt * 8));
     U.uLen.value = 0.035 + 0.05 * Math.min(1, n);
     U.uK.value = this.k;

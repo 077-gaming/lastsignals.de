@@ -59,7 +59,7 @@ export const SCHEMA = [
   { key: 'fpsCap', group: 'system', label: 'BILDRATENBEGRENZUNG', desc: 'BILDSCHIRM folgt der Bildwiederholrate des Monitors (V-Sync). Browser: Begrenzer lässt Bilder aus. Desktop-App: UNBEGRENZT schaltet V-Sync aus und braucht einen Neustart.',
     type: 'choice', options: [[-1, 'BILDSCHIRM'], [30, '30'], [60, '60'], [120, '120'], [144, '144'], [0, 'UNBEGRENZT']], def: -1, apply: 'live', restart: 'desktop' }, // BILDSCHIRM = V-Sync, kein Begrenzer
   { key: 'fovChase', group: 'system', label: 'SICHTFELD VERFOLGER', desc: 'Öffnungswinkel der Verfolger-Kamera (Cockpit: im Bordmenü unter KAMERA).',
-    type: 'range', min: 50, max: 80, step: 2, unit: '°', def: 58, apply: 'live' },
+    type: 'range', min: 55, max: 90, step: 2, unit: '°', def: 70, apply: 'live' }, // 3D-Flug: 70° (Planung/FLUGMODELL.md 6)
   { key: 'perfHud', group: 'system', label: 'LEISTUNGSANZEIGE', desc: 'Bilder/s, Bildzeit, GPU-Zeit und Stufe oben rechts (auch Taste F3).', type: 'toggle', def: false, apply: 'live' },
 ];
 export const SCHEMA_BY_KEY = Object.fromEntries(SCHEMA.map((d) => [d.key, d]));

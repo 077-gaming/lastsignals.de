@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { CameraLookPass } from './post.js';
 import { BloomPass } from './bloom.js';
-import { FACTIONS, SHIPS, ENEMIES } from '../core/data.js';
+import { FACTIONS, SHIPS, ENEMIES, LASERS } from '../core/data.js';
 import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, EQUIP_URL, equipKeys, preloadGLB, shipHdUrls } from './models.js';
 import { store } from '../core/store.js';
 import { JumpMarker } from './marker.js';
@@ -18,6 +18,8 @@ import { GpuTimer } from '../perf/gputimer.js';
 import { renderHints, PR_CAP, hdTextures } from '../perf/quality.js';
 import { CameraRig, FOV_TAC, FOV_CHASE } from './camrig.js';
 import { Cockpit } from './cockpit.js';
+import { keyName } from '../input/bindings.js';
+import { padMode, glyph } from '../input/padglyph.js';
 import { Telegraph } from './telegraph.js';
 import { StationLife } from './stationlife.js';
 import { SpeedDust } from './speeddust.js';
@@ -122,6 +124,7 @@ const PLAYER_LAYER = 5, FOV_COCKPIT = 74; // Cockpit: eigenes Schiff auf eigener
 const SKY_Q_CHASE = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), PITCH);
 const SKY_Q_ID = new THREE.Quaternion();
 const _s3 = new THREE.Vector3();
+const _sq2 = new THREE.Quaternion(), _qTac = new THREE.Quaternion(), _q3c = new THREE.Quaternion(), _p3c = new THREE.Vector3(), _m4c = new THREE.Matrix4();
 const _sq = new THREE.Quaternion(), _cp = new THREE.Vector3(), _cl = new THREE.Vector3(), _so = new THREE.Vector3(), _s2 = new THREE.Vector2();
 // Schiff bei Standard-Abstand ≈ 8 % der Bildhöhe, ganz nah ≈ 25 %, ganz weit für die Übersicht
 const ZOOM_MIN = 230, ZOOM_MAX = 3400, ZOOM_START = 520;
@@ -272,6 +275,7 @@ export class Renderer {
     this.camLead = new THREE.Vector3();
     this.dist = ZOOM_START; this.targetDist = ZOOM_START;
     this.combatK = 0;          // 0 = frei, 1 = Kampf-Rahmung (Spieler und Ziel im freien Bildbereich)
+    this.yK = 1;               // Höhenanteil der Darstellung (3D-Flug 1, Draufsicht 0)
     this._nav = this.factory.navMats();
     this._snap = true;
 
@@ -313,6 +317,9 @@ export class Renderer {
     on('rocket', (p) => { if (p && p.from === 'player') this._need('rocket:' + (p.rocket || 'R1')); this.effects.rocket(p); });
     on('explode', (p) => this._onExplode(p));
     on('damage', (p) => { this.effects.damage(p); this._onDamage(p); });
+    // 3D-Flug: Einschläge der Simulationsbolzen (Ziel, eigenes Schiff, Brocken)
+    on('boltHit', (p) => { if (p) this.effects.boltImpact(p.x, this.ry(p.y), p.z, p.player ? LASERS[p.laser]?.color : ENEMIES[p.enemyType]?.accent, p.dx || 0, p.dy || 0, p.dz || 0, p.shield, p.crit || p.sal || p.kill); });
+    on('impact', (p) => { if (p) this.effects.boltImpact(p.x, this.ry(p.y), p.z, 0xffc890, 0, 1, 0, false, false); });
     on('telegraph', (p) => this.tele.start(p));
     on('telegraphEnd', (p) => this.tele.end(p));
     on('special', (p) => this.tele.special(p));
@@ -468,8 +475,12 @@ export class Renderer {
 
   // ---------- Welt ----------
   setWorld(world) {
-    this.views.forEach((v, id) => this._removeView(id));
-    this.views.clear();
+    // Sektorsprung (Runde 3): die Ansicht des eigenen Schiffs bleibt stehen (dieselbe Welt, dasselbe Schiff) – ihr
+    // Neuaufbau kostete ≈ 145 ms Hauptthread und war der Hänger beim Sektorwechsel (200 ms in 3D und Taktik)
+    const keep = world && world === this.world && this.views.get('player');
+    const keepOk = keep && world.player && this._sig(world.player) === keep.sig;
+    this.views.forEach((v, id) => { if (!(keepOk && id === 'player')) this._removeView(id); });
+    if (!keepOk) this.views.clear();
     this._clearDying();
     this.effects.clear();
     this.trails.clear();
@@ -515,14 +526,44 @@ export class Renderer {
     this._alpha = 1; this._dt = 0;
     if (world.player) this.camTarget.set(world.player.x || 0, 0, world.player.z || 0);
     this._viewBudget = 0;
-    try { if (world.entities) world.entities.forEach(this._syncCb); } catch (err) { console.warn('Ansichten unvollständig', err); }
-    t1 = performance.now(); WT.views = t1 - t0; t0 = t1;
+    // Runde 3: Ansichten nicht mehr alle in einem Bild anlegen (≈ 150 ms, der Hänger beim Sektorwechsel), sondern
+    // gestaffelt mit 6 ms je Bild, solange das letzte Bild (Sprungblitz) stehen bleibt; danach parallel übersetzen
+    const H = this._hold = { t0: performance.now(), phase: 'views', ready: false, world };
+    this._viewsStep(H);
+    t1 = performance.now(); WT.views = t1 - t0;
+  }
+  /** Ansichten gestaffelt anlegen (Sprung): true, wenn alle stehen */
+  _viewsStep(H) {
+    const world = H.world;
+    this._viewDeadline = performance.now() + 6;
+    let missing = 0;
+    try {
+      if (world.entities) {
+        world.entities.forEach(this._syncCb);
+        world.entities.forEach((e) => { if (!this.views.has(e.id) && this._wantsView(e)) missing++; });
+      }
+    } catch (err) { console.warn('Ansichten unvollständig', err); }
+    this._viewDeadline = 0;
+    if (missing > 0 && performance.now() - H.t0 < 1200) return false;
+    this._warmCompile(H);
+    return true;
+  }
+  /** wie _sync: würde diese Entität jetzt eine Ansicht bekommen? (nah genug oder immer sichtbar) */
+  _wantsView(e) {
+    if (e.kind === 'player' || e.kind === 'station' || e.kind === 'portal') return true;
+    const dx = (e.x || 0) - this.camTarget.x, dz = (e.z || 0) - this.camTarget.z;
+    return dx * dx + dz * dz <= 3200 * 3200;
+  }
+  _warmCompile(H) {
+    const WT = this.warmT || {};
+    let t0 = performance.now();
+    const world = H.world;
     const cam = this.camera, d = this.targetDist;
     const px = world.player ? world.player.x || 0 : 0, pz = world.player ? world.player.z || 0 : 0;
     cam.position.set(px, d * SIN_P, pz + d * COS_P); cam.lookAt(px, 0, pz); cam.updateMatrixWorld();
     const gl = this.gl, prevRT = gl.getRenderTarget();
     const useComposer = this._useComposer();
-    const H = this._hold = { t0: performance.now(), phase: 'compile', ready: false };
+    H.phase = 'compile'; H.t0 = performance.now(); H.ready = false;
     try {
       try { this.env.planets.warmPrograms(); } catch (err) { console.warn('Planeten-Vorübersetzen', err); }
       const eqVis = this.env.sky.bgEq.visible;
@@ -533,13 +574,14 @@ export class Renderer {
       p.then(() => { H.ready = true; WT.wait = performance.now() - H.t0; }, () => { H.ready = true; });
     } catch (err) { console.warn('Aufwärmen unvollständig', err); H.ready = true; }
     gl.setRenderTarget(prevRT);
-    t1 = performance.now(); WT.compile = t1 - t0;
+    WT.compile = performance.now() - t0;
     this.gl.shadowMap.needsUpdate = true;
   }
 
   /** true = dieses Bild nicht zeichnen (Sektorsprung wärmt noch vor) */
   _holdStep() {
     const H = this._hold, now = performance.now();
+    if (H.phase === 'views') { this._viewsStep(H); return true; }
     if (H.phase === 'compile') {
       if (!H.ready && now - H.t0 < 1500) return true;
       // fertig übersetzt: einmal winzig zeichnen (Zeichenzustände anlegen), sichtbar erst im nächsten Bild
@@ -587,16 +629,21 @@ export class Renderer {
   /** Gegner des Sektors (auch noch nicht erschienene, Ereignis-Piraten, Brut) gleich beim Sektoraufbau anfordern */
   _needSector(world) {
     const sec = world.sector || {};
-    if (sec.station) this._need('station:' + this.faction); // Station zuerst (größte Datei, steht beim Start im Bild)
+    // erstes Bild des Sektors: Station, Gegner und Brocken. main.js zeigt den Flug beim Sitzungsstart erst, wenn sie
+    // eingetauscht sind (sectorReady) – das Eintauschen kostete sonst 200–500 ms Hänger, während schon gesteuert wurde
+    const first = [];
+    const need = (k) => { const p = this._need(k); if (p) first.push(p); };
+    if (sec.station) need('station:' + this.faction); // Station zuerst (größte Datei, steht beim Start im Bild)
     const types = new Set([...(sec.spawns || []).map((s) => s.type), ...(sec.eventPirates || [])]);
     for (const t of [...types]) { const b = ENEMIES[t]?.brood?.type; if (b) types.add(b); }
-    for (const t of types) this._need('enemy:' + t);
+    for (const t of types) need('enemy:' + t);
     // Außenposten (Meshy-Stationsvarianten Europa/Eris) als ferne Kulisse in den tiefen Sektoren 4–8, nicht andockbar
     if (this._outpost) { this.scene.remove(this._outpost); this._outpost = null; }
     this._outpostKey = (sec.index || 1) >= 4 && EXTRA_MODELS['outpost:' + this.faction] ? 'outpost:' + this.faction : null;
     if (this._outpostKey) this._need(this._outpostKey);
     // Asteroidenfelder zeigen die großen Brocken als Meshy-Formen (fields.js tauscht sie nach dem Laden ein)
-    if ((this.env.fields?.fields || sec.fields || []).some((F) => F.type === 'asteroids')) for (const k of ['asteroid', 'asteroid:2']) { this._need(k); this._need(k + ':lod1'); }
+    if ((this.env.fields?.fields || sec.fields || []).some((F) => F.type === 'asteroids')) for (const k of ['asteroid', 'asteroid:2']) { need(k); need(k + ':lod1'); }
+    this.sectorReady = Promise.all(first);
     // Requisiten des Sektors gestaffelt vorladen (Entpacken läuft im Hauptthread: einzeln, nicht erst beim Auftauchen
     // mitten im Kampf); Ereignis-Modelle (Frachter, Nest, Wrack) zuletzt
     const later = ['portal', 'asteroid:3', 'asteroid:3:lod1'];
@@ -611,11 +658,14 @@ export class Renderer {
   /** Zusatzmodell anfordern (einmal je Schlüssel; fehlt die Datei, bleibt das prozedurale Modell) */
   _need(key) {
     const M = EXTRA_MODELS[key];
-    if (!M || !this._loadGLB || this.factory.glb.has(key)) return;
+    if (!M || !this._loadGLB || this.factory.glb.has(key)) return null;
     const T = this._needT || (this._needT = new Set());
-    if (T.has(key)) return;
+    const P = this._needP || (this._needP = new Map());
+    if (T.has(key)) return P.get(key) || null;
     T.add(key);
-    this._loadGLB(key, M[0], M[1]);
+    const pr = this._loadGLB(key, M[0], M[1]);
+    P.set(key, pr);
+    return pr;
   }
 
   // Alles vorab vorbereiten, was sonst beim ersten Auftreten ruckelt: Ansichten aller vorhandenen Entities,
@@ -676,6 +726,10 @@ export class Renderer {
       gl.setRenderTarget(useComposer ? this.composer.readBuffer : null);
       gl.compile(this.scene, cam);
       if (useComposer) { gl.setRenderTarget(null); gl.compile(this.scene, cam); } // Rückfall ohne Bloom
+      // Cockpit-Ebene mit übersetzen und einmal zeichnen (sonst ≈ 200 ms Hänger beim ersten Wechsel ins Cockpit)
+      if (this.cockpit && this.cockpit.scene && this.cockpit.camera) {
+        try { gl.compile(this.cockpit.scene, this.cockpit.camera); gl.setRenderTarget(useComposer ? this.composer.readBuffer : null); gl.render(this.cockpit.scene, this.cockpit.camera); } catch (err) { console.warn('Cockpit-Vorübersetzen', err); }
+      }
       t1 = performance.now(); WT.compile = t1 - t0; t0 = t1;
       // Texturen hochladen (compile lädt keine Bilder)
       const seen = new Set();
@@ -933,6 +987,8 @@ export class Renderer {
       }
     }
     v.root = v.model.root;
+    v.root.rotation.order = 'YXZ'; // 3D-Flug: erst Gieren, dann Nicken um die eigene Querachse
+    v.ry = 0; v.pitch3 = 0; v.qs = new THREE.Quaternion();
     this.entityGroup.add(v.root);
     this.views.set(e.id, v);
     return v;
@@ -977,6 +1033,8 @@ export class Renderer {
       this._removeView(e.id); v = null;
     }
     if (!v) {
+      // Sprung (Runde 3): Zeitbudget je Bild, der Rest kommt im nächsten
+      if (this._viewDeadline && performance.now() > this._viewDeadline) return;
       // neue Ansichten fern der Kamera gestaffelt anlegen (höchstens wenige je Bild), nahe sofort
       if (this._viewBudget <= 0) {
         const dx = (e.x || 0) - this.camTarget.x, dz = (e.z || 0) - this.camTarget.z;
@@ -993,6 +1051,9 @@ export class Renderer {
     const rot = e.rot || 0, prot = e.prot ?? rot;
     const dr = wrapAngle(rot - prot);
     v.rrot = prot + dr * a;
+    // Höhe (3D-Flug): beim Wechsel in die Draufsicht mit dem Kamerablend auf die Ebene gestaucht
+    const ey = e.y || 0, epy = e.py ?? ey;
+    v.ry = (epy + (ey - epy) * a) * this.yK;
     const root = v.root;
     const alive = e.alive !== false;
     if (!alive) {
@@ -1022,7 +1083,8 @@ export class Renderer {
     switch (v.kind) {
       case 'player': {
         if (this._dockK > 0 || this._docking) this._dockGlide(v, dt);
-        root.position.set(v.rx + fx, Math.sin(t * 1.2 + v.phase) * 1.2, v.rz + fz);
+        const q3 = !!e.q && this.yK > 0.001 && !(this._dockK > 0.001);
+        root.position.set(v.rx + fx, Math.sin(t * 1.2 + v.phase) * 1.2 * (1 - this.yK) + v.ry, v.rz + fz);
         const speed = typeof e.speed === 'number' ? e.speed : Math.hypot(e.vx || 0, e.vz || 0);
         const n = Math.min(1.3, speed / v.maxSpeed);
         // Schub 0..1 von der Simulation (langsames Hochbeschleunigen); fehlt er, aus der Tempoänderung geschätzt
@@ -1052,10 +1114,21 @@ export class Renderer {
         v.pitch = (v.pitch || 0) + (pitchT - (v.pitch || 0)) * (1 - Math.exp(-dt * 4));
         // Nachdriften: die Nase dreht etwas weiter in die Kurve, als die Bahn folgt
         const lead = Math.max(-0.1, Math.min(0.1, v.yawRate * 0.065));
-        root.rotation.y = v.rrot + lead;
-        root.rotation.x = -v.fl * 0.08;
-        m.bank.rotation.z = v.bank;
-        m.bank.rotation.x = v.pitch - n * 0.02;
+        if (q3) {
+          // 3D-Flug: volle Lage aus dem Flugkern (zwischen den Sim-Schritten interpoliert); Schräglage und Nicken
+          // als Anzeige entfallen (das Schiff rollt und nickt wirklich)
+          _sq.set(e.pq ? e.pq[0] : e.q[0], e.pq ? e.pq[1] : e.q[1], e.pq ? e.pq[2] : e.q[2], e.pq ? e.pq[3] : e.q[3]);
+          _sq2.set(e.q[0], e.q[1], e.q[2], e.q[3]);
+          v.qs.slerpQuaternions(_sq, _sq2, e.remote ? 1 : a);
+          root.quaternion.copy(v.qs);
+          m.bank.rotation.z = v.bank * (1 - this.yK); m.bank.rotation.x = (v.pitch - n * 0.02) * (1 - this.yK) - v.fl * 0.08;
+        } else {
+          root.rotation.y = v.rrot + lead;
+          root.rotation.x = -v.fl * 0.08; root.rotation.z = 0;
+          m.bank.rotation.z = v.bank;
+          m.bank.rotation.x = v.pitch - n * 0.02;
+          v.qs.copy(root.quaternion);
+        }
         // Rückstoß der Laser schiebt das ganze Schiff kurz zurück
         v.recoil *= Math.exp(-dt * 9);
         m.bank.position.z = v.recoil * 1.6;
@@ -1074,13 +1147,17 @@ export class Renderer {
         let hx = 0, hy = 0, hz = 0, hn = 0, main = 0, ms = 0;
         for (let i = 0; i < m.engines.length; i++) if (m.engines[i].size >= 0.9) main++;
         const E = this._engP || (this._engP = new Float32Array(24));
+        // eigenes Schiff im Verfolger (Runde 3): Flammen kürzer, Glühen kleiner – mit S3 überstrahlten sie samt Bloom die
+        // untere Bildmitte bis zum Fadenkreuz
+        const ownC = e === (this.world && this.world.player) && !!(this.world.flight3d && this.rig.k > 0.5 && this.rig.kc < 0.5);
+        const fk = ownC ? 0.55 : 1, gk = ownC ? 0.62 : 1;
         for (let i = 0; i < m.engines.length; i++) {
           const en = m.engines[i], s = en.size;
-          const w = (4.4 + pk * 2.2 + surge * 1.8) * s * (1 + 0.12 * ab);
-          en.trail.scale.set(w, w, (5 + pk * 40 + surge * 20 + ab * (10 + 12 * pulse)) * s);
+          const w = (4.4 + pk * 2.2 + surge * 1.8) * s * (1 + 0.12 * ab) * (ownC ? 0.8 : 1);
+          en.trail.scale.set(w, w, (5 + pk * 40 + surge * 20 + ab * (10 + 12 * pulse)) * s * fk);
           // Flamme pulsiert mit dem Schub (schnelles Flackern, Stärke an den Schub gekoppelt)
           const fl = 1 + v.thr * (0.07 * Math.sin(t * 31 + i * 2.1) + 0.05 * Math.sin(t * 47.3 + i));
-          en.glow.scale.setScalar((4.6 + pk * 3 + surge * 3.5 + Math.sin(t * 27 + i * 1.7) * 0.35) * s * (1 + ab * (0.18 + 0.32 * pulse)) * fl);
+          en.glow.scale.setScalar((4.6 + pk * 3 + surge * 3.5 + Math.sin(t * 27 + i * 1.7) * 0.35) * s * (1 + ab * (0.18 + 0.32 * pulse)) * fl * gk);
           en.hp.getWorldPosition(_v);
           if (boost) this.effects.boost(_v.x, _v.y, _v.z, s, m.plumeHex ?? v.shieldColor);
           // Hauptdüsen sammeln: ein gemeinsames Band (zwei Strahlen, die verschmelzen)
@@ -1098,7 +1175,11 @@ export class Renderer {
           const k = (Math.min(1, n * 1.15) * (0.55 + 0.45 * v.thr) + v.thr * 0.2) * (1 + ab * 0.22 * pulse);
           // bei hohem Tempo deutlich länger (Tempo-Gefühl), im Stand ein kurzer Stummel
           const life = 0.1 + 0.56 * Math.pow(nn, 1.1) + 0.22 * Math.pow(nn, 3) + v.thr * 0.1 + ab * 0.08;
-          this.trails.feed('player:0', hx, hy - 1, hz, Math.min(1.25, k), 3.8 * ms * (0.8 + 0.4 * v.thr), life, v.trailCol, 1, sep);
+          // 3D-Flug (Verfolger/Cockpit): Das flache Band liegt hinter dem eigenen Schiff genau zwischen Schiff und
+          // Kamera und wurde zu einem riesigen Lichtkegel über dem unteren Bildviertel (Runde 2). Dort kurz, schmal und
+          // vor der Kamera ausgeblendet; Flammen und Glühen an den Düsen bleiben.
+          const own3 = !!(this.world && this.world.flight3d && this.rig.k > 0.5);
+          this.trails.feed('player:0', hx, hy - 1, hz, Math.min(1.25, k) * (own3 ? 0.6 : 1), 3.8 * ms * (0.8 + 0.4 * v.thr) * (own3 ? 0.45 : 1), own3 ? life * 0.3 : life, v.trailCol, 1, sep * (own3 ? 0.6 : 1), own3 ? 90 : 0);
           // Funken an der Düse (bei Schub), dichter mit Nachbrenner
           const sr = (v.thr > 0.35 ? (v.thr - 0.35) * 30 : 0) + ab * 26;
           v.spkAcc = (v.spkAcc || 0) + dt * sr * this.effects.density;
@@ -1144,9 +1225,11 @@ export class Renderer {
         }
         if (v.aura) v.aura.scale.setScalar(v.auraS * (1 + Math.sin(t * (v.auraK > 0.8 ? 4.2 : 2.2) + v.phase) * 0.08));
         if (m.pods) { this._nestAnim(v, m, t, fx, fz); break; }
-        root.position.set(v.rx + fx, 2 + Math.sin(t * 1.5 + v.phase) * 2, v.rz + fz);
+        root.position.set(v.rx + fx, 2 + Math.sin(t * 1.5 + v.phase) * 2 + v.ry, v.rz + fz);
         root.rotation.y = v.rrot;
-        root.rotation.x = -v.fl * 0.12;
+        // Nicken (3D-Flug) aus der Simulation, weich
+        v.pitch3 += ((e.pitch || 0) * this.yK - v.pitch3) * (1 - Math.exp(-dt * 10));
+        root.rotation.x = v.pitch3 - v.fl * 0.12;
         // dezenter Schweif hinter Gegnern in Bildnähe
         {
           const sp = Math.hypot(e.vx || 0, e.vz || 0) / v.maxSpeed;
@@ -1155,7 +1238,7 @@ export class Renderer {
             if (ddx * ddx + ddz * ddz < 2600 * 2600) {
               const back = v.vr * (m.swarm ? 0.35 : 0.55);
               const k = Math.min(1, sp);
-              this.trails.feed(e.id, v.rx + Math.sin(v.rrot) * back, root.position.y - 2, v.rz + Math.cos(v.rrot) * back,
+              this.trails.feed(e.id, v.rx + Math.sin(v.rrot) * back * Math.cos(v.pitch3), root.position.y - 2 + Math.sin(v.pitch3) * back, v.rz + Math.cos(v.rrot) * back * Math.cos(v.pitch3),
                 k, v.vr * (m.swarm ? 0.13 : 0.15), 0.08 + (m.swarm ? 0.25 : 0.4) * k, v.trailCol, m.swarm ? 0.22 : 0.6);
             }
           }
@@ -1175,21 +1258,21 @@ export class Renderer {
         break;
       }
       case 'crate':
-        root.position.set(v.rx, 8 + Math.sin(t * 2 + v.phase) * 3, v.rz);
+        root.position.set(v.rx, 8 + Math.sin(t * 2 + v.phase) * 3 + v.ry, v.rz);
         m.spin.rotation.set(0.45 + Math.sin(t * 0.7 + v.phase) * 0.2, t * 0.9 + v.phase, 0.3);
         m.glow.scale.setScalar(22 + Math.sin(t * 3 + v.phase) * 4);
         break;
       case 'wreck':
-        root.position.set(v.rx, 0, v.rz);
+        root.position.set(v.rx, v.ry, v.rz);
         m.spin.rotation.y = v.phase + t * 0.08;
         m.glow.scale.setScalar(20 + Math.sin(t * 4 + v.phase) * 3);
         break;
       case 'ore':
-        root.position.set(v.rx, 0, v.rz);
+        root.position.set(v.rx, v.ry, v.rz);
         m.spin.rotation.set(t * v.spinX + v.phase, t * v.spinY, v.phase * 0.5);
         break;
       case 'station': {
-        root.position.set(v.rx, -44, v.rz);
+        root.position.set(v.rx, -44 + v.ry, v.rz);
         if (m.spin) m.spin.rotation.y = t * (m.spinRate ?? 0.035);
         if (v.life) v.life.update(dt, t, v, this.world, this);
         if (this._shadowOn && (!this._shadowAt || this._shadowAt.distanceToSquared(root.position) > 1)) this._placeShadow(root.position);
@@ -1207,7 +1290,7 @@ export class Renderer {
         break;
       }
       case 'portal': {
-        root.position.set(v.rx, 0, v.rz);
+        root.position.set(v.rx, v.ry, v.rz);
         const d2 = (v.rx - this.camTarget.x) ** 2 + (v.rz - this.camTarget.z) ** 2;
         if (d2 < this._lensD2) { this._lensD2 = d2; this._lensV = v; }
         m.spin.rotation.y = t * 0.12;
@@ -1216,7 +1299,7 @@ export class Renderer {
         break;
       }
       case 'freighter': {
-        root.position.set(v.rx + fx, -6, v.rz + fz);
+        root.position.set(v.rx + fx, -6 + v.ry, v.rz + fz);
         root.rotation.y = v.rrot;
         const tb = Math.max(-0.25, Math.min(0.25, dr * 60 * 0.3));
         v.bank += (tb - v.bank) * (1 - Math.exp(-dt * 2));
@@ -1241,20 +1324,20 @@ export class Renderer {
         this._nestAnim(v, m, t, fx, fz);
         break;
       case 'asteroid': {
-        root.position.set(v.rx + fx, -10, v.rz + fz);
+        root.position.set(v.rx + fx, -10 + v.ry, v.rz + fz);
         const sp = typeof e.spin === 'number' ? e.spin : v.spinY;
         m.spin.rotation.set(v.phase + t * sp * 0.35, (e.rot || 0) + t * sp, v.phase * 0.5);
         break;
       }
       default:
-        root.position.set(v.rx + fx, 0, v.rz + fz);
+        root.position.set(v.rx + fx, v.ry, v.rz + fz);
         if (m.spin) m.spin.rotation.y = t * 0.6;
     }
   }
 
   // Nest: langsames Atmen, Eiersäcke pulsieren versetzt, Treffer lassen es zusammenzucken
   _nestAnim(v, m, t, fx, fz) {
-    v.root.position.set(v.rx + fx, -4, v.rz + fz);
+    v.root.position.set(v.rx + fx, -4 + (v.ry || 0), v.rz + fz);
     const br = 1 + Math.sin(t * 1.6 + v.phase) * 0.035 - v.fl * 0.05;
     m.spin.scale.set(br, 1 + Math.sin(t * 1.6 + v.phase + 1.1) * 0.05, br);
     m.spin.rotation.y = v.phase + t * 0.05;
@@ -1616,6 +1699,19 @@ export class Renderer {
     if (kc > 0.5 && (pv._ckHidden !== pv.root || this.time > (pv._ckAt || 0))) { pv._ckHidden = pv.root; pv._ckAt = this.time + 0.5; pv.root.traverse((o) => o.layers.set(PLAYER_LAYER)); } // nachgeladene Teile mit erfassen
   }
 
+  // 3D-Cockpit: Pilotenauge am Anker HP_Cockpit (bzw. vorn oben im Rumpf), volle Schiffslage, Umsehen, Kopfträgheit.
+  // Überblendet die Verfolger-Pose (pos, q) mit kc.
+  _cockpitPose3d(pv, kc, st, pos, q) {
+    if (pv._ckRoot !== pv.root) { pv._ckRoot = pv.root; pv._ckNode = pv.root.getObjectByName('HP_Cockpit') || null; }
+    pv.root.updateMatrixWorld();
+    if (pv._ckNode) pv._ckNode.getWorldPosition(_v);
+    else pv.root.localToWorld(_v.set(0, pv.vr * 0.2, -pv.vr * 0.42));
+    this._ckP = this._ckP || new THREE.Vector3(); this._ckQ = this._ckQ || new THREE.Quaternion();
+    this.rig.cockpitPose3d(_v, pv.qs, st, this._ckP, this._ckQ);
+    pos.lerp(this._ckP, kc); q.slerp(this._ckQ, kc);
+    if (kc > 0.5 && (pv._ckHidden !== pv.root || this.time > (pv._ckAt || 0))) { pv._ckHidden = pv.root; pv._ckAt = this.time + 0.5; pv.root.traverse((o) => o.layers.set(PLAYER_LAYER)); }
+  }
+
   // Verfolger: liegt die Kamera in einem großen Stationsteil (Hüllquader je Teil), rückt sie zum Schiff heran;
   // steht schon das Schiff darin, steigt sie über dessen Oberkante. Quader einmal je Station (Stationen stehen still).
   _clearStation(pv) {
@@ -1660,12 +1756,34 @@ export class Renderer {
     const m = rig.shakeOn ? rig.motion : 0;
     _so.set(rig.kick.x * 0.002 * m, rig.kick.y * 0.002 * m - Math.max(-1, Math.min(1, (rig.accel || 0) / 400)) * 0.03 * m, 0);
     this.cockpit.look(rig.lookYaw, rig.lookPitch);
-    this.cockpit.update(dt, fov, _so, rig.shakeRoll(this.time) * 0.3 * m, {
-      hull: p.hpMax ? p.hp / p.hpMax : 1, shield: p.shieldMax ? p.shield / p.shieldMax : 0,
-      speed: Math.hypot(p.vx || 0, p.vz || 0) || p.speed || 0, maxSpeed: pv.maxSpeed || 320, ab: (pv.ab || 0) > 0.1,
-      target: t && t.alive !== false ? (t.name || t.def?.name || t.type) : null,
-      dist: t ? Math.hypot(t.x - p.x, t.z - p.z) : 0, tHull: t && t.hpMax ? t.hp / t.hpMax : 0,
-    });
+    // Runde 3: keine Tempozahl mehr auf der Konsole (sie lief 0,2 s hinter der Tempoleiter her: HUD 183, Konsole 170
+    // M/S „NACHBRENNER“ im selben Bild) – das Tempo steht nur auf der Leiter. Die Konsole zeigt, was im Cockpit sonst
+    // fehlt: Boost-Vorrat, Flugrechner, Waffen und Munition, Auftrag, Ziel mit Schild und Hülle.
+    const st = W.fl, pr = W.profile || {}, q = W.quest, A = W.aimInfo, ci = this._ckInfo || (this._ckInfo = {});
+    ci.hull = p.hpMax ? p.hp / p.hpMax : 1; ci.shield = p.shieldMax ? p.shield / p.shieldMax : 0;
+    ci.boost = st ? st.boost : null; ci.boostOn = !!(st && st.boostOn); ci.boostLock = !!(st && st.boostLock);
+    ci.decoupled = !!(st && !st.coupled);
+    ci.modeLine = st ? `${['KAMPF', 'REISE', 'LANDUNG'][st.mode] || 'KAMPF'} · ${st.coupled ? 'GEKOPPELT' : 'ENTKOPPELT'}` : '';
+    ci.limiter = st && Number.isFinite(st.limiter) ? Math.round(st.limiter) : 0;
+    ci.cruise = st && st.cruise ? Math.round(st.cruiseV) : 0;
+    ci.reise = !!(A && A.reise); ci.auto = !!p.attacking;
+    ci.ammo = pr.selectedAmmo && pr.selectedAmmo !== 'SAL' ? pr.selectedAmmo : 'L1'; ci.ammoN = pr.ammo ? pr.ammo[ci.ammo] : null;
+    ci.rocket = pr.selectedRocket || 'R1'; ci.rocketN = pr.ammo ? pr.ammo[ci.rocket] : null;
+    ci.questTitle = q && q.def ? q.def.title || '' : ''; ci.questText = q && q.def ? q.def.text || '' : '';
+    ci.questProg = q && q.def ? `${Math.min((q.def.goal && q.def.goal.count) || 1, q.progress || 0)} / ${(q.def.goal && q.def.goal.count) || 1}` : '';
+    ci.target = t && t.alive !== false ? (t.name || t.def?.name || t.type) : null;
+    ci.dist = t ? Math.hypot(t.x - p.x, t.z - p.z, W.flight3d ? (t.y || 0) - (p.y || 0) : 0) : 0;
+    ci.tHull = t && t.hpMax ? t.hp / t.hpMax : 0; ci.tShield = t && t.shieldMax ? t.shield / t.shieldMax : 0;
+    ci.tState = t && t.state === 'flee' ? 'RÜCKZUG' : '';
+    // letzter Funkspruch (Funkfenster ist im Cockpit aus): aus dem Verlauf des HUD, höchstens 5-mal je Sekunde gelesen
+    if (!(this.time - (this._ckRT || -9) < 0.2)) {
+    this._ckRT = this.time;
+    const hm = document.querySelector('[data-win="comms"] .hm');
+    ci.radio = hm ? (hm.querySelector('.hm-b')?.textContent || '') : ''; ci.radioFrom = hm ? (hm.querySelector('.hm-f')?.textContent || hm.querySelector('.hm-k')?.textContent || '') : '';
+    ci.radioWarn = !!(hm && hm.classList.contains('hm-warn'));
+    ci.nextHint = padMode() ? `${glyph('A')}: GEGNER ERFASSEN` : document.body.classList.contains('is-touch') ? 'ZIEL: NÄCHSTER GEGNER' : `${keyName('next')}: NÄCHSTER GEGNER`;
+    }
+    this.cockpit.update(dt, fov, _so, rig.shakeRoll(this.time) * 0.3 * m, ci);
   }
   get cameraMode() { return this.rig.mode; }
   /** Verfolger-Kamera zu mehr als der Hälfte eingeblendet */
@@ -1777,9 +1895,11 @@ export class Renderer {
   getPos(id, out) {
     const v = this.views.get(id);
     if (!v) return false;
-    out.set(v.rx, v.kind === 'crate' ? v.root.position.y : 4, v.rz);
+    out.set(v.rx, v.kind === 'crate' ? v.root.position.y : 4 + (v.ry || 0), v.rz);
     return true;
   }
+  /** Simulationshöhe → Zeichenhöhe (3D-Flug 1:1, Taktik gestaucht auf die Ebene) */
+  ry(y) { return (y || 0) * this.yK; }
   getRadius(id) { const v = this.views.get(id); return v ? (this.entity(id)?.radius || v.vr) : 0; }
   visualRadius(id) { const v = this.views.get(id); return v ? v.vr : 0; }
   playerShieldColor() { const v = this.views.get(this.world?.player?.id ?? 'player'); return v?.shieldColor ?? SHIELD_COLOR; }
@@ -1787,7 +1907,7 @@ export class Renderer {
     const id = this.world?.player?.id ?? 'player';
     const v = this.views.get(id);
     if (!v || !v.root.visible) return null;
-    out.set(v.rx, 4, v.rz);
+    out.set(v.rx, 4 + (v.ry || 0), v.rz);
     return out;
   }
   getMuzzle(id, laser, out, slot = -1) {
@@ -1811,7 +1931,8 @@ export class Renderer {
       return true;
     }
     const r = v.vr * 0.8;
-    out.set(v.rx - Math.sin(v.rrot) * r, 4, v.rz - Math.cos(v.rrot) * r);
+    if (v.kind === 'enemy') { const cp = Math.cos(v.pitch3 || 0); out.set(v.rx - Math.sin(v.rrot) * r * cp, 4 + (v.ry || 0) + Math.sin(v.pitch3 || 0) * r, v.rz - Math.cos(v.rrot) * r * cp); return true; }
+    out.set(v.rx - Math.sin(v.rrot) * r, 4 + (v.ry || 0), v.rz - Math.cos(v.rrot) * r);
     return true;
   }
   shake(a) { this.rig.shake(a); }
@@ -1882,6 +2003,8 @@ export class Renderer {
     this.frame++;
     this._dt = dt;
     this._alpha = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
+    // Höhenanteil: 3D-Flug 1, Draufsicht 0 (folgt dem Kamerablend; die Simulation bleibt echt)
+    this.yK = this.rig.k;
     this.factory.uTime.value = this.time;
     const W = this.world;
 
@@ -1974,25 +2097,51 @@ export class Renderer {
       const Hh = Math.max(1, this.rect.height), freeTop = Math.max(40, HF.top), freeBot = Hh - Math.max(0, HF.bottom);
       const shipPx = freeTop + Math.max(80, freeBot - freeTop) * 0.6;
       const shipY = Math.max(-0.4, Math.min(0.3, 1 - 2 * shipPx / Hh));
-      const tanC = Math.tan((this._fovChase + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * Math.PI / 360);
-      rig.chasePose(dt, pv, e, hostile ? cv : null, hostile ? this.combatK : 0, pv.maxSpeed, shipY, tanC);
-      _cp.lerp(rig._outPos, K); _cl.lerp(rig._outLook, K);
-      viewD = d + (rig._outPos.distanceTo(_v.set(pv.rx, 0, pv.rz)) - d) * K;
-      if (rig.kc > 0.001) this._cockpitPose(pv, rig.kc);
-      else if (K > 0.5) this._clearStation(pv);
-    } else rig.reset = true;
+      const tanC = Math.tan((this._fovChase + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion) - 8 * (rig.precise || 0)) * Math.PI / 360);
+      if (W.flight3d && e.q) {
+        // 3D-Flug: Verfolger mit voller Lage (FLUGMODELL.md 6), Cockpit am Pilotenauge, Draufsicht weich überblendet
+        const C3 = W.ctl;
+        this._aim3 = this._aim3 || new Float64Array(3);
+        this._aim3[0] = C3[7]; this._aim3[1] = C3[8]; this._aim3[2] = C3[9];
+        _p3c.set(pv.rx, pv.root.position.y, pv.rz);
+        rig.chasePose3d(dt, _p3c, pv.qs, e, C3[6] > 0.5 ? this._aim3 : null, W.fl, pv.maxSpeed, tanC, pv.vr);
+        _q3c.copy(rig._out3Q); _p3c.copy(rig._out3Pos);
+        if (rig.kc > 0.001) this._cockpitPose3d(pv, rig.kc, W.fl, _p3c, _q3c);
+        else if (K > 0.5) { _cp.copy(_p3c); this._clearStation(pv); _p3c.copy(_cp); }
+        _m4c.lookAt(_cp.set(ct.x, d * SIN_P, ct.z + d * COS_P), _cl.set(ct.x, 0, ct.z), _v.set(0, 1, 0));
+        _qTac.setFromRotationMatrix(_m4c);
+        _cp.lerp(_p3c, K);
+        this._camQ3 = this._camQ3 || new THREE.Quaternion();
+        this._camQ3.slerpQuaternions(_qTac, _q3c, K);
+        viewD = d + (_p3c.distanceTo(_v.set(pv.rx, pv.root.position.y, pv.rz)) - d) * K;
+        rig.reset = false;
+      } else {
+        rig.chasePose(dt, pv, e, hostile ? cv : null, hostile ? this.combatK : 0, pv.maxSpeed, shipY, tanC);
+        _cp.lerp(rig._outPos, K); _cl.lerp(rig._outLook, K);
+        viewD = d + (rig._outPos.distanceTo(_v.set(pv.rx, 0, pv.rz)) - d) * K;
+        if (rig.kc > 0.001) this._cockpitPose(pv, rig.kc);
+        else if (K > 0.5) this._clearStation(pv);
+        this._camQ3 = null;
+      }
+    } else { rig.reset = true; rig.reset3 = true; this._camQ3 = null; }
     this._viewD = viewD;
     cam.position.copy(_cp);
     // Wackeln: Taktisch nur Verschiebung (Himmel ist ein gebackenes Bild), Verfolger auch leichte Neigung
     rig.shakeOffset(this.time, _so, (d * 0.022) * (1 - K) + Math.max(14, pv ? pv.vr : 20) * 0.16 * K * (1 - 0.85 * rig.kc));
     cam.position.add(_so);
     cam.up.set(0, 1, 0);
-    cam.lookAt(_cl);
-    if (K > 0.001) cam.rotateZ((-(pv ? pv.bank : 0) * (0.16 + 0.34 * rig.kc) + rig.shakeRoll(this.time) * (1 - 0.6 * rig.kc)) * K);
+    if (this._camQ3) {
+      cam.quaternion.copy(this._camQ3);
+      if (K > 0.001) cam.rotateZ(rig.shakeRoll(this.time) * (1 - 0.6 * rig.kc) * K);
+    } else {
+      cam.lookAt(_cl);
+      if (K > 0.001) cam.rotateZ((-(pv ? pv.bank : 0) * (0.16 + 0.34 * rig.kc) + rig.shakeRoll(this.time) * (1 - 0.6 * rig.kc)) * K);
+    }
     // Sichtfeld: Kick bei hohem Tempo und Nachbrenner (Taktik nur leicht)
     let fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (this._fovChase - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K
       - (rig.firePunch || 0) * (0.6 + 1.4 * K); // Schuss: kurzes Heranrücken (negativer FOV-Puls)
     fov += ((rig.cockpitFov || FOV_COCKPIT) + 6 * rig.fovKick * rig.motion - fov) * rig.kc;
+    fov -= 8 * (rig.precise || 0) * K; // Präzisionszielen (LT): Sichtfeld −8°
     this._cockpitFrame(dt, W, pv, fov);
     if (Math.abs(fov - this._fov) > 0.01) {
       this._fov = fov; this._tanH = Math.tan(fov * Math.PI / 360);
@@ -2024,7 +2173,7 @@ export class Renderer {
       this.sel.visible = true;
       const r = tv.vr * 1.3 + 12;
       this.sel.scale.setScalar(r);
-      this.sel.position.set(tv.rx, tv.kind === 'station' ? -8 : -3, tv.rz);
+      this.sel.position.set(tv.rx, (tv.kind === 'station' ? -8 : -3) + (tv.ry || 0), tv.rz);
       this.sel.rotation.y = this.time * 0.6;
       const sk = tv.kind === 'player' ? (this._pvpPick(tid) ? 'pvp' : 'player') : tv.kind;
       if (this._selKind !== sk) {
@@ -2091,6 +2240,9 @@ export class Renderer {
     this._updateOutpost();
     if (this._outpost) this._outpost.rotation.y += dt * 0.02;
     this.effects.update(dt);
+    this.trails.camPos = this.camera.position;
+    // 3D-Flug: Schweife zur Kamera gedreht und unter 60 m vor der Kamera ausgeblendet (Draufsicht unverändert flach)
+    { const f3 = !!(this.world && this.world.flight3d && this.rig.k > 0.5); this.trails.face3 = f3; this.trails.near3 = f3 ? 60 : 0; }
     this.trails.update(dt);
     this.tele.update(dt);
     this._heatHaze(pv);
@@ -2293,9 +2445,9 @@ export class Renderer {
   }
 
   // Welt-Punkt (Ebene y=0) → Bildschirm (CSS-Pixel wie clientX/clientY). out optional (vermeidet Speicher).
-  toScreen(x, z, out) {
+  toScreen(x, z, out, y = 0) {
     const o = out || { x: 0, y: 0, visible: false };
-    _v.set(x, 0, z).project(this.camera);
+    _v.set(x, y, z).project(this.camera);
     o.x = this.rect.left + (_v.x + 1) * 0.5 * this.rect.width;
     o.y = this.rect.top + (1 - _v.y) * 0.5 * this.rect.height;
     o.visible = _v.z > -1 && _v.z < 1 && _v.x > -1.1 && _v.x < 1.1 && _v.y > -1.1 && _v.y < 1.1;
@@ -2346,10 +2498,10 @@ export class Renderer {
     cam.getWorldDirection(_h);
     this.views.forEach((v, id) => {
       if (!v.root.visible || !(PICK_KINDS[v.kind] || this._pvpPick(id))) return;
-      const dx = v.rx - cam.position.x, dy = 2 - cam.position.y, dz = v.rz - cam.position.z;
+      const dx = v.rx - cam.position.x, dy = 2 + (v.ry || 0) - cam.position.y, dz = v.rz - cam.position.z;
       const depth = dx * _h.x + dy * _h.y + dz * _h.z;
       if (depth < 30) return;
-      _w.set(v.rx, 2, v.rz).project(cam);
+      _w.set(v.rx, 2 + (v.ry || 0), v.rz).project(cam);
       if (_w.z > 1) return;
       const sx = R.left + (_w.x * 0.5 + 0.5) * R.width, sy = R.top + (-_w.y * 0.5 + 0.5) * R.height;
       const rpx = Math.max(22, (v.kind === 'station' ? 200 : v.vr * 1.25) * kpx / depth);

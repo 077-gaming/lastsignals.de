@@ -3,7 +3,11 @@
 // daher kein Clipping und kein Flimmern gegen die Welt. Instrumente: Zeichenflächen, höchstens 5-mal pro Sekunde neu.
 import * as THREE from 'three';
 
-const FONT = 'ui-monospace, Menlo, Consolas, monospace';
+// Schrift nach Planung/UI_STIL.md (Runde 3: vorher Monospace fett, auf den schrägen Bildschirmen wirkte sie kursiv)
+// DIN Condensed ist von Haus aus fett: ohne Gewichtsangabe (synthetisch fett verlief sie auf den Bildschirmen)
+const FONT = '"DIN Condensed", "DIN Alternate", "Avenir Next Condensed", "Arial Narrow", sans-serif';
+const NUM = '"DIN Alternate", "SF Mono", ui-monospace, monospace';
+const PW = 1024, PH = 640; // Bildschirm-Zeichenfläche (doppelte Auflösung: scharf auch bei 4K)
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
 
 function panelTex(w, h) {
@@ -46,6 +50,17 @@ function switches(g, x, y, n, lit) {
 }
 function stripes(g, x, y, w, h) {
   for (let k = 0; k * 24 < w; k++) { g.fillStyle = k % 2 ? '#2a2d33' : '#8d939c'; g.fillRect(x + k * 24, y, 12, h); }
+}
+const NF = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
+function fmtN(n) { return n == null ? '–' : NF.format(Math.round(n)); }
+function clip(g, t, w) { if (g.measureText(t).width <= w) return t; while (t.length > 1 && g.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; }
+function wrap(g, text, x, y, w, lh, max) {
+  const words = String(text).split(/\s+/); let line = '', n = 0;
+  for (const wd of words) {
+    const t = line ? line + ' ' + wd : wd;
+    if (g.measureText(t).width > w && line) { if (++n > max) return; g.fillText(n === max ? clip(g, line + ' …', w) : line, x, y); y += lh; line = wd; if (n === max) return; } else line = t;
+  }
+  if (line && n < max) g.fillText(line, x, y);
 }
 function canvasTex(c, repeat) {
   const t = new THREE.CanvasTexture(c);
@@ -158,21 +173,34 @@ export class Cockpit {
     strut(1.05, 0.95, -1.75, 0.9, 1.3, 0.2, 0.08);
     strut(0, 0.95, -1.75, 0, 1.25, -0.4, 0.05);
 
-    // Instrumente: links Schiff, Mitte Flug, rechts Ziel
+    // Instrumente: links Schiff, Mitte Waffen und Auftrag, rechts Ziel (Runde 3: flacher zum Piloten gedreht, schärfer)
+    // größer als vorher (0,42 × 0,26 m): die Schrift muss auf dem Bildschirm ≥ 12 px hoch sein
     this.panels = [
-      { ...panelTex(512, 320), x: -0.62, ry: 0.42 },
-      { ...panelTex(512, 320), x: 0, ry: 0 },
-      { ...panelTex(512, 320), x: 0.62, ry: -0.42 },
+      { ...panelTex(PW, PH), x: -0.64, ry: 0.42, w: 0.52, h: 0.325 },
+      { ...panelTex(PW, PH), x: 0, ry: 0, w: 0.56, h: 0.35 },
+      { ...panelTex(PW, PH), x: 0.64, ry: -0.42, w: 0.52, h: 0.325 },
     ];
     for (const p of this.panels) {
       const mat = new THREE.MeshBasicMaterial({ map: p.t, toneMapped: false });
       const z = p.x ? -1.0 : -1.08;
-      add(new THREE.PlaneGeometry(0.42, 0.26), mat, p.x, -0.5, z, -0.55, p.ry);
-      add(new THREE.BoxGeometry(0.46, 0.3, 0.02), dark, p.x, -0.505, z - 0.012, -0.55, p.ry);
+      // Bildschirm, Gehäuse und Grat in einer Gruppe (lokal versetzt): bei schräg gedrehten Bildschirmen lag das Gehäuse
+      // sonst teilweise vor dem Bild (Tiefenflimmern)
+      const grp = new THREE.Group();
+      // zum Pilotenauge gedreht (Runde 3): die Schrift erscheint aufrecht statt schräg verzerrt („kursiv“)
+      grp.position.set(p.x, -0.53, z); grp.lookAt(0, 0.02, 0);
+      grp.add(new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.h), mat));
+      const box = new THREE.Mesh(new THREE.BoxGeometry(p.w + 0.04, p.h + 0.04, 0.02), dark); box.position.z = -0.016; grp.add(box);
+      // Rahmenkante oben (heller Grat): Bildschirme sitzen in der Konsole statt flach darauf
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(p.w + 0.04, 0.012, 0.03), metal); edge.position.set(0, p.h / 2 + 0.026, -0.01); grp.add(edge);
+      this.scene.add(grp);
+      p.grp = grp;
     }
 
-    // Konsole so hoch, dass die Instrumente über den unteren HUD-Fenstern liegen
-    for (const o of this.scene.children) if (o.isMesh && o.position.y < -0.3) o.position.y += 0.22;
+    // Runde 3: Konsole tiefer (vorher +0,22 m: das Armaturenbrett begann wenige Grad unter der Bildmitte, Ziele knapp
+    // unter dem Bug verschwanden dahinter). Im Cockpit blendet das HUD Schnellleiste, Karte und Auftrag aus (hud-win.js
+    // Profil „cock“), Waffen und Auftrag stehen auf dem mittleren Bildschirm – die Instrumente brauchen nicht mehr über
+    // die unteren Fenster zu ragen. Oberkante jetzt ≈ 16° unter der Mitte (vorher ≈ 8°).
+    for (const o of this.scene.children) if (o.isMesh && o.position.y < -0.3) o.position.y -= 0.03;
     // Rumpfschale geschlossen (Runde 3, Lage nach der Anhebung): Boden, Seitenschale von unten bis knapp unter den
     // Kanzelsims, Rückwand hinter dem Sitz; beim Umsehen nach links, rechts und unten kein Weltraum durch Lücken
     add(trimBox(3.9, 0.08, 4.1, 0.2, 0.35), shell, 0, -1.3, 0.15);
@@ -226,40 +254,65 @@ export class Cockpit {
 
   _draw(i) {
     const acc = '#' + this._accent.getHexString();
-    const frame = (g, title) => {
-      g.fillStyle = '#05070a'; g.fillRect(0, 0, 512, 320);
-      g.strokeStyle = acc; g.lineWidth = 3; g.globalAlpha = 0.7;
-      g.beginPath(); g.moveTo(20, 4); g.lineTo(508, 4); g.lineTo(508, 300); g.lineTo(488, 316); g.lineTo(4, 316); g.lineTo(4, 20); g.closePath(); g.stroke();
-      g.globalAlpha = 1;
-      g.fillStyle = acc; g.font = `600 26px ${FONT}`; g.fillText(title, 26, 44);
+    const DIM = 'rgba(255,255,255,0.5)', TX = 'rgba(255,255,255,0.95)', RED = '#ff3b30', WARN = '#ffb020';
+    // Rahmen nach UI_STIL: Haarlinie, Anschnitt oben links und unten rechts, Eckmarken, Kopfleiste mit Akzentstrich.
+    // Schrift groß genug für den Abstand (Kopf 44 px, Werte 52–72 px auf 1024 px Breite ≈ 14–23 px im Bild)
+    const frame = (g, title, right) => {
+      g.fillStyle = '#03060a'; g.fillRect(0, 0, PW, PH);
+      g.strokeStyle = 'rgba(255,255,255,0.32)'; g.lineWidth = 3;
+      g.beginPath(); g.moveTo(40, 10); g.lineTo(PW - 10, 10); g.lineTo(PW - 10, PH - 40); g.lineTo(PW - 40, PH - 10); g.lineTo(10, PH - 10); g.lineTo(10, 40); g.closePath(); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 4;
+      g.beginPath(); g.moveTo(PW - 36, 10); g.lineTo(PW - 10, 10); g.lineTo(PW - 10, 36); g.moveTo(10, PH - 36); g.lineTo(10, PH - 10); g.lineTo(36, PH - 10); g.stroke();
+      g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+      g.fillStyle = TX; g.font = `46px ${FONT}`; g.fillText(title, 44, 74);
+      if (right) { g.textAlign = 'right'; g.fillStyle = right.col || DIM; g.font = `40px ${FONT}`; g.fillText(right.t, PW - 44, 74); g.textAlign = 'left'; }
+      g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(44, 94, PW - 88, 3);
+      g.fillStyle = acc; g.fillRect(44, 92, 80, 6);
     };
-    const bar = (g, y, label, f, col) => {
-      g.fillStyle = '#9aa3ad'; g.font = `500 24px ${FONT}`; g.fillText(label, 26, y);
-      g.fillStyle = '#1a1e24'; g.fillRect(26, y + 10, 460, 22);
-      g.fillStyle = col;
-      const n = Math.round(Math.max(0, Math.min(1, f)) * 23);
-      for (let k = 0; k < n; k++) g.fillRect(26 + k * 20, y + 10, 16, 22);
+    const bar = (g, y, label, f, col, val) => {
+      g.fillStyle = DIM; g.font = `40px ${FONT}`; g.fillText(label, 44, y);
+      if (val != null) { g.textAlign = 'right'; g.fillStyle = TX; g.font = `48px ${FONT}`; g.fillText(val, PW - 44, y); g.textAlign = 'left'; }
+      const n = 20, sw = (PW - 88) / n, k = Math.round(Math.max(0, Math.min(1, f)) * n);
+      for (let j = 0; j < n; j++) { g.fillStyle = j < k ? col : 'rgba(255,255,255,0.1)'; g.fillRect(44 + j * sw, y + 18, sw - 8, 40); }
     };
-    // links: Schiff
+    const pct = (f) => `${Math.round(Math.max(0, Math.min(1, f)) * 100)} %`;
+    // links: Schiff (Schild, Hülle, Boost-Vorrat), Kopf: Betriebsart und Kopplung
     let g = this.panels[0].g;
-    frame(g, 'SCHIFF');
-    bar(g, 110, `HÜLLE ${Math.round(i.hull * 100)} %`, i.hull, i.hull < 0.3 ? '#ff4a3a' : '#e8e8e8');
-    bar(g, 200, `SCHILD ${Math.round(i.shield * 100)} %`, i.shield, acc);
-    // Mitte: Flug
+    frame(g, 'SCHIFF', { t: i.modeLine || '', col: i.decoupled ? WARN : DIM });
+    bar(g, 176, 'SCHILD', i.shield, acc, pct(i.shield));
+    bar(g, 330, 'HÜLLE', i.hull, i.hull < 0.3 ? RED : '#f0f0f0', pct(i.hull));
+    bar(g, 484, i.boostLock ? 'BOOST GESPERRT' : i.boostOn ? 'BOOST AKTIV' : 'BOOST', i.boost == null ? 0 : i.boost, i.boostLock ? WARN : i.boostOn ? '#ffffff' : 'rgba(255,255,255,0.6)', pct(i.boost || 0));
+    g.fillStyle = i.cruise ? '#9fe8ff' : DIM; g.font = `36px ${FONT}`;
+    g.fillText(i.cruise ? `TEMPOMAT ${i.cruise} M/S` : i.limiter ? `BEGRENZER ${i.limiter} M/S` : '', 44, 600);
+    // Mitte: Waffen, Auftrag, letzter Funkspruch (im Cockpit sind Schnellleiste, Auftrag und Funk als Fenster aus)
     g = this.panels[1].g;
-    frame(g, 'FLUG');
-    g.fillStyle = '#ffffff'; g.font = `600 96px ${FONT}`; g.fillText(String(Math.round(i.speed)), 26, 160);
-    g.fillStyle = '#9aa3ad'; g.font = `500 26px ${FONT}`; g.fillText('M/S', 30, 196);
-    bar(g, 250, i.ab ? 'NACHBRENNER' : 'SCHUB', i.speed / Math.max(1, i.maxSpeed), i.ab ? '#ffd36a' : acc);
+    frame(g, 'WAFFEN', { t: i.reise ? 'GESPERRT' : i.auto ? 'FEUERLEITRECHNER' : 'BEREIT', col: i.reise ? WARN : i.auto ? acc : DIM });
+    g.font = `72px ${FONT}`; g.fillStyle = TX; g.fillText(i.ammo || '–', 44, 186);
+    g.font = `64px ${FONT}`; g.fillStyle = (i.ammoN || 0) < 50 ? WARN : TX; g.fillText(fmtN(i.ammoN), 150, 186);
+    g.font = `72px ${FONT}`; g.fillStyle = TX; g.fillText(i.rocket || '–', PW / 2 + 40, 186);
+    g.font = `64px ${FONT}`; g.fillStyle = (i.rocketN || 0) < 3 ? WARN : TX; g.fillText(fmtN(i.rocketN), PW / 2 + 146, 186);
+    g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(44, 226, PW - 88, 3);
+    if (i.questTitle) {
+      g.fillStyle = acc; g.font = `44px ${FONT}`; g.fillText(clip(g, i.questTitle.toUpperCase(), PW - 260), 44, 292);
+      g.textAlign = 'right'; g.fillStyle = TX; g.fillText(i.questProg || '', PW - 44, 292); g.textAlign = 'left';
+    } else { g.fillStyle = DIM; g.font = `44px ${FONT}`; g.fillText('KEIN AUFTRAG', 44, 292); }
+    g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(44, 330, PW - 88, 3);
+    if (i.radio) {
+      g.fillStyle = i.radioWarn ? WARN : DIM; g.font = `38px ${FONT}`; g.fillText(i.radioFrom || 'FUNK', 44, 390);
+      g.fillStyle = TX; g.font = `40px ${FONT}`; wrap(g, i.radio, 44, 446, PW - 88, 50, 3);
+    }
     // rechts: Ziel
     g = this.panels[2].g;
-    frame(g, 'ZIEL');
-    g.fillStyle = i.target ? '#ff6a5a' : '#5b636d'; g.font = `600 40px ${FONT}`;
-    g.fillText(i.target ? i.target.toUpperCase().slice(0, 18) : 'KEIN ZIEL', 26, 120);
+    frame(g, 'ZIEL', i.target ? { t: `${fmtN(Math.round(i.dist))} M`, col: TX } : null);
     if (i.target) {
-      g.fillStyle = '#e8e8e8'; g.font = `500 34px ${FONT}`; g.fillText(`${Math.round(i.dist)} M`, 26, 176);
-      bar(g, 230, 'ZIEL HÜLLE', i.tHull, '#ff6a5a');
-    } else { g.fillStyle = '#5b636d'; g.font = `500 24px ${FONT}`; g.fillText('TAB: NÄCHSTER GEGNER', 26, 176); }
+      g.fillStyle = RED; g.font = `64px ${FONT}`; g.fillText(clip(g, i.target.toUpperCase(), PW - 88), 44, 182);
+      if (i.tState) { g.textAlign = 'right'; g.fillStyle = WARN; g.font = `40px ${FONT}`; g.fillText(i.tState, PW - 44, 182); g.textAlign = 'left'; }
+      bar(g, 300, 'SCHILD', i.tShield || 0, acc, pct(i.tShield || 0));
+      bar(g, 454, 'HÜLLE', i.tHull, RED, pct(i.tHull));
+    } else {
+      g.fillStyle = DIM; g.font = `64px ${FONT}`; g.fillText('KEIN ZIEL', 44, 200);
+      g.font = `40px ${FONT}`; g.fillText(i.nextHint || '', 44, 280);
+    }
     for (const p of this.panels) p.t.needsUpdate = true;
   }
 

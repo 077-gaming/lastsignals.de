@@ -19,13 +19,17 @@ import {
 import { ENEMIES, SPECIALS } from '../core/data.js';
 import { turnToward, headingOf, wrapAngle, rollDamage } from './combat.js';
 import { leaderOf, slotPos, slotGap } from './spawn.js';
+import { hashString } from './rng.js';
+import { steer3d, direct3d, stalkPoint, pitchToward } from './ai3d.js';
+import { ENEMY_SPEED3, DODGE3, JINK_TIME3, DODGE_CD3, SECTOR_BAND, HOME_BAND, FLEE3, tier3 } from '../flight/params.js';
 
 const near = [];          // wiederverwendete Trefferliste für die Nachbarsuche
 const rocks = [];         // wiederverwendete Trefferliste für Brocken
 const SLOT = { x: 0, z: 0 };
 const ENG = [];           // Regie: Gegner im Kampf gegen den Spieler
 const RING = [];          // Regie: aktive Angreifer (Flankenwinkel)
-const MV = { tx: 0, tz: 0, fx: 0, fz: 0, face: false, accel: 1, vmax: 1.15, steer: 1 };
+const MV = { tx: 0, tz: 0, ty: 0, fx: 0, fz: 0, fy: 0, face: false, accel: 1, vmax: 1.15, steer: 1, set3: false };
+const SP = { x: 0, y: 0, z: 0 };
 const TAU = Math.PI * 2;
 const NO_AI = { style: 'pack', orbit: 0.7, special: null, specialCd: [8, 12], retreatHp: 0, cover: false, call: false, guard: false, dodge: 0.3 };
 
@@ -155,6 +159,7 @@ export function directCombat(w) {
   const off = Math.atan2(sz, sx);
   for (let i = 0; i < m; i++) RING[i].flankA = m > 1 ? off + i * stepA : RING[i].dirA;
   w._flankT = t;
+  if (w.flight3d) direct3d(w); // Regie-Grenzen im 3D-Flug (≤ 2 hinten, ≤ 1 senkrecht über/unter)
 }
 
 // ───────────────────────── Denken ─────────────────────────
@@ -164,8 +169,8 @@ export function thinkEnemy(w, e) {
   const p = w.player;
   const def = e.def;
   const ai = aiOf(e);
-  const dx = p.x - e.x, dz = p.z - e.z;
-  const d = Math.sqrt(dx * dx + dz * dz);
+  const dx = p.x - e.x, dz = p.z - e.z, dy3 = w.flight3d ? p.y - e.y : 0;
+  const d = Math.sqrt(dx * dx + dz * dz + dy3 * dy3);
   const playerOk = w.playerTargetable();
   const beh = e.behavior || def.behavior;
 
@@ -243,12 +248,12 @@ export function thinkEnemy(w, e) {
     e.attacking = true;
     e.stalk = false;
     if (pounce) { e.pounceAt = w.time; e.provoked = true; if (e.spCd > 0.3) e.spCd = 0.3; }
-    e.losBad = w.losBlocked(e.x, e.z, p.x, p.z, 4);
+    e.losBad = w.losBlocked(e.x, e.z, p.x, p.z, 4, e.y, p.y);
     if (ai.call) tryCall(w, e);
     if (e.state === 'attack') trySpecial(w, e, d);
     if (!e.spPhase) e.tactic = tacticOf(e, ai, d, focus);
     // ausweichen, wenn der Spieler auf ihn feuert (vorausschauend, nicht nur nach Treffern)
-    if (p.targetId === e.id && p.attacking && e.dodgeCd <= 0 && d < 750 && w.rng.next() < ai.dodge * 0.22) jink(w, e, dx / (d || 1), dz / (d || 1));
+    if (p.targetId === e.id && (p.attacking || w.aimInfo.fire) && e.dodgeCd <= 0 && d < 750 && w.rng.next() < ai.dodge * (w.flight3d ? DODGE3[tier3(w)] : 0.22)) jink(w, e, dx / (d || 1), dz / (d || 1), dy3 / (d || 1));
     return;
   }
   // Konvoi-Überfall: Frachter angreifen, solange er lebt
@@ -409,12 +414,16 @@ function tryCall(w, e) {
 }
 
 /** Seitliches Ausweichmanöver (Trefferchance des Spielers sinkt solange auf JINK_HIT). dx/dz = Richtung zum Schützen. */
-export function jink(w, e, dx, dz) {
+export function jink(w, e, dx, dz, dy = 0) {
   if (e.def.speed <= 0 || e.spPhase) return;
   const side = w.rng.sign();
-  e.jinkX = -dz * side; e.jinkZ = dx * side;
-  e.jinkT = JINK_TIME;
-  e.dodgeCd = w.rng.range(DODGE_COOLDOWN[0], DODGE_COOLDOWN[1]);
+  e.jinkX = -dz * side; e.jinkZ = dx * side; e.jinkY = 0;
+  // 3D-Flug: abwechselnd seitlich und senkrecht zur Schusslinie ausweichen
+  if (w.flight3d && ((e.dodgeN = (e.dodgeN || 0) + 1) & 1)) { e.jinkY = side; e.jinkX *= 0.25; e.jinkZ *= 0.25; }
+  // 3D-Flug (Runde 2): länger und öfter ausweichen (echte Bolzen, kein Würfel – Ausweichen muss sichtbar Treffer kosten)
+  const h3 = (w.sector && w.sector.index) > 1 ? 1 : 0;
+  e.jinkT = w.flight3d ? JINK_TIME3[h3] : JINK_TIME;
+  e.dodgeCd = w.flight3d ? w.rng.range(DODGE_CD3[h3 * 2], DODGE_CD3[h3 * 2 + 1]) : w.rng.range(DODGE_COOLDOWN[0], DODGE_COOLDOWN[1]);
 }
 
 // ───────────────────────── Spezialangriffe ─────────────────────────
@@ -445,20 +454,24 @@ function startSpecial(w, e, kind) {
   // gezielt wird auf die vorausberechnete Position: wer stur geradeaus fliegt, wird getroffen; wer Kurs oder Tempo ändert, nicht
   const lead = S.lead != null ? S.lead : 0;
   let dx = p.x + p.vx * lead - e.x, dz = p.z + p.vz * lead - e.z;
-  const d = Math.sqrt(dx * dx + dz * dz) || 1;
-  dx /= d; dz /= d;
-  let x = e.x, z = e.z, radius = 0, length = 0;
+  // 3D-Flug: Linie und Wolke räumlich (ausweichen nach oben/unten zählt); im Taktikweg Höhe 0
+  let dy = w.flight3d ? p.y + (p.vy || 0) * lead - e.y : 0;
+  const d = Math.sqrt(dx * dx + dz * dz + dy * dy) || 1;
+  dx /= d; dz /= d; dy /= d;
+  let x = e.x, z = e.z, y = e.y, radius = 0, length = 0;
   switch (kind) {
     case 'volley': radius = S.width; length = e.def.range * S.rangeK; break;
     case 'ram': case 'leap': radius = e.radius + S.width; length = d + S.over; break;
-    case 'acid': x = p.x + p.vx * lead; z = p.z + p.vz * lead; radius = S.radius; dx = 0; dz = 0; break;
-    case 'guard': radius = e.radius * 1.8; dx = 0; dz = 0; break;
+    case 'acid': x = p.x + p.vx * lead; z = p.z + p.vz * lead; y = p.y + (p.vy || 0) * lead; radius = S.radius; dx = 0; dz = 0; dy = 0; break;
+    case 'guard': radius = e.radius * 1.8; dx = 0; dz = 0; dy = 0; break;
   }
   e.spX = x; e.spZ = z; e.spDx = dx; e.spDz = dz; e.spR = radius; e.spLen = length;
+  e.spY = y; e.spDy = dy;
   e.spAx = x + dx * d; e.spAz = z + dz * d; // Zielpunkt der Linie
+  e.spAy = y + dy * d;
   if (kind !== 'guard') w._spNext = w.time + SPECIAL_GAP;
   e.tactic = CHARGE_T[kind];
-  w.bus.emit('telegraph', { id: e.id, kind, x, z, dx, dz, delay: S.delay, radius, length, enemyType: e.type });
+  w.bus.emit('telegraph', { id: e.id, kind, x, z, y, dx, dz, dy, delay: S.delay, radius, length, enemyType: e.type });
 }
 
 /** Aufladen abbrechen (Treffer, Tod, Aggro weg). Meldet 'special' mit cancelled: true. */
@@ -488,22 +501,23 @@ function execSpecial(w, e) {
     case 'volley': e.spN = S.shots; e.spT = 0; duration = S.shots * S.gap; break;
     case 'ram': case 'leap': {
       // Sturz vom aktuellen Ort genau auf den angekündigten Zielpunkt (Abdrift beim Aufladen ausgleichen)
-      let dx = e.spAx - e.x, dz = e.spAz - e.z;
-      const d = Math.sqrt(dx * dx + dz * dz) || 1;
-      dx /= d; dz /= d;
+      let dx = e.spAx - e.x, dz = e.spAz - e.z, dy = w.flight3d ? (e.spAy || 0) - e.y : 0;
+      const d = Math.sqrt(dx * dx + dz * dz + dy * dy) || 1;
+      dx /= d; dz /= d; dy /= d;
       e.spDx = dx; e.spDz = dz; e.spX = e.x; e.spZ = e.z; e.spLen = d + S.over;
+      e.spDy = dy; e.spY = e.y;
       e.spT = S.time; duration = S.time;
       break;
     }
     case 'acid': {
       const base = aiOf(e).spDamage || e.def.damage;
-      w.addHazard('acid', e.spX, e.spZ, S.radius, S.duration, base * e.dmgMult * S.dps, e.id);
+      w.addHazard('acid', e.spX, e.spZ, S.radius, S.duration, base * e.dmgMult * S.dps, e.id, e.spY || 0);
       duration = S.duration;
       break;
     }
     case 'guard': e.guardT = S.duration; e.guard = 1; duration = S.duration; break;
   }
-  w.bus.emit('special', { id: e.id, kind: e.spK, cancelled: false, x: e.spK === 'acid' ? e.spX : e.x, z: e.spK === 'acid' ? e.spZ : e.z, dx: e.spDx, dz: e.spDz, radius: e.spR, length: e.spLen, duration });
+  w.bus.emit('special', { id: e.id, kind: e.spK, cancelled: false, x: e.spK === 'acid' ? e.spX : e.x, z: e.spK === 'acid' ? e.spZ : e.z, y: e.spK === 'acid' ? e.spY : e.y, dx: e.spDx, dz: e.spDz, dy: e.spDy, radius: e.spR, length: e.spLen, duration });
   if (e.spK === 'acid' || e.spK === 'guard') endSpecial(w, e);
 }
 
@@ -514,9 +528,17 @@ function volleyShot(w, e) {
   const dx = e.spDx, dz = e.spDz;
   // Gefahrenzone = angekündigter Korridor (Ursprung und Richtung beim Aufladen festgelegt)
   const rx = p.x - e.spX, rz = p.z - e.spZ;
-  const along = rx * dx + rz * dz;
-  const perp = Math.abs(rx * dz - rz * dx);
-  const hit = w.playerTargetable() && along > -p.radius && along < e.spLen && perp < e.spR + p.radius && !w.losBlocked(e.x, e.z, p.x, p.z, 0);
+  let along, perp;
+  if (w.flight3d) {
+    // 3D-Korridor: Abstand zur Linie im Raum
+    const ry = p.y - (e.spY || 0), dy = e.spDy || 0;
+    along = rx * dx + ry * dy + rz * dz;
+    perp = Math.sqrt(Math.max(0, rx * rx + ry * ry + rz * rz - along * along));
+  } else {
+    along = rx * dx + rz * dz;
+    perp = Math.abs(rx * dz - rz * dx);
+  }
+  const hit = w.playerTargetable() && along > -p.radius && along < e.spLen && perp < e.spR + p.radius && !w.losBlocked(e.x, e.z, p.x, p.z, 0, e.y, p.y);
   let hx, hz;
   if (hit) { hx = p.x - dx * p.radius * 0.7; hz = p.z - dz * p.radius * 0.7; }
   else { const a = along > 0 && along < e.spLen ? along : e.spLen; hx = e.spX + dx * a; hz = e.spZ + dz * a; }
@@ -535,6 +557,7 @@ function runSpecial(w, e, dt, speed) {
     // beim Aufladen abbremsen und ausrichten (Ramm-/Sprungangriff: leicht zurückziehen wie zum Sprung)
     const back = e.spK === 'ram' || e.spK === 'leap' ? -0.22 : 0;
     MV.tx = e.spDx * speed * back; MV.tz = e.spDz * speed * back; MV.steer = 2.5;
+    if (w.flight3d) { MV.ty = (e.spDy || 0) * speed * back; MV.fy = e.spDy || 0; MV.set3 = true; }
     if (e.spK === 'acid' || e.spK === 'guard') { MV.fx = p.x - e.x; MV.fz = p.z - e.z; }
     else { MV.fx = e.spDx; MV.fz = e.spDz; }
     MV.face = true;
@@ -554,17 +577,18 @@ function runSpecial(w, e, dt, speed) {
   MV.tx = e.spDx * speed * S.speedK; MV.tz = e.spDz * speed * S.speedK;
   MV.fx = e.spDx; MV.fz = e.spDz; MV.face = true;
   MV.accel = DASH_ACCEL; MV.vmax = S.speedK * 1.02; MV.steer = 8;
+  if (w.flight3d) { MV.ty = (e.spDy || 0) * speed * S.speedK; MV.fy = e.spDy || 0; MV.set3 = true; }
   if (!e.spHit && w.playerTargetable()) {
-    const ox = p.x - e.x, oz = p.z - e.z;
+    const ox = p.x - e.x, oz = p.z - e.z, oy = w.flight3d ? p.y - e.y : 0;
     const lim = e.radius + S.width + p.radius;
-    if (ox * ox + oz * oz < lim * lim) {
+    if (ox * ox + oz * oz + oy * oy < lim * lim) {
       e.spHit = true;
       const hx = p.x - e.spDx * p.radius * 0.7, hz = p.z - e.spDz * p.radius * 0.7;
       w.specialHit(e, rollDamage(w.rng, e.def.damage, e.dmgMult * S.dmg), e.spDx, e.spDz, hx, hz, e.spK);
-      w.knockPlayer(e.spDx, e.spDz, S.knock);
+      w.knockPlayer(e.spDx, e.spDz, S.knock, e.spDy || 0);
     }
   }
-  const prog = (e.x - e.spX) * e.spDx + (e.z - e.spZ) * e.spDz;
+  const prog = (e.x - e.spX) * e.spDx + (e.z - e.spZ) * e.spDz + (w.flight3d ? (e.y - (e.spY || 0)) * (e.spDy || 0) : 0);
   if (e.spT <= 0 || prog > e.spLen || e.spHit) endSpecial(w, e);
   return true;
 }
@@ -589,7 +613,13 @@ export function moveEnemy(w, e, dt) {
   const p = w.player;
   if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) { e.slowT = 0; e.slowK = 1; } }
   if (e.jamT > 0) { e.jamT -= dt; if (e.jamT < 0) e.jamT = 0; }
-  const speed = def.speed * (e.slowT > 0 ? e.slowK : 1); // Bremsmine
+  // 3D-Flug: Tempo je Stil angehoben (Runde 2, params.js ENEMY_SPEED3), Taktik unverändert
+  let k3 = w.flight3d ? (e.radius >= 55 || def.speed < 100 ? ENEMY_SPEED3.big : ENEMY_SPEED3[ai.style] || 1) : 1;
+  // Rückzug zum Heilen im 3D-Flug (Runde 3): angeschlagen fliegt der Gegner langsamer (FLEE3), der Spieler holt ihn mit
+  // Kampftempo ein. Vorher floh ein Raider mit 284 m/s, die Jagd dauerte 15–32 s (Abschuss-Ausreißer). Diebe mit Beute
+  // fliegen weiter voll.
+  if (w.flight3d && e.state === 'flee' && !e.lootRun) k3 = Math.min(k3, FLEE3);
+  const speed = def.speed * k3 * (e.slowT > 0 ? e.slowK : 1); // Bremsmine
 
   e.fireCd -= dt;
   if (e.fireCd < 0 && e.state !== 'attack') e.fireCd = 0;
@@ -622,6 +652,7 @@ export function moveEnemy(w, e, dt) {
   }
 
   MV.tx = 0; MV.tz = 0; MV.face = false; MV.accel = ENEMY_ACCEL; MV.vmax = 1.15; MV.steer = 1;
+  MV.ty = 0; MV.fy = 0; MV.set3 = false;
   if (speed <= 0) {
     if (e.spPhase) runSpecial(w, e, dt, 0);
     e.vx = 0; e.vz = 0; e.speed = 0; e.thrust = 0; decay(e, dt);
@@ -635,6 +666,20 @@ export function moveEnemy(w, e, dt) {
     case 'hold': {
       const tgt = e.targetId === 'player' ? p : w.entities.get(e.targetId);
       if (!tgt || !tgt.alive) { calmDown(w, e); break; }
+      if (w.flight3d && tgt === p) {
+        // 3D-Kampf gegen den Spieler (ai3d.js): Bahnen, Anflug/Abdrehen, Durchflug, Scheren, Regie-Grenzen
+        const hold3 = e.state === 'hold';
+        const d3 = steer3d(w, e, tgt, speed, MV, hold3);
+        MV.set3 = true;
+        if (!hold3 && d3 <= def.range + tgt.radius && e.fireCd <= 0 && !e.losBad) {
+          if (w.enemyFire(e, tgt) !== false) {
+            const iv = (1 / def.fireRate) * (0.85 + w.rng.next() * 0.3);
+            e.fireCd += iv;
+            if (e.fireCd < 0) e.fireCd = iv;
+          }
+        }
+        break;
+      }
       const ox = e.x - tgt.x, oz = e.z - tgt.z;
       const d = Math.sqrt(ox * ox + oz * oz) || 1;
       const nx = ox / d, nz = oz / d;
@@ -703,6 +748,15 @@ export function moveEnemy(w, e, dt) {
       break;
     }
     default: { // wander
+      if (e.stalk && w.flight3d) {
+        // Hinterhalt in 3D: lauert 250–400 m über oder unter dem Spieler im toten Winkel hinten
+        stalkPoint(w, e, SP);
+        const qx = SP.x - e.x, qy = SP.y - e.y, qz = SP.z - e.z, q = Math.sqrt(qx * qx + qy * qy + qz * qz) || 1;
+        const s = speed * 0.6 * (q < 150 ? q / 150 : 1);
+        MV.tx = qx / q * s; MV.ty = qy / q * s; MV.tz = qz / q * s; MV.set3 = true;
+        MV.face = true; MV.fx = p.x - e.x; MV.fy = p.y - e.y; MV.fz = p.z - e.z;
+        break;
+      }
       if (e.stalk) {
         // getarnt in Lauerstellung neben dem Spieler halten
         const ox = e.x - p.x, oz = e.z - p.z;
@@ -763,11 +817,13 @@ export function moveEnemy(w, e, dt) {
 
   let tx = MV.tx, tz = MV.tz;
   const dash = MV.accel > ENEMY_ACCEL;
+  // Höhe: im 3D-Kampf aus steer3d, sonst Wunschhöhe (Heimathöhe, Beute, Flucht); gegen Taktik-Piloten flach
+  let ty = MV.set3 ? MV.ty : vertWish(w, e, p, speed);
 
   // Ausweichmanöver: kurz seitlich wegziehen
   if (e.jinkT > 0) {
     e.jinkT -= dt;
-    if (!dash) { tx += e.jinkX * speed * 0.95; tz += e.jinkZ * speed * 0.95; }
+    if (!dash) { tx += e.jinkX * speed * 0.95; tz += e.jinkZ * speed * 0.95; if (w.flight3d && e.jinkY) ty += e.jinkY * speed * 0.95; }
   }
 
   // Abstand zu anderen Gegnern halten (auch im Kampf: kein Übereinanderstapeln)
@@ -775,25 +831,27 @@ export function moveEnemy(w, e, dt) {
   for (let i = 0; i < n; i++) {
     const o = near[i];
     if (o === e || !o.alive) continue;
-    let ox = e.x - o.x, oz = e.z - o.z;
-    let d = Math.sqrt(ox * ox + oz * oz);
+    let ox = e.x - o.x, oz = e.z - o.z, oy = w.flight3d ? e.y - o.y : 0;
+    let d = Math.sqrt(ox * ox + oz * oz + oy * oy);
     const min = (e.radius + o.radius) * 1.6 + SEP_GAP;
     if (d >= min) continue;
     if (d < 0.01) { ox = e.orbitDir; oz = 0.3; d = 1; }
     const push = (min - d) / min * speed * 1.4;
     tx += ox / d * push; tz += oz / d * push;
+    if (oy) ty += oy / d * push;
   }
 
   // Brocken ausweichen (vorausschauend)
   const rn = w.rockGrid.query(e.x, e.z, e.radius + 260, rocks);
   for (let i = 0; i < rn; i++) {
     const r = rocks[i];
-    const ox = e.x - r.x, oz = e.z - r.z;
-    const d = Math.sqrt(ox * ox + oz * oz) || 1;
+    const ox = e.x - r.x, oz = e.z - r.z, oy = w.flight3d ? e.y - r.y : 0;
+    const d = Math.sqrt(ox * ox + oz * oz + oy * oy) || 1;
     const min = r.radius + e.radius + 35;
     if (d >= min + 90) continue;
     let k = (min + 90 - d) / 90; if (k > 1.5) k = 1.5;
     tx += ox / d * speed * k; tz += oz / d * speed * k;
+    if (oy) ty += oy / d * speed * k;
   }
 
   // sichere Zone meiden
@@ -809,29 +867,52 @@ export function moveEnemy(w, e, dt) {
     }
   }
 
-  // Karte nicht verlassen
+  // Karte nicht verlassen (3D: auch das Höhenband)
   const lim = w.sector.size * 0.97;
   if (e.x > lim) tx -= speed; else if (e.x < -lim) tx += speed;
   if (e.z > lim) tz -= speed; else if (e.z < -lim) tz += speed;
+  const band = w.flight3d ? ((w.sector.index || 1) === 1 ? HOME_BAND : SECTOR_BAND) - 100 : (w.sector.index || 1) === 1 ? 1100 : 1400;
+  if (e.y > band) ty -= speed; else if (e.y < -band) ty += speed;
 
   // Trägheit: weich lenken, Beschleunigung begrenzt
   const k = 1 - Math.exp(-ENEMY_STEER * MV.steer * dt);
-  let ax = (tx - e.vx) * k, az = (tz - e.vz) * k;
-  const al = Math.sqrt(ax * ax + az * az);
   const maxA = MV.accel * speed * dt;
-  if (al > maxA) { ax = ax / al * maxA; az = az / al * maxA; }
-  e.vx += ax; e.vz += az;
-  let vl = Math.sqrt(e.vx * e.vx + e.vz * e.vz);
   const vmax = speed * MV.vmax;
-  if (vl > vmax) {
-    // Überschuss (z. B. nach Treffer-Stoß oder Rammangriff) weich abbauen statt hart abschneiden
-    let nv = vl - speed * 2 * dt;
-    if (nv < vmax) nv = vmax;
-    e.vx = e.vx / vl * nv; e.vz = e.vz / vl * nv;
-    vl = nv;
+  let vl;
+  if (w.flight3d) {
+    // 3D: Beschleunigung und Tempo räumlich begrenzt
+    let ax = (tx - e.vx) * k, az = (tz - e.vz) * k, ay = (ty - e.vy) * k;
+    const al = Math.sqrt(ax * ax + az * az + ay * ay);
+    if (al > maxA) { ax = ax / al * maxA; az = az / al * maxA; ay = ay / al * maxA; }
+    e.vx += ax; e.vz += az; e.vy += ay;
+    vl = Math.sqrt(e.vx * e.vx + e.vz * e.vz + e.vy * e.vy);
+    if (vl > vmax) {
+      let nv = vl - speed * 2 * dt;
+      if (nv < vmax) nv = vmax;
+      e.vx = e.vx / vl * nv; e.vz = e.vz / vl * nv; e.vy = e.vy / vl * nv;
+      vl = nv;
+    }
+    e.x += e.vx * dt; e.z += e.vz * dt; e.y += e.vy * dt;
+  } else {
+    let ax = (tx - e.vx) * k, az = (tz - e.vz) * k;
+    const al = Math.sqrt(ax * ax + az * az);
+    if (al > maxA) { ax = ax / al * maxA; az = az / al * maxA; }
+    e.vx += ax; e.vz += az;
+    vl = Math.sqrt(e.vx * e.vx + e.vz * e.vz);
+    if (vl > vmax) {
+      // Überschuss (z. B. nach Treffer-Stoß oder Rammangriff) weich abbauen statt hart abschneiden
+      let nv = vl - speed * 2 * dt;
+      if (nv < vmax) nv = vmax;
+      e.vx = e.vx / vl * nv; e.vz = e.vz / vl * nv;
+      vl = nv;
+    }
+    e.x += e.vx * dt;
+    e.z += e.vz * dt;
+    // Taktikweg: Höhe getrennt (berührt x/z nicht)
+    const ay = (ty - e.vy) * k;
+    e.vy += ay > maxA ? maxA : ay < -maxA ? -maxA : ay;
+    e.y += e.vy * dt;
   }
-  e.x += e.vx * dt;
-  e.z += e.vz * dt;
   e.speed = vl;
   let want = Math.sqrt(tx * tx + tz * tz) / speed;
   if (want > 1) want = 1;
@@ -846,6 +927,13 @@ export function moveEnemy(w, e, dt) {
   }
   for (let i = 0; i < rn; i++) {
     const r = rocks[i];
+    if (w.flight3d) {
+      const ox = e.x - r.x, oy = e.y - r.y, oz = e.z - r.z;
+      const d = Math.sqrt(ox * ox + oy * oy + oz * oz) || 1;
+      const min = r.radius + e.radius;
+      if (d < min) { e.x = r.x + ox / d * min; e.y = r.y + oy / d * min; e.z = r.z + oz / d * min; }
+      continue;
+    }
     const ox = e.x - r.x, oz = e.z - r.z;
     const d = Math.sqrt(ox * ox + oz * oz) || 1;
     const min = r.radius + e.radius;
@@ -854,14 +942,47 @@ export function moveEnemy(w, e, dt) {
 
   // Drehung (begrenzte Drehrate), dazu Taumeln nach Treffern; Schräglage aus der Kurvenrate
   const rot0 = e.rot - e.wob;
-  if (MV.face) e.rot = turnToward(e.rot, headingOf(MV.fx, MV.fz), ENEMY_TURN * (dash ? 0.4 : 1) * dt);
+  if (MV.face && (!MV.set3 || MV.fx * MV.fx + MV.fz * MV.fz > 1e-6)) e.rot = turnToward(e.rot, headingOf(MV.fx, MV.fz), ENEMY_TURN * (dash ? 0.4 : 1) * dt);
   else if (vl > 8) e.rot = turnToward(e.rot, headingOf(e.vx, e.vz), ENEMY_TURN * dt);
+  // Nicken (nur Anzeige und 3D-Feuerkegel): zur Blick- bzw. Flugrichtung, im Taktikweg zurück auf 0
+  if (w.flight3d) {
+    if (MV.face) pitchToward(e, MV.fx, MV.set3 ? MV.fy : 0, MV.fz, ENEMY_TURN * (dash ? 0.5 : 1), dt);
+    else if (vl > 8) pitchToward(e, e.vx, e.vy, e.vz, ENEMY_TURN, dt);
+  } else if (e.pitch) e.pitch *= Math.exp(-dt * 3);
   decay(e, dt);
   const wob = e.stagger > 0 ? Math.sin(w.time * 26 + e.phase) * 0.32 * e.stagger : 0;
   if (wob !== e.wob) { e.rot = wrapAngle(e.rot + wob - e.wob); e.wob = wob; }
   let tb = wrapAngle(e.rot - e.wob - rot0) / dt / ENEMY_TURN * 0.5;
   if (tb > 0.5) tb = 0.5; else if (tb < -0.5) tb = -0.5;
   e.bank += (tb - e.bank) * (1 - Math.exp(-5 * dt));
+}
+
+/**
+ * Wunsch-Steigrate außerhalb des 3D-Kampfs (wandern, Beute, Flucht, Konvoi) und im Taktikweg. Gegen einen Piloten in
+ * der Taktikansicht fliegen Gegner flach (±40 m um dessen Höhe). Ändert nur y: der Taktikweg bleibt in x/z bitgleich.
+ */
+function vertWish(w, e, p, speed) {
+  let want = e.homeY || 0;
+  const st = e.state;
+  if (st === 'attack' || st === 'hold') {
+    const tgt = e.targetId === 'player' ? p : w.entities.get(e.targetId);
+    if (tgt) {
+      if (e._flatOff === undefined) e._flatOff = ((hashString(String(e.id)) & 1023) / 1023 * 2 - 1) * 40;
+      want = (tgt.y || 0) + (tgt === p ? e._flatOff : 0);
+    }
+  } else if (st === 'loot') {
+    const wr = w.entities.get(e.lootId);
+    if (wr) want = wr.y || 0;
+  } else if (st === 'flee') {
+    want = w.flight3d ? e.y + (e.y >= p.y ? 1 : -1) * 300 : e.y;
+  } else {
+    const g = e.group, L = g ? leaderOf(g) : null;
+    if (L && L !== e) want = L.y;
+    else want = (e.homeY || 0) + 40 * Math.sin(w.time * 0.2 + (e.phase || 0));
+  }
+  let v = (want - e.y) * 0.8;
+  const lim = speed * 0.6;
+  return v > lim ? lim : v < -lim ? -lim : v;
 }
 
 function decay(e, dt) {

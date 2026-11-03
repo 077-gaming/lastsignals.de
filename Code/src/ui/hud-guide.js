@@ -2,7 +2,10 @@
 // ersten Flug eines neuen Piloten die Wahl „Geführter Einstieg“ oder „Direkt spielen“. Taste G blendet die
 // Karte ein und aus bzw. setzt die Reihe fort. Bausteine aus theme.css (Planung/UI_STIL.md).
 import './hud-guide.css';
-import { keyHint, padMode } from '../input/padglyph.js';
+import { keyHint, padMode, glyph } from '../input/padglyph.js';
+import { keyName, inputName } from '../input/bindings.js';
+import { isTouchOnly } from '../input/flightsettings.js';
+import { questView } from '../sim/system-quests.js';
 import { pad } from '../input/gamepad.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
@@ -56,11 +59,12 @@ export class SystemGuide {
     if (st.mode === 'guided' && !s.finished) s.reportUi(this._ui());
     let key, html;
     if (st.mode == null) {
-      key = 'choice|' + (padMode() ? pad.style : 'kb');
+      const dv = padMode() ? 'pad' : isTouchOnly() ? 'touch' : 'kb';
+      key = 'choice|' + (dv === 'pad' ? pad.style : dv);
       html = `<div class="lsg-card ls-panel lsg-choice"><span class="ls-corners"></span>
         <div class="ls-head"><span class="ls-code">SYS</span><span class="ls-title">Erster Flug</span></div>
         <div class="lsg-body">
-          <p class="lsg-text">Die Station kann dich Schritt für Schritt einweisen: fliegen, zielen, Munition. Du kannst die Einweisung jederzeit ${padMode() ? `im Bordmenü (${esc(keyHint('ESC'))}, Reiter HILFE)` : 'mit G'} aus- und wieder einblenden.</p>
+          <p class="lsg-text">Die Station kann dich Schritt für Schritt einweisen: fliegen, zielen, Munition. Du kannst die Einweisung jederzeit ${dv === 'pad' ? `im Bordmenü (${esc(keyHint('ESC'))}, Reiter HILFE)` : dv === 'touch' ? 'im Bordmenü (MENÜ, Reiter HILFE)' : 'mit G'} aus- und wieder einblenden.</p>
           <div class="lsg-row">
             <button class="ls-btn is-fx" data-act="guided">Geführter Einstieg</button>
             <button class="ls-btn" data-act="direct">Direkt spielen</button>
@@ -72,14 +76,20 @@ export class SystemGuide {
     } else {
       const q = s.current;
       const g = q.goal;
-      const max = g.count || (g.type === 'fly' ? g.meters : 1);
+      // Text und Taste je Ansicht und Gerät (bindings.js): Controller nennt Symbole, Touch die Knöpfe
+      const dev = padMode() ? 'pad' : isTouchOnly() ? 'touch' : 'kb';
+      const qv = questView(q, !!(w && w.flight3d), (a, mode) => inputName(a, mode, dev, glyph));
+      qv.dev = dev !== 'kb' && qv.act ? qv.key : null; // schon das Gerätesymbol: nicht noch einmal umschlüsseln
+      const turn3 = g.type === 'fly' && g.turn && w && w.flight3d;
+      const max = g.count || (turn3 ? g.turn : g.type === 'fly' ? g.meters : 1);
       const prog = Math.min(max, st.progress || 0);
       if (g.type === 'window') for (const t of g.target) {
         const wEl = !t.startsWith('hub:') && document.querySelector(`[data-win="${t}"]`);
         if (wEl && !wEl.classList.contains('is-off') && !wEl.classList.contains('is-min')) s.mark(t);
       }
       let goalText = '';
-      if (g.type === 'fly') goalText = `${fmt(prog)} / ${fmt(g.meters)} m geflogen${g.camera === 'chase' ? ' (Verfolgersicht)' : g.config ? ` (Konfiguration ${g.config})` : ''}`;
+      if (turn3) goalText = `${fmt(prog)}° / ${fmt(g.turn)}° Kurve geflogen`;
+      else if (g.type === 'fly') goalText = `${fmt(prog)} / ${fmt(g.meters)} m geflogen${g.camera === 'chase' ? ' (Verfolgersicht)' : g.config ? ` (Konfiguration ${g.config})` : ''}`;
       else if (g.type === 'reach') {
         const wp = s.waypoint(), p = w.player;
         const d = wp && p ? Math.hypot(wp.x - p.x, wp.z - p.z) : 0;
@@ -103,7 +113,7 @@ export class SystemGuide {
       else if (g.type === 'wreck') goalText = `${prog} / ${g.count} Wracks eingesammelt`;
       else if (g.type === 'crate') goalText = `${prog} / ${g.count} Frachtkisten`;
       else if (g.type === 'ore') goalText = `${fmt(prog)} / ${g.count} ${g.ore === 'nickel' ? 'Nickel' : g.ore === 'cobalt' ? 'Cobalt' : g.ore}`;
-      else if (g.type === 'dock') goalText = `An der Station andocken (${keyHint('E')})`;
+      else if (g.type === 'dock') goalText = `An der Station andocken (${this.world && this.world.flight3d ? keyName('context') : keyHint('E')})`;
       else if (g.type === 'sell') goalText = 'Erz im Reiter ERZ verkaufen';
       else if (g.type === 'buy') goalText = `${g.id === 'ion' ? 'Ion Laser' : g.id} im Shop kaufen`;
       else if (g.type === 'equip') goalText = 'Im Hangar ein Teil umbauen';
@@ -123,17 +133,17 @@ export class SystemGuide {
       const pct = Math.round((prog / max) * 100);
       // Segmentierter Balken (10 Segmente)
       const seg = Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(pct / 10) ? 'on' : ''}"></i>`).join('');
-      key = `${q.id}|${goalText}|${pct}|${padMode() ? pad.style : 'kb'}`;
+      key = `${q.id}|${goalText}|${pct}|${padMode() ? pad.style : 'kb'}|${w && w.flight3d ? 3 : 2}`;
       html = `<div class="lsg-card ls-panel"><span class="ls-corners"></span>
-        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${q.key ? `<span class="ls-key${padMode() && keyHint(q.key) !== q.key ? ' is-pad' : ''}" data-nopad>${esc(keyHint(q.key))}</span>` : ''}</div>
+        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${qv.dev ? `<span class="ls-key${dev === 'pad' ? ' is-pad' : ''}" data-nopad>${esc(qv.dev)}</span>` : qv.key ? `<span class="ls-key${padMode() && keyHint(qv.key) !== qv.key ? ' is-pad' : ''}" data-nopad>${esc(keyHint(qv.key))}</span>` : ''}</div>
         <div class="lsg-body">
           <div class="lsg-title">${esc(q.title)}</div>
-          <p class="lsg-text">${esc(q.text)}</p>
+          <p class="lsg-text">${esc(qv.text)}</p>
           <div class="lsg-goal ls-num">${esc(goalText)}</div>
           <div class="lsg-seg">${seg}</div>
           <div class="lsg-row lsg-foot"><span class="ls-label">Lohn ${esc(rew)}</span><span class="ls-spacer"></span>
             <button class="lsg-link" data-act="skip" title="Ohne Belohnung weiter">Überspringen</button>
-            <button class="lsg-link" data-act="hide" title="Mit G wieder einblenden">Ausblenden · G</button></div>
+            <button class="lsg-link" data-act="hide" title="${dev === 'kb' ? 'Mit G wieder einblenden' : 'Im Bordmenü unter HILFE wieder einblenden'}">${dev === 'kb' ? 'Ausblenden · G' : 'Ausblenden'}</button></div>
         </div></div>`;
     }
     if (!force && key === this._key) return;

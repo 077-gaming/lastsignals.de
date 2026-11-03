@@ -13,9 +13,13 @@ import {
 import { PLAYER_RANGE } from '../sim/config.js';
 import { HudWindows } from './hud-win.js';
 import {
-  fmt, clamp01, TextSlot, ClassSlot, Counter, Bar, Gauge, gaugeHtml,
+  fmt, clamp01, TextSlot, ClassSlot, Counter, Bar, Gauge, gaugeHtml, ringReset,
 } from './hud-parts.js';
 import { HudMid } from './hud-mid.js';
+import { HudFlight } from './hud-flight.js';
+import { keyName } from '../input/bindings.js';
+import { padMode, glyph } from '../input/padglyph.js';
+import { isTouchOnly } from '../input/flightsettings.js';
 import { HudBar, quickBody } from './hud-bar.js';
 import { HudCombat } from './hud-combat.js';
 import { HudCoach } from './hud-coach.js';
@@ -69,6 +73,19 @@ const MSG_MAX = 7;
 const MSG_OLD = 14;      // Sekunden, dann gedimmt
 const MSG_MERGE = 10;    // gleiche Meldung innerhalb dieser Sekunden wird zusammengefasst
 // Bekannte Systemtexte der Simulation (Anfang des Satzes) -> Cockpit-Kurzform, optional andere Art
+// Gerätegerechte Bausteine für Funk- und Systemtexte (Runde 3): {d:name} wird je Eingabe (Tastatur, Controller, Touch)
+// ersetzt – vorher nannten Controller und Touch Tastaturtasten („B halten“, „TAB“, „Taste H“), teils falsch belegt.
+const DEV_TXT = {
+  modeHold: { kb: () => `${keyName('mode')} halten`, pad: () => `${glyph('MENU')} halten`, touch: () => 'Autopilot beenden (Joystick)' },
+  next: { kb: () => keyName('next'), pad: () => glyph('A'), touch: () => 'ZIEL' },
+  home: { kb: () => `Taste ${keyName('home')}`, pad: () => `${glyph('Y')} halten`, touch: () => 'Knopf HEIM' },
+};
+export function inputDev(flight3d = true) { return padMode() ? 'pad' : isTouchOnly() ? 'touch' : 'kb'; }
+export function devText(str) {
+  if (!str || str.indexOf('{d:') < 0) return str;
+  const dev = inputDev();
+  return str.replace(/\{d:(\w+)\}/g, (m, k) => { const e = DEV_TXT[k]; if (!e) return m; return (e[dev] || e.kb)(); });
+}
 const SYS_TEXT = [
   ['Ziel ist zu weit weg für eine Rakete', 'AUSSER RAKETENREICHWEITE', 'range'],
   ['Ziel ist zu weit weg', 'AUSSER REICHWEITE', 'range'],
@@ -78,7 +95,7 @@ const SYS_TEXT = [
   ['Der Gegner hat keinen Schild mehr', 'ZIELSCHILD 0 · SAB OHNE WIRKUNG'],
   ['Laderaum voll', 'LADERAUM VOLL · ERZ AN DER STATION VERKAUFEN', 'warn'],
   ['Eine Falle', 'FALLE · PIRATEN IM ANFLUG', 'warn'],
-  ['Kein Ziel ausgewählt', 'KEIN ZIEL ERFASST · TAB FÜR NÄCHSTEN GEGNER'],
+  ['Kein Ziel ausgewählt', 'KEIN ZIEL ERFASST · {d:next} FÜR NÄCHSTEN GEGNER'],
   ['Keine SAL-Munition', 'SAL LEER · NACHSCHUB AN DER STATION', 'warn'],
   ['Keine Raketen mehr', 'R1 LEER · NACHSCHUB AN DER STATION', 'warn'],
   ['Flieg näher an ein Sprungtor', 'KEIN TOR IN REICHWEITE · 150 M'],
@@ -362,17 +379,18 @@ export class Hud {
     this.wins = new HudWindows(layer, [
       // Zonen: Konsole unten mittig (Schnellleiste, darüber das Schiff; auf sehr breiten Schirmen links daneben),
       // Ziel und Mission oben rechts, Karte unten rechts, Funk unten links, Pilot und Konto oben links (leise)
-      { id: 'quick', el: W('quick'), ax: 'c', ay: 'b', oy: 12, toggle: true },
-      { id: 'ship', el: W('ship'), ax: 'c', ay: 'b', ox: (ws, W) => shipBeside(ws, W) ? -Math.round(ws.get('quick').w / 2 + 8 + ws.get('ship').w / 2) : 0, oy: (ws, W) => { const a = ws.get('quick'); return a && !a.hidden && a.h && !shipBeside(ws, W) ? 12 + a.h + 8 : 12; }, toggle: true },
-      { id: 'target', el: W('target'), ax: 'r', ay: 't', ox: 12, oy: 12, toggle: true },
-      { id: 'quest', el: W('quest'), ax: 'r', ay: 't', ox: 12, after: 'target', toggle: true },
-      { id: 'map', el: W('map'), ax: 'r', ay: 'b', ox: 12, oy: 12 },
-      { id: 'nav', el: W('nav'), ax: 'c', ay: 't', ox: 0, oy: 12 },
-      { id: 'pilot', el: W('pilot'), ax: 'l', ay: 't', ox: 12, oy: 12, toggle: true, mode: 'num' },
-      { id: 'wallet', el: W('wallet'), ax: 'l', ay: 't', ox: 12, after: 'pilot' },
-      { id: 'comms', el: W('comms'), ax: 'l', ay: 'b', ox: 12, oy: 12 },
-      { id: 'chat', el: W('chat'), ax: 'l', ay: 'b', ox: 12, after: 'comms', collapsed: true }, // zugeklappt, Enter öffnet
-      { id: 'players', el: W('players'), ax: 'r', ay: 'b', ox: 12, after: 'map' },
+      // hideC: im Cockpit aus (Runde 3) – Waffen und Munition, Auftrag, Ziel, Schiff stehen auf den drei Konsolen
+      { id: 'quick', el: W('quick'), ax: 'c', ay: 'b', oy: 12, toggle: true, hideC: true },
+      { id: 'ship', el: W('ship'), ax: 'c', ay: 'b', ox: (ws, W) => shipBeside(ws, W) ? -Math.round(ws.get('quick').w / 2 + 8 + ws.get('ship').w / 2) : 0, oy: (ws, W) => { const a = ws.get('quick'); return a && !a.hidden && a.h && !shipBeside(ws, W) ? 12 + a.h + 8 : 12; }, toggle: true, hide3: true, r3: 1, hideC: true },
+      { id: 'target', el: W('target'), ax: 'r', ay: 't', ox: 12, oy: 12, toggle: true, hide3: true, hideC: true }, // 3D: Zielklammer mit Schild
+      { id: 'quest', el: W('quest'), ax: 'r', ay: 't', ox: 12, after: 'target', toggle: true, hideC: true },
+      { id: 'map', el: W('map'), ax: 'r', ay: 'b', ox: 12, oy: 12, hideC: true },
+      { id: 'nav', el: W('nav'), ax: 'c', ay: 't', ox: 0, oy: 12, hideC: true },
+      { id: 'pilot', el: W('pilot'), ax: 'l', ay: 't', ox: 12, oy: 12, toggle: true, mode: 'num', hide3: true, hideC: true },
+      { id: 'wallet', el: W('wallet'), ax: 'l', ay: 't', ox: 12, after: 'pilot', hide3: true, hideC: true },
+      { id: 'comms', el: W('comms'), ax: 'l', ay: 'b', ox: 12, oy: 12, hideC: true }, // Cockpit: letzter Funkspruch auf der mittleren Konsole
+      { id: 'chat', el: W('chat'), ax: 'l', ay: 'b', ox: 12, after: 'comms', collapsed: true, hide3: true, hideC: true }, // zugeklappt, Enter öffnet
+      { id: 'players', el: W('players'), ax: 'r', ay: 'b', ox: 12, after: 'map', hide3: true, hideC: true },
     ], (id) => this._onWinChange(id), q('bar'));
     this.barBtns = el.querySelectorAll('.hb-b[data-act="wintog"]');
     this.barMenu = el.querySelector('.hb-menu');
@@ -401,6 +419,7 @@ export class Hud {
 
     // Konto
     this.mid = new HudMid(q('mid'));
+    this.flight = new HudFlight(q('mid')); // 3D-Flug: Fadenkreuz, Vorhalt, Leitern, Warnungen (ui/hud-flight.js)
     this.sMenuCls = new ClassSlot(el, 'hd-menu');
     this.sTFlash = new ClassSlot(W('target'), 'is-flash');
     this._tFlash = 0;
@@ -613,6 +632,11 @@ export class Hud {
     ];
 
     this._sizeMap();
+    // Fensterprofil je Ansicht (Runde 2): im 3D-Flug ein aufgeräumtes Flug-HUD, in der Taktik die volle Konsole
+    const syncProfile = () => { const de = document.documentElement; this.wins.setProfile(de.dataset.flight === '3d' ? (de.dataset.view === 'cockpit' ? 'cock' : '3d') : 'tac'); this._syncBar(); if (this.feed) requestAnimationFrame(() => this._trimFeed()); };
+    window.addEventListener('ls:flightview', syncProfile);
+    this._offs.push(() => window.removeEventListener('ls:flightview', syncProfile));
+    syncProfile();
     this.wins.layout();
     this._syncBar();
     if (world) this.setWorld(world);
@@ -637,6 +661,8 @@ export class Hud {
   }
 
   setRenderer(renderer) { this.renderer = renderer || null; this.questMark?.setRenderer(this.renderer); }
+  /** Eingabe (Zielrichtung, Zeigerfang) für das Flug-HUD */
+  setInput(input) { this.input = input; this.flight.setInput(input, this.bus); }
 
   toggleMenu(force) {
     const open = force === undefined ? !this._menuOpen : !!force;
@@ -672,17 +698,17 @@ export class Hud {
       // Einmal je Leben ein klarer Funkspruch, was jetzt zu tun ist
       if (k > 0 && !this._lowWarned && w.sector && w.sector.station) {
         this._lowWarned = true;
-        this._pushMsg({ kind: 'warn', title: 'FUNK · STATION', text: 'Hülle kritisch! Taste H: Autopilot zur Station – in der sicheren Zone wirst du repariert.' });
+        this._pushMsg({ kind: 'warn', title: 'FUNK · STATION', text: 'Hülle kritisch! {d:home}: Autopilot zur Station – in der sicheren Zone wirst du repariert.' });
       }
       if (pl && pl.hpMax && pl.hp / pl.hpMax > 0.6) this._lowWarned = false;
     }
     this.coach?.update();
+    ringReset();
     this.questMark?.update(dt);
     this.mpUi.update(dt);
     this._updateFeed(dt);
-    this._updateFloats(dt);
     this._updateToasts(dt);
-    if (w.docked) return; // Station deckt alles ab, Flug-HUD ruht
+    if (w.docked) { this._updateFloats(dt); return; } // Station deckt alles ab, Flug-HUD ruht
     if (this._menuOpen) this._updateMenu(w, dt);
 
     if (p) this._updateProfile(p, dt);
@@ -693,6 +719,9 @@ export class Hud {
     this._updateTarget(w, pl, dt);
     this._updateQuest(w, dt);
     this.mid.update(w, this.renderer, dt, !!w.playerDead, this.wins.occluders);
+    this.flight.update(w, this.renderer, dt, !!w.playerDead || this._menuOpen || this.el.classList.contains('hd-hide-all'));
+    // Zahlen nach Zielschild und Fadenkreuz dieses Bildes setzen (sie weichen beiden aus)
+    this._updateFloats(dt);
     this._zoneAcc += dt;
     if (this._zoneAcc >= 0.2) { this._zoneAcc = 0; this._updateZones(); }
     this.combat.update(w, this.renderer, dt, !!w.playerDead || this._menuOpen, this.wins.occluders, this._comboY);
@@ -719,6 +748,7 @@ export class Hud {
     this.coach?.dispose();
     this.questMark?.dispose();
     this.mid.dispose();
+    this.flight.dispose();
     window.removeEventListener('keydown', this._onKey);
     window.removeEventListener('keydown', this._onWinKey, true);
     window.removeEventListener('resize', this._onResize);
@@ -959,10 +989,16 @@ export class Hud {
       if (o && !o.hidden && o.placed && o.w && o.x < cx + 40 && o.x + o.w > cx - 40 && o.y > H * 0.45) top = Math.min(top, o.y);
     }
     const pb = top < H ? Math.round(H - top + 14) : 24;
-    if (pb !== this._promptB) {
-      this._promptB = pb;
+    // 3D-Flug (Runde 2): Beutezeile links über dem Funk statt mittig über dem Schiffsfenster – dort sitzt in der
+    // Verfolgersicht das eigene Schiff, und die Zeile lag auf Schiff und Trefferzahlen
+    const f3 = document.documentElement.dataset.flight === '3d';
+    const cm = f3 ? this.wins.get('comms') : null;
+    const lb = f3 ? (cm && !cm.hidden && cm.placed && cm.h ? Math.round(H - cm.y + 8) : 24) : pb + 44;
+    if (pb !== this._promptB || lb !== this._lootB || f3 !== this._lootF3) {
+      this._promptB = pb; this._lootB = lb; this._lootF3 = f3;
       this.$('prompts').style.bottom = pb + 'px';
-      this.lootEl.style.bottom = (pb + 44) + 'px';
+      this.lootEl.style.bottom = lb + 'px';
+      this.lootEl.classList.toggle('is-f3', f3);
     }
     const nav = this.wins.get('nav');
     let y = 48;
@@ -985,6 +1021,14 @@ export class Hud {
     }
     const st = w.sector && w.sector.station;
     this.sHDock.set(!(w.inSafeZone && !dead && !jump && st));
+    // Tastenschild je Ansicht: im 3D-Flug F (Kontext), sonst E (Planung/FLUGMODELL.md 5.2)
+    // Touch (Runde 3): kein Tastenschild, der Knopf DOCK macht es
+    const dk = isTouchOnly() ? '' : w.flight3d ? keyName('context') : 'E';
+    if (dk !== this._dockKey) {
+      this._dockKey = dk;
+      const k = this.el.querySelector('[data-r="hdock"] .ls-key');
+      if (k) { k.textContent = dk; k.dataset.kb = dk; k.hidden = !dk; }
+    }
     if (st) this.sHDockText.set((st.name || '').toUpperCase());
     this.sJumpBox.set(!jump);
     if (jump) {
@@ -1019,7 +1063,8 @@ export class Hud {
     const atk = !!(pl.attacking && pl.targetId === id);
     this.sTargetAtk.set(atk);
     this.sTAtkText.set(atk ? 'ANGRIFF' : 'ERFASST');
-    const dist = Math.hypot(e.x - pl.x, e.z - pl.z);
+    // Entfernung wie Zielklammer und Waffen: im 3D-Flug räumlich (mit Höhe), in der Taktik in der Ebene
+    const dist = Math.hypot(e.x - pl.x, this.world.flight3d ? (e.y || 0) - (pl.y || 0) : 0, e.z - pl.z);
     this.cTDist.set(dist, dt);
     const inR = dist <= PLAYER_RANGE;
     this.sTInRange.set(inR);
@@ -1080,7 +1125,7 @@ export class Hud {
     let kind = p.kind;
     kind = MSG_TAGS[kind] ? kind : 'info';
     let from = p.from || '';
-    let body = text;
+    let body = devText(text);
     if (from && body.indexOf(from + ':') === 0) body = body.slice(from.length + 1).trim();
     if (from) body = radioText(body, this.world && this.world.profile && this.world.profile.faction);
     let terse = !!p.terse;
@@ -1096,7 +1141,7 @@ export class Hud {
           this._tFlash = 1.6;
           return;
         }
-        body = r[1]; terse = true;
+        body = devText(r[1]).toUpperCase(); terse = true;
         if (r[2]) kind = r[2];
         break;
       }
@@ -1154,7 +1199,9 @@ export class Hud {
   _trimFeed() {
     const f = this.feed;
     if (!f.offsetParent) return; // zugeklappt: beim Aufklappen erneut
-    while (this.msgs.length > 1 && f.scrollHeight > FEED_MAX_H) {
+    // 3D-Flug: Funk höchstens drei bis vier Zeilen (der Flug braucht das Bild, ältere Meldungen stehen im Bordmenü)
+    const maxH = document.documentElement.dataset.flight === '3d' ? 96 : FEED_MAX_H;
+    while (this.msgs.length > 1 && f.scrollHeight > maxH) {
       const o = this.msgs.pop();
       o.el.remove();
       this.msgFree.push(o);
@@ -1186,6 +1233,8 @@ export class Hud {
     f.age = 0;
     f.life = life || 1.1;
     f.x = x; f.z = z; f.id = id;
+    const ent = id != null && this.world && this.world.entities ? this.world.entities.get(id) : null;
+    f.y = ent ? ent.y || 0 : 0;
     f.kind = lane || cls;
     f.sum = 0;
     if (lane === 'loot') {
@@ -1199,22 +1248,29 @@ export class Hud {
       f.rise = 40;
     }
     f.big = !!big;
+    f.stk = stack; f.slot3 = null;
     f.tx = NaN; f.ty = NaN; f.ts = NaN; f.op = -1;
     f.el.className = 'hf ' + cls;
     f.tier = 1;
     f.tag.textContent = tag || '';
     f.val.textContent = text;
+    f.fw = 0; f.fh = 0;
     return f;
   }
 
   // Treffer derselben Salve (gleiches Ziel, < HIT_MERGE s) zu einer Zahl zusammenfassen.
   // kind: 'hit' (Gegner) oder 'hurt' (eigenes Schiff); hull: Salve hat die Hülle erreicht (Farbe wechselt auf Hülle)
   _mergeHit(id, kind, amount, crit, hull) {
+    // 3D-Flug (Runde 3): eine laufende Zahl je Ziel, solange getroffen wird (4 Bolzen je Laser und Sekunde ergaben
+    // sonst mehrere Zahlen gleichzeitig, die sich überdeckten, z. B. „17“ + „89“ = „1789“); die Zahl zählt hoch und
+    // bleibt stehen, solange Treffer kommen
+    const f3 = this._f3();
     for (let i = 0; i < this.floats.length; i++) {
       const f = this.floats[i];
-      if (!f.on || f.id !== id || f.kind !== kind || f.age > HIT_MERGE) continue;
+      if (!f.on || f.id !== id || f.kind !== kind || f.age > (f3 ? f.life * 0.62 : HIT_MERGE)) continue;
+      if (f3) f.age = Math.min(f.age, 0.12);
       f.sum += amount;
-      f.val.textContent = (kind === 'hurt' ? '−' : '') + fmt(f.sum);
+      f.val.textContent = (kind === 'hurt' ? '−' : '') + fmt(f.sum); f.fw = 0; f.fh = 0;
       if (hull) {
         const c = f.el.classList;
         if (c.contains('hf-sh')) { c.remove('hf-sh'); c.add('hf-hit'); }
@@ -1235,9 +1291,30 @@ export class Hud {
     f.el.style.opacity = '0';
   }
 
+  _f3() { const w = this.world, r = this.renderer; return !!(w && w.flight3d && r && r.rig && r.rig.k > 0.5); }
+
   _updateFloats(dt) {
     const r = this.renderer;
     const w = this.world;
+    // belegte Flächen dieses Bildes (3D-Flug): Zielschild, Fadenkreuz, Tempo- und Höhenleiter, schon gesetzte Zahlen
+    const occ = this._occ || (this._occ = []);
+    let nOcc = 0;
+    const occAdd = (x0, y0, x1, y1) => { let o = occ[nOcc]; if (!o) o = occ[nOcc] = { x0: 0, y0: 0, x1: 0, y1: 0 }; o.x0 = x0; o.y0 = y0; o.x1 = x1; o.y1 = y1; nOcc++; };
+    const occHit = (x0, y0, x1, y1) => { for (let i = 0; i < nOcc; i++) { const o = occ[i]; if (x1 > o.x0 && x0 < o.x1 && y1 > o.y0 && y0 < o.y1) return true; } return false; };
+    // 3D-Flug (Runde 2): Die Bildmitte gehört Fadenkreuz, Zielklammer und Zielschild. Trefferzahlen stehen rechts neben
+    // der Klammer (vorher 66 px + 22 px je Stufe über dem Ziel, also genau auf Name und Entfernung), eigene Schadens- und
+    // Heilzahlen unter der Tempoleiter, Beute unter der Höhenanzeige (vorher beides über dem eigenen Schiff, in der
+    // Verfolgersicht also auf dem Fadenkreuz).
+    const f3 = this._f3();
+    const W2 = innerWidth / 2, H2 = innerHeight / 2;
+    if (f3) {
+      const m = this.mid, LB = m && m.labRect && m.labRect.on ? m.lab.getBoundingClientRect() : null;
+      if (LB && LB.width) occAdd(LB.left - 4, LB.top - 4, LB.right + 4, LB.bottom + 4);
+      const cr = this.flight && this.flight.lastAimPx;
+      if (cr && cr.on) occAdd(cr.x - 28, cr.y - 28, cr.x + 28, cr.y + 28);
+      const Z = this.flight && this.flight.zones;
+      if (Z && Z.on) for (const z of Z.list) occAdd(z.x0 - 3, z.y0 - 3, z.x1 + 3, z.y1 + 3);
+    }
     for (let i = 0; i < this.floats.length; i++) {
       const f = this.floats[i];
       if (!f.on) continue;
@@ -1246,22 +1323,70 @@ export class Hud {
       if (t >= 1 || !r) { this._hideFloat(f); continue; }
       if (f.id != null && w && w.entities) {
         const e = w.entities.get(f.id);
-        if (e && e.alive !== false) { f.x = e.x; f.z = e.z; }
-      }
-      const s = r.toScreen(f.x, f.z, this._scr);
-      if (!s || !s.visible) {
-        if (f.op !== 0) { f.op = 0; f.el.style.opacity = '0'; }
-        continue;
+        if (e && e.alive !== false) { f.x = e.x; f.z = e.z; f.y = e.y || 0; }
       }
       // kurzer Einschlag: breit und hell, dann ruhig nach oben
       const ease = 1 - (1 - t) * (1 - t) * (1 - t);
-      const x = Math.round(s.x + f.jx);
-      const y = Math.round(s.y - 30 + f.jy - f.rise * ease);
       const pop = t < 0.1 ? 1 - t / 0.1 : 0;
       const sc = Math.round((1 + pop * (f.big ? 0.5 : 0.22)) * 50) / 50;
-      if (x !== f.tx || y !== f.ty || sc !== f.ts) {
-        f.tx = x; f.ty = y; f.ts = sc;
-        f.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(-50%,-50%) scale(' + sc + ')';
+      let x, y, ax = '-50%';
+      let lane3 = 0; // 3D-Flug: 1 eigene Spur unter der Tempoleiter, 2 Beute unter der Höhenanzeige, 3 neben dem Ziel
+      if (f3 && (f.id === 'player' || f.kind === 'loot')) {
+        // feste Spuren unter den Leitern (Tempozahl und M/S bleiben frei), Einträge untereinander
+        const own = f.id === 'player', Z = this.flight && this.flight.zones;
+        lane3 = own ? 1 : 2;
+        x = Math.round(own ? (Z && Z.on ? Z.speed.x1 : W2 - 138) : (Z && Z.on ? Z.alt.x0 + 38 : W2 + 188)); ax = own ? '-100%' : '0';
+        y = Math.round((Z && Z.on ? Math.max(Z.speed.y1, Z.alt.y1) : H2 + 100) + 4);
+      } else {
+        // Höhe mitnehmen (3D-Flug): sonst stand die Zahl auf der Ebene statt am Ziel, oft genau auf dem eigenen Schiff
+        const s = r.toScreen(f.x, f.z, this._scr, r.ry ? r.ry(f.y || 0) : 0);
+        if (!s || !s.visible) {
+          if (f.op !== 0) { f.op = 0; f.el.style.opacity = '0'; }
+          continue;
+        }
+        if (f3) {
+          // neben der Zielklammer (Halbbreite aus hud-mid), auf der dem Fadenkreuz abgewandten Seite (das Fadenkreuz
+          // liegt beim Vorhalt oft neben dem Ziel); Platz suchen unten (belegte Flächen)
+          const m = this.mid, half = m && m._tId === f.id && m._bs > 0 ? m._bs : 34, cr = this.flight && this.flight.lastAimPx;
+          let right = !(cr && cr.on && cr.x > s.x);
+          if (right && s.x + half + 120 > innerWidth) right = false; else if (!right && s.x - half - 120 < 0) right = true;
+          f.side = right ? 1 : -1; f.half = half; f.sx = s.x;
+          x = Math.round(s.x + (right ? half + 12 : -half - 12)); ax = right ? '0' : '-100%';
+          y = Math.round(s.y - 6);
+          lane3 = 3;
+        } else {
+          x = Math.round(s.x + f.jx);
+          y = Math.round(s.y - 30 + f.jy - f.rise * ease);
+        }
+      }
+      if (f3) {
+        // Runde 3: Platz suchen statt fester Stapel – nie auf Zielschild, Fadenkreuz, Tempo- oder Höhenleiter und nie
+        // auf einer anderen Zahl (vorher überdeckten sich 30 % der Zahlen, und eigene Schadenszahlen lagen auf M/S).
+        // Zuerst der Platz des letzten Bildes (ruhig), dann nach unten, dann die andere Seite der Klammer.
+        const fw = (f.fw || (f.fw = f.el.offsetWidth || 60)) * sc, fh = (f.fh || (f.fh = f.el.offsetHeight || 28)) * sc;
+        const step = Math.ceil(fh + 3), x0a = (xx, a) => (a === '0' ? xx : a === '-100%' ? xx - fw : xx - fw / 2);
+        let ok = false, bx = x, by = y, bax = ax;
+        const tries = lane3 === 3 ? 10 : 7;
+        for (let n = -1; n < tries && !ok; n++) {
+          let k = n < 0 ? f.slot3 : n;
+          if (k == null || k < 0) continue;
+          let xx = x, yy = y, aa = ax;
+          if (lane3 === 3) {
+            if (k >= 5) { aa = ax === '0' ? '-100%' : '0'; xx = Math.round(f.sx + (aa === '0' ? f.half + 12 : -f.half - 12)); k -= 5; }
+            yy = y + k * step;
+          } else yy = y + fh / 2 + k * step;
+          const xa = x0a(xx, aa);
+          if (xa < 4 || xa + fw > innerWidth - 4 || yy + fh / 2 > innerHeight - 4) continue;
+          if (!occHit(xa, yy - fh / 2, xa + fw, yy + fh / 2)) { ok = true; bx = xx; by = yy; bax = aa; f.slot3 = n < 0 ? f.slot3 : n; }
+        }
+        if (!ok) { f.slot3 = null; if (f.op !== 0) { f.op = 0; f.el.style.opacity = '0'; } continue; } // kein freier Platz: lieber nicht zeigen
+        x = Math.round(bx); y = Math.round(by); ax = bax;
+        const xa = x0a(x, ax);
+        occAdd(xa - 2, y - fh / 2 - 2, xa + fw + 2, y + fh / 2 + 2);
+      }
+      if (x !== f.tx || y !== f.ty || sc !== f.ts || ax !== f.tax) {
+        f.tx = x; f.ty = y; f.ts = sc; f.tax = ax;
+        f.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(' + ax + ',-50%) scale(' + sc + ')';
       }
       const a = t < 0.05 ? t / 0.05 : t > 0.68 ? 1 - (t - 0.68) / 0.32 : 1;
       const op = Math.round(clamp01(a) * 20) / 20;
@@ -1303,7 +1428,9 @@ export class Hud {
   }
 
   _onShot(p) {
-    if (!p || p.hit !== false || p.from !== 'player') return;
+    // Bolzen (3D-Flug) melden beim Abfeuern noch kein Ergebnis (hit ist dort immer false): kein DANEBEN je Bolzen –
+    // Treffer zeigt die Treffermarke am Fadenkreuz, Fehlschüsse sieht man am Bolzen selbst
+    if (!p || p.hit !== false || p.from !== 'player' || p.bolt) return;
     const w = this.world;
     const e = w && w.entities && w.entities.get(p.to);
     if (e) this._spawnFloat('DANEBEN', '', 'hf-miss', e.x, e.z, p.to, 0.8, false);
