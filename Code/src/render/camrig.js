@@ -25,12 +25,12 @@ const CH_R0 = 24.7, CH_EXP = 0.5, CH_ELEV_BIG = 9 * Math.PI / 180, CH_YAW_BIG = 
 export const CHASE_FRAME = {
   s1: { d: 100.5, el: 0, y: 0, k: 1 },
   s2: { d: 88.5, el: 0, y: 0, k: 0.97 },
-  s3: { d: 101.8, el: 0, y: 0, k: 0.94 },
-  s4: { d: 98, el: 0, y: 0, k: 1 },
-  s5: { d: 133.6, el: 0, y: 0, k: 1 },
-  s6: { d: 133.7, el: 0, y: 0, k: 0.88 },
-  s7: { d: 127, el: 0, y: 0, k: 0.97 },
-  s8: { d: 228, el: -6, y: -0.1, k: 0.94 },
+  s3: { d: 101.8, el: 0, y: 0, k: 0.9 },
+  s4: { d: 98, el: 0, y: 0, k: 0.97 },
+  s5: { d: 128.6, el: 0, y: 0, k: 0.98 },
+  s6: { d: 129.6, el: 0, y: 0, k: 0.88 },
+  s7: { d: 124.3, el: 0, y: 0, k: 0.94 },
+  s8: { d: 221.6, el: -6, y: -0.1, k: 0.94 },
 };
 const BLEND_T = 0.9; // Sekunden für den Wechsel
 
