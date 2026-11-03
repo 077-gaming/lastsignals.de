@@ -253,7 +253,7 @@ export function thinkEnemy(w, e) {
     if (e.state === 'attack') trySpecial(w, e, d);
     if (!e.spPhase) e.tactic = tacticOf(e, ai, d, focus);
     // ausweichen, wenn der Spieler auf ihn feuert (vorausschauend, nicht nur nach Treffern)
-    if (p.targetId === e.id && (p.attacking || w.aimInfo.fire) && e.dodgeCd <= 0 && d < 750 && w.rng.next() < ai.dodge * (w.flight3d ? DODGE3 : 0.22)) jink(w, e, dx / (d || 1), dz / (d || 1), dy3 / (d || 1));
+    if (p.targetId === e.id && (p.attacking || w.aimInfo.fire) && e.dodgeCd <= 0 && d < 750 && w.rng.next() < ai.dodge * (w.flight3d ? DODGE3[(w.sector && w.sector.index) > 1 ? 1 : 0] : 0.22)) jink(w, e, dx / (d || 1), dz / (d || 1), dy3 / (d || 1));
     return;
   }
   // Konvoi-Überfall: Frachter angreifen, solange er lebt
@@ -421,8 +421,9 @@ export function jink(w, e, dx, dz, dy = 0) {
   // 3D-Flug: abwechselnd seitlich und senkrecht zur Schusslinie ausweichen
   if (w.flight3d && ((e.dodgeN = (e.dodgeN || 0) + 1) & 1)) { e.jinkY = side; e.jinkX *= 0.25; e.jinkZ *= 0.25; }
   // 3D-Flug (Runde 2): länger und öfter ausweichen (echte Bolzen, kein Würfel – Ausweichen muss sichtbar Treffer kosten)
-  e.jinkT = w.flight3d ? JINK_TIME3 : JINK_TIME;
-  e.dodgeCd = w.flight3d ? w.rng.range(DODGE_CD3[0], DODGE_CD3[1]) : w.rng.range(DODGE_COOLDOWN[0], DODGE_COOLDOWN[1]);
+  const h3 = (w.sector && w.sector.index) > 1 ? 1 : 0;
+  e.jinkT = w.flight3d ? JINK_TIME3[h3] : JINK_TIME;
+  e.dodgeCd = w.flight3d ? w.rng.range(DODGE_CD3[h3 * 2], DODGE_CD3[h3 * 2 + 1]) : w.rng.range(DODGE_COOLDOWN[0], DODGE_COOLDOWN[1]);
 }
 
 // ───────────────────────── Spezialangriffe ─────────────────────────

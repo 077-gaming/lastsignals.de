@@ -59,9 +59,11 @@ export const AIM_PVE = 2.5;
 // Nur im 3D-Weg; Taktik bitgleich.
 export const ENEMY_SPEED3 = { pack: 1.35, ambush: 1.4, swarm: 1.35, thief: 1.3, guard: 1.2, kite: 1.15, big: 1 };
 export const ENEMY_DMG3 = 1.6;      // Schaden der Gegner gegen den 3D-Piloten
-export const DODGE3 = 0.9;          // Ausweichen unter Beschuss je Denkschritt × ai.dodge (Taktik 0,22)
-export const TAIL3 = 0.75;          // Anteil der Anflüge, die über das Heck des Spielers laufen
-export const JINK_TIME3 = 0.75, DODGE_CD3 = [1.2, 2.6]; // Ausweichhaken im 3D-Weg (Taktik 0,55 s, 2,5–4,5 s)
+// Ausweichen und Heck-Anflüge steigen mit dem Sektor: Heimatsektor (Einstieg, Kennzahl Abschuss ≤ 8 s) milder,
+// ab Sektor 2 voll. [Heimat, sonst]
+export const DODGE3 = [0.55, 0.9];  // Ausweichen unter Beschuss je Denkschritt × ai.dodge (Taktik 0,22)
+export const TAIL3 = [0.4, 0.75];   // Anteil der Anflüge, die über das Heck des Spielers laufen
+export const JINK_TIME3 = [0.6, 0.75], DODGE_CD3 = [1.6, 3.2, 1.2, 2.6]; // Ausweichhaken (Taktik 0,55 s, 2,5–4,5 s)
 export const AUTO_CONE = 30 * D;    // Feuerleitrechner: Ziel im 30°-Kegel um den Bug
 export const CONVERGE_DEFAULT = 500;
 export const LOCK_TIME = 0.8, LOCK_CONE = 12 * D;

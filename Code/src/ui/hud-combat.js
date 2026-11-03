@@ -6,7 +6,7 @@
 //     eine Warnmarke am Bildrand mit Art und Countdown; im Bild ein kleines Warnschild über dem Gegner.
 // Feste Knoten-Pools, Bewegung nur per transform, DOM nur bei geänderten Werten. Keine Speicher-Neuanlage pro Bild.
 import './hud-combat.css';
-import { fmt, clamp01, TextSlot, ClassSlot } from './hud-parts.js';
+import { fmt, clamp01, TextSlot, ClassSlot, ring3 } from './hud-parts.js';
 
 const MARKS = 8;           // gleichzeitige Trefferzeichen
 const MARK_SECS = 0.2;
@@ -295,6 +295,7 @@ export class HudCombat {
       const tq = Math.max(0, Math.ceil(A.t * 10));
       const txt = tq > 0 ? NF1.format(tq / 10) + ' S' : 'JETZT';
       const t = r.toScreen(ex, ez, this._scr2, ey);
+      const tx0 = t.x, ty0 = t.y, tb0 = !!t.behind; // _scr2 wird unten für die Richtung wiederverwendet
       const inView = t.visible && t.x > 0 && t.x < W && t.y > 0 && t.y < H;
       const covered = inView && !!winAt(wins, t.x, t.y, 4);
       if (inView && !covered) {
@@ -327,7 +328,17 @@ export class HudCombat {
       const len = Math.hypot(dx, dy) || 1;
       dx /= len; dy /= len;
       let ax, ay;
-      if (covered) {
+      if (w.flight3d && r.rig && r.rig.k > 0.5) {
+        // 3D-Flug (Runde 2): auf einem Ring um die Bildmitte, Richtung aus der Projektion (hinter der Kamera
+        // gespiegelt) – wie Peil- und Auftragsmarke, nie am Bildrand unter den Fenstern
+        let gx = tx0 - W / 2, gy = ty0 - H / 2;
+        if (tb0) { gx = -gx; gy = -gy; }
+        if (!gx && !gy) gy = -1;
+        const a = Math.atan2(gy, gx);
+        dx = Math.cos(a); dy = Math.sin(a);
+        const o = ring3(W, H, dx, dy, 1.1, this._ring || (this._ring = { x: 0, y: 0 }));
+        ax = o.x; ay = o.y;
+      } else if (covered) {
         ax = t.x; ay = t.y;
         for (let k = 0; k < 80 && winAt(wins, ax, ay, 22); k++) { ax -= dx * STEP; ay -= dy * STEP; }
       } else {

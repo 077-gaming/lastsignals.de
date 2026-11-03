@@ -3,6 +3,16 @@
 const NF = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
 export function fmt(n) { return NF.format(Math.round(n || 0)); }
 export const clamp01 = (v) => (v > 1 ? 1 : v < 0 || !(v === v) ? 0 : v);
+/**
+ * Randmarken im 3D-Flug (Runde 2): Punkt auf einer Ellipse um die Bildmitte in Richtung (dx, dy). Die Ellipse bleibt
+ * frei von den Fenstern am Rand: unten über Schiffsfenster und Schnellleiste (H/2 − 250), seitlich innerhalb des
+ * 27-%-Streifens (SYSTEM-Karte links, Karte rechts). k staffelt Peilmarke (1), Auftrag (0,9), Warnungen (1,1).
+ */
+export function ring3(W, H, dx, dy, k = 1, out = { x: 0, y: 0 }) {
+  const a = Math.atan2(dy, dx), rx = Math.min(W * 0.27, 400) * k, ry = Math.max(Math.min(H / 2 - 250, H * 0.3), H * 0.26) * k;
+  out.x = W / 2 + Math.cos(a) * rx; out.y = H / 2 + Math.sin(a) * ry;
+  return out;
+}
 
 export class TextSlot {
   constructor(node) { this.node = node; this.v = undefined; }

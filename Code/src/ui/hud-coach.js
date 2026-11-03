@@ -103,8 +103,9 @@ export class HudCoach {
     this._sig = `${f3 ? 3 : 2}|${padMode() ? 'pad' : touchDev() ? 'touch' : 'kb'}`;
     const text = set[s.key]();
     this.el.innerHTML = `<span class="hc-step">${this.i + 1}/${STEPS.length}</span><b>${s.title}</b><span class="hc-text">${text}</span>`;
-    this.el.classList.remove('done');
+    this.el.classList.remove('done', 'is-quiet');
     this.el.classList.add('on');
+    this._shownAt = performance.now();
   }
 
   _next() {
@@ -135,7 +136,12 @@ export class HudCoach {
     this.el.classList.toggle('hidden', false);
     // Ansicht oder Gerät gewechselt: Text neu (3D-Flug und Taktik haben andere Tasten)
     if (this._sig !== `${w.flight3d ? 3 : 2}|${padMode() ? 'pad' : touchDev() ? 'touch' : 'kb'}`) this._show();
+    // Nach 12 s tritt die Karte zurück (nur Titel, leise), nach 40 s ist der Hinweis gelesen: Beute-Schritt endet
+    // dann von selbst (Runde 2: „BEUTE 4/4“ stand minutenlang groß über dem Kampf, wenn der Traktor nichts einsammelte)
+    const age = (performance.now() - (this._shownAt || 0)) / 1000;
+    this.el.classList.toggle('is-quiet', age > 12);
     const key = STEPS[this.i].key;
+    if (key === 'loot' && age > 40) { this._next(); return; }
     if (key === 'fly') {
       if (this.startX === null) { this.startX = p.x; this.startZ = p.z; }
       if (Math.hypot(p.x - this.startX, p.z - this.startZ) > 300) this._next();

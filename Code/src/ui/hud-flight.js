@@ -184,7 +184,8 @@ export class HudFlight {
     // Tempo links, Höhe/Schub rechts, Boost und Modus unten
     this._speed(g, w, st, W / 2 - 150, H / 2, acc);
     this._alt(g, w, p, st, W / 2 + 150, H / 2);
-    this._boost(g, st, W / 2 - 182, H / 2, acc);
+    // Boost links neben der Tempozahl (bei W / 2 − 182 lag die Zahl der Leiter über der Beschriftung BOOST)
+    this._boost(g, st, W / 2 - 232, H / 2, acc);
     // Moduszeile über dem Kursband (früher darunter: die Marken des Bands überdeckten den Text)
     this._mode(g, w, st, W / 2, this._tapeY() - 34);
     this._edge(g, w, W, H);
@@ -193,6 +194,7 @@ export class HudFlight {
     if (this.flashT > 0) { this.flashT -= dt; this._center(g, this.flash, W / 2, this._tapeY() - 54, this.flash.startsWith('ENT') ? WARN : MID, 14, Math.min(1, this.flashT * 2)); }
     // virtueller Stick
     if ((fi.set.mouse === 'vjoy' || !fi.locked) && !fi.pad?.active && !fi.touch?.active) this._vjoy(g, W / 2, H / 2, H * 0.3, fi.vx, fi.vy);
+    if (fi.menuHintAt && performance.now() - fi.menuHintAt < 2500 && inp.menuOpen && inp.menuOpen()) this._center(g, document.querySelector('.lsg-choice') ? 'ERST WÄHLEN: GEFÜHRTER EINSTIEG ODER DIREKT SPIELEN' : 'ERST DAS FENSTER SCHLIESSEN', W / 2, H / 2 + 60, WHITE, 15);
     if (fi.clickHint) this._center(g, 'KLICKEN ZUM STEUERN', W / 2, H / 2 + 60, WHITE, 16, 0.75 + 0.25 * Math.sin(performance.now() / 260));
     if (fi.altFreed) this._center(g, `${keyName('free')} · ZEIGER FREI`, W / 2, H / 2 + 60, MID, 13);
     void P0;
@@ -270,7 +272,7 @@ export class HudFlight {
     g.fillText(text, x, y); g.globalAlpha = 1; g.textAlign = 'left';
   }
   _tapeY() { return Math.max(124, this._h / 2 - 185); }
-  /** Sektorrand: Warnung ab 83 %, außerhalb Zählwerk der Frist, danach Schaden (sim/world3d.js edge3d) */
+  /** Sektorrand: Warnung ab 83 %, jenseits der Grenze schiebt ein Navigationsfeld zurück, ohne Schaden (sim/world3d.js edge3d) */
   _edge(g, w, W, H) {
     const E = w.edge;
     if (!E || !(E.warn || E.out)) return;
@@ -278,11 +280,8 @@ export class HudFlight {
     const where = E.vert ? (E.dir > 0 ? 'OBERGRENZE' : 'UNTERGRENZE') : 'SEKTORRAND';
     const y = H / 2 - 128;
     if (!E.out) { this._center(g, `${where} · ${km}`, W / 2, y, WARN, 14); return; }
-    const blink = 0.7 + 0.3 * Math.sin(performance.now() / 120);
-    if (E.left > 0) {
-      this._center(g, `${where} ÜBERSCHRITTEN · ZURÜCK IN ${Math.ceil(E.left)} S`, W / 2, y, RED, 16, blink);
-      this._center(g, E.vert ? (E.dir > 0 ? '▾ SINKEN' : '▴ STEIGEN') : 'KURSBAND ZEIGT DIE GRENZE', W / 2, y + 18, WARN, 11);
-    } else this._center(g, `${where} · SCHIFF NIMMT SCHADEN`, W / 2, y, RED, 16, blink);
+    this._center(g, `${where} · NAVIGATIONSFELD LENKT ZURÜCK`, W / 2, y, WARN, 15, 0.8 + 0.2 * Math.sin(performance.now() / 160));
+    this._center(g, E.vert ? (E.dir > 0 ? '▾ SINKEN' : '▴ STEIGEN') : 'KURSBAND ZEIGT DIE GRENZE', W / 2, y + 18, MID, 11);
   }
   _heading(g, w, p, W, acc) {
     const y = this._tapeY(), wd = Math.min(420, W * 0.32), x0 = W / 2 - wd / 2;

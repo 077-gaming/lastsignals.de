@@ -56,7 +56,7 @@ export function steer3d(w, e, tgt, speed, MV, hold) {
   // Manöver wählen und fortschreiben
   const agile = !big(e) && st !== 'kite';
   // Eröffnung: Rudel und Lauerer kommen zur Hälfte gleich über das Heck (Runde 2: vorher immer frontal)
-  if (!e.m3) { e.m3 = agile ? ((st === 'pack' || st === 'ambush') && hr(e, 7) < 0.5 ? 'tail' : 'run') : 'orbit'; e.m3T = 0; e.m3N = 0; }
+  if (!e.m3) { e.m3 = agile ? ((st === 'pack' || st === 'ambush') && hr(e, 7) < TAIL3[(w.sector && w.sector.index) > 1 ? 1 : 0] * 0.66 ? 'tail' : 'run') : 'orbit'; e.m3T = 0; e.m3N = 0; }
   e.m3T += 1 / 60;
   fwdOf(_f, w.fl.q); // Bug des Spielers
   const inFront = -(nx * _f[0] + ny * _f[1] + nz * _f[2]); // > 0: Gegner liegt vor dem Spieler
@@ -83,7 +83,7 @@ export function steer3d(w, e, tgt, speed, MV, hold) {
       gx = e.m3X - e.x; gy = e.m3Y - e.y; gz = e.m3Z - e.z;
       faceT = false;
       if (Math.hypot(gx, gy, gz) < 90 || e.m3T > 3) {
-        const tail = (st === 'pack' || st === 'ambush' || st === 'thief') && !e._noRear && hr(e, 120 + e.m3N) < TAIL3;
+        const tail = (st === 'pack' || st === 'ambush' || st === 'thief') && !e._noRear && hr(e, 120 + e.m3N) < TAIL3[(w.sector && w.sector.index) > 1 ? 1 : 0];
         e.m3 = tail ? 'tail' : 'run'; e.m3T = 0; e.m3N++;
       }
       break;

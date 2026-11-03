@@ -8,7 +8,7 @@
 import './hud-mid.css';
 import { ENEMIES } from '../core/data.js';
 import { PLAYER_RANGE } from '../sim/config.js';
-import { fmt, clamp01, TextSlot, ClassSlot, Bar } from './hud-parts.js';
+import { fmt, clamp01, TextSlot, ClassSlot, Bar, ring3 } from './hud-parts.js';
 
 const EDGE = 44;          // Abstand der Randmarke zum Bildschirmrand
 const STEP = 12;          // Schrittweite beim Zurücklaufen aus einem Fenster
@@ -319,6 +319,8 @@ export class HudMid {
     const covered = inView && !!winAt(wins, tx, ty, 4);
     const showBox = inView && !covered;
     this.sTgtOn.set(showBox);
+    const LR = this.labRect || (this.labRect = { on: false, x0: 0, y0: 0, x1: 0, y1: 0 }); // Zielschild für hud.js (Zahlen ausweichen)
+    LR.on = false;
     this.sArrOn.set(!showBox);
     this.sArrPeil.set(covered);
 
@@ -333,7 +335,8 @@ export class HudMid {
       // Verfolgersicht im 3D-Flug: zuerst über der Klammer – darunter sitzt dort das eigene Schiff.
       let lx = 0, ly = half + 8;
       const below = by + ly, above = by - half - 8 - LAB_H;
-      const up3 = w.flight3d && r.viewMode === 'chase';
+      // (Cockpit ebenso: darunter liegt die mittlere Konsole, Runde 2)
+      const up3 = !!w.flight3d;
       const okAbove = above > 8 && !rectHit(wins, bx - LAB_W / 2, above, bx + LAB_W / 2, above + LAB_H);
       if (up3 ? okAbove : (below + LAB_H > H - 8 || rectHit(wins, bx - LAB_W / 2, below, bx + LAB_W / 2, below + LAB_H)) && okAbove) ly = -half - 8 - LAB_H;
       const o = rectHit(wins, bx - LAB_W / 2, by + ly, bx + LAB_W / 2, by + ly + LAB_H);
@@ -346,6 +349,7 @@ export class HudMid {
         this.tgt.style.transform = 'translate3d(' + bx + 'px,' + by + 'px,0)';
       }
       if (lx !== this._lx || ly !== this._ly) { this._lx = lx; this._ly = ly; this.lab.style.transform = 'translate3d(' + lx + 'px,' + ly + 'px,0)'; }
+      LR.on = true; LR.x0 = bx + lx - LAB_W / 2; LR.y0 = by + ly; LR.x1 = LR.x0 + LAB_W; LR.y1 = LR.y0 + LAB_H;
       if (dq !== this._distQ) { this._distQ = dq; this.sDist.set(fmt(dq * 10) + ' M'); }
       if (e.hpMax > 0) {
         this.bHull.set(clamp01((e.hp || 0) / e.hpMax), dt);
@@ -366,7 +370,16 @@ export class HudMid {
     // Richtung vom eigenen Schiff zum Ziel in der Welt (Draufsicht: Bild-x ≈ Welt-x, Bild-y ≈ Welt-z)
     const cx = this._cx, cy = this._cy;
     let dx, dy, ax, ay;
-    if (covered) {
+    if (w.flight3d && r.rig && r.rig.k > 0.5) {
+      // 3D-Flug (Runde 2): Peilmarke auf einem Ring um die Bildmitte (Richtung aus der Projektion, hinter der Kamera
+      // gespiegelt) – nie am Bildrand unter den Fenstern, die Richtung stimmt auch bei Ziel über/unter dem Schiff
+      // (vorher Weltrichtung x/z vom eigenen Schiff aus, wie in der Draufsicht)
+      dx = tx - W / 2; dy = ty - H / 2;
+      if (t.behind) { dx = -dx; dy = -dy; }
+      if (!dx && !dy) dy = -1;
+      const o = ring3(W, H, dx, dy, 1, this._ring || (this._ring = { x: 0, y: 0 }));
+      ax = o.x; ay = o.y;
+    } else if (covered) {
       // Ziel liegt unter einem Fenster: vom Ziel Richtung Schiff laufen, bis die Fensterkante erreicht ist
       dx = tx - cx; dy = ty - cy;
       const len = Math.hypot(dx, dy) || 1;
@@ -495,7 +508,15 @@ export class HudMid {
       const len = Math.hypot(dx, dy) || 1;
       dx /= len; dy /= len;
       let ax, ay;
-      if (covered) {
+      if (w.flight3d && r.rig && r.rig.k > 0.5) {
+        // 3D-Flug (Runde 2): Bedrohungspfeile auf dem Ring um die Bildmitte (wie Peil- und Auftragsmarke)
+        let gx = tx - W / 2, gy = ty - H / 2;
+        if (t.behind) { gx = -gx; gy = -gy; }
+        if (!gx && !gy) gy = -1;
+        const a = Math.atan2(gy, gx); dx = Math.cos(a); dy = Math.sin(a);
+        const o = ring3(W, H, dx, dy, 1.05, this._ring2 || (this._ring2 = { x: 0, y: 0 }));
+        ax = o.x; ay = o.y;
+      } else if (covered) {
         ax = tx; ay = ty;
         for (let k = 0; k < 80 && winAt(wins, ax, ay, 16); k++) { ax -= dx * STEP; ay -= dy * STEP; }
       } else {

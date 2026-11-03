@@ -202,17 +202,20 @@ export class PadNav {
     // Einstellungszeilen (Auswahlgruppen) zeilenweise: ▴▾ springt in die nächste Zeile darüber/darunter und dort auf die
     // gewählte Stufe. Vorher suchte ▴ das räumlich nächste Feld: von ZIELHILFE „HOCH“ landete man bei SICHTFELD 90°
     // (die kurze Zeile RECHTER STICK dazwischen war nur über ◂◂◂ erreichbar).
-    const row = dir <= 2 && a && a.closest ? a.closest('[role="radiogroup"]') : null;
+    // (nur waagrechte Stufenwahl der Einstellungen, .mc-seg; senkrechte Listen wie die Fraktionswahl bleiben räumlich)
+    const row = dir <= 2 && a && a.closest ? a.closest('.mc-seg[role="radiogroup"]') : null;
     if (row) {
       const RR = row.getBoundingClientRect(), sp0 = scrollParent(a);
       let bu = null, bm = Infinity;
       for (const x of pool) {
-        const g = x.el.closest('[role="radiogroup"]');
+        const g = x.el.closest('.mc-seg[role="radiogroup"]');
         if (g === row) continue;
         const u = g || x.el, r = u.getBoundingClientRect();
         const main = dir === 1 ? RR.top - r.bottom : r.top - RR.bottom;
         if (main < -8) continue;
-        const v = main + (scrollParent(x.el) === sp0 ? 0 : 2000);
+        // gleiche Spalte zuerst (Einstellungen stehen zweispaltig): ohne waagrechte Überlappung weit hinten
+        const over = r.right > RR.left && r.left < RR.right;
+        const v = main + (scrollParent(x.el) === sp0 ? 0 : 2000) + (over ? 0 : 1000);
         if (v < bm - 1) { bm = v; bu = { g, el: x.el }; }
       }
       if (bu) {

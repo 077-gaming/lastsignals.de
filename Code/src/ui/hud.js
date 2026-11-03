@@ -366,15 +366,15 @@ export class Hud {
       // Ziel und Mission oben rechts, Karte unten rechts, Funk unten links, Pilot und Konto oben links (leise)
       { id: 'quick', el: W('quick'), ax: 'c', ay: 'b', oy: 12, toggle: true },
       { id: 'ship', el: W('ship'), ax: 'c', ay: 'b', ox: (ws, W) => shipBeside(ws, W) ? -Math.round(ws.get('quick').w / 2 + 8 + ws.get('ship').w / 2) : 0, oy: (ws, W) => { const a = ws.get('quick'); return a && !a.hidden && a.h && !shipBeside(ws, W) ? 12 + a.h + 8 : 12; }, toggle: true },
-      { id: 'target', el: W('target'), ax: 'r', ay: 't', ox: 12, oy: 12, toggle: true },
+      { id: 'target', el: W('target'), ax: 'r', ay: 't', ox: 12, oy: 12, toggle: true, hide3: true }, // 3D: Zielklammer mit Schild
       { id: 'quest', el: W('quest'), ax: 'r', ay: 't', ox: 12, after: 'target', toggle: true },
       { id: 'map', el: W('map'), ax: 'r', ay: 'b', ox: 12, oy: 12 },
       { id: 'nav', el: W('nav'), ax: 'c', ay: 't', ox: 0, oy: 12 },
-      { id: 'pilot', el: W('pilot'), ax: 'l', ay: 't', ox: 12, oy: 12, toggle: true, mode: 'num' },
-      { id: 'wallet', el: W('wallet'), ax: 'l', ay: 't', ox: 12, after: 'pilot' },
+      { id: 'pilot', el: W('pilot'), ax: 'l', ay: 't', ox: 12, oy: 12, toggle: true, mode: 'num', hide3: true },
+      { id: 'wallet', el: W('wallet'), ax: 'l', ay: 't', ox: 12, after: 'pilot', hide3: true },
       { id: 'comms', el: W('comms'), ax: 'l', ay: 'b', ox: 12, oy: 12 },
-      { id: 'chat', el: W('chat'), ax: 'l', ay: 'b', ox: 12, after: 'comms', collapsed: true }, // zugeklappt, Enter öffnet
-      { id: 'players', el: W('players'), ax: 'r', ay: 'b', ox: 12, after: 'map' },
+      { id: 'chat', el: W('chat'), ax: 'l', ay: 'b', ox: 12, after: 'comms', collapsed: true, hide3: true }, // zugeklappt, Enter öffnet
+      { id: 'players', el: W('players'), ax: 'r', ay: 'b', ox: 12, after: 'map', hide3: true },
     ], (id) => this._onWinChange(id), q('bar'));
     this.barBtns = el.querySelectorAll('.hb-b[data-act="wintog"]');
     this.barMenu = el.querySelector('.hb-menu');
@@ -616,6 +616,11 @@ export class Hud {
     ];
 
     this._sizeMap();
+    // Fensterprofil je Ansicht (Runde 2): im 3D-Flug ein aufgeräumtes Flug-HUD, in der Taktik die volle Konsole
+    const syncProfile = () => { this.wins.setProfile(document.documentElement.dataset.flight === '3d' ? '3d' : 'tac'); this._syncBar(); if (this.feed) requestAnimationFrame(() => this._trimFeed()); };
+    window.addEventListener('ls:flightview', syncProfile);
+    this._offs.push(() => window.removeEventListener('ls:flightview', syncProfile));
+    syncProfile();
     this.wins.layout();
     this._syncBar();
     if (world) this.setWorld(world);
@@ -685,9 +690,8 @@ export class Hud {
     this.questMark?.update(dt);
     this.mpUi.update(dt);
     this._updateFeed(dt);
-    this._updateFloats(dt);
     this._updateToasts(dt);
-    if (w.docked) return; // Station deckt alles ab, Flug-HUD ruht
+    if (w.docked) { this._updateFloats(dt); return; } // Station deckt alles ab, Flug-HUD ruht
     if (this._menuOpen) this._updateMenu(w, dt);
 
     if (p) this._updateProfile(p, dt);
@@ -699,6 +703,8 @@ export class Hud {
     this._updateQuest(w, dt);
     this.mid.update(w, this.renderer, dt, !!w.playerDead, this.wins.occluders);
     this.flight.update(w, this.renderer, dt, !!w.playerDead || this._menuOpen || this.el.classList.contains('hd-hide-all'));
+    // Zahlen nach Zielschild und Fadenkreuz dieses Bildes setzen (sie weichen beiden aus)
+    this._updateFloats(dt);
     this._zoneAcc += dt;
     if (this._zoneAcc >= 0.2) { this._zoneAcc = 0; this._updateZones(); }
     this.combat.update(w, this.renderer, dt, !!w.playerDead || this._menuOpen, this.wins.occluders, this._comboY);
@@ -966,10 +972,16 @@ export class Hud {
       if (o && !o.hidden && o.placed && o.w && o.x < cx + 40 && o.x + o.w > cx - 40 && o.y > H * 0.45) top = Math.min(top, o.y);
     }
     const pb = top < H ? Math.round(H - top + 14) : 24;
-    if (pb !== this._promptB) {
-      this._promptB = pb;
+    // 3D-Flug (Runde 2): Beutezeile links über dem Funk statt mittig über dem Schiffsfenster – dort sitzt in der
+    // Verfolgersicht das eigene Schiff, und die Zeile lag auf Schiff und Trefferzahlen
+    const f3 = document.documentElement.dataset.flight === '3d';
+    const cm = f3 ? this.wins.get('comms') : null;
+    const lb = f3 ? (cm && !cm.hidden && cm.placed && cm.h ? Math.round(H - cm.y + 8) : 24) : pb + 44;
+    if (pb !== this._promptB || lb !== this._lootB || f3 !== this._lootF3) {
+      this._promptB = pb; this._lootB = lb; this._lootF3 = f3;
       this.$('prompts').style.bottom = pb + 'px';
-      this.lootEl.style.bottom = (pb + 44) + 'px';
+      this.lootEl.style.bottom = lb + 'px';
+      this.lootEl.classList.toggle('is-f3', f3);
     }
     const nav = this.wins.get('nav');
     let y = 48;
@@ -1169,7 +1181,9 @@ export class Hud {
   _trimFeed() {
     const f = this.feed;
     if (!f.offsetParent) return; // zugeklappt: beim Aufklappen erneut
-    while (this.msgs.length > 1 && f.scrollHeight > FEED_MAX_H) {
+    // 3D-Flug: Funk höchstens drei bis vier Zeilen (der Flug braucht das Bild, ältere Meldungen stehen im Bordmenü)
+    const maxH = document.documentElement.dataset.flight === '3d' ? 96 : FEED_MAX_H;
+    while (this.msgs.length > 1 && f.scrollHeight > maxH) {
       const o = this.msgs.pop();
       o.el.remove();
       this.msgFree.push(o);
@@ -1216,11 +1230,13 @@ export class Hud {
       f.rise = 40;
     }
     f.big = !!big;
+    f.stk = stack;
     f.tx = NaN; f.ty = NaN; f.ts = NaN; f.op = -1;
     f.el.className = 'hf ' + cls;
     f.tier = 1;
     f.tag.textContent = tag || '';
     f.val.textContent = text;
+    f.fw = 0; f.fh = 0;
     return f;
   }
 
@@ -1231,7 +1247,7 @@ export class Hud {
       const f = this.floats[i];
       if (!f.on || f.id !== id || f.kind !== kind || f.age > HIT_MERGE) continue;
       f.sum += amount;
-      f.val.textContent = (kind === 'hurt' ? '−' : '') + fmt(f.sum);
+      f.val.textContent = (kind === 'hurt' ? '−' : '') + fmt(f.sum); f.fw = 0; f.fh = 0;
       if (hull) {
         const c = f.el.classList;
         if (c.contains('hf-sh')) { c.remove('hf-sh'); c.add('hf-hit'); }
@@ -1255,6 +1271,12 @@ export class Hud {
   _updateFloats(dt) {
     const r = this.renderer;
     const w = this.world;
+    // 3D-Flug (Runde 2): Die Bildmitte gehört Fadenkreuz, Zielklammer und Zielschild. Trefferzahlen stehen rechts neben
+    // der Klammer (vorher 66 px + 22 px je Stufe über dem Ziel, also genau auf Name und Entfernung), eigene Schadens- und
+    // Heilzahlen unter der Tempoleiter, Beute unter der Höhenanzeige (vorher beides über dem eigenen Schiff, in der
+    // Verfolgersicht also auf dem Fadenkreuz).
+    const f3 = !!(w && w.flight3d && r && r.rig && r.rig.k > 0.5);
+    const W2 = innerWidth / 2, H2 = innerHeight / 2;
     for (let i = 0; i < this.floats.length; i++) {
       const f = this.floats[i];
       if (!f.on) continue;
@@ -1265,21 +1287,52 @@ export class Hud {
         const e = w.entities.get(f.id);
         if (e && e.alive !== false) { f.x = e.x; f.z = e.z; f.y = e.y || 0; }
       }
-      // Höhe mitnehmen (3D-Flug): sonst stand die Zahl auf der Ebene statt am Ziel, oft genau auf dem eigenen Schiff
-      const s = r.toScreen(f.x, f.z, this._scr, r.ry ? r.ry(f.y || 0) : 0);
-      if (!s || !s.visible) {
-        if (f.op !== 0) { f.op = 0; f.el.style.opacity = '0'; }
-        continue;
-      }
       // kurzer Einschlag: breit und hell, dann ruhig nach oben
       const ease = 1 - (1 - t) * (1 - t) * (1 - t);
-      const x = Math.round(s.x + f.jx);
-      const y = Math.round(s.y - 30 + f.jy - f.rise * ease);
       const pop = t < 0.1 ? 1 - t / 0.1 : 0;
       const sc = Math.round((1 + pop * (f.big ? 0.5 : 0.22)) * 50) / 50;
-      if (x !== f.tx || y !== f.ty || sc !== f.ts) {
-        f.tx = x; f.ty = y; f.ts = sc;
-        f.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(-50%,-50%) scale(' + sc + ')';
+      let x, y, ax = '-50%';
+      if (f3 && (f.id === 'player' || f.kind === 'loot')) {
+        // feste Spuren neben den Leitern, Einträge untereinander
+        const own = f.id === 'player';
+        x = Math.round(W2 + (own ? -196 : 196)); y = Math.round(H2 + 104 + (f.stk % 4) * 20 - 10 * ease);
+      } else {
+        // Höhe mitnehmen (3D-Flug): sonst stand die Zahl auf der Ebene statt am Ziel, oft genau auf dem eigenen Schiff
+        const s = r.toScreen(f.x, f.z, this._scr, r.ry ? r.ry(f.y || 0) : 0);
+        if (!s || !s.visible) {
+          if (f.op !== 0) { f.op = 0; f.el.style.opacity = '0'; }
+          continue;
+        }
+        if (f3) {
+          // neben der Zielklammer (Halbbreite aus hud-mid), auf der dem Fadenkreuz abgewandten Seite (das Fadenkreuz
+          // liegt beim Vorhalt oft neben dem Ziel), gestapelt nach unten; am Bildrand auf die andere Seite
+          const m = this.mid, half = m && m._tId === f.id && m._bs > 0 ? m._bs : 34, cr = this.flight && this.flight.lastAimPx;
+          let right = !(cr && cr.on && cr.x > s.x);
+          if (right && s.x + half + 120 > innerWidth) right = false; else if (!right && s.x - half - 120 < 0) right = true;
+          x = Math.round(s.x + (right ? half + 12 : -half - 12)); ax = right ? '0' : '-100%';
+          y = Math.round(s.y - 6 + (f.stk % 3) * 18 - 6 * ease);
+        } else {
+          x = Math.round(s.x + f.jx);
+          y = Math.round(s.y - 30 + f.jy - f.rise * ease);
+        }
+      }
+      if (f3) {
+        // nie auf Zielschild oder Fadenkreuz: überlappt die Zahl, rutscht sie darunter (höchstens drei Versuche)
+        const fw = (f.fw || (f.fw = f.el.offsetWidth || 60)) * sc, fh = (f.fh || (f.fh = f.el.offsetHeight || 28)) * sc;
+        // echtes Rechteck des Zielschilds (mit Statuszeile höher als LAB_H), einmal je Bild gemessen
+        if (this._labT !== this._t) { this._labT = this._t; const m = this.mid; this._labR = m && m.labRect && m.labRect.on ? m.lab.getBoundingClientRect() : null; }
+        const LB = this._labR, L = LB && LB.width ? { on: true, x0: LB.left, y0: LB.top, x1: LB.right, y1: LB.bottom } : null, cr = this.flight && this.flight.lastAimPx;
+        const x0 = ax === '0' ? x : ax === '-100%' ? x - fw : x - fw / 2, x1 = x0 + fw;
+        for (let k = 0; k < 3; k++) {
+          const y0 = y - fh / 2, y1 = y + fh / 2;
+          if (L && L.on && x1 > L.x0 - 4 && x0 < L.x1 + 4 && y1 > L.y0 - 4 && y0 < L.y1 + 4) { y = Math.round(L.y1 + 6 + fh / 2); continue; }
+          if (cr && cr.on && x1 > cr.x - 26 && x0 < cr.x + 26 && y1 > cr.y - 26 && y0 < cr.y + 26) { y = Math.round(cr.y + 30 + fh / 2); continue; }
+          break;
+        }
+      }
+      if (x !== f.tx || y !== f.ty || sc !== f.ts || ax !== f.tax) {
+        f.tx = x; f.ty = y; f.ts = sc; f.tax = ax;
+        f.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(' + ax + ',-50%) scale(' + sc + ')';
       }
       const a = t < 0.05 ? t / 0.05 : t > 0.68 ? 1 - (t - 0.68) / 0.32 : 1;
       const op = Math.round(clamp01(a) * 20) / 20;

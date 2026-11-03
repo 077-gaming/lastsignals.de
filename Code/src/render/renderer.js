@@ -1132,7 +1132,11 @@ export class Renderer {
           const k = (Math.min(1, n * 1.15) * (0.55 + 0.45 * v.thr) + v.thr * 0.2) * (1 + ab * 0.22 * pulse);
           // bei hohem Tempo deutlich länger (Tempo-Gefühl), im Stand ein kurzer Stummel
           const life = 0.1 + 0.56 * Math.pow(nn, 1.1) + 0.22 * Math.pow(nn, 3) + v.thr * 0.1 + ab * 0.08;
-          this.trails.feed('player:0', hx, hy - 1, hz, Math.min(1.25, k), 3.8 * ms * (0.8 + 0.4 * v.thr), life, v.trailCol, 1, sep);
+          // 3D-Flug (Verfolger/Cockpit): Das flache Band liegt hinter dem eigenen Schiff genau zwischen Schiff und
+          // Kamera und wurde zu einem riesigen Lichtkegel über dem unteren Bildviertel (Runde 2). Dort kurz, schmal und
+          // vor der Kamera ausgeblendet; Flammen und Glühen an den Düsen bleiben.
+          const own3 = !!(this.world && this.world.flight3d && this.rig.k > 0.5);
+          this.trails.feed('player:0', hx, hy - 1, hz, Math.min(1.25, k) * (own3 ? 0.6 : 1), 3.8 * ms * (0.8 + 0.4 * v.thr) * (own3 ? 0.45 : 1), own3 ? life * 0.3 : life, v.trailCol, 1, sep * (own3 ? 0.6 : 1), own3 ? 90 : 0);
           // Funken an der Düse (bei Schub), dichter mit Nachbrenner
           const sr = (v.thr > 0.35 ? (v.thr - 0.35) * 30 : 0) + ab * 26;
           v.spkAcc = (v.spkAcc || 0) + dt * sr * this.effects.density;
@@ -1711,9 +1715,11 @@ export class Renderer {
     this.cockpit.look(rig.lookYaw, rig.lookPitch);
     this.cockpit.update(dt, fov, _so, rig.shakeRoll(this.time) * 0.3 * m, {
       hull: p.hpMax ? p.hp / p.hpMax : 1, shield: p.shieldMax ? p.shield / p.shieldMax : 0,
-      speed: Math.hypot(p.vx || 0, p.vz || 0) || p.speed || 0, maxSpeed: pv.maxSpeed || 320, ab: (pv.ab || 0) > 0.1,
+      // 3D-Flug: räumliches Tempo und räumliche Entfernung wie Tempoleiter und Zielklammer (früher nur waagrecht:
+      // Konsole 158 M/S, Leiter 172 M/S)
+      speed: W.flight3d && W.fl ? Math.hypot(W.fl.v[0], W.fl.v[1], W.fl.v[2]) : Math.hypot(p.vx || 0, p.vz || 0) || p.speed || 0, maxSpeed: pv.maxSpeed || 320, ab: (pv.ab || 0) > 0.1,
       target: t && t.alive !== false ? (t.name || t.def?.name || t.type) : null,
-      dist: t ? Math.hypot(t.x - p.x, t.z - p.z) : 0, tHull: t && t.hpMax ? t.hp / t.hpMax : 0,
+      dist: t ? Math.hypot(t.x - p.x, t.z - p.z, W.flight3d ? (t.y || 0) - (p.y || 0) : 0) : 0, tHull: t && t.hpMax ? t.hp / t.hpMax : 0,
     });
   }
   get cameraMode() { return this.rig.mode; }
@@ -2171,6 +2177,9 @@ export class Renderer {
     this._updateOutpost();
     if (this._outpost) this._outpost.rotation.y += dt * 0.02;
     this.effects.update(dt);
+    this.trails.camPos = this.camera.position;
+    // 3D-Flug: Schweife zur Kamera gedreht und unter 60 m vor der Kamera ausgeblendet (Draufsicht unverändert flach)
+    { const f3 = !!(this.world && this.world.flight3d && this.rig.k > 0.5); this.trails.face3 = f3; this.trails.near3 = f3 ? 60 : 0; }
     this.trails.update(dt);
     this.tele.update(dt);
     this._heatHaze(pv);

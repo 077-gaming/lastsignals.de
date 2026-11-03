@@ -101,10 +101,11 @@ export class Trails {
   // Jedes Bild je Schiff/Düse: Position (Mitte der Düsen), k = Helligkeit (0..1), w = halbe Breite eines Düsenstrahls,
   // life = Länge in Sekunden, color: Fraktions- oder Akzentfarbe, gain = Grundhelligkeit (Gegner dezenter),
   // sep = seitlicher Abstand der beiden äußeren Düsen von der Mitte (m), 0 = ein einzelner Strahl
-  feed(key, x, y, z, k, w, life, color, gain = 1, sep = 0) {
+  // near (m): Band vor der Kamera ausblenden (unter near/3 ganz aus, ab near voll) – eigenes Schiff im 3D-Flug
+  feed(key, x, y, z, k, w, life, color, gain = 1, sep = 0, near = 0) {
     const r = this._get(key);
     if (!r) return;
-    r.fed = true; r.w = w; r.gain = gain; r.lifeT = life; r.sep = sep;
+    r.fed = true; r.w = w; r.gain = gain; r.lifeT = life; r.sep = sep; r.near = near;
     r.col.copy(color);
     const now = this.time;
     if (r.n > 0) {
@@ -162,11 +163,23 @@ export class Trails {
       const base = used * N * 2;
       let dist = 0;
       const cr = r.col.r, cg = r.col.g, cb = r.col.b, gain = r.gain, w0 = r.w, sep = r.sep;
+      const cp = this.camPos, near = cp ? Math.max(r.near || 0, this.near3 || 0) : 0;
+      // 3D-Flug (face3): Band zur Kamera gedreht (Seite = Tangente × Blickrichtung), sonst flach in der Ebene wie für
+      // die Draufsicht gebaut. Flach lag es im Verfolger als breite Fläche im Bild, sobald ein Schweif nahe der Kamera
+      // vorbeizog (Runde 2).
+      const face = !!(this.face3 && cp);
       const S = this.sp;
       for (let k = 0; k < N; k++) {
         const i = k <= last ? k : last;
         const a = Math.max(0, i - 1), b = Math.min(last, i + 1);
-        let tx = r.x[a] - r.x[b], tz = r.z[a] - r.z[b];
+        let tx = r.x[a] - r.x[b], tz = r.z[a] - r.z[b], ty = 0, sx = 0, sy = 0, sz = 0;
+        if (face) {
+          ty = r.y[a] - r.y[b];
+          const vx = cp.x - r.x[i], vy = cp.y - r.y[i], vz = cp.z - r.z[i];
+          sx = ty * vz - tz * vy; sy = tz * vx - tx * vz; sz = tx * vy - ty * vx;
+          const sl = Math.hypot(sx, sy, sz);
+          if (sl > 1e-6) { sx /= sl; sy /= sl; sz /= sl; } else { sx = 1; sy = 0; sz = 0; }
+        }
         const L = Math.sqrt(tx * tx + tz * tz) || 1; tx /= L; tz /= L;
         if (k > 0 && k <= last) { const ddx = r.x[i] - r.x[i - 1], ddz = r.z[i] - r.z[i - 1]; dist += Math.sqrt(ddx * ddx + ddz * ddz); }
         let f = (now - r.t[i]) / life;
@@ -179,12 +192,21 @@ export class Trails {
         const w = sepNow + sep * 0.5 * m + w0 * (0.55 + 1.3 * Math.pow(f, 0.7));
         const sRel = sepNow / w;
         // weiches Ende auch dann, wenn der Puffer (nicht das Alter) die Länge begrenzt
-        const a1 = (k > last ? 0 : Math.min(1, (last - k) / 6)) * r.k[i] * gain;
+        let a1 = (k > last ? 0 : Math.min(1, (last - k) / 6)) * r.k[i] * gain;
+        if (near) {
+          const dc = Math.hypot(r.x[i] - cp.x, r.y[i] - cp.y, r.z[i] - cp.z), q = Math.max(0, Math.min(1, (dc - near / 3) / (near * 2 / 3)));
+          a1 *= q * q * (3 - 2 * q);
+        }
         const v = (base + k * 2);
         const p3 = v * 3, d4 = v * 4;
         const x = r.x[i], y = r.y[i], z = r.z[i];
-        P[p3] = x - tz * w; P[p3 + 1] = y; P[p3 + 2] = z + tx * w;
-        P[p3 + 3] = x + tz * w; P[p3 + 4] = y; P[p3 + 5] = z - tx * w;
+        if (face) {
+          P[p3] = x - sx * w; P[p3 + 1] = y - sy * w; P[p3 + 2] = z - sz * w;
+          P[p3 + 3] = x + sx * w; P[p3 + 4] = y + sy * w; P[p3 + 5] = z + sz * w;
+        } else {
+          P[p3] = x - tz * w; P[p3 + 1] = y; P[p3 + 2] = z + tx * w;
+          P[p3 + 3] = x + tz * w; P[p3 + 4] = y; P[p3 + 5] = z - tx * w;
+        }
         D[d4] = -1; D[d4 + 1] = f; D[d4 + 2] = a1; D[d4 + 3] = dist;
         D[d4 + 4] = 1; D[d4 + 5] = f; D[d4 + 6] = a1; D[d4 + 7] = dist;
         C[p3] = cr; C[p3 + 1] = cg; C[p3 + 2] = cb; C[p3 + 3] = cr; C[p3 + 4] = cg; C[p3 + 5] = cb;
