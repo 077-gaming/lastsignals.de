@@ -11,7 +11,7 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
 export const pad2 = (n) => (n < 10 ? '0' : '') + n;
 export const pad3 = (n) => (n < 10 ? '00' : n < 100 ? '0' : '') + n;
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-export const VERSION = 'BUILD 0.1.0';
+export const VERSION = 'BUILD 0.9.0';
 export const CUR = { credits: 'CR', tritium: 'TR' };
 
 export function utcClock() {
