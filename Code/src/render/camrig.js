@@ -14,7 +14,22 @@ export const FOV_TAC = 40, FOV_CHASE = 58;
 // Verfolger: Höhe über dem Schiff (Grad), Abstand in Schiffsradien, Blickpunkt vor dem Schiff
 const CH_ELEV = 15 * Math.PI / 180, CH_ELEV_FIGHT = 21 * Math.PI / 180;
 const CH_DIST = 4.1;
-const CH_R0 = 24.7, CH_EXP = 0.5, CH_ELEV_BIG = 9 * Math.PI / 180, CH_YAW_BIG = 17 * Math.PI / 180;
+const CH_R0 = 24.7, CH_EXP = 0.5, CH_ELEV_BIG = 9 * Math.PI / 180, CH_YAW_BIG = 6 * Math.PI / 180;
+// Verfolger-Rahmung je Klasse (Meshy-Rümpfe, Runde 3): Abstand d (m, Zoom 1, ohne Tempo/Kampf-Zuschlag), zusätzliche
+// Neigung el (Grad) und Bildlage y (NDC-Versatz, + = tiefer). Abgeglichen mit tools/bilder/rahmung.mjs auf eine
+// monotone Staffelung der Bildhöhe des Rumpfs: Starter 18 %, je Klasse ≈ 10 % mehr, Schiff 8 ≈ 34 % (Obergrenze 38 %).
+// Der Hüllkugel-Radius allein taugt nicht (Flügel und Länge verfälschen ihn). Schiff 8 flacher (−6°) und höher im
+// Bild, damit das Heck in 1280 × 720 über dem unteren HUD-Band liegt. Klassen ohne Eintrag: Radius-Formel.
+export const CHASE_FRAME = {
+  s1: { d: 100.5, el: 0, y: 0 },
+  s2: { d: 88.5, el: 0, y: 0 },
+  s3: { d: 101.8, el: 0, y: 0 },
+  s4: { d: 98, el: 0, y: 0 },
+  s5: { d: 133.6, el: 0, y: 0 },
+  s6: { d: 133.7, el: 0, y: 0 },
+  s7: { d: 130, el: 0, y: 0 },
+  s8: { d: 228, el: -6, y: -0.1 },
+};
 const BLEND_T = 0.9; // Sekunden für den Wechsel
 
 function wrap(a) { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; }
@@ -62,6 +77,8 @@ export class CameraRig {
     this.kickV = new THREE.Vector3();
     this.rollK = 0; this.rollKV = 0;       // Stoß-Neigung (rad)
     this.yaw = 0; this._yawInit = false;
+    this.frame = CHASE_FRAME;              // Rahmung je Klasse (Prüfwerkzeuge dürfen sie in der Entwicklung verstellen)
+    this.side = 0; this._head = null;      // seitlicher Versatz langer Rümpfe (0..1), blendet bei Lenken/Kampf aus
     this.pos = new THREE.Vector3();        // Verfolger: gefederte Kameraposition relativ zum Schiff
     this.posV = new THREE.Vector3();
     this.look = new THREE.Vector3();
@@ -169,13 +186,29 @@ export class CameraRig {
     const accK = Math.max(-0.6, Math.min(1, this.accel / ((maxSpeed || 320) * 0.45)));
     // Größenstaffelung sichtbar: Abstand wächst nur mit Radius^0,5 (bezogen auf den Starter, 24,7 m), sonst wäre jedes
     // Schiff gleich groß im Bild. Starter ≈ 18 %, Schiff 8 ≈ 33 % der Bildbreite. Nie näher als 1,45 Radien (Rumpf).
-    const rEff = CH_R0 * Math.pow(r / CH_R0, CH_EXP);
-    const D = Math.max(r * 1.45, rEff * CH_DIST * this.zoom * (1 + 0.08 * n + 0.1 * accK * this.motion + 0.16 * ck));
-    // lange Rümpfe (Schiff 7/8): Kamera steiler und leicht seitlich, damit Länge und Silhouette von hinten lesbar sind
+    const fr = this.frame[e.ship];
+    const grow = this.zoom * (1 + 0.08 * n + 0.1 * accK * this.motion + 0.16 * ck);
+    let D, elev;
     const big = Math.min(1, Math.max(0, (r - 45) / 35));
-    const elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck + big * CH_ELEV_BIG;
-    // lange Rümpfe: leichte Dreiviertelsicht (Kamera 17° seitlich versetzt), damit die Länge im Bild liegt
-    const yc = this.yaw + big * CH_YAW_BIG, fxc = -Math.sin(yc), fzc = -Math.cos(yc);
+    if (fr) {
+      // Rahmung je Klasse (Bildfläche gestaffelt), nie näher als 1,2 Radien
+      D = Math.max(r * 1.2, fr.d * grow);
+      elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck + fr.el * Math.PI / 180;
+    } else {
+      const rEff = CH_R0 * Math.pow(r / CH_R0, CH_EXP);
+      D = Math.max(r * 1.45, rEff * CH_DIST * grow);
+      // lange Rümpfe (Platzhalter): Kamera steiler, damit Länge und Silhouette von hinten lesbar sind
+      elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck + big * CH_ELEV_BIG;
+    }
+    this.frameY = fr ? fr.y : 0;
+    // lange Rümpfe: leichte Dreiviertelsicht (höchstens 6°), nur im ruhigen Geradeausflug; beim Lenken (Kurswechsel
+    // > 0,15 rad/s) und im Kampf blendet der Versatz auf 0 aus, damit Schild- und Kursbogen am Rumpf bleiben
+    const turn = this._head === null ? 0 : Math.abs(wrap(heading - this._head)) / Math.max(1e-3, dt);
+    this._head = heading;
+    const sideWant = big * (1 - ck) * (turn > 0.15 ? 0 : 1);
+    this.side += (sideWant - this.side) * (1 - Math.exp(-dt * (sideWant < this.side ? 4 : 0.8)));
+    if (this.reset) this.side = sideWant;
+    const yc = this.yaw + this.side * CH_YAW_BIG, fxc = -Math.sin(yc), fzc = -Math.cos(yc);
     const ox = -fxc * D * Math.cos(elev), oz = -fzc * D * Math.cos(elev), oy = D * Math.sin(elev) + r * 0.3;
     // Federung: Kamera-Versatz folgt kritisch gedämpft (keine Schwingung, nur Nachziehen)
     if (this.reset) { this.pos.set(ox, oy, oz); this.posV.set(0, 0, 0); this._pitch = null; }
@@ -194,7 +227,7 @@ export class CameraRig {
       const L = Math.hypot(hx, hz) || 1; hx /= L; hz /= L;
     }
     const aS = Math.atan2(2 - cy, hd);
-    let pitch = aS - Math.atan(shipY * tanH);
+    let pitch = aS - Math.atan((shipY - this.frameY) * tanH);
     if (cv && ck > 0.001) {
       // Ziel nicht über den oberen Bildrand schieben
       const td = Math.hypot(cv.rx - cx, cv.rz - cz) || 1, aT = Math.atan2(2 - cy, td);
