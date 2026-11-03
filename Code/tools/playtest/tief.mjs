@@ -51,11 +51,19 @@ for (const [n, lvl, ship] of PLAN) {
         w.setTarget(best.id); t = best;
       }
       if (!p.attacking) w.toggleAttack();
+      if (w.flight3d) {
+        // 3D-Flug: kein Klickflug (der Autopilot zeigte die Nase auf den Wegpunkt, nie aufs Ziel); der Feuerleitrechner
+        // führt die Zielrichtung, der Bot gibt nur Schub, solange das Ziel weit weg ist
+        if (p.hasMove) w.stopMove();
+        const d3 = Math.hypot(t.x - p.x, (t.y || 0) - p.y, t.z - p.z), want = d3 > 160; // Schub fast immer: im Stand dreht ein großes Schiff gegen kreisende Gegner nicht schnell genug
+        if (want !== !!window.__tiefW) { window.__tiefW = want; window.dispatchEvent(new KeyboardEvent(want ? 'keydown' : 'keyup', { code: 'KeyW', bubbles: true })); }
+        continue;
+      }
       ang += 0.35;
       w.moveTo(t.x + Math.cos(ang) * 380, t.z + Math.sin(ang) * 380);
     }
     off();
-    return { sector: w.sector.id, name: w.sector.name, lvl, ship, kills, deaths, shots, dps: Math.round(dealt / secs), takenPs: Math.round(taken / secs), minHull: +minHull.toFixed(2), fps: +(frames / secs).toFixed(1), worstMs: Math.round(worst) };
+    return { sector: w.sector.id, name: w.sector.name, view: __ls.renderer.viewMode, f3: !!w.flight3d, lvl, ship, kills, deaths, shots, dps: Math.round(dealt / secs), takenPs: Math.round(taken / secs), minHull: +minHull.toFixed(2), fps: +(frames / secs).toFixed(1), worstMs: Math.round(worst) };
   }, [`${P}-${n}`, lvl, ship, SEC]);
   console.log(JSON.stringify(r));
   out.push(r);

@@ -53,7 +53,7 @@ async function botFight(opts) {
   const L = window.__ls, w = L.world, p = w.player, fi = L.input.fi, cam = L.renderer.camera;
   const D = Math.PI / 180, BOLT = 2400;
   const hist = []; // Zielverlauf für die Reaktionszeit (180 ms)
-  const stats = { frames: 0, worst: 0, shots0: w.stats3.bolts, hits0: w.stats3.boltHits, kills: 0, deaths0: w.profile.stats.deaths, ttk: [], first: new Map(), engaged: 0, onTarget: 0 };
+  const stats = { frames: 0, worst: 0, shots0: w.stats3.bolts, hits0: w.stats3.boltHits, kills: 0, deaths0: w.profile.stats.deaths, ttk: [], first: new Map(), engaged: 0, onTarget: 0, floats: 0, onLab: 0, onCross: 0 };
   const mine = new Set();
   const spawn = (i) => {
     const q = w.fl.q, f = [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))];
@@ -95,6 +95,19 @@ async function botFight(opts) {
     const f = (now) => {
       const dt = now - last; last = now;
       stats.frames++; if (stats.frames > 5) stats.worst = Math.max(stats.worst, dt);
+      // Lesbarkeit (Runde 2): schwebende Zahlen nie auf dem Zielschild und nie auf dem Fadenkreuz (alle 6 Bilder)
+      if (stats.frames % 6 === 0 && window.__lsHud) {
+        const mid = window.__lsHud.mid, lab = mid && mid.tgt.classList.contains('on') ? mid.lab.getBoundingClientRect() : null;
+        const cx = innerWidth / 2, cy = innerHeight / 2, ax = window.__lsHud.flight.lastAimPx;
+        for (const el of document.querySelectorAll('.hf')) {
+          if (+el.style.opacity < 0.3) continue;
+          const b = el.getBoundingClientRect(); if (!b.width) continue;
+          stats.floats++;
+          if (lab && lab.width && b.right > lab.left && b.left < lab.right && b.bottom > lab.top && b.top < lab.bottom) stats.onLab++;
+          const fx = ax && ax.on ? ax.x : cx, fy = ax && ax.on ? ax.y : cy;
+          if (b.right > fx - 24 && b.left < fx + 24 && b.bottom > fy - 24 && b.top < fy + 24) stats.onCross++;
+        }
+      }
       if (now - t0 > secs * 1000 || (minKills && stats.ttk.length >= minKills)) { res(); return; }
       if (respawn > 0 && stats.frames % 30 === 0) { respawn--; spawn(1); }
       if (w.playerDead) { w.repair('station'); setTimeout(() => { fi.requestLock(); }, 200); }
@@ -179,6 +192,7 @@ async function botFight(opts) {
     secs: +el.toFixed(1), device, fps: +(stats.frames / el).toFixed(1), worstMs: Math.round(stats.worst), shots, hits, hitRate: shots ? +(hits / shots).toFixed(3) : 0,
     kills: stats.kills, deaths: w.profile.stats.deaths - stats.deaths0, ttkMedian: stats.ttk.length ? +stats.ttk[stats.ttk.length >> 1].toFixed(1) : null,
     ttkAll: stats.ttk.map((v) => +v.toFixed(1)), onTarget: +(stats.onTarget / Math.max(1, stats.engaged)).toFixed(2),
+    zahlen: stats.floats, zahlenAufSchild: stats.onLab, zahlenAufFadenkreuz: stats.onCross,
   };
 }
 
@@ -333,7 +347,7 @@ async function main() {
   const cr = await W(() => { const w = window.__ls.world; return { cruise: w.fl.cruise, lim: w.fl.limiter, sp: Math.round(w.player.speed) }; });
   check('Tempomat an, Mausrad 10× runter: Tempo folgt dem Begrenzer', cr.cruise && cr.sp <= cr.lim + 3, JSON.stringify(cr));
   await page.keyboard.press('KeyC'); for (let i = 0; i < 30; i++) { await page.mouse.wheel(0, -100); await sleep(20); }
-  // ── Sektorrand: Warnung vorher, außerhalb Frist mit Zählwerk, erst danach Schaden ──
+  // ── Sektorrand (Runde 2): Warnung vorher, jenseits schiebt das Navigationsfeld zurück, kein Schaden ──
   await level(); await sleep(400);
   const edge = await W(async () => {
     const w = window.__ls.world, p = w.player, size = w.sector.size;
@@ -341,23 +355,37 @@ async function main() {
     const x0 = p.x; p.hp = p.hpMax;
     put(size * 0.9); await new Promise((r) => setTimeout(r, 300));
     const warn = w.edge.warn;
-    put(size + 60); await new Promise((r) => setTimeout(r, 2500));
-    const out = w.edge.out, left = w.edge.left, hp1 = p.hp;
-    await new Promise((r) => setTimeout(r, 4500));
-    const hp2 = p.hp;
-    put(x0); await new Promise((r) => setTimeout(r, 300));
+    // 80 m jenseits der Grenze, mit 300 m/s weiter nach außen
+    put(size + 80); w.fl.v[0] = 300; await new Promise((r) => setTimeout(r, 400));
+    const out = w.edge.out, vOut = Math.round(w.fl.v[0]);
+    await new Promise((r) => setTimeout(r, 5000));
+    const hp = p.hp, maxOut = Math.round(p.x - size);
+    const back = p.x < size + 600 && w.fl.v[0] < 0;
+    put(x0); w.fl.v[0] = 0; await new Promise((r) => setTimeout(r, 300));
     p.hp = p.hpMax;
-    return { warn, out, left: +left.toFixed(1), keinSchadenInFrist: hp1 === p.hpMax || hp1 >= p.hpMax - 1, schadenDanach: hp2 < hp1, back: !w.edge.out };
+    return { warn, out, vOut, keinSchaden: hp >= p.hpMax - 1, jenseits: maxOut, zurueck: back, frei: !w.edge.out };
   });
-  check('Sektorrand: Warnung ab 83 %, Frist mit Zählwerk, erst danach Schaden', edge.warn && edge.out && edge.left > 0 && edge.keinSchadenInFrist && edge.schadenDanach && edge.back, JSON.stringify(edge));
+  check('Sektorrand: Warnung ab 83 %, Navigationsfeld bremst und schiebt zurück, kein Schaden', edge.warn && edge.out && edge.vOut < 300 && edge.keinSchaden && edge.zurueck && edge.frei, JSON.stringify(edge));
+  // Höhenband im Heimatsektor (vorher ±1.200 m: mit Boost nach 2 s an der Decke): 3.000 m über der Ebene ist frei
+  const band = await W(async () => {
+    const w = window.__ls.world, p = w.player, y0 = p.y;
+    p.y = 3000; w.fl.p[1] = 3000; await new Promise((r) => setTimeout(r, 300));
+    const r = { sektor: w.sector.index, y: Math.round(p.y), out: w.edge.out };
+    p.y = y0; w.fl.p[1] = y0; await new Promise((r2) => setTimeout(r2, 200));
+    return r;
+  });
+  check('Höhenband: 3.000 m über der Ebene liegt im Sektor', band.out === false, JSON.stringify(band));
   // ── Autopilot H: lange Strecke in REISE ──
   const ap = await W(async () => {
     const w = window.__ls.world, L = window.__ls, p = w.player, s = w.station;
     const x0 = p.x, z0 = p.z;
-    p.x = s.x + 4200; p.z = s.z + 600; w.fl.p[0] = p.x; w.fl.p[2] = p.z; w._lastCombat = -99;
+    // REISE ist im Kampf gesperrt (Absicht): Gegner in der Nähe vorher weg, sonst hängt die Prüfung davon ab, ob gerade
+    // ein Rudel am Weg liegt (Runde 2: flackerte mit inCombat: true)
+    const calm = () => { for (const e of w.enemies) if (e.alive && Math.hypot(e.x - p.x, e.z - p.z, (e.y || 0) - p.y) < 3000) { e.x += 5000 * Math.sign(e.x - p.x || 1); e.px = e.x; e.targetId = null; e.state = 'idle'; } w.bolts.on.fill(0); w._lastCombat = -99; };
+    p.x = s.x + 4200; p.z = s.z + 600; w.fl.p[0] = p.x; w.fl.p[2] = p.z; calm();
     L.input.home();
     // Wende zur Station (bis 2 s) und Hochlaufen der REISE (1,5 s): bis 8 s warten
-    for (let i = 0; i < 80 && !(w.fl.mode === 1 && w.player.speed > 400); i++) await new Promise((r) => setTimeout(r, 100));
+    for (let i = 0; i < 80 && !(w.fl.mode === 1 && w.player.speed > 400); i++) { if (i < 30) calm(); await new Promise((r) => setTimeout(r, 100)); }
     const r = { reise: w.fl.mode === 1, homing: !!w.homing, sp: Math.round(w.player.speed), inCombat: !!w.inCombat };
     w.stopMove(); p.x = x0; p.z = z0; w.fl.p[0] = x0; w.fl.p[2] = z0; return r;
   });
@@ -385,6 +413,7 @@ async function main() {
   await shot('verfolger-kampf');
   check(`Kampf (Maus, bis 5 Abschüsse): Abschüsse gegen die 3D-KI`, mouse.kills >= 1, `${mouse.kills} Abschüsse, Median ${mouse.ttkMedian} s`);
   check('Kennzahl: Raider-Abschuss mit Startausrüstung (nur Laser, Maus) im Median ≤ 8 s (FLUGMODELL.md 3)', mouse.ttkMedian != null && mouse.ttkMedian <= 8, `${mouse.ttkMedian} s · ${JSON.stringify(mouse.ttkAll)}`);
+  check('Lesbarkeit: schwebende Zahlen nie auf Zielschild oder Fadenkreuz (Runde 2)', mouse.zahlen > 0 && mouse.zahlenAufSchild === 0 && mouse.zahlenAufFadenkreuz === 0, `${mouse.zahlen} Zahlen-Stichproben, ${mouse.zahlenAufSchild} auf dem Schild, ${mouse.zahlenAufFadenkreuz} auf dem Fadenkreuz`);
   // Bolzen melden beim Abfeuern kein Ergebnis: kein DANEBEN-Stapel über dem Ziel
   check('Keine DANEBEN-Zahlen je Bolzen im 3D-Flug', await W(() => [...document.querySelectorAll('.hf.hf-miss')].filter((e) => +getComputedStyle(e).opacity > 0).length === 0));
   // Zielfenster und Zielklammer nennen dieselbe (räumliche) Entfernung
@@ -428,6 +457,29 @@ async function main() {
   metrics.controllerZuMaus = mouse.hitRate ? +(pad.hitRate / mouse.hitRate).toFixed(2) : null;
   check('Controller-Trefferquote ≥ 70 % der Maus-Quote (Ziel 85 %)', mouse.hitRate === 0 || pad.hitRate >= mouse.hitRate * 0.7, `${metrics.controllerZuMaus}`);
   await W(() => window.__gpDisconnect());
+
+  // ── Sprungtor im natürlichen Anflug (Runde 2): Kampftempo, F bei 120 m, W losgelassen → Sprung gelingt ──
+  await sleep(500);
+  const jp = await W(async () => {
+    const L = window.__ls, w = L.world, p = w.player, fi = L.input.fi, o = w.portals[0], from = w.sector.id;
+    for (const e of w.enemies) if (e.alive && Math.hypot(e.x - p.x, e.z - p.z) < 3000) { e.x += 6000 * Math.sign(e.x - p.x || 1); e.px = e.x; e.targetId = null; }
+    w._lastCombat = -99; p.hp = p.hpMax; p.shield = p.shieldMax; w._invulnUntil = 0;
+    p.x = o.x + 700; p.z = o.z + 20; p.y = o.y || 0; w.fl.p[0] = p.x; w.fl.p[1] = p.y; w.fl.p[2] = p.z; w.fl.v.fill(0);
+    const key = (code, down) => window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code, bubbles: true }));
+    let sp = 0, maxD = 0, pressed = false;
+    key('KeyW', true);
+    const t0 = performance.now();
+    while (performance.now() - t0 < 16000 && w.sector.id === from) {
+      const dx = o.x - p.x, dz = o.z - p.z, dd = Math.hypot(dx, dz) || 1;
+      fi.aim[0] = dx / dd; fi.aim[1] = 0; fi.aim[2] = dz / dd; fi.moved = 5;
+      if (!pressed && dd <= 120) { sp = Math.round(p.speed); key('KeyF', true); key('KeyF', false); key('KeyW', false); pressed = true; }
+      if (pressed) maxD = Math.max(maxD, dd);
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    key('KeyW', false);
+    return { tempoBeiF: sp, weitesterAbstand: Math.round(maxD), von: from, nach: w.sector.id };
+  });
+  check('Sprungtor aus voller Fahrt: F bei 120 m, W los → Sprung gelingt (Sprungfeld hält)', jp.tempoBeiF > 250 && jp.nach !== jp.von && jp.weitesterAbstand < 300, JSON.stringify(jp));
 
   check('Keine Konsolenfehler', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close();

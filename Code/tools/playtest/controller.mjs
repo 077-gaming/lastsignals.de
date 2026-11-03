@@ -137,6 +137,25 @@ async function main() {
   // wieder an
   await press('LEFT'); await press('A');
   check('Vibration wieder an', await ev(() => JSON.parse(localStorage.getItem('ls.pad') || '{}').rumble === true));
+  // Runde 2: Einstellungszeilen zeilenweise – von ZIELHILFE „HOCH“ führt ▴ in die Zeile darüber (vorher sprang der Fokus
+  // zu SICHTFELD 90°, RECHTER STICK war so nicht erreichbar)
+  {
+    const sel = '[data-set="fl.assist"][data-val="3"]';
+    let at = false;
+    for (let i = 0; i < 60 && !at; i++) {
+      at = await ev((sel) => document.activeElement?.matches(sel), sel);
+      if (at) break;
+      const where = await ev((sel) => { const a = document.activeElement; const t = document.querySelector(sel); if (!a || !t) return 'down'; const r = a.getBoundingClientRect(), q = t.getBoundingClientRect(); if (Math.abs(q.top - r.top) < 8) return q.left > r.left ? 'right' : 'left'; return q.top > r.top ? 'down' : 'up'; }, sel);
+      await press(where === 'right' ? 'RIGHT' : where === 'left' ? 'LEFT' : where === 'up' ? 'UP' : 'DOWN', 60, 90);
+    }
+    await press('UP', 60, 120);
+    const up1 = await ev(() => document.activeElement?.dataset?.set || '');
+    await press('UP', 60, 120);
+    const up2 = await ev(() => document.activeElement?.dataset?.set || '');
+    await press('DOWN', 60, 120); await press('DOWN', 60, 120);
+    const back = await ev(() => document.activeElement?.dataset?.set || '');
+    check('Einstellungen zeilenweise: ▴ von ZIELHILFE → HORIZONT-HILFE → RECHTER STICK, ▾▾ zurück', at && up1 === 'fl.padHorizon' && up2 === 'fl.padMode' && back === 'fl.assist', `${at} ${up1} ${up2} ${back}`);
+  }
   // zum Shop
   for (let i = 0; i < 12 && sec !== 'shop'; i++) { await press('LT'); sec = await ev(() => document.querySelector('button[data-sec].is-on')?.dataset.sec); }
   check('Shop erreicht (LT)', sec === 'shop');

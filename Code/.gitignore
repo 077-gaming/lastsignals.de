@@ -3,3 +3,6 @@
 node_modules
 dist
 tools/models/agent-bilder/
+# Prüfberichte der Flug- und Controller-Prüfung (werden je Lauf neu geschrieben)
+tools/playtest/berichte/controller-*/
+tools/playtest/berichte/flug-*/
