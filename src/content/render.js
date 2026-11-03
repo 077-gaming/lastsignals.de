@@ -10,7 +10,7 @@ import { SITE, PAGES, PAGE_IDS, pageById, canonical, href, setLinkMode } from '.
 import { frame, visSystem, visShips, visLasers, visDrones, visDepth, visWormholes, visBosses, visWar, visMonitor, whTable, warTable, FX } from './visuals.js';
 import { legal } from './legal.js';
 import { RELEASE, FILES, PLATFORMS, releaseUrl, releasePage, fileSize } from './downloads.js';
-import { G, heroVideo, heroFilmBtn, features, shotsSection, shipsBody, worldBody, pic } from './game.js';
+import { G, heroVideo, heroFilmBtn, features, shotsSection, shipsBody, worldBody, pic, HERO_WIDE, HERO_TALL, HERO_PHONE } from './game.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const pad = (n) => String(n).padStart(2, '0');
@@ -68,7 +68,7 @@ function head(page, t) {
   const shots = ['kampf-saturn', 'flug-eris', 'station-europa', 'cockpit-europa', 'boss-dread'].map((n) => `${SITE.de}/img/spiel/${n}-1920.webp`);
   const ld = isHome ? `<script type="application/ld+json">${JSON.stringify({
     '@context': 'https://schema.org', '@type': 'VideoGame', name: 'LAST SIGNALS', url: SITE[page.lang] + '/',
-    description: t.meta.desc, inLanguage: ['de', 'en'], genre: ['MMO', 'Space', 'Action'],
+    description: t.meta.desc, inLanguage: 'de', // Spiel derzeit nur auf Deutsch (Website DE/EN) genre: ['MMO', 'Space', 'Action'],
     gamePlatform: ['Web browser', 'macOS', 'Windows', 'Android', 'iOS'], operatingSystem: 'Web browser, macOS, Windows, Android, iOS',
     applicationCategory: 'Game', playMode: ['SinglePlayer', 'MultiPlayer', 'CoOp'], numberOfPlayers: { '@type': 'QuantitativeValue', minValue: 1 },
     offers: { '@type': 'Offer', price: 0, priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: SITE[page.lang] + SITE.play },
@@ -77,7 +77,8 @@ function head(page, t) {
       thumbnailUrl: `${SITE.de}/img/spiel/hero-1280.webp`, contentUrl: `${SITE.de}/media/hero-loop.mp4`, uploadDate: '2026-11-03', duration: 'PT8S' },
     author: { '@type': 'Organization', name: '077 GAMING' }, publisher: { '@type': 'Organization', name: '077 GAMING' },
   }).replace(/</g, '\\u003c')}</script>` : '';
-  const preload = isHome ? `<link rel="preload" as="image" type="image/avif" imagesrcset="/img/spiel/hero-640.avif 640w, /img/spiel/hero-1280.avif 1280w" imagesizes="100vw" fetchpriority="high">` : '';
+  const pre = (name, ws, media) => `<link rel="preload" as="image" type="image/avif" media="${media}" imagesrcset="${ws.map((w) => `/img/spiel/${name}-${w}.avif ${w}w`).join(', ')}" imagesizes="100vw" fetchpriority="high">`;
+  const preload = isHome ? `${pre('hero-tall', HERO_TALL, HERO_PHONE)}\n  ${pre('hero', HERO_WIDE, '(min-width: 721px)')}` : '';
   return `<meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>${esc(title)}</title>
@@ -212,7 +213,7 @@ function cosmos(t) {
   return `<div class="cosmos" aria-hidden="true" data-cosmos>
   <picture>
     <source media="(max-aspect-ratio: 1/1)" srcset="/img/hero-poster-tall.webp">
-    <img class="cosmos-poster" src="/img/hero-poster.webp" alt="" width="1920" height="1080" fetchpriority="high" decoding="async">
+    <img class="cosmos-poster" src="/img/hero-poster.webp" alt="" width="1920" height="1080" fetchpriority="low" decoding="async">
   </picture>
   <canvas class="cosmos-canvas"></canvas>
   <div class="cosmos-tint"></div>
@@ -333,16 +334,16 @@ function why(t) {
           <p class="fair-note">${ICONS.cross}<span>${esc(f.note)}</span></p>
           <span class="ls-corners" aria-hidden="true"></span>
         </div>`;
-  const items = list.map((r, i) => ({ rid: r.id, title: r.t, s: r.s, vis: frame(`VIS·${pad(i + 1)}`, t.vis[r.id].head, V[r.id](t), { cls: 'vis-' + r.id, label: r.t }),
+  const items = list.map((r, i) => ({ rid: r.id, plan: r.plan, title: r.t, s: r.s, vis: frame(`VIS·${pad(i + 1)}`, t.vis[r.id].head, V[r.id](t), { cls: 'vis-' + r.id, label: r.t }),
     det: `<p>${esc(r.d)}</p><ul class="specs">${r.specs.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${extra[r.id] ? extra[r.id](t) : ''}` }));
   items.push({ rid: 'fair', title: f.title, s: f.s, vis: fair, det: `<p>${esc(f.p)}</p>` });
   return `<section class="sec ch ch-why" id="${id}" aria-labelledby="${id}-h" data-ch="3">
   <div class="wrap">
     ${secHead(w.code, w.label, w.title, w.lede, id + '-h')}
     <div class="why rv" data-why>
-      <ol class="why-tabs" aria-label="${esc(w.label)}">${items.map((it, i) => `<li><button type="button" class="why-tab" data-why-tab="${i}" aria-controls="${id}-${it.rid}" aria-pressed="${i === 0}"><span class="ls-num">${pad(i + 1)}</span><b>${esc(it.title)}</b></button></li>`).join('')}</ol>
+      <ol class="why-tabs" aria-label="${esc(w.label)}">${items.map((it, i) => `<li><button type="button" class="why-tab${it.plan ? ' is-plan' : ''}" data-why-tab="${i}" aria-controls="${id}-${it.rid}" aria-pressed="${i === 0}"><span class="ls-num">${pad(i + 1)}</span><b>${esc(it.title)}</b>${it.plan ? `<em class="plan-tag">${esc(t.map.planned)}</em>` : ''}</button></li>`).join('')}</ol>
       <div class="why-panels">${items.map((it, i) => `<article class="why-panel" id="${id}-${it.rid}" data-why-panel="${i}"${i === 0 ? '' : ' hidden'} aria-label="${esc(it.title)}">
-        <p class="why-s"><span class="ls-num">${pad(i + 1)}/${pad(items.length)}</span>${esc(it.s)}</p>
+        <p class="why-s"><span class="ls-num">${pad(i + 1)}/${pad(items.length)}</span>${it.plan ? `<em class="plan-tag">${esc(t.map.planned)}</em> ` : ''}${esc(it.s)}</p>
         <div class="why-vis">${it.vis}</div>
         ${more(w.more, it.det)}
       </article>`).join('')}</div>
@@ -416,8 +417,10 @@ function mapSec(t) {
   const m = t.map;
   const id = t.ids.system;
   const lang = t.lang;
-  const info = (r) => `<article class="map-info" data-info="${r.id}"${r.id === 'stille' ? '' : ' hidden'}>
-    <p class="hg-spec-code"><span class="ls-num">${esc(r.code)}</span><span>${esc(r.sub)}</span></p>
+  const tag = (r) => (r.plan ? `<em class="plan-tag">${esc(m.planned)}</em>` : '');
+  const first = 'saturn';
+  const info = (r) => `<article class="map-info${r.plan ? ' is-plan' : ''}" data-info="${r.id}"${r.id === first ? '' : ' hidden'}>
+    <p class="hg-spec-code"><span class="ls-num">${esc(r.code)}</span><span>${esc(r.sub)}</span>${tag(r)}</p>
     <h3${r.home ? ` style="color:${FX[r.home]}"` : ''}>${esc(r.name)}</h3>
     <p class="map-p">${esc(r.p)}</p>
     <dl class="hg-dl">
@@ -426,7 +429,7 @@ function mapSec(t) {
     </dl>
     ${more(m.more, `<dl class="hg-dl">
       <div><dt>${esc(m.enemies)}</dt><dd>${esc(r.enemies)}</dd></div>
-      <div><dt>${esc(m.hazard)}</dt><dd>${esc(r.hazard)}</dd></div>
+      ${r.hazard ? `<div><dt>${esc(m.hazard)}</dt><dd>${esc(r.hazard)}</dd></div>` : ''}
       <div><dt>${esc(m.safe)}</dt><dd>${esc(r.safe)}</dd></div>
     </dl>${r.home ? `<table class="sec-table"><caption class="sr">${esc(m.sectors)} ${esc(r.name)}</caption><thead><tr><th scope="col">${esc(m.sectors)}</th><th scope="col">${esc(m.level)}</th><th scope="col">${esc(m.enemies)}</th></tr></thead><tbody>${homeSectors(r.home, lang).map((s) => `<tr><th scope="row"><b class="ls-num">${s.code}</b> ${esc(s.name)}</th><td class="ls-num">${s.level}</td><td>${esc(s.enemies)}</td></tr>`).join('')}</tbody></table>` : ''}`)}
   </article>`;
@@ -445,7 +448,7 @@ function mapSec(t) {
         </div>
         <div class="map-side">
           <span class="ls-label">${esc(m.pick)}</span>
-          <ol class="map-list">${m.regions.map((r) => `<li><button type="button" class="map-btn" data-region="${r.id}" aria-pressed="${r.id === 'stille'}"${r.home ? ` style="--fx:${FX[r.home]}"` : ''}><span class="ls-num">${esc(r.code)}</span><b>${esc(r.name)}</b><em>${esc(r.level)}</em></button></li>`).join('')}</ol>
+          <ol class="map-list">${m.regions.map((r) => `<li><button type="button" class="map-btn${r.plan ? ' is-plan' : ''}" data-region="${r.id}"${r.plan ? ` data-plan="${esc(m.planned)}"` : ''} aria-pressed="${r.id === first}"${r.home ? ` style="--fx:${FX[r.home]}"` : ''}><span class="ls-num">${esc(r.code)}</span><b>${esc(r.name)}</b><em>${r.plan ? esc(m.planned) : esc(r.level)}</em></button></li>`).join('')}</ol>
           <div class="map-infos" aria-live="polite">${m.regions.map(info).join('')}</div>
         </div>
       </div>
@@ -502,11 +505,11 @@ function founder(t) {
         </div>
         ${consentBox}
         <button class="ls-btn is-primary is-big fd-submit" type="submit" data-click>${ICONS.signal}<span>${esc(f.submit)}</span></button>` : `${consentBox}<a class="ls-btn is-primary is-big fd-submit" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(f.soonBtn)}</span></a>`}
-        <p class="fd-or"><span>${esc(f.or)}</span></p>
+        ${FLAGS.oauth.length ? `<p class="fd-or"><span>${esc(f.or)}</span></p>
         <div class="fd-oauth">
-          ${['google', 'discord'].map((k) => `<button type="button" class="ls-btn is-soon" data-oauth="${k}" disabled>${ICONS[k]}<span>${esc(f[k])}</span><em data-soon>${esc(f.soon)}</em></button>`).join('\n          ')}
+          ${FLAGS.oauth.map((k) => `<button type="button" class="ls-btn is-soon" data-oauth="${k}" disabled>${ICONS[k]}<span>${esc(f[k])}</span><em data-soon>${esc(f.soon)}</em></button>`).join('\n          ')}
         </div>
-        <p class="fld-hint" data-oauth-note data-on="${esc(f.oauthNote)}">${esc(f.oauthSoon)}</p>
+        <p class="fld-hint" data-oauth-note data-on="${esc(f.oauthNote)}">${esc(f.oauthSoon)}</p>` : ''}
         <p class="fd-msg" data-fd-msg role="status" aria-live="polite"></p>
       </div>
       <span class="ls-corners" aria-hidden="true"></span>
@@ -625,14 +628,22 @@ function wikiBody(page, t) {
 function hallBody(page, t) {
   const h = t.hall;
   const L = h.live;
-  const cta = `${P(t.lang, 'home')}#${t.ids.founder}`;
+  const iv = h.invite;
   const orders = ['honor', 'xp', 'kills', 'level'];
   const fx = ['europa', 'saturn', 'eris'];
   const FXC = { europa: '#d8b25a', saturn: '#e0782a', eris: '#9a52ff' }; // wie src/factions.js FX_HEX
-  // Tafel wird von src/hall.js mit echten Daten gefüllt (hall_of_fame). Ohne JavaScript: leere Plätze wie bisher.
+  // Leere Tafel: Einladung statt leerer Plätze. src/hall.js füllt die Tafel mit echten Daten (hall_of_fame)
+  // und zeigt die Einladung wieder, solange niemand eingetragen ist.
+  const invite = `<li class="hall-invite"><div class="hi-in">
+    <p class="ls-label"><span class="ls-num">01</span> ${esc(iv.kicker)}</p>
+    <p class="hi-title">${esc(iv.title)}</p>
+    <p class="hi-p">${esc(iv.p)}</p>
+    <ol class="hi-steps">${iv.steps.map((x, i) => `<li><span class="ls-num">${pad(i + 1)}</span>${esc(x)}</li>`).join('')}</ol>
+    <div class="hi-act"><a class="ls-btn is-primary is-gold is-big" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(iv.play)}</span></a><a class="ls-btn is-big" href="${P(t.lang, 'download')}">${ICONS.download}<span>${esc(iv.dl)}</span></a></div>
+  </div></li>`;
   return subShell(page, t, h.kicker, h.title, h.lede, `<div class="hall-grid">
     <section class="plaque ls-panel" aria-labelledby="plaque-h" data-hall data-lang="${t.lang}"
-      data-t="${esc(JSON.stringify({ loading: L.loading, pilots: L.pilots, empty: L.empty, offline: L.offline, cols: L.cols }))}">
+      data-t="${esc(JSON.stringify({ loading: L.loading, pilots: L.pilots, empty: L.empty, offline: L.offline, cols: L.cols, open: h.open }))}">
       <div class="ls-head"><span class="ls-code">HOF·01</span><span class="ls-title" id="plaque-h">${esc(h.plaque)}</span><span class="ls-spacer"></span><span class="hall-state"><i aria-hidden="true"></i><span data-hall-state>${esc(h.open)}</span></span></div>
       <div class="hall-ctl">
         <div class="hall-seg" role="group" aria-label="${esc(h.kicker)}">${orders.map((o, i) => `<button type="button" class="${i === 0 ? 'on' : ''}" aria-pressed="${i === 0}" data-hall-order="${o}">${esc(L.tabs[i])}</button>`).join('')}</div>
@@ -640,19 +651,19 @@ function hallBody(page, t) {
       </div>
       <div class="plaque-in">
         <svg class="plaque-crest" viewBox="0 0 120 120" aria-hidden="true"><path d="M60 6L106 32V88L60 114L14 88V32Z" class="pq-l"/><path d="M60 20L94 39V81L60 100L26 81V39Z" class="pq-l2"/><path d="M30 60H50L55 44L62 78L67 60H90" class="pq-sig"/></svg>
-        <ol class="plaque-rows" data-hall-rows>
-          <li class="is-first"><span class="ls-num">01</span><b>${esc(h.first)}</b><a class="ls-btn is-primary" href="${cta}" data-click>${esc(h.cta)}</a></li>
-          ${[2, 3, 4, 5].map((n) => `<li><span class="ls-num">${pad(n)}</span><i aria-hidden="true"></i><span class="sr">${esc(h.slot)} ${n}: ${esc(h.open)}</span></li>`).join('')}
-        </ol>
+        <ol class="plaque-rows" data-hall-rows>${invite}</ol>
+        <template data-hall-invite>${invite}</template>
         <p class="plaque-note">${esc(L.note)}</p>
       </div>
       <span class="ls-corners" aria-hidden="true"></span>
     </section>
     <aside class="hall-cats" aria-labelledby="cats-h">
       <h2 class="ls-label" id="cats-h">${esc(h.listsHead)}</h2>
-      <ol class="cat-list">${h.lists.map((l, i) => `<li><span class="ls-num">${pad(i + 1)}</span>${esc(l)}</li>`).join('')}</ol>
-      <p class="plan-note">${esc(h.periods)}. ${esc(h.note)}</p>
-      <p class="plan-note">${esc(h.firstNote)} <a href="${cta}" data-click>${esc(h.cta)}</a></p>
+      <p class="hc-sub">${esc(h.nowHead)}</p>
+      <ol class="cat-list">${h.now.map((l, i) => `<li><span class="ls-num">${pad(i + 1)}</span>${esc(l)}</li>`).join('')}</ol>
+      <p class="hc-sub">${esc(h.planHead)}</p>
+      <ol class="cat-list is-plan">${h.lists.map((l, i) => `<li><span class="ls-num">${pad(i + 5)}</span>${esc(l)}</li>`).join('')}</ol>
+      <p class="plan-note">${esc(h.periods)} ${esc(h.note)}</p>
     </aside>
   </div>`);
 }
@@ -670,8 +681,14 @@ function dlTile(p, i, t) {
   const verCell = isWeb && !p.alt.length ? SITE.version : RELEASE.version;
   const mainMeta = isWeb ? '' : `${extOf(p.main)} · ${mainSize}`;
   const mainLabel = isWeb ? (p.id === 'browser' ? t.hdr.play : d.open) : d.download;
-  const mainBtn = `<a class="ls-btn is-primary is-big dl-main" href="${esc(mainHref)}"${isWeb ? '' : ` data-file="${esc(FILES[p.main].file)}"`} data-click>${isWeb ? ICONS.play : ICONS.download}<span>${esc(mainLabel)}</span>${mainMeta ? `<em class="ls-num">${esc(mainMeta)}</em>` : ''}</a>`;
-  const alts = p.alt.length ? `<ul class="dl-alts">${p.alt.map((k) => `<li><a class="dl-alt" href="${esc(releaseUrl(k))}" data-file="${esc(FILES[k].file)}">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(extOf(k))} · ${esc(fileSize(k, lang))}</em></a></li>`).join('')}</ul>` : '';
+  // Release noch nicht veröffentlicht: keine Links ins Leere, sondern ehrlich „bald verfügbar“
+  const live = RELEASE.published;
+  const mainBtn = isWeb || live
+    ? `<a class="ls-btn is-primary is-big dl-main" href="${esc(mainHref)}"${isWeb ? '' : ` data-file="${esc(FILES[p.main].file)}"`} data-click>${isWeb ? ICONS.play : ICONS.download}<span>${esc(mainLabel)}</span>${mainMeta ? `<em class="ls-num">${esc(mainMeta)}</em>` : ''}</a>`
+    : `<span class="ls-btn is-big dl-main is-pending" aria-disabled="true">${ICONS.download}<span>${esc(d.pending)}</span><em class="ls-num">${esc(mainMeta)}</em></span>`;
+  const alts = p.alt.length ? `<ul class="dl-alts">${p.alt.map((k) => live
+    ? `<li><a class="dl-alt" href="${esc(releaseUrl(k))}" data-file="${esc(FILES[k].file)}">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(extOf(k))} · ${esc(fileSize(k, lang))}</em></a></li>`
+    : `<li><span class="dl-alt is-pending">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(d.pendingAlt)} · ${esc(extOf(k))}</em></span></li>`).join('')}</ul>` : '';
   const state = isWeb && !p.alt.length ? d.stateWeb : p.id === 'iphone' || p.id === 'ipad' ? `${d.stateWeb} / .ipa: ${d.sideload}` : d.stateTest;
   return `<li class="dl-item" data-dl="${p.id}" id="dl-${p.id}">
     <article class="dl ls-panel" aria-labelledby="dl-${p.id}-h">
@@ -704,8 +721,8 @@ function downloadBody(page, t) {
     <ul class="dl-grid" data-dl-grid>${PLATFORMS.map((p, i) => dlTile(p, i, t)).join('')}</ul>
     <aside class="dl-note ls-panel" aria-labelledby="dl-note-h">
       <div class="ls-head"><span class="ls-code">DL·INF</span><span class="ls-title" id="dl-note-h">${esc(d.noteHead)}</span></div>
-      <ul class="dl-notes">${d.notes.map((n) => `<li>${esc(n.replace('{v}', RELEASE.version))}</li>`).join('')}</ul>
-      <p class="dl-release"><a class="ls-btn" href="${esc(releasePage())}" target="_blank" rel="noopener noreferrer">${esc(d.release)}${ICONS.out}<span class="sr"> (${esc(t.ui.newTab)})</span></a></p>
+      <ul class="dl-notes">${RELEASE.published ? '' : `<li><b>${esc(d.pendingNote)}</b></li>`}${d.notes.map((n) => `<li>${esc(n.replace('{v}', RELEASE.version))}</li>`).join('')}</ul>
+      ${RELEASE.published ? `<p class="dl-release"><a class="ls-btn" href="${esc(releasePage())}" target="_blank" rel="noopener noreferrer">${esc(d.release)}${ICONS.out}<span class="sr"> (${esc(t.ui.newTab)})</span></a></p>` : `<p class="dl-release"><a class="ls-btn is-primary" href="${SITE.play}">${ICONS.play}<span>${esc(G[t.lang].hero.play)}</span></a></p>`}
       <span class="ls-corners" aria-hidden="true"></span>
     </aside>`);
 }

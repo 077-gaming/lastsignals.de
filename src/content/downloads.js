@@ -5,11 +5,17 @@
 // danach `node Apps/download-groessen.mjs` (überträgt die Größen aus ~/LAST-SIGNALS-Uebergabe/downloads) und `npm run build`.
 // Texte der Seite stehen in text.js (download), die Symbole in icons.js (pf*).
 
+import { SITE } from '../site.js';
+
+// Eine Versionsnummer für Website, Fußzeile, Download-Seite und Browser-Kachel: SITE.version (site.js).
 export const RELEASE = {
   repo: '077-gaming/lastsignals.de',
-  tag: 'v0.9.0-test',
-  version: '0.9.0-test', // so steht es auf der Seite
+  tag: `v${SITE.version}-test`,
+  version: SITE.version, // so steht es auf der Seite
   test: true, // Testversion: unsigniert, nicht im App Store / bei Google Play
+  // Erst auf true setzen, wenn das GitHub-Release mit genau diesen Dateinamen veröffentlicht ist
+  // (sonst führen die Knöpfe auf 404). Bis dahin zeigt die Seite die Dateien ehrlich als „bald verfügbar“.
+  published: false,
 };
 
 // Dateien des Releases. bytes = exakte Größe (für die Anzeige „149 MB“).

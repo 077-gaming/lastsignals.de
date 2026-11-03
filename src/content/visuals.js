@@ -3,6 +3,7 @@
 // Bewegung nur per CSS, läuft nur, solange die Grafik sichtbar ist (Klasse .is-live).
 
 import { ICONS } from './icons.js';
+import { pic } from './game.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const r1 = (n) => Math.round(n * 10) / 10;
@@ -68,7 +69,7 @@ export function visSystem(t) {
     <path d="M${sx + 16} ${sy}H${sx + 60}V${sy + 34}" class="s-lead"/><text x="${sx + 60}" y="${sy + 50}" class="s-lbl">${esc(s.saturn)}</text><text x="${sx + 60}" y="${sy + 62}" class="s-txt">${esc(s.per)} · SA-1/8</text></g>
   <g style="--c:${FX.eris}"><circle cx="${ex}" cy="${ey}" r="4.5" class="s-planet"/><circle cx="${ex}" cy="${ey}" r="10" class="s-ring-c"/>
     <path d="M${ex} ${ey + 10}V${ey + 120}H${ex + 30}" class="s-lead"/><text x="${ex + 36}" y="${ey + 118}" class="s-lbl">${esc(s.eris)}</text><text x="${ex + 36}" y="${ey + 130}" class="s-txt">${esc(s.per)} · ER-1/8</text></g>
-  <text x="590" y="372" class="s-txt s-end s-faint-t">37 · ${esc(s.head)}</text>
+  <text x="590" y="372" class="s-txt s-end s-faint-t">${esc(s.count)}</text>
 </svg>`;
 }
 
@@ -82,19 +83,13 @@ export function visShips(t) {
   const spec = [['H', s.healer], ['T', s.tank], ['S', s.scout]];
   return `<div class="bp">
   <div class="bp-stage">
-    <img src="/img/saturn-starter.webp" srcset="/img/saturn-starter-640.webp 470w, /img/saturn-starter.webp 940w" sizes="(max-width: 900px) 92vw, 620px" width="940" height="631" loading="lazy" decoding="async" alt="${esc(s.model)}, ${esc(s.render)}">
-    <svg class="bp-over" viewBox="0 0 940 631" aria-hidden="true">
-      <path d="M640 604 L700 560 H850" class="s-lead"/><circle cx="640" cy="604" r="5" class="s-tgt"/><text x="850" y="550" class="s-lbl s-end">${esc(s.laser)}</text>
-      <path d="M392 428 L330 520 H120" class="s-lead"/><circle cx="392" cy="428" r="5" class="s-tgt"/><text x="120" y="510" class="s-lbl">${esc(s.hull)} S-01</text>
-      <path d="M822 312 L870 210 H915" class="s-lead"/><circle cx="822" cy="312" r="5" class="s-tgt"/><text x="915" y="200" class="s-lbl s-end">${esc(s.guild)}</text>
-      <path d="M40 40h40M40 40v40M900 40h-40M900 40v40" class="s-line2"/>
-      <text x="40" y="24" class="s-txt">${esc(s.model)}</text>
-    </svg>
+    ${pic('schiffe/saturn-8', `${s.model}, ${s.render}`, { sizes: '(max-width: 900px) 92vw, 620px' })}
+    <p class="bp-cap">${esc(s.model)}</p>
   </div>
   <div class="bp-line">
     <div class="bp-row"><span class="ls-label">${esc(s.line)}</span>
       <ol class="bp-cells">${cells.map(([c, l, k]) => `<li class="bp-cell is-${k}"><b>${c}</b><span>${esc(l)}</span></li>`).join('')}</ol></div>
-    <div class="bp-row"><span class="ls-label">${esc(s.special)} · ${esc(s.from40)}</span>
+    <div class="bp-row"><span class="ls-label">${esc(s.special)} · ${esc(s.from40)} <em class="plan-tag">${esc(s.planned)}</em></span>
       <ol class="bp-cells is-spec">${spec.map(([c, l]) => `<li class="bp-cell is-spec"><b>${c}</b><span>${esc(l)}</span></li>`).join('')}</ol></div>
   </div>
 </div>`;
@@ -239,48 +234,28 @@ export function whTable(t) {
   return `<table class="wh-table"><thead><tr>${s.cols.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-// ---------- 07 Bosse: drei Heimaten als Sternkarte, Route des Star Whale, Black Shipyards ----------
+// ---------- 07 Bosse: Sektorleiter 1–8 je Heimat, Bosse in Sektor 6, 7 und 8 (wie Code/src/core/data.js) ----------
 export function visBosses(t) {
   const s = t.vis.bosses;
-  const homes = [['europa', 'EU', 104, 142], ['saturn', 'SA', 300, 166], ['eris', 'ER', 496, 142]];
-  const off = { 5: [-68, -44], 6: [-28, 54], 7: [32, -50], 8: [70, 42] };
-  const P = {};
-  homes.forEach(([f, c, x, y]) => { for (const n of [5, 6, 7, 8]) P[`${c}${n}`] = [x + off[n][0], y + off[n][1]]; });
-  // weiche Kurve durch alle Punkte (Catmull-Rom)
-  const curve = (pts) => {
-    let d = `M${pts[0][0]} ${pts[0][1]}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
-      d += `C${r1(p1[0] + (p2[0] - p0[0]) / 6)} ${r1(p1[1] + (p2[1] - p0[1]) / 6)} ${r1(p2[0] - (p3[0] - p1[0]) / 6)} ${r1(p2[1] - (p3[1] - p1[1]) / 6)} ${p2[0]} ${p2[1]}`;
-    }
-    return d;
-  };
-  const route = curve(['EU5', 'EU6', 'EU8', 'SA5', 'SA6', 'SA8', 'ER5', 'ER6', 'ER8'].map((k) => P[k]));
+  const homes = [['europa', 'EU', 120], ['saturn', 'SA', 300], ['eris', 'ER', 480]];
+  const B = { 6: 'werft', 7: 'wal', 8: 'dread' };
+  const y = (n) => 36 + (n - 1) * 30;
   let g = '';
-  homes.forEach(([f, c, x, y]) => {
-    const n = (k) => P[`${c}${k}`];
-    g += `<g style="--c:${FX[f]}">
-      <path d="M${n(5)}L${n(6)}L${n(8)}M${n(5)}L${n(7)}L${n(8)}M${n(6)}L${n(7)}" class="s-line" transform="translate(0 0)"/>
-      <text x="${x - 72}" y="${y - 84}" class="s-lbl s-fx">${f.toUpperCase()}</text><path d="M${x - 72} ${y - 77}h28" class="s-fx-l"/>
-      ${[5, 6, 8].map((k) => `<circle cx="${n(k)[0]}" cy="${n(k)[1]}" r="3.2" class="s-node-c"/><text x="${n(k)[0] + 8}" y="${n(k)[1] + 4}" class="s-txt">${c}-${k}</text>`).join('')}
-      <g class="yard${c === 'ER' ? ' is-alarm' : ''}" transform="translate(${n(7)[0]} ${n(7)[1]})">
-        <path d="M0 -11L9.5 -5.5V5.5L0 11L-9.5 5.5V-5.5Z" class="s-yard"/><path d="M0 -5L4.3 -2.5V2.5L0 5L-4.3 2.5V-2.5Z" class="s-yard-in"/>
-        <g class="tugs"><circle cx="17" cy="0" r="1.6"/><circle cx="-17" cy="0" r="1.6"/><circle cx="0" cy="17" r="1.6"/></g>
-        ${c === 'ER' ? '<circle r="22" class="s-ring-r s-pulse"/>' : ''}
-        <text x="14" y="-12" class="s-txt s-red">${c}-7</text>
-      </g>
+  homes.forEach(([f, c, x]) => {
+    g += `<g style="--c:${FX[f]}"><text x="${x}" y="22" class="s-lbl s-fx s-mid">${f.toUpperCase()}</text>
+      <path d="M${x} ${y(1)}V${y(8)}" class="s-line"/>
+      ${[1, 2, 3, 4, 5, 6, 7, 8].map((n) => B[n]
+    ? `<g transform="translate(${x} ${y(n)})"><path d="M0 -9L8 -4.5V4.5L0 9L-8 4.5V-4.5Z" class="s-yard"/><text x="14" y="4" class="s-txt s-red">${c}-${n}</text></g>`
+    : `<circle cx="${x}" cy="${y(n)}" r="3" class="s-node-c"/><text x="${x + 10}" y="${y(n) + 4}" class="s-txt">${c}-${n}</text>`).join('')}
     </g>`;
   });
-  // Angreifer: du, auf dem Weg in den Boss-Sektor der Verbannten
-  const [ax, ay] = P.ER7;
-  return `<svg class="v-svg" viewBox="0 0 600 320" role="img" aria-label="${esc(s.head)}">
-  <g class="s-grid">${Array.from({ length: 13 }, (_, i) => `<path d="M${i * 50} 0V320"/>`).join('')}</g>
-  <path d="${route}" class="w-route"/><path d="${route}" class="w-whale" pathLength="1000"/>
+  const leg = [6, 7, 8].map((n, i) => `<text x="20" y="${276 + i * 16}" class="s-txt"><tspan class="s-red">${esc(s.sector)} ${n}</tspan>  ·  <tspan class="s-txt-hi">${esc(s.names[B[n]])}</tspan>  ·  ${esc(s.calls[B[n]])}</text>`).join('');
+  return `<svg class="v-svg" viewBox="0 0 600 330" role="img" aria-label="${esc(s.head)}: ${[6, 7, 8].map((n) => `${s.sector} ${n} ${s.names[B[n]]}`).join(', ')}">
+  <g class="s-grid">${Array.from({ length: 13 }, (_, i) => `<path d="M${i * 50} 0V330"/>`).join('')}</g>
   ${g}
-  <g class="you"><path d="M${ax + 6} ${ay + 150}L${ax + 2} ${ay + 16}" class="s-you-l"/><path d="M${ax + 6} ${ay + 158}l-6 -12h12z" class="s-you"/><text x="${ax + 18}" y="${ay + 162}" class="s-lbl">${esc(s.you)}</text></g>
-  <text x="20" y="284" class="s-txt"><tspan class="s-txt-hi">${esc(s.whale)}</tspan>  ·  ${esc(s.last)}</text>
-  <g class="w-alarm"><path d="M20 298h560" class="s-red-l"/><text x="580" y="314" class="s-txt s-red s-end">${esc(s.alarm)} ER-7</text></g>
-  <text x="20" y="314" class="s-txt s-red">${esc(s.yard)} · ${esc(s.tugs)}</text>
+  ${leg}
+  <text x="580" y="276" class="s-txt s-end">${esc(s.same)}</text>
+  <text x="580" y="292" class="s-txt s-end s-txt-hi">${esc(s.last)}</text>
 </svg>`;
 }
 

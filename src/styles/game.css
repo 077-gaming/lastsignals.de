@@ -2,25 +2,34 @@
 
 /* ---------- Hero mit stummer Spielszene ---------- */
 .hero-film { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: #020306; }
-.hero-film picture, .hero-still, .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; }
-.hero-film picture img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; }
+.hero-film picture, .hero-still, .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 72% 50%; }
+.hero-film picture img { width: 100%; height: 100%; object-fit: cover; object-position: 72% 50%; }
 .hero-video { opacity: 0; transition: opacity .5s var(--ls-ease); }
 .hero-film.is-playing .hero-video { opacity: 1; }
 .hero-film-shade { position: absolute; inset: 0; pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(2, 3, 6, .92) 0%, rgba(2, 3, 6, .72) 34%, rgba(2, 3, 6, .2) 64%, rgba(2, 3, 6, .1) 100%),
+    linear-gradient(90deg, rgba(2, 3, 6, .9) 0%, rgba(2, 3, 6, .66) 30%, rgba(2, 3, 6, .12) 50%, rgba(2, 3, 6, 0) 60%),
     linear-gradient(0deg, #020306 0%, rgba(2, 3, 6, .55) 22%, rgba(2, 3, 6, 0) 46%),
     linear-gradient(180deg, rgba(2, 3, 6, .75) 0%, rgba(2, 3, 6, 0) 18%); }
 .hero-film::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .02) 0 1px, transparent 1px 3px); }
 .hero .hero-cta { margin-top: 26px; }
 .hero-dc .ico { width: 16px; height: 16px; }
-.film-btn { position: absolute; right: var(--g); bottom: 24px; z-index: 2; width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer;
-  border: 1px solid var(--ls-line-2); background: rgba(4, 6, 10, .6); color: #fff;
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+.film-btn { --c: 6px; --bd: var(--ls-line-2); position: absolute; right: var(--g); bottom: 24px; z-index: 2; width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer;
+  border: 0; background: rgba(4, 6, 10, .6); color: #fff;
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c)); }
 .film-btn:hover { background: rgba(255, 255, 255, .1); }
 .fb-pause { display: flex; gap: 4px; } .fb-pause i { width: 3px; height: 12px; background: currentColor; }
 .fb-play { display: none; width: 0; height: 0; border-left: 11px solid currentColor; border-top: 7px solid transparent; border-bottom: 7px solid transparent; margin-left: 3px; }
 .film-btn[aria-pressed="true"] .fb-pause { display: none; } .film-btn[aria-pressed="true"] .fb-play { display: block; }
+
+/* Schlagzeile: jeder Satz bleibt auf einer Zeile */
+.hero-head .hl { display: block; white-space: nowrap; }
+.hero-head, .hero-sub { max-width: min(46ch, 44vw); }
+.hero-head { max-width: none; }
+@media (max-width: 720px) { .hero-head, .hero-sub, .hero-trust { max-width: none; } .hero-head { font-size: clamp(34px, 10.4vw, 44px); } }
+
+/* Festes Positions-Anzeigefeld unten links: nur, wo genug Platz ist (sonst verdeckt es die Merkmale) */
+@media (max-width: 900px), (max-height: 860px) { .hud { display: none !important; } }
 
 /* Merkmale: was es heute wirklich gibt */
 .feat { margin-top: 34px; max-width: 1060px; animation: ls-wipe .7s var(--ls-ease) .55s both; }
@@ -39,8 +48,12 @@
   .feat-list li { margin-right: 0; padding: 12px 10px 8px 0; border-right: 0; border-bottom: 1px solid var(--ls-line); }
   .feat-list li:last-child { grid-column: 1 / -1; }
   .feat-k { font-size: 18px; }
-  .hero-film picture img, .hero-video { object-position: 64% 50%; }
-  .hero-film-shade { background: linear-gradient(0deg, #020306 0%, rgba(2, 3, 6, .9) 45%, rgba(2, 3, 6, .35) 72%, rgba(2, 3, 6, .2) 100%); }
+  /* Handy: eigener Hochformat-Ausschnitt oben, Text darunter (das Schiff liegt nie unter der Schrift) */
+  .hero { display: block; min-height: 0; padding: calc(var(--hdr) + 78vw) 0 48px; }
+  .hero-film { inset: 0 0 auto; height: calc(var(--hdr) + 92vw); }
+  .hero-film picture img { object-position: 50% 30%; }
+  .hero-video { object-position: 80% 50%; }
+  .hero-film-shade { background: linear-gradient(0deg, #020306 0%, rgba(2, 3, 6, .6) 16%, rgba(2, 3, 6, 0) 34%), linear-gradient(180deg, rgba(2, 3, 6, .8) 0%, rgba(2, 3, 6, 0) 22%); }
   .film-btn { bottom: 14px; width: 36px; height: 36px; }
 }
 @media (prefers-reduced-motion: reduce) { .feat { animation: none; } .hero-film:not(.is-on) .hero-video { display: none; } }
@@ -71,7 +84,7 @@
 /* ---------- Unterseiten: Abschnitte ---------- */
 .sub-h2 { font-family: var(--ls-display); text-transform: uppercase; font-size: clamp(30px, 3.6vw, 48px); letter-spacing: .04em; line-height: .95; margin: 64px 0 12px; font-weight: 500; }
 .sub-p { color: var(--ls-tx-2); max-width: 70ch; margin-bottom: 24px; }
-.prov { font-style: normal; color: var(--ls-warn); }
+.prov { font-style: normal; color: var(--ls-tx-2); font-size: .8em; margin-left: 1px; }
 .tbl-scroll { overflow-x: auto; }
 .tbl-scroll:focus-visible { outline: 1px solid var(--fx); outline-offset: -1px; }
 
@@ -210,3 +223,65 @@
 .legal-table td:first-child { width: 42%; }
 @media (max-width: 560px) { .legal-table, .legal-table tbody, .legal-table tr, .legal-table td { display: block; width: 100% !important; } .legal-table thead { display: none; } .legal-table td:first-child { border-bottom: 0; padding-bottom: 0; } }
 @media (max-width: 560px) { .sg-help { display: none; } }
+
+/* Kennzeichnung „geplant“: neutral, gestrichelt, nie in Warnfarbe (Farbe hat Funktion) */
+.plan-tag { display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 6px 1px; border: 1px dashed var(--ls-line-2); font-family: var(--ls-mono); font-size: 9.5px; font-style: normal; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--ls-tx-3); line-height: 1.4; white-space: nowrap; }
+.map-btn.is-plan b, .why-tab.is-plan b { color: var(--ls-tx-3); }
+.map-info.is-plan h3 { color: var(--ls-tx-2) !important; }
+.bp-cap { position: absolute; left: 14px; top: 10px; margin: 0; display: flex; gap: 10px; align-items: baseline; font-family: var(--ls-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ls-tx-3); }
+.bp-cap .ls-num { color: var(--fx); }
+
+/* Ruhmeshalle: leere Tafel als Einladung (kein „00 Piloten“) */
+.plaque-rows .hall-invite { display: block; padding: 6px 0 4px; border-bottom: 0; }
+.hi-in { display: grid; gap: 14px; max-width: 620px; position: relative; }
+.hi-in .ls-label .ls-num { color: var(--fx); font-family: var(--ls-display); font-size: 15px; }
+.hi-title { margin: 0; font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .04em; font-size: clamp(28px, 3.2vw, 44px); line-height: 1.04; color: #fff; }
+.hi-p { margin: 0; color: var(--ls-tx-2); font-size: 15px; line-height: 1.55; }
+.hi-steps { display: grid; gap: 0; margin: 2px 0 4px; border-top: 1px solid var(--ls-line); }
+.hi-steps li { display: grid; grid-template-columns: 34px 1fr; align-items: baseline; padding: 10px 0 9px; border-bottom: 1px solid var(--ls-line); color: var(--ls-tx); font-size: 14.5px; }
+.plaque-rows .hi-steps .ls-num { font-family: var(--ls-mono); font-size: 11px; color: var(--fx); }
+.hi-act { display: flex; flex-wrap: wrap; gap: 12px; }
+@media (max-width: 560px) { .hi-act .ls-btn { width: 100%; } }
+.hc-sub { margin: 14px 0 8px; font-family: var(--ls-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ls-tx-3); }
+.cat-list.is-plan li { color: var(--ls-tx-3); }
+
+/* Gegner ohne fertiges Modell: neutraler Platzhalter statt fehlerhaftem Bild */
+.wd-foe-img.is-none { aspect-ratio: 4 / 3; display: grid; place-items: center; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 9px); }
+.wd-foe-img.is-none span { font-family: var(--ls-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ls-tx-3); border: 1px dashed var(--ls-line-2); padding: 4px 8px 3px; }
+
+/* Schiffsvergleich: am Handy als Karten statt breiter Tabelle (alle Spalten sichtbar, kein Suchen nach rechts) */
+@media (max-width: 640px) {
+  .sg-cmp thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .sg-cmp, .sg-cmp tbody, .sg-cmp tr, .sg-cmp th, .sg-cmp td { display: block; width: 100%; }
+  .sg-cmp tr { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; padding: 12px 14px; border-bottom: 1px solid var(--ls-line); }
+  .sg-cmp tr th { grid-column: 1 / -1; padding: 0 0 8px; border: 0; font-size: 15px; }
+  .sg-cmp td { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border: 0; border-top: 1px solid var(--ls-line); text-align: right; white-space: nowrap; }
+  .sg-cmp td::before { content: attr(data-l); font-family: var(--ls-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ls-tx-3); text-align: left; white-space: normal; }
+  .sg-table .tbl-scroll { overflow: visible; }
+  .sg-table .sec-table.sg-cmp { min-width: 0; padding: 0; }
+  .wk-tbl .sg-cmp th, .wk-tbl .sg-cmp td { padding-left: 0; padding-right: 0; }
+  .sg-cmp tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .sg-cmp td { min-width: 0; color: var(--ls-tx); }
+}
+
+/* Download: Dateien noch nicht veröffentlicht */
+.dl-main.is-pending { cursor: default; color: var(--ls-tx-2); background: rgba(255, 255, 255, .03); --bd: rgba(255, 255, 255, .22); }
+.dl-main.is-pending:hover { background: rgba(255, 255, 255, .03); }
+.dl-alt.is-pending { cursor: default; opacity: .62; }
+.dl-notes li b { font-weight: 500; color: #fff; }
+
+/* Startseite, Hangar am Handy: Bauteil-Schalter ganz sichtbar, Abstand zum Knopf darunter */
+@media (max-width: 720px) {
+  .hg-slotsel { display: block; }
+  .hg-slotsel .seg { width: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hg-slotsel .seg-b { min-width: 0; padding: 0 4px; letter-spacing: .08em; font-size: 11px; }
+  .ch-hangar .hangar + .hg-more { margin-top: 22px; }
+}
+.ch-hangar .hangar + .hg-more { margin-top: 26px; }
+
+/* Einspaltig (Tablet/Handy): Spalten dürfen nicht breiter als das Panel werden (sonst wird die 3D-Bühne abgeschnitten) */
+@media (max-width: 1100px) {
+  .hg-grid, .map-grid { grid-template-columns: minmax(0, 1fr); }
+  .hg-stage, .map-stage { min-width: 0; width: 100%; min-height: 0 !important; }
+  .map-hint { white-space: normal; right: 14px; }
+}

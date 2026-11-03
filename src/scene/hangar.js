@@ -214,7 +214,8 @@ export function initHangar(root, opts = {}) {
     const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; t += dt;
     if (!drag) { idle += dt; if (!opts.reduce && idle > 1.2) yaw += dt * 0.18 + vy; vy *= 0.92; }
     if (!opts.reduce || dirty || drag) {
-      const dist = camera.aspect < 1.1 ? 11.5 : 11;
+      // schmale Bühne (Handy): weiter weg, damit lange Schiffe ganz ins Bild passen
+      const dist = camera.aspect < 1.1 ? 11.5 + (1.1 - camera.aspect) * 6 + 2 : 11;
       camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, 0.8 + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
       camera.lookAt(0, 0.1, 0);
       turn.position.y = opts.reduce ? 0 : Math.sin(t * 0.8) * 0.04;

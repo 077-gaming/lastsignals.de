@@ -76,26 +76,30 @@ body[data-faction="eris"] { --fx: #9a52ff; }
   font-family: var(--ls-digits); font-variant-numeric: tabular-nums; letter-spacing: .02em; color: var(--ls-tx);
 }
 
-/* Knopf: rechteckig mit kleinem Anschnitt */
+/* Knopf: rechteckig mit kleinem Anschnitt. Der Rahmen ist ein eigenes Element (::before) mit demselben Umriss
+   (Außenkante minus Innenkante, evenodd), so laufen die Linien auch über die Schrägen und brechen nie ab. */
 .ls-btn {
-  --c: 6px;
+  --c: 6px; --bd: var(--ls-line-2);
+  position: relative;
   appearance: none; border: 0; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 32px; padding: 0 16px;
   font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .16em; font-size: 13px;
   color: var(--ls-tx);
-  background:
-    linear-gradient(var(--ls-line-2), var(--ls-line-2)) top / 100% 1px no-repeat,
-    linear-gradient(var(--ls-line-2), var(--ls-line-2)) bottom / 100% 1px no-repeat,
-    linear-gradient(var(--ls-line-2), var(--ls-line-2)) left / 1px 100% no-repeat,
-    linear-gradient(var(--ls-line-2), var(--ls-line-2)) right / 1px 100% no-repeat,
-    rgba(255, 255, 255, .04);
+  background: rgba(255, 255, 255, .04);
   clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
   transition: background-color .12s var(--ls-ease), color .12s;
 }
-.ls-btn:hover { background-color: rgba(255, 255, 255, .1); }
+.ls-btn::before, .film-btn::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--bd);
+  clip-path: polygon(evenodd,
+    var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c), var(--c) 0,
+    calc(var(--c) + .41px) 1px, 1px calc(var(--c) + .41px), 1px calc(100% - 1px), calc(100% - var(--c) - .41px) calc(100% - 1px),
+    calc(100% - 1px) calc(100% - var(--c) - .41px), calc(100% - 1px) 1px, calc(var(--c) + .41px) 1px);
+}
+.ls-btn:hover { background-color: rgba(255, 255, 255, .1); --bd: rgba(255, 255, 255, .5); }
 .ls-btn:focus-visible { outline: 1px solid var(--fx); outline-offset: 2px; }
-.ls-btn.is-primary { background: var(--ls-tx); color: #000; }
+.ls-btn.is-primary { background: var(--ls-tx); color: #000; --bd: rgba(255, 255, 255, .9); }
 .ls-btn.is-primary:hover { background: #fff; }
 .ls-btn.is-fx { background: var(--fx); color: #000; }
 .ls-btn[disabled], .ls-btn.is-locked { opacity: .38; cursor: not-allowed; }

@@ -60,22 +60,30 @@ const IMPRINT = `<h1>Imprint</h1>
 // Speicherorte im Browser (localStorage, außer wo anders angegeben). Quelle: Code/src und src (Stand 03.11.2026).
 const KEYS = {
   de: [
+    ['weltraumspiel.profiles.v1', 'dein Spielstand im Browser bzw. in der App: je Rufname Fraktion, Stufe, Fortschritt, Ausrüstung, Aufträge und Spielstatistik'],
+    ['weltraumspiel.profiles.v1.bak', 'der letzte gültige Spielstand als Sicherung (wird vor jedem Speichern angelegt)'],
+    ['weltraumspiel.profiles.v1.corrupt.<Zeit>', 'nur falls ein Spielstand unlesbar war: die unlesbaren Rohdaten, damit nichts verloren geht'],
+    ['weltraumspiel.last', 'der zuletzt gespielte Rufname'],
+    ['sb-…-auth-token', 'deine Anmeldesitzung, wenn du mit Konto angemeldet bist (Website und Spiel), mit Konto-Kennung und E-Mail-Adresse'],
+    ['ls.cloud.v1, ls.cloud.backup.<Rufname>', 'Abgleich mit dem Server-Spielstand: Version, Prüfsumme, Zeitpunkt und die zuletzt ersetzte Fassung als Sicherung'],
+    ['ls.cloud.pilot, ls.cloud.pending', 'Pilot des Kontos für das Spielen ohne Verbindung und ein gerade angelegtes, noch nicht bestätigtes Konto: Rufname, Fraktion und E-Mail-Adresse'],
     ['ls-faction', 'deine Fraktionswahl auf der Website'],
     ['ls-pending', 'ein noch nicht bestätigter Rufname (nur beim Sichern über die Website)'],
-    ['sb-…-auth-token', 'deine Anmeldesitzung, wenn du mit Konto angemeldet bist (Website und Spiel)'],
-    ['ls-pilot-<Rufname>', 'dein Spielstand im Browser (Rufname, Fraktion, Fortschritt, Ausrüstung)'],
-    ['ls.settings, ls.camera, ls.hud.*, ls.pad, ls.qauto, ls.station.view, ls.quickbuy.ok', 'Einstellungen: Grafik, Ton, Kamera, Anzeigen, Controller'],
-    ['ls.cloud.v1, ls.cloud.pilot, ls.cloud.pending, ls.cloud.backup.<Rufname>', 'Abgleich mit dem Server-Spielstand: letzte Version, Prüfsumme, Zeitpunkt und die zuletzt ersetzte Fassung als Sicherung'],
+    ['ls.settings, ls.camera, ls.qauto, ls.hud.*, ls.pad, ls.station.view, ls.quickbuy.ok', 'Einstellungen: Grafik, Ton, Kamera, Anzeigen, Controller'],
     ['ls.mp.mute, ls.mp.pvp', 'Mehrspieler: stummgeschaltete Rufnamen, ob du PvP zulässt'],
     ['ls.coop (sessionStorage)', 'die laufende Koop-Sitzung, bis der Tab geschlossen wird'],
   ],
   en: [
+    ['weltraumspiel.profiles.v1', 'your save game in the browser or app: per callsign faction, level, progress, gear, quests and game statistics'],
+    ['weltraumspiel.profiles.v1.bak', 'the last valid save game as a backup (created before every save)'],
+    ['weltraumspiel.profiles.v1.corrupt.<time>', 'only if a save game was unreadable: the unreadable raw data, so nothing is lost'],
+    ['weltraumspiel.last', 'the callsign you played last'],
+    ['sb-…-auth-token', 'your sign-in session when you are signed in with an account (website and game), including account ID and email address'],
+    ['ls.cloud.v1, ls.cloud.backup.<callsign>', 'sync with the server save: version, checksum, time and the most recently replaced copy as a backup'],
+    ['ls.cloud.pilot, ls.cloud.pending', 'the account’s pilot for playing offline and a newly created, not yet confirmed account: callsign, faction and email address'],
     ['ls-faction', 'your faction choice on the website'],
     ['ls-pending', 'a callsign not yet confirmed (only when securing it on the website)'],
-    ['sb-…-auth-token', 'your sign-in session when you are signed in with an account (website and game)'],
-    ['ls-pilot-<callsign>', 'your save game in the browser (callsign, faction, progress, gear)'],
-    ['ls.settings, ls.camera, ls.hud.*, ls.pad, ls.qauto, ls.station.view, ls.quickbuy.ok', 'settings: graphics, sound, camera, HUD, controller'],
-    ['ls.cloud.v1, ls.cloud.pilot, ls.cloud.pending, ls.cloud.backup.<callsign>', 'sync with the server save: last version, checksum, time and the most recently replaced copy as a backup'],
+    ['ls.settings, ls.camera, ls.qauto, ls.hud.*, ls.pad, ls.station.view, ls.quickbuy.ok', 'settings: graphics, sound, camera, HUD, controller'],
     ['ls.mp.mute, ls.mp.pvp', 'multiplayer: muted callsigns, whether you allow PvP'],
     ['ls.coop (sessionStorage)', 'the current co-op session until the tab is closed'],
   ],
@@ -87,10 +95,11 @@ const DATENSCHUTZ = ({ open, oauth }) => `<h1>Datenschutz</h1>
 ${sections([
   ['Verantwortlicher', `<p>${addr('Deutschland')}<br>Telefon: <a href="tel:${OP.phoneHref}">${OP.phone}</a><br>E-Mail: ${mail}</p>`],
   ['Kurz gesagt', `<ul>
-<li>Keine Analyse-, Tracking- oder Werbedienste, keine Cookies. Schriften, Skripte, Bilder, Videos und Klänge kommen von unserem eigenen Server.</li>
+<li>Keine Analyse-, Tracking- oder Werbedienste, keine Cookies. Schriften, Skripte, Bilder, Videos und Klänge kommen von unserem Hosting bei Netlify, nicht von fremden Diensten.</li>
+<li>Verbindungen zu Supabase (Frankfurt am Main) entstehen nur für Konto, Rufnamen-Prüfung, Ruhmeshalle und Mehrspieler. Dabei sieht Supabase deine IP-Adresse.</li>
 <li>Ohne Konto bleibt dein Spielstand nur in deinem Browser bzw. in der App.</li>
 <li>Mit Konto speichern wir E-Mail-Adresse, Rufname, Fraktion und deinen Spielstand bei Supabase in Frankfurt am Main. Dein Passwort sehen wir nie.</li>
-<li>Öffentlich sichtbar sind nur Rufname, Fraktion und Spielwerte in der Ruhmeshalle, nie deine E-Mail-Adresse.</li>
+<li>Öffentlich sind Rufname, Fraktion, Titel und Spielwerte (Ruhmeshalle, Pilotenliste), nie deine E-Mail-Adresse oder dein Spielstand.</li>
 <li>Chat-Nachrichten im Mehrspieler gehen direkt an die Mitspieler im Kanal und werden von uns nicht gespeichert.</li>
 <li>Löschung jederzeit: eine kurze E-Mail an ${mail} genügt.</li>
 </ul>`],
@@ -104,10 +113,11 @@ ${sections([
 <li>eine Konto-Kennung und Zeitpunkte von Anlage, Bestätigung und Anmeldung,</li>
 <li>bei Anmeldungen protokolliert der Anmeldedienst zur Sicherheit IP-Adresse und Zeitpunkt.</li>
 </ul>
+<p>Öffentlich lesbar: Die Tabelle <code>pilots</code> (Konto-Kennung, Rufname, Fraktion, Titel und Gründungspilot-Status) kann über die öffentliche Datenbankschnittstelle von jedem gelesen werden. Darüber zeigen Spiel und Website Rufnamen an und prüfen, ob ein Name frei ist. Die Konto-Kennung ist eine zufällige Zeichenfolge. E-Mail-Adresse, Passwort und Spielstand stehen nicht in dieser Tabelle und sind nicht öffentlich.</p>
 <p>Nach dem Anlegen bekommst du eine E-Mail mit einem Bestätigungslink. Bestätigungs- und Passwort-Mails verschickt der Anmeldedienst von Supabase. Rechtsgrundlage ist die Bereitstellung des Kontos, das du angefordert hast (Art. 6 Abs. 1 lit. b DSGVO).</p>
 <p>Die Daten liegen bei Supabase, Inc. in einem Rechenzentrum in der EU (Frankfurt am Main). Supabase verarbeitet sie in unserem Auftrag (Art. 28 DSGVO). Mehr: ${ext('https://supabase.com/privacy', 'Datenschutz bei Supabase')}.</p>`],
   ['Server-Spielstand', `<p>Spielst du mit Konto, sichern wir deinen Spielstand zusätzlich auf dem Server (Tabelle <code>pilot_saves</code>), damit du auf anderen Geräten weiterspielen kannst. Gespeichert werden der vollständige Spielstand (unter anderem Rufname, Fraktion, Stufe, Erfahrung, Ehre, Rangpunkte, Credits, Tritium, Schiffe, Ausrüstung, Munition, Drohnen, Laderaum, Sektor, Aufträge und Spielstatistik wie Abschüsse, Tode und Spielzeit), dazu eine Versionsnummer, die Art des Geräts mit Spielversion (zum Beispiel „web“, „electron“ oder „capacitor“) und der Zeitpunkt der letzten Sicherung. Gesichert wird beim Andocken, im Hub, alle zwei Minuten im Flug und beim Verlassen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Der Spielstand liegt ebenfalls bei Supabase in Frankfurt am Main.</p>`],
-  ['Ruhmeshalle', `<p>Die Ruhmeshalle im Spiel und auf der Website zeigt öffentlich die Piloten mit Konto: Rufname, Fraktion, Stufe, Ehre, Erfahrung und Abschüsse. E-Mail-Adressen erscheinen nie. Die Ruhmeshalle gehört zum Spiel, das du mit dem Konto nutzt (Art. 6 Abs. 1 lit. b DSGVO). Wer ohne Konto spielt, erscheint nicht. Möchtest du nicht in der Ruhmeshalle stehen, schreib uns. Dann löschen wir das Konto oder nehmen dich aus der Liste.</p>`],
+  ['Ruhmeshalle', `<p>Die Ruhmeshalle im Spiel und auf der Website zeigt öffentlich die Piloten mit Konto: Rufname, Fraktion, Stufe, Ehre, Erfahrung und Abschüsse. E-Mail-Adressen erscheinen nie. Beim Öffnen der Seite Ruhmeshalle lädt dein Browser die Liste direkt bei Supabase (öffentliche Datenbankfunktion <code>hall_of_fame</code>); dabei wird deine IP-Adresse an Supabase übertragen. Rechtsgrundlage für diesen Abruf ist unser Interesse, die Bestenliste anzuzeigen, die du aufrufst (Art. 6 Abs. 1 lit. f DSGVO). Die Ruhmeshalle gehört zum Spiel, das du mit dem Konto nutzt (Art. 6 Abs. 1 lit. b DSGVO). Wer ohne Konto spielt, erscheint nicht. Möchtest du nicht in der Ruhmeshalle stehen, schreib uns. Dann löschen wir das Konto oder nehmen dich aus der Liste.</p>`],
   ['Mehrspieler, Chat und Koop', `<p>Im Mehrspieler und im Koop verbindet sich das Spiel über Supabase Realtime mit den Mitspielern im selben Kanal (Sektor, Fraktion, alle, Koop). Das geht auch ohne Konto. Übertragen werden:</p>
 <ul>
 <li>Rufname, Fraktion, Stufe, Schiff, Ausrüstung und Werte von Hülle und Schild,</li>
@@ -116,14 +126,19 @@ ${sections([
 <li>Chat-Nachrichten mit Rufname und Fraktion.</li>
 </ul>
 <p>Diese Daten gehen in Echtzeit an die Mitspieler im Kanal und werden nicht in einer Datenbank gespeichert. Chat-Nachrichten sehen alle, die gerade im Kanal sind. Was sie auf ihrem Gerät damit machen, liegt außerhalb unseres Einflusses. Schreib im Chat deshalb nichts Persönliches. Für die Verbindung verarbeitet Supabase deine IP-Adresse. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Mehrspieler-Funktion, die du nutzt). Supabase arbeitet auch hier in unserem Auftrag (Art. 28 DSGVO).</p>`],
-  ['Rufname prüfen', `<p>Tippst du auf der Website oder im Spiel einen Rufnamen ein, fragt die Seite bei unserem Server nach, ob er noch frei ist. Dabei wird nur der eingegebene Name übertragen und nicht gespeichert (Art. 6 Abs. 1 lit. f DSGVO).</p>`],
+  ['Rufname prüfen', `<p>Tippst du auf der Website oder beim Anlegen eines Kontos im Spiel einen Rufnamen ein, fragt die Seite bei Supabase in Frankfurt am Main nach, ob er noch frei ist (Datenbankfunktion <code>callsign_available</code>). Übertragen werden der eingegebene Name und, technisch bedingt, deine IP-Adresse. Der Name wird dabei nicht gespeichert. Rechtsgrundlage ist unser Interesse, doppelte Rufnamen zu vermeiden (Art. 6 Abs. 1 lit. f DSGVO).</p>`],
+  ['Weitere Abrufe der Website bei Supabase', `<ul>
+<li>Anmeldestatus: Nur wenn in deinem Browser eine Anmeldesitzung gespeichert ist oder du über einen Bestätigungslink kommst, lädt die Website die Anmeldefunktion und fragt bei Supabase deinen Piloten ab (Rufname, Fraktion, Titel), um ihn in der Kopfleiste zu zeigen. Ohne gespeicherte Sitzung findet dieser Abruf nicht statt.</li>
+<li>Anmeldewege: Nur wenn die Anmeldung über die Website oder mit Google/Discord freigeschaltet ist, fragt die Startseite beim Laden bei Supabase ab, welche Anmeldewege angeboten werden (Adresse <code>/auth/v1/settings</code>). Dabei wird nur deine IP-Adresse übertragen, keine persönlichen Angaben.</li>
+</ul>
+<p>Rechtsgrundlage ist unser Interesse, die Website mit Konto-Funktionen zu betreiben (Art. 6 Abs. 1 lit. f DSGVO) bzw. die Bereitstellung deines Kontos (Art. 6 Abs. 1 lit. b DSGVO). Supabase verarbeitet die Daten in unserem Auftrag (Art. 28 DSGVO).</p>`],
   open ? ['Rufnamen über die Website sichern', `<p>Sicherst du deinen Rufnamen über die Website, verarbeiten wir Rufname, Fraktion, E-Mail-Adresse und den Zeitpunkt von Anmeldung und Bestätigung. Erst der Klick auf den Link in der Bestätigungsmail sichert den Namen (Double-Opt-in). Daraus entsteht dasselbe Konto wie im Spiel.</p>`] : null,
   oauth.length ? [`Anmeldung mit ${list(oauth.map((k) => k[0].toUpperCase() + k.slice(1)), 'oder')}`, `<p>Du kannst dich wahlweise mit ${list(oauth.map((k) => PROV.de[k]), 'oder')} anmelden. Erst wenn du den jeweiligen Knopf anklickst, wirst du zum Anbieter weitergeleitet. Wir erhalten dann deine Konto-Kennung, deine E-Mail-Adresse und, falls freigegeben, Name und Profilbild. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Es gelten zusätzlich die Hinweise von ${list(oauth.map((k) => ext(POL[k], k[0].toUpperCase() + k.slice(1))), 'und')}.</p>`] : null,
   ['Speicherung im Browser und in den Apps', `<p>Website und Spiel setzen keine Cookies. Im Speicher deines Browsers (localStorage) legen wir nur ab, was für die Funktion nötig ist. Diese Daten verlassen dein Gerät nicht, außer der Spielstand bei Spielen mit Konto (siehe oben):</p>
 ${keyTable('de')}
 <p>Das ist für den von dir gewünschten Dienst unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG). Das Browserspiel registriert außerdem einen Service Worker, damit es sich als App installieren lässt. Er speichert nichts zwischen. Du kannst alle diese Daten jederzeit in deinem Browser löschen. Ohne Konto ist dein Spielstand danach weg.</p>`],
   ['Apps für Mac, Windows, Android, iPhone und iPad', `<p>Die Apps enthalten dasselbe Spiel wie die Browserfassung und verarbeiten dieselben Daten auf dieselbe Weise: Spielstand und Einstellungen lokal in der App, mit Konto zusätzlich bei Supabase, im Mehrspieler über Supabase Realtime. Die Apps enthalten keine Analyse-, Werbe- oder Absturzberichts-Dienste und keine automatische Update-Prüfung. Sie sind Testversionen außerhalb der App-Stores.</p>`],
-  ['Ton', '<p>Klänge und Musik der Website werden direkt in deinem Browser erzeugt. Das Spiel lädt seine Klänge als Dateien von unserem eigenen Server. In beiden Fällen werden keine Daten an Dritte übertragen.</p>'],
+  ['Ton', '<p>Klänge und Musik der Website werden direkt in deinem Browser erzeugt. Das Spiel lädt seine Klänge als Dateien von unserem Hosting bei Netlify. In beiden Fällen werden keine Daten an Dritte übertragen.</p>'],
   ['Links zu sozialen Netzwerken', '<p>Die Knöpfe zu Discord, Instagram, TikTok und weiteren Kanälen sind einfache Links. Vor dem Anklicken werden keine Daten an diese Anbieter übertragen. Nach dem Anklicken gelten die Datenschutzhinweise des jeweiligen Anbieters.</p>'],
   ['Speicherdauer und Löschung', `<p>Kontodaten, Server-Spielstand und Eintrag in der Ruhmeshalle speichern wir, solange dein Konto besteht. Eine Löschfunktion im Spiel gibt es noch nicht. Bis dahin genügt eine kurze E-Mail an ${mail} mit der E-Mail-Adresse deines Kontos; wir löschen dann Konto, Pilot und Spielstand vollständig. Nicht bestätigte Konten löschen wir, sobald sie nicht mehr gebraucht werden. Mehrspieler- und Chat-Daten werden nicht gespeichert. Daten im Browser löschst du selbst über die Einstellungen deines Browsers.</p>`],
   ['Kontakt', '<p>Schreibst du uns, verarbeiten wir deine Angaben, um die Anfrage zu beantworten (Art. 6 Abs. 1 lit. b und f DSGVO), und löschen sie, wenn sie nicht mehr nötig sind.</p>'],
@@ -135,10 +150,11 @@ const PRIVACY = ({ open, oauth }) => `<h1>Privacy</h1>
 ${sections([
   ['Controller', `<p>${addr('Germany')}<br>Phone: <a href="tel:${OP.phoneHref}">${OP.phone}</a><br>Email: ${mail}</p>`],
   ['In short', `<ul>
-<li>No analytics, tracking or advertising services, no cookies. Fonts, scripts, images, videos and sounds come from our own server.</li>
+<li>No analytics, tracking or advertising services, no cookies. Fonts, scripts, images, videos and sounds come from our hosting at Netlify, not from third-party services.</li>
+<li>Connections to Supabase (Frankfurt am Main) are made only for accounts, the callsign check, the hall of fame and multiplayer. Supabase sees your IP address in the process.</li>
 <li>Without an account your save game stays only in your browser or in the app.</li>
 <li>With an account we store your email address, callsign, faction and save game with Supabase in Frankfurt am Main. We never see your password.</li>
-<li>Only callsign, faction and game stats are public in the hall of fame, never your email address.</li>
+<li>Callsign, faction, title and game stats are public (hall of fame, pilot list), never your email address or your save game.</li>
 <li>Multiplayer chat messages go straight to the players in the channel and are not stored by us.</li>
 <li>Deletion at any time: a short email to ${mail} is enough.</li>
 </ul>`],
@@ -152,10 +168,11 @@ ${sections([
 <li>an account ID and the times of creation, confirmation and sign-in,</li>
 <li>on sign-in the authentication service logs IP address and time for security.</li>
 </ul>
+<p>Publicly readable: the table <code>pilots</code> (account ID, callsign, faction, title and founding pilot status) can be read by anyone through the public database interface. The game and the website use it to show callsigns and to check whether a name is free. The account ID is a random string. Email address, password and save game are not in this table and are not public.</p>
 <p>After creating the account you receive an email with a confirmation link. Confirmation and password emails are sent by the Supabase authentication service. The legal basis is providing the account you requested (Art. 6(1)(b) GDPR).</p>
 <p>The data is stored with Supabase, Inc. in a data center in the EU (Frankfurt am Main). Supabase processes it on our behalf (Art. 28 GDPR). More: ${ext('https://supabase.com/privacy', 'Supabase privacy')}.</p>`],
   ['Server save game', `<p>If you play with an account, we also store your save game on the server (table <code>pilot_saves</code>) so you can continue on other devices. Stored are the complete save game (including callsign, faction, level, experience, honor, rank points, credits, tritium, ships, gear, ammo, drones, cargo, sector, quests and game statistics such as kills, deaths and play time), a version number, the kind of device with game version (for example “web”, “electron” or “capacitor”) and the time of the last save. Saving happens when docking, in the hub, every two minutes in flight and when leaving. The legal basis is Art. 6(1)(b) GDPR. The save game is also stored with Supabase in Frankfurt am Main.</p>`],
-  ['Hall of fame', `<p>The hall of fame in the game and on the website publicly shows pilots with an account: callsign, faction, level, honor, experience and kills. Email addresses never appear. The hall of fame is part of the game you use with your account (Art. 6(1)(b) GDPR). Players without an account do not appear. If you do not want to be listed, write to us and we will delete the account or remove you from the list.</p>`],
+  ['Hall of fame', `<p>The hall of fame in the game and on the website publicly shows pilots with an account: callsign, faction, level, honor, experience and kills. Email addresses never appear. When you open the hall of fame page, your browser loads the list directly from Supabase (public database function <code>hall_of_fame</code>); your IP address is transferred to Supabase in the process. The legal basis for this request is our interest in showing the leaderboard you asked for (Art. 6(1)(f) GDPR). The hall of fame is part of the game you use with your account (Art. 6(1)(b) GDPR). Players without an account do not appear. If you do not want to be listed, write to us and we will delete the account or remove you from the list.</p>`],
   ['Multiplayer, chat and co-op', `<p>In multiplayer and co-op the game connects via Supabase Realtime to the other players in the same channel (sector, faction, all, co-op). This also works without an account. Transferred are:</p>
 <ul>
 <li>callsign, faction, level, ship, gear and hull and shield values,</li>
@@ -164,14 +181,19 @@ ${sections([
 <li>chat messages with callsign and faction.</li>
 </ul>
 <p>This data goes to the players in the channel in real time and is not stored in a database. Chat messages are seen by everyone currently in the channel. What they do with them on their own device is beyond our control, so do not post personal information in chat. For the connection Supabase processes your IP address. The legal basis is Art. 6(1)(b) GDPR (the multiplayer feature you use). Supabase acts on our behalf here too (Art. 28 GDPR).</p>`],
-  ['Callsign check', '<p>When you type a callsign on the website or in the game, the page asks our server whether it is still free. Only the name you entered is sent, and it is not stored (Art. 6(1)(f) GDPR).</p>'],
+  ['Callsign check', '<p>When you type a callsign on the website or while creating an account in the game, the page asks Supabase in Frankfurt am Main whether it is still free (database function <code>callsign_available</code>). The name you entered and, for technical reasons, your IP address are transferred. The name is not stored. The legal basis is our interest in avoiding duplicate callsigns (Art. 6(1)(f) GDPR).</p>'],
+  ['Other requests from the website to Supabase', `<ul>
+<li>Sign-in status: only if a sign-in session is stored in your browser or you arrive via a confirmation link does the website load the sign-in function and ask Supabase for your pilot (callsign, faction, title) to show it in the header. Without a stored session this request does not happen.</li>
+<li>Sign-in methods: only if sign-up on the website or with Google/Discord is enabled does the home page ask Supabase on load which sign-in methods are offered (address <code>/auth/v1/settings</code>). Only your IP address is transferred, no personal details.</li>
+</ul>
+<p>The legal basis is our interest in running the website with account features (Art. 6(1)(f) GDPR) or providing your account (Art. 6(1)(b) GDPR). Supabase processes the data on our behalf (Art. 28 GDPR).</p>`],
   open ? ['Securing a callsign on the website', '<p>If you secure your callsign on the website, we process your callsign, faction, email address and the time of sign-up and confirmation. The name is only secured once you click the link in the confirmation email (double opt-in). This creates the same account as in the game.</p>'] : null,
   oauth.length ? [`Sign-in with ${list(oauth.map((k) => k[0].toUpperCase() + k.slice(1)), 'or')}`, `<p>You can sign in with ${list(oauth.map((k) => PROV.en[k]), 'or')}. You are only redirected to the provider once you click the button. We then receive your account ID, your email address and, if shared, your name and profile picture. The legal basis is your consent (Art. 6(1)(a) GDPR). The policies of ${list(oauth.map((k) => ext(POL[k], k[0].toUpperCase() + k.slice(1))), 'and')} also apply.</p>`] : null,
   ['Storage in the browser and in the apps', `<p>The website and the game set no cookies. In your browser’s storage (localStorage) we only keep what is needed for them to work. This data does not leave your device, except the save game when you play with an account (see above):</p>
 ${keyTable('en')}
 <p>This is strictly necessary for the service you requested (§ 25(2) no. 2 TDDDG). The browser game also registers a service worker so it can be installed as an app. It caches nothing. You can delete all of this data in your browser at any time. Without an account your save game is gone afterwards.</p>`],
   ['Apps for Mac, Windows, Android, iPhone and iPad', '<p>The apps contain the same game as the browser version and process the same data in the same way: save game and settings locally in the app, with an account also at Supabase, in multiplayer via Supabase Realtime. The apps contain no analytics, advertising or crash reporting services and no automatic update check. They are test versions outside the app stores.</p>'],
-  ['Sound', '<p>Sounds and music on this website are generated directly in your browser. The game loads its sounds as files from our own server. In neither case is any data passed to third parties.</p>'],
+  ['Sound', '<p>Sounds and music on this website are generated directly in your browser. The game loads its sounds as files from our hosting at Netlify. In neither case is any data passed to third parties.</p>'],
   ['Links to social networks', '<p>The buttons for Discord, Instagram, TikTok and other channels are plain links. No data is sent to these providers before you click. After clicking, the provider’s own privacy policy applies.</p>'],
   ['Retention and deletion', `<p>We keep account data, the server save game and your hall of fame entry as long as your account exists. There is no delete button in the game yet. Until then, a short email to ${mail} with your account email address is enough; we then delete account, pilot and save game completely. Unconfirmed accounts are deleted once no longer needed. Multiplayer and chat data is not stored. You delete data in your browser yourself via your browser settings.</p>`],
   ['Contact', '<p>If you write to us, we process your details to answer your request (Art. 6(1)(b) and (f) GDPR) and delete them when no longer needed.</p>'],

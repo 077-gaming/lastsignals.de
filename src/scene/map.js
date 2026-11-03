@@ -108,13 +108,14 @@ export function initMap(root, opts = {}) {
     el.className = 'map-lbl'; el.dataset.region = id;
     el.style.setProperty('--c', '#' + p.c.toString(16).padStart(6, '0'));
     const btn = root.querySelector(`[data-region="${id}"]`);
-    el.innerHTML = `<i></i><b>${btn ? btn.querySelector('b').textContent : id}</b><em>${btn ? btn.querySelector('.ls-num').textContent : ''}</em>`;
+    el.innerHTML = `<i></i><b>${btn ? btn.querySelector('b').textContent : id}</b><em>${btn ? (btn.dataset.plan ? btn.dataset.plan : btn.querySelector('.ls-num').textContent) : ''}</em>`;
+    if (btn?.dataset.plan) el.classList.add('is-plan');
     el.addEventListener('click', () => opts.onPick?.(id));
     labels.appendChild(el);
     marks[id] = { g, m, pulse, el, stem };
   }
 
-  let sel = 'stille';
+  let sel = opts.initial && marks[opts.initial] ? opts.initial : 'saturn';
   const focus = { from: null, to: null, t: 1 };
   function select(id, fly = true) {
     sel = id;
@@ -140,7 +141,7 @@ export function initMap(root, opts = {}) {
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = camera.aspect < 1.2 ? 50 : 38; camera.updateProjectionMatrix();
     home.pos.set(0, camera.aspect < 1.2 ? 36 : 34, camera.aspect < 1.2 ? 34 : 44);
   }
-  const ro = new ResizeObserver(size); ro.observe(canvas); size(); camera.position.copy(home.pos);
+  const ro = new ResizeObserver(() => { size(); for (const mk of Object.values(marks)) mk.lw = 0; }); ro.observe(canvas); size(); camera.position.copy(home.pos);
 
   const v = new THREE.Vector3();
   let raf = 0, running = false, last = 0, t = 0, lost = false;
@@ -159,7 +160,10 @@ export function initMap(root, opts = {}) {
     for (const mk of Object.values(marks)) {
       v.copy(mk.g.position); v.y += 1.4; v.project(camera);
       const vis = v.z < 1;
-      mk.el.style.transform = `translate(${((v.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-v.y * 0.5 + 0.5) * h).toFixed(1)}px)`;
+      // Beschriftung bleibt immer ganz im Bild (am Rand anliegen statt abgeschnitten)
+      const lw = mk.lw || (mk.lw = mk.el.offsetWidth || 80), lh = 30;
+      const x = Math.min(Math.max((v.x * 0.5 + 0.5) * w, 6), w - lw - 2), y = Math.min(Math.max((-v.y * 0.5 + 0.5) * h, 16), h - lh);
+      mk.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       mk.el.style.visibility = vis ? '' : 'hidden';
     }
   }

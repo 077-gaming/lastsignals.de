@@ -368,7 +368,7 @@ if (mapEl) {
   mapEl.querySelector('[data-map-reset]')?.addEventListener('click', () => ctl?.reset());
   if (gl2 && !lowDevice) {
     near(mapEl, () => import('./scene/map.js').then(({ initMap }) => {
-      ctl = initMap(mapEl, { mobile, reduce, onPick: (id) => { pick(id); blip('click'); } });
+      ctl = initMap(mapEl, { mobile, reduce, initial: mapEl.querySelector('[data-region][aria-pressed="true"]')?.dataset.region, onPick: (id) => { pick(id); blip('click'); } });
       if (!ctl) return;
       mapEl.classList.add('is-3d');
       let on = false;
@@ -514,7 +514,7 @@ if (sg) {
     sg.querySelectorAll('[data-sg-spec]').forEach((x) => { x.hidden = x.dataset.sgSpec !== st.ship; });
     sg.querySelectorAll('[data-still]').forEach((x) => { x.hidden = x.dataset.still !== `${st.fx}-${st.ship}`; });
     sg.style.setProperty('--fx', FXC[st.fx]);
-    curEl.textContent = `${st.fx.toUpperCase()} · S-0${st.ship.slice(1)}`;
+    curEl.textContent = `${st.fx.toUpperCase()} · S-0${st.ship.slice(1)} · ${sg.querySelector(`[data-sg-ship="${st.ship}"] b`)?.textContent || ''}`;
     if (viewer) {
       sg.classList.add('is-loading'); stateEl.textContent = loadingText;
       const want = url();

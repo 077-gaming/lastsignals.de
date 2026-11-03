@@ -24,7 +24,7 @@ export function pic(key, alt, { sizes = '100vw', cls = '', eager = false, high =
   const d = IMG[key];
   if (!d) return '';
   const [dir, name] = key.split('/');
-  const widths = { spiel: [640, 1280, 1920], schiffe: [480, 960], gegner: [360, 720], stationen: [480, 960] }[dir].filter((w) => w <= d.max);
+  const widths = d.widths || { spiel: [640, 1280, 1920, 2560], schiffe: [480, 960], gegner: [360, 720], stationen: [480, 960] }[dir].filter((w) => w <= d.max);
   const set = (ext) => widths.map((w) => `/img/${dir}/${name}-${w}.${ext} ${Math.min(w, d.w) === w ? w : d.w}w`).join(', ');
   const mid = widths[Math.min(1, widths.length - 1)];
   return `<picture${cls ? ` class="${cls}"` : ''}>
@@ -41,7 +41,7 @@ export const G = {
       play: 'Im Browser spielen', download: 'Herunterladen', discord: 'Discord',
       sub: 'Kostenloses Weltraum-MMO. Wähle eine von drei Mächten, fliege acht Schiffsklassen und kämpfe dich durch acht Sektoren deiner Heimat. Im Browser oder als App.',
       trust: 'Kostenlos · Im Browser ohne Installation · Apps als Testversion',
-      video: 'Spielszene: ein EUROPA-Schiff der Klasse 8 fliegt mit Nachbrenner durch den Heimatsektor. Aufgenommen im Browser, Testversion.',
+      video: 'Spielszene aus der Testversion: ein SATURN-Schiff der Klasse Leviathan feuert vor der Heimatstation und dem Saturn auf Larven des Schwarms.',
       pause: 'Video anhalten', resume: 'Video abspielen',
     },
     feat: {
@@ -75,11 +75,11 @@ export const G = {
       load: '3D-Modell laden', loading: 'Lade Modell …', noGl: 'Dein Browser zeigt kein 3D. Hier siehst du das Standbild des Modells.',
       cls: 'Klasse', level: 'Ab Stufe', hp: 'Hülle', speed: 'Tempo', lasers: 'Laserplätze', gens: 'Generatorplätze', cargo: 'Laderaum', price: 'Preis',
       cur: { credits: 'Credits', tritium: 'Tritium', free: 'Startschiff' },
-      prov: 'vorläufig', provNote: 'Schiff 4, 6 und 7: Klassenname, Hülle, Tempo, Laderaum und Preis sind vorläufig gesetzt und können sich bis zur Freigabe ändern.',
+      prov: 'vorläufig', provNote: 'Halberd, Rampart und Monarch (Schiff 4, 6 und 7): Klassenname, Hülle, Tempo, Laderaum und Preis sind vorläufig gesetzt und können sich bis zur Freigabe ändern.',
       table: 'Alle Klassen im Vergleich', all: 'Alle 24 Modelle',
       special: 'Sonderschiffe Heiler, Tank und Späher ab Stufe 40 sind geplant und noch nicht im Spiel.',
       starter: 'Startschiff', ship: 'Schiff',
-      alt: (f, n) => `${FXN[f]}-Schiff ${n}, Standbild des Spielmodells`,
+      alt: (f, n) => `${FXN[f]} ${n}, Standbild des Spielmodells`,
     },
     world: {
       title: 'Welt', kicker: 'Fraktionen · Sektoren · Gegner · Bosse',
@@ -90,7 +90,7 @@ export const G = {
       ladder: 'Sektorleiter 1–8', ladderLede: 'Sektor 1 hat die Station. Ab Sektor 6 wartet je ein Boss. Wie im Spiel tragen alle drei Heimaten dieselben Gegner, nur Namen und Kulisse ändern sich.',
       mpNote: 'Im Mehrspieler bleibt Sektor 1 je Fraktion getrennt (sichere Station). Ab Sektor 2 treffen sich Piloten aller Fraktionen im selben Raum.',
       sector: 'Sektor', name: 'Name', lvl: 'Stufe', foes: 'Gegner', station: 'Station', boss: 'Boss',
-      enemies: 'Gegner', enemiesLede: 'Zwei Gruppen: Piraten und der Schwarm. Bild: das Modell aus dem Spiel.',
+      enemies: 'Gegner', enemiesLede: 'Zwei Gruppen: Piraten und der Schwarm. Bild: das Modell aus dem Spiel. Wo das eigene Modell noch nicht fertig ist, zeigen wir keins.',
       group: { pirate: 'Piraten', swarm: 'Schwarm' },
       beh: { aggressive: 'Greift an, sobald du in Reichweite bist', territorial: 'Verteidigt sein Gebiet', opportunist: 'Lauert und schlägt zu, wenn du angeschlagen bist', thief: 'Plündert Wracks, kämpft wenn nötig', passive: 'Greift erst an, wenn du angreifst', nest: 'Steht still und spuckt Larven' },
       from: 'ab Stufe', shield: 'Schild', hull: 'Hülle', where: 'Sektor', event: 'nur im Ereignis „Schwarm-Nest“',
@@ -98,7 +98,7 @@ export const G = {
       respawn: 'Kehrt zurück nach', min: 'min', brood: (n) => `Ruft laufend ${n} zur Verstärkung`, regen: 'Heilt sich selbst',
       bossName: { werft: 'Schwarze Werft', wal: 'Sternenwal-Ältester', dread: 'Dreadnought' },
       shotAlt: (n) => `${n} im Kampf, Aufnahme aus dem Spiel`,
-      modelAlt: (n) => `${n}, Modell aus dem Spiel`,
+      modelAlt: (n) => `${n}, Modell aus dem Spiel`, noImg: 'Modellbild folgt',
       stationAlt: (f) => `Station ${FXN[f]}, Aufnahme aus dem Spiel`,
     },
     nav: { ships: 'Schiffe', world: 'Welt', account: 'Konto', play: 'Spielen' },
@@ -117,8 +117,8 @@ export const G = {
     hero: {
       play: 'Play in browser', download: 'Download', discord: 'Discord',
       sub: 'Free-to-play space MMO. Pick one of three powers, fly eight ship classes and fight through eight sectors of your home. In your browser or as an app.',
-      trust: 'Free · Runs in the browser, no install · Apps in testing',
-      video: 'Gameplay: a EUROPA class 8 ship flies on afterburner through its home sector. Recorded in the browser, test version.',
+      trust: 'Free · Runs in the browser · Game currently in German',
+      video: 'Gameplay from the test version: a SATURN Leviathan-class ship fires on Swarm larvae in front of its home station and Saturn.',
       pause: 'Pause video', resume: 'Play video',
     },
     feat: {
@@ -152,11 +152,11 @@ export const G = {
       load: 'Load 3D model', loading: 'Loading model …', noGl: 'Your browser cannot show 3D. This is a still of the model.',
       cls: 'Class', level: 'From level', hp: 'Hull', speed: 'Speed', lasers: 'Laser slots', gens: 'Generator slots', cargo: 'Cargo', price: 'Price',
       cur: { credits: 'credits', tritium: 'tritium', free: 'Starter ship' },
-      prov: 'provisional', provNote: 'Ships 4, 6 and 7: class name, hull, speed, cargo and price are provisional and may change before release.',
+      prov: 'provisional', provNote: 'Halberd, Rampart and Monarch (ships 4, 6 and 7): class name, hull, speed, cargo and price are provisional and may change before release.',
       table: 'All classes compared', all: 'All 24 models',
       special: 'Special ships healer, tank and scout from level 40 are planned and not in the game yet.',
       starter: 'Starter', ship: 'Ship',
-      alt: (f, n) => `${FXN[f]} ship ${n}, still of the in-game model`,
+      alt: (f, n) => `${FXN[f]} ${n}, still of the in-game model`,
     },
     world: {
       title: 'World', kicker: 'Factions · Sectors · Enemies · Bosses',
@@ -167,7 +167,7 @@ export const G = {
       ladder: 'Sector ladder 1–8', ladderLede: 'Sector 1 holds the station. From sector 6 on, each sector has a boss. As in the game, all three homes share the same enemies, only names and scenery change.',
       mpNote: 'In multiplayer, sector 1 stays separate per faction (safe station). From sector 2 on, pilots of all factions meet in the same space.',
       sector: 'Sector', name: 'Name', lvl: 'Level', foes: 'Enemies', station: 'Station', boss: 'Boss',
-      enemies: 'Enemies', enemiesLede: 'Two groups: pirates and the swarm. Image: the in-game model.',
+      enemies: 'Enemies', enemiesLede: 'Two groups: pirates and the swarm. Image: the in-game model. Where a model is not finished yet, we show none.',
       group: { pirate: 'Pirates', swarm: 'Swarm' },
       beh: { aggressive: 'Attacks once you are in range', territorial: 'Defends its territory', opportunist: 'Lurks and strikes when you are hurt', thief: 'Loots wrecks, fights when needed', passive: 'Only attacks when you do', nest: 'Stays put and spits out larvae' },
       from: 'from level', shield: 'Shield', hull: 'Hull', where: 'Sector', event: 'only in the “Swarm Nest” event',
@@ -175,7 +175,7 @@ export const G = {
       respawn: 'Returns after', min: 'min', brood: (n) => `Keeps calling ${n} as reinforcements`, regen: 'Heals itself',
       bossName: { werft: 'Black Shipyard', wal: 'Elder Star Whale', dread: 'Dreadnought' },
       shotAlt: (n) => `${n} in combat, in-game capture`,
-      modelAlt: (n) => `${n}, in-game model`,
+      modelAlt: (n) => `${n}, in-game model`, noImg: 'Model image to follow',
       stationAlt: (f) => `${FXN[f]} station, in-game capture`,
     },
     nav: { ships: 'Ships', world: 'World', account: 'Account', play: 'Play' },
@@ -193,11 +193,20 @@ export const G = {
 };
 
 // ---------- Startseite: Bewegtbild im Hero und Merkmale ----------
+// Schlüsselbild: Breitbild (2560 px, Schiff rechts neben dem Text) und eigener Hochformat-Ausschnitt fürs Handy
+const set = (name, ws, ext) => ws.map((w) => `/img/spiel/${name}-${w}.${ext} ${w}w`).join(', ');
+export const HERO_WIDE = [640, 1280, 1920, 2560], HERO_TALL = [540, 1080], HERO_PHONE = '(max-width: 720px)';
 export function heroVideo(lang) {
   const g = G[lang].hero;
   return `<div class="hero-film" data-film>
   <video class="hero-video" muted loop playsinline preload="none" data-src-webm="/media/hero-loop.webm" data-src-mp4="/media/hero-loop.mp4" aria-hidden="true" tabindex="-1" disablepictureinpicture></video>
-  ${pic('spiel/hero', g.video, { cls: 'hero-still', eager: true, high: true, sizes: '100vw' })}
+  <picture class="hero-still">
+    <source media="${HERO_PHONE}" type="image/avif" srcset="${set('hero-tall', HERO_TALL, 'avif')}" sizes="100vw">
+    <source media="${HERO_PHONE}" type="image/webp" srcset="${set('hero-tall', HERO_TALL, 'webp')}" sizes="100vw">
+    <source type="image/avif" srcset="${set('hero', HERO_WIDE, 'avif')}" sizes="100vw">
+    <source type="image/webp" srcset="${set('hero', HERO_WIDE, 'webp')}" sizes="100vw">
+    <img src="/img/spiel/hero-1920.webp" alt="${esc(g.video)}" width="2560" height="1440" decoding="async" fetchpriority="high">
+  </picture>
   <div class="hero-film-shade" aria-hidden="true"></div>
 </div>`;
 }
@@ -235,7 +244,7 @@ export function shotsSection(lang, links) {
 function shipStats(id, lang) {
   const s = SHIPS[id], t = G[lang].ships;
   const prov = PROVISIONAL.has(id);
-  const p = (v) => (prov ? `${v} <em class="prov" title="${esc(t.prov)}">*</em>` : v);
+  const p = (v) => v; // vorläufige Schiffe: ein Sternchen am Namen statt an jedem Wert
   const price = s.currency ? `<span class="ls-num">${num(s.price, lang)}</span> ${esc(t.cur[s.currency])}` : esc(t.cur.free);
   return `<dl class="sg-dl">
     <div><dt>${esc(t.cls)}</dt><dd>${p(esc(s.cls))}</dd></div>
@@ -245,18 +254,19 @@ function shipStats(id, lang) {
     <div><dt>${esc(t.lasers)}</dt><dd class="ls-num">${s.laserSlots}</dd></div>
     <div><dt>${esc(t.gens)}</dt><dd class="ls-num">${s.genSlots}</dd></div>
     <div><dt>${esc(t.cargo)}</dt><dd>${p(`<span class="ls-num">${num(s.cargo, lang)}</span>`)}</dd></div>
-    <div><dt>${esc(t.price)}</dt><dd>${prov ? p(price) : price}</dd></div>
+    <div><dt>${esc(t.price)}</dt><dd>${price}</dd></div>
   </dl>`;
 }
 
 export function shipsBody(lang) {
   const t = G[lang].ships;
-  const label = (id) => (id === 's1' ? t.starter : `${t.ship} ${id.slice(1)}`);
+  const label = (id) => SHIPS[id].cls; // Klassenname wie auf der Startseite (Starter, Courier, Warden …)
+  const mark = (id) => (PROVISIONAL.has(id) ? `<sup class="prov" title="${esc(t.prov)}">*</sup>` : '');
   const stage = `<div class="sg ls-panel" data-sg data-lang="${lang}" style="--fx:${FXC.europa}">
     <div class="ls-head"><span class="ls-code">HGR·01</span><span class="ls-title">${esc(t.viewer)}</span><span class="ls-spacer"></span><span class="sg-cur ls-num" data-sg-cur>EUROPA · S-01</span></div>
     <div class="sg-grid">
       <div class="sg-stage">
-        <div class="sg-stills">${FX_LIST.map((f) => SHIP_IDS.map((id) => `<div class="sg-still" data-still="${f}-${id}"${f === 'europa' && id === 's1' ? '' : ' hidden'}>${pic(shipImg(f, id), t.alt(f, id.slice(1)), { sizes: '(max-width: 900px) 100vw, 60vw', eager: f === 'europa' && id === 's1' })}</div>`).join('')).join('')}</div>
+        <div class="sg-stills">${FX_LIST.map((f) => SHIP_IDS.map((id) => `<div class="sg-still" data-still="${f}-${id}"${f === 'europa' && id === 's1' ? '' : ' hidden'}>${pic(shipImg(f, id), t.alt(f, label(id)), { sizes: '(max-width: 900px) 100vw, 60vw', eager: f === 'europa' && id === 's1' })}</div>`).join('')).join('')}</div>
         <canvas class="sg-canvas" tabindex="0" aria-label="${esc(t.viewer)}: ${esc(t.help)}"></canvas>
         <p class="sg-help" data-sg-help>${esc(t.help)}</p>
         <p class="sg-state" data-sg-state role="status" aria-live="polite"></p>
@@ -269,18 +279,19 @@ export function shipsBody(lang) {
         <div class="sg-block"><span class="ls-label" id="sg-cl-l">${esc(t.classes)}</span>
           <ol class="sg-list" aria-labelledby="sg-cl-l">${SHIP_IDS.map((id) => `<li><button type="button" class="sg-ship" data-sg-ship="${id}" aria-pressed="${id === 's1'}"><span class="ls-num">S-${pad(id.slice(1))}</span><b>${esc(label(id))}</b><em>${esc(t.level)} ${SHIPS[id].level}</em></button></li>`).join('')}</ol>
         </div>
-        <div class="sg-block sg-specs" aria-live="polite">${SHIP_IDS.map((id) => `<div data-sg-spec="${id}"${id === 's1' ? '' : ' hidden'}><h2 class="sg-name">${esc(label(id))} <span>${esc(SHIPS[id].cls)}</span></h2>${shipStats(id, lang)}</div>`).join('')}</div>
+        <div class="sg-block sg-specs" aria-live="polite">${SHIP_IDS.map((id) => `<div data-sg-spec="${id}"${id === 's1' ? '' : ' hidden'}><h2 class="sg-name">${esc(label(id))}${mark(id)} <span>S-${pad(id.slice(1))}</span></h2>${shipStats(id, lang)}</div>`).join('')}</div>
       </div>
     </div>
     <span class="ls-corners" aria-hidden="true"></span>
   </div>`;
-  const cols = [t.ship, t.cls, t.level, t.hp, t.speed, t.lasers, t.gens, t.cargo, t.price];
+  const cols = [t.ship, t.level, t.hp, t.speed, t.lasers, t.gens, t.cargo, t.price];
+  const td = (k, v, cls = 'ls-num') => `<td class="${cls}" data-l="${esc(cols[k])}">${v}</td>`;
   const table = `<div class="wk-tbl ls-panel sg-table"><div class="ls-head"><span class="ls-title">${esc(t.table)}</span></div>
-    <div class="tbl-scroll" tabindex="0" role="region" aria-label="${esc(t.table)}"><table class="sec-table"><thead><tr>${cols.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
-    <tbody>${SHIP_IDS.map((id) => { const s = SHIPS[id], pr = PROVISIONAL.has(id) ? ' <em class="prov">*</em>' : '';
-      return `<tr><th scope="row"><b class="ls-num">S-${pad(id.slice(1))}</b> ${esc(label(id))}</th><td>${esc(s.cls)}${pr}</td><td class="ls-num">${s.level}</td><td class="ls-num">${num(s.hp, lang)}${pr}</td><td class="ls-num">${s.speed}${pr}</td><td class="ls-num">${s.laserSlots}</td><td class="ls-num">${s.genSlots}</td><td class="ls-num">${num(s.cargo, lang)}${pr}</td><td>${s.currency ? `<span class="ls-num">${num(s.price, lang)}</span> ${esc(t.cur[s.currency])}${pr}` : esc(t.cur.free)}</td></tr>`; }).join('')}</tbody></table></div>
+    <div class="tbl-scroll" tabindex="0" role="region" aria-label="${esc(t.table)}"><table class="sec-table sg-cmp"><thead><tr>${cols.map((c) => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
+    <tbody>${SHIP_IDS.map((id) => { const s = SHIPS[id];
+      return `<tr><th scope="row"><b class="ls-num">S-${pad(id.slice(1))}</b> ${esc(label(id))}${mark(id)}</th>${td(1, s.level)}${td(2, num(s.hp, lang))}${td(3, s.speed)}${td(4, s.laserSlots)}${td(5, s.genSlots)}${td(6, num(s.cargo, lang))}${td(7, s.currency ? `<span class="ls-num">${num(s.price, lang)}</span> ${esc(t.cur[s.currency])}` : esc(t.cur.free), '')}</tr>`; }).join('')}</tbody></table></div>
     <span class="ls-corners" aria-hidden="true"></span></div>
-    <p class="plan-note"><em class="prov">*</em> ${esc(t.provNote)} ${esc(t.special)}</p>`;
+    <p class="plan-note"><sup class="prov">*</sup> ${esc(t.provNote)} ${esc(t.special)}</p>`;
   const grid = `<h2 class="sub-h2">${esc(t.all)}</h2>${FX_LIST.map((f) => `<section class="sg-fleet" style="--fx:${FXC[f]}" aria-labelledby="fleet-${f}"><h3 class="sg-fleet-h" id="fleet-${f}"><i aria-hidden="true"></i>${FXN[f]}</h3><ul class="sg-thumbs">${SHIP_IDS.map((id) => `<li><button type="button" class="sg-thumb" data-sg-pick="${f}-${id}">${pic(shipImg(f, id), t.alt(f, id.slice(1)), { sizes: '(max-width: 600px) 50vw, 240px' })}<span><b class="ls-num">S-${pad(id.slice(1))}</b> ${esc(label(id))}</span></button></li>`).join('')}</ul></section>`).join('')}`;
   return `${stage}${table}${grid}`;
 }
@@ -292,6 +303,9 @@ const BOSSES = Object.keys(ENEMIES).filter((k) => ENEMIES[k].boss);
 const sectorsOf = (type) => SECTORS.europa.filter((s) => s.spawns.some((x) => x.type === type)).map((s) => s.index);
 const bossShot = { werft: 'spiel/boss-werft', wal: 'spiel/boss-wal', dread: 'spiel/boss-dread' };
 const enemyName = (k, lang) => (ENEMIES[k].boss ? G[lang].world.bossName[k] : ENEMIES[k].name);
+// Diese Modelle sind noch nicht fertig (falsche Farbe, fremde Beschriftung, Grundform eines anderen Gegners):
+// kein Bild, bis das eigene Modell im Spiel ist.
+const NO_IMG = new Set(['corsair', 'boarder', 'hunter', 'stalker', 'jammer']);
 
 export function worldBody(lang, factionsText) {
   const t = G[lang].world;
@@ -321,7 +335,8 @@ export function worldBody(lang, factionsText) {
     </div>
   </section>`;
   const card = (k) => { const e = ENEMIES[k]; const sec = sectorsOf(k); const name = enemyName(k, lang);
-    return `<li class="wd-foe is-${e.group}" id="e-${k}"><div class="wd-foe-img">${pic(`gegner/${k}`, t.modelAlt(name), { sizes: '(max-width: 600px) 50vw, 240px' })}</div>
+    const img = NO_IMG.has(k) ? `<div class="wd-foe-img is-none"><span>${esc(t.noImg)}</span></div>` : `<div class="wd-foe-img">${pic(`gegner/${k}`, t.modelAlt(name), { sizes: '(max-width: 600px) 50vw, 240px' })}</div>`;
+    return `<li class="wd-foe is-${e.group}" id="e-${k}">${img}
       <div class="wd-foe-in"><p class="ls-label">${esc(t.group[e.group])}</p><h3>${esc(name)}</h3>
       <p class="wd-beh">${esc(t.beh[e.behavior] || '')}</p>
       <dl class="wd-dl"><div><dt>${esc(t.lvl)}</dt><dd class="ls-num">${e.level}</dd></div><div><dt>${esc(t.hull)}</dt><dd class="ls-num">${num(e.hp, lang)}</dd></div><div><dt>${esc(t.shield)}</dt><dd class="ls-num">${num(e.shield, lang)}</dd></div><div><dt>${esc(t.where)}</dt><dd class="ls-num">${sec.length ? sec.join(', ') : esc(t.event)}</dd></div></dl></div></li>`; };

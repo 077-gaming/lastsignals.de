@@ -304,6 +304,9 @@ body:not([data-ch="0"]) .hero-marks { opacity: 0; transition-delay: 0s; }
 .map-lbl em { font-style: normal; color: var(--ls-tx-3); font-size: 9px; }
 .map-lbl.is-on b { color: var(--c); }
 .map-lbl.is-on { background: rgba(4, 6, 10, .7); }
+.map-lbl.is-plan b { color: var(--ls-tx-3); }
+.map-lbl.is-plan em { color: var(--ls-tx-3); }
+.map-labels { overflow: hidden; }
 .map-hint { position: absolute; left: 14px; bottom: 10px; margin: 0; font-family: var(--ls-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ls-tx-3); pointer-events: none; }
 .map:not(.is-3d) .map-hint { display: none; }
 .map-side { padding: 18px 20px 20px; display: grid; gap: 12px; align-content: start; }
@@ -994,8 +997,8 @@ body.is-flying:not([data-ch="0"]) .hud, body:not([data-ch="0"]) .hud { opacity: 
 .hero-head { font-family: var(--ls-display); font-weight: 500; font-size: clamp(40px, 5.4vw, 76px); line-height: 1.02; letter-spacing: -.01em; color: #fff; margin: 0 0 18px; max-width: 20ch; text-shadow: 0 2px 30px rgba(0,0,0,.65); animation: ls-wipe .7s var(--ls-ease) .2s both; }
 .hero-head em { font-style: normal; color: #e9c46a; }
 .hero-sub { max-width: 46ch; color: rgba(255,255,255,.82); font-size: clamp(15px, 1.25vw, 18px); line-height: 1.5; margin: 0; animation: ls-wipe .7s var(--ls-ease) .35s both; }
-.ls-btn.is-gold { background: linear-gradient(180deg, #f3d27a, #d8a63e); color: #0b0904; box-shadow: 0 0 0 1px rgba(255,220,140,.5), 0 10px 40px -8px rgba(233,180,70,.55); }
-.ls-btn.is-gold:hover { background: linear-gradient(180deg, #ffe39a, #e6b44a); box-shadow: 0 0 0 1px rgba(255,230,160,.7), 0 12px 48px -6px rgba(233,180,70,.75); }
+.ls-btn.is-gold { --bd: #ffe7a6; background: linear-gradient(180deg, #f3d27a, #d8a63e); color: #0b0904; }
+.ls-btn.is-gold:hover { --bd: #fff3cf; background: linear-gradient(180deg, #ffe39a, #e6b44a); }
 .hero-trust { margin: 12px 0 0; font-family: var(--ls-mono, monospace); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.72); }
 .hero-alt { display: inline-block; margin-top: 14px; color: #e9c46a; font-size: 15px; text-decoration: none; border-bottom: 1px solid rgba(233,196,106,.4); }
 .hero-alt:hover { border-color: #e9c46a; }

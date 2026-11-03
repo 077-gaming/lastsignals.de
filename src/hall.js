@@ -27,7 +27,7 @@ export function initHall(el) {
   const T = JSON.parse(el.dataset.t || '{}');
   const num = new Intl.NumberFormat(lang === 'de' ? 'de-DE' : 'en-US');
   const rowsEl = el.querySelector('[data-hall-rows]');
-  const ctaRow = rowsEl.querySelector('.is-first')?.outerHTML || ''; // „Dein Rufname?“ bleibt, solange die Tafel leer ist
+  const invite = el.querySelector('template[data-hall-invite]')?.innerHTML || ''; // Einladung, solange die Tafel leer ist
   const stateEl = el.querySelector('[data-hall-state]');
   const st = { order: 'honor', fx: '' };
   const cache = new Map();
@@ -41,7 +41,7 @@ export function initHall(el) {
     el.classList.add('is-live');
     const k = st.order;
     const head = `<li class="hall-th" aria-hidden="true"><span>${esc(T.cols[0])}</span><span>${esc(T.cols[1])}</span><span>${esc(T.cols[2])}</span>${['level', 'honor', 'xp', 'kills'].map((c, i) => `<span class="${c === k ? 'is-sort' : ''}">${esc(T.cols[3 + i])}</span>`).join('')}</li>`;
-    if (!rows.length) { el.classList.remove('is-live'); rowsEl.innerHTML = `${ctaRow}<li class="hall-msg">${esc(T.empty)}</li>`; return; }
+    if (!rows.length) { el.classList.remove('is-live'); rowsEl.innerHTML = invite; return; }
     rowsEl.innerHTML = head + rows.map((r, i) => `<li class="hall-row${i === 0 ? ' is-first' : ''}" style="--c:${FX_HEX[r.faction] || '#fff'}">
       <span class="ls-num">${pad(i + 1)}</span><b>${esc(String(r.callsign).toUpperCase())}</b>
       <span class="hall-fx"><i aria-hidden="true"></i>${esc(FX_CODE[r.faction] || '--')}</span>
@@ -51,7 +51,8 @@ export function initHall(el) {
   const load = async () => {
     const key = `${st.fx}|${st.order}`;
     const my = ++seq;
-    if (cache.has(key)) { draw(cache.get(key)); stateEl.textContent = `LIVE · ${pad(cache.get(key).length)} ${T.pilots}`; return; }
+    const label = (n) => (n ? `LIVE · ${pad(n)} ${T.pilots}` : T.open);
+    if (cache.has(key)) { draw(cache.get(key)); stateEl.textContent = label(cache.get(key).length); return; }
     stateEl.textContent = T.loading;
     el.setAttribute('aria-busy', 'true');
     try {
@@ -59,7 +60,7 @@ export function initHall(el) {
       cache.set(key, rows);
       if (my !== seq) return;
       draw(rows);
-      stateEl.textContent = `LIVE · ${pad(rows.length)} ${T.pilots}`;
+      stateEl.textContent = label(rows.length);
     } catch (e) {
       if (my !== seq) return;
       el.classList.add('is-live');
