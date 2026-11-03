@@ -1541,5 +1541,24 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('App-Hülle: App-Build-Kennung', appShellOf({ flag: '1', protocol: 'https:' }) === 'capacitor');
 }
 
+// ───────── Flugkern (src/flight, Planung/FLUGMODELL.md 13) ─────────
+{
+  const { runFlightTests } = await import('../flight/selftest-flight.mjs');
+  const rows = runFlightTests(check);
+  for (const r of rows) console.log('      ' + r);
+}
+
+// ───────── Taktik-Goldtest T-01: Klickflug bitgleich zur Spur von vor dem 3D-Umbau ─────────
+{
+  const { runAll, readGold } = await import('./goldtest.mjs');
+  const gold = readGold(), now = runAll();
+  check('Goldtest: Goldwerte vorhanden', Array.isArray(gold) && gold.length === now.length);
+  for (const g of gold || []) {
+    const n = now.find((r) => r.name === g.name);
+    const same = n && n.player === g.player && n.enemies === g.enemies && n.events === g.events && n.rng === g.rng && n.kills === g.kills && n.sector === g.sector;
+    check(`Goldtest Taktik „${g.name}“ bitgleich (Spieler, Gegner, Ereignisse, Zufall)`, same, n ? `${n.player}/${n.enemies}/${n.events}/${n.rng}` : 'fehlt');
+  }
+}
+
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Prüfungen bestanden.');
 process.exit(failed ? 1 : 0);

@@ -131,16 +131,16 @@ Das **Kampftempo `vK` ist `world._speed`** (Schiff + Tempo-Generatoren). REISE =
 
 | Klasse | Schub vor | rück | seitlich | vertikal (m/s²) | Nicken/Gieren °/s | Rollen °/s | Drehbeschl. °/s² | Kp 1/s | Boost s / Nachladen s | Kardan ° | Kapsel L × r (m) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| S1 | 150 | 110 | 100 | 100 | 95 | 210 | 520 | 5,5 | 6 / 9 | 6 | 42 × 11 |
-| S2 | 145 | 105 | 95 | 95 | 88 | 190 | 460 | 5,2 | 6,5 / 10 | 8 | 53 × 12 |
-| S3 | 125 | 92 | 82 | 82 | 74 | 160 | 380 | 4,4 | 6,5 / 10 | 10 | 58 × 14 |
-| S4 | 110 | 82 | 72 | 72 | 62 | 130 | 300 | 3,7 | 7 / 11 | 12 | 62 × 16 |
-| S5 | 90 | 68 | 58 | 58 | 50 | 100 | 220 | 3,0 | 7,5 / 12 | 15 | 88 × 15 |
-| S6 | 78 | 60 | 50 | 50 | 42 | 80 | 170 | 2,6 | 8 / 13 | 18 | 84 × 18 |
-| S7 | 66 | 52 | 42 | 42 | 35 | 65 | 130 | 2,2 | 8,5 / 14 | 22 | 99 × 19 |
-| S8 | 57 | 44 | 35 | 35 | 28 | 50 | 100 | 1,8 | 9 / 15 | 28 | 189 × 15 |
+| S1 | 150 | 110 | 100 | 100 | 95 | 210 | 520 | 12 | 6 / 9 | 6 | 42 × 11 |
+| S2 | 145 | 105 | 95 | 95 | 88 | 190 | 460 | 11 | 6,5 / 10 | 8 | 53 × 12 |
+| S3 | 125 | 92 | 82 | 82 | 74 | 160 | 380 | 9,5 | 6,5 / 10 | 10 | 58 × 14 |
+| S4 | 110 | 82 | 72 | 72 | 62 | 130 | 300 | 8 | 7 / 11 | 12 | 62 × 16 |
+| S5 | 90 | 68 | 58 | 58 | 50 | 100 | 220 | 6,5 | 7,5 / 12 | 15 | 88 × 15 |
+| S6 | 78 | 60 | 50 | 50 | 42 | 80 | 170 | 5,5 | 8 / 13 | 18 | 84 × 18 |
+| S7 | 66 | 52 | 42 | 42 | 35 | 65 | 130 | 4,8 | 8,5 / 14 | 22 | 99 × 19 |
+| S8 | 57 | 44 | 35 | 35 | 28 | 50 | 100 | 4 | 9 / 15 | 28 | 189 × 15 |
 
-Gemeinsam: Boost-Schub × 1,5, Boost-Drehung × 1,2, Raumbremse × 1,3, REISE-Drehraten × 0,6, LANDUNG-Drehraten × 0,5 (60 m/s waagrecht, 20 m/s senkrecht). Moduswechsel KAMPF→REISE 1,5 s (im Kampf gesperrt; Treffer bricht ab), REISE→KAMPF 0,8 s. REISE sperrt Waffen und pausiert die Schildaufladung.
+Kp ist gegenüber dem Entwurf etwa verdoppelt: Mit der Bremsgrenze im Regler gibt es kein Überschwingen, und erst so erreicht S1 die 63 % eines 20°-Fehlers in 0,22 s (mit den Entwurfswerten waren es 0,27 s). Gemeinsam: Boost-Schub × 1,5, Boost-Drehung × 1,2, Raumbremse × 1,3, REISE-Drehraten × 0,6, LANDUNG-Drehraten × 0,5 (60 m/s waagrecht, 20 m/s senkrecht). Moduswechsel KAMPF→REISE 1,5 s (im Kampf gesperrt; Treffer bricht ab), REISE→KAMPF 0,8 s. REISE sperrt Waffen und pausiert die Schildaufladung.
 
 **Kardan:** Kleine Schiffe zielen fast nur über die Nase, große Schiffe haben Geschütztürme, deren Laser bis 28° neben der Nase auf das Fadenkreuz schwenken. Der Spieler zielt trotzdem selbst (der Kardan trifft das Fadenkreuz, nicht das Ziel). Im PvP gilt höchstens 5° (Fairness, Bedenken).
 
