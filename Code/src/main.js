@@ -240,6 +240,7 @@ function playSession(profile, opts = {}) {
       try { frameBody(now); } catch (err) { if (onFrameError(err)) return; }
       if (running) frameId = requestAnimationFrame(frame);
     };
+    const rootEl = document.documentElement;
     const frameBody = (now) => {
       let dt = (now - last) / 1000;
       last = now;
@@ -247,6 +248,9 @@ function playSession(profile, opts = {}) {
       if (dt < 0) dt = 0;
       const tf = performance.now();
       if (!live) { world.update(0); renderer.render(0, 0); hud.update(dt); return; } // Start: Modelle tauschen noch ein
+      // Handy hochkant (Runde 3): hinter dem Hinweis „Bitte das Handy quer halten“ steht die Simulation still (vorher
+      // lief der Kampf weiter, Schild und Hülle gingen verloren bis zum Tod)
+      if (rootEl.classList.contains('is-portrait-phone')) { world.update(0); hud.update(dt); return; }
       input.update(dt);
       // Ein einziger Akkumulator (in World.update, feste 1/60-s-Schritte, höchstens MAX_STEPS_PER_UPDATE je Bild).
       // Vorher rechnete main.js zusätzlich mit eigenem Akkumulator: bis zu 15 Schritte je Bild auf schwachen Geräten.

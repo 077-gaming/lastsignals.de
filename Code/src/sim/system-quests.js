@@ -12,9 +12,9 @@ export const SYSTEM_CHAPTERS = { 1: 'Fliegen', 2: 'Zielen und Angreifen', 3: 'Mu
 // key: Tastenschild in der Karte; keys werden in der Anzeige aus der Belegung gelesen, soweit vorhanden.
 export const SYSTEM_QUESTS = [
   { id: 'sys01', ch: 1, title: 'Signal empfangen', text: 'Station hier, wir hören dich. {steer} gibt Schub, bis zum vollen Tempo dauert es ein paar Sekunden.', goal: { type: 'fly', meters: 300 }, key: 'W', k2: 'steer', t3: 'Station hier, wir hören dich. {thrustHow}, bis zum vollen Tempo dauert es ein paar Sekunden. Zielen und lenken macht {aimDev}.', k3: 'fwd', reward: { credits: 500, xp: 200 } },
-  { id: 'sys02', ch: 1, title: 'Die Maus lenkt', text: 'Im Verfolger folgt die Nase dem Mauszeiger. Halt die Maustaste oder W und flieg eine weite Kurve.', goal: { type: 'fly', meters: 1500, camera: 'chase' }, key: 'MAUS', t3: 'Im 3D-Flug zielt {aimDev}: das Fadenkreuz folgt sofort, das Schiff dreht hinterher. Gib mit {fwd} Schub und flieg eine weite Kurve, auch nach oben und unten.', k3: 'MAUS', reward: { credits: 500, xp: 300 } },
+  { id: 'sys02', ch: 1, title: 'Die Maus lenkt', text: 'Im Verfolger folgt die Nase dem Mauszeiger. Halt die Maustaste oder W und flieg eine weite Kurve.', goal: { type: 'fly', meters: 1500, camera: 'chase', turn: 270 }, key: 'MAUS', t3: 'Im 3D-Flug zielt {aimDev}: das Fadenkreuz folgt sofort, das Schiff dreht hinterher. Gib mit {fwd} Schub und flieg Kurven, auch nach oben und unten, bis die Bahn sich um 270° gedreht hat.', k3: 'MAUS', reward: { credits: 500, xp: 300 } },
   { id: 'sys03', ch: 1, title: 'Vollbremsung', text: 'S bremst. Erst auf Tempo kommen, dann aus voller Fahrt anhalten.', goal: { type: 'brake', fromSpeed: 150 }, key: 'S', t3: '{stopHow} Erst auf Tempo kommen, dann anhalten.', k3: 'brake', reward: { credits: 500, xp: 300 } },
-  { id: 'sys04', ch: 1, title: 'Von oben', text: '{camera} schaltet auf die taktische Ansicht. Von oben fliegst du {tacFly}.', goal: { type: 'camera', target: 'tactical' }, key: 'V', k2: 'camera', t3: '{camera} schaltet auf die taktische Ansicht, den Nebenmodus. Von oben fliegst du {tacFly}.', k3: 'camera', reward: { credits: 500, xp: 300 } },
+  { id: 'sys04', ch: 1, title: 'Von oben', text: '{camera} schaltet auf die taktische Ansicht. Von oben fliegst du {tacFly}.', goal: { type: 'camera', target: 'tactical' }, key: 'V', k2: 'camera', t3: '{camera} wechselt die Ansicht: erst ins Cockpit, beim zweiten Mal in die taktische Ansicht von oben, den Nebenmodus. Von oben fliegst du {tacFly}.', k3: 'camera', reward: { credits: 500, xp: 300 } },
   { id: 'sys05', ch: 1, title: 'Klick und weg', text: '{tacGo}, den Rest macht der Autopilot. Richtung und Entfernung stehen hier in der Karte.', goal: { type: 'reach', dx: 1200, dz: 600, r: 180 }, key: 'KLICK', k2: 'KLICK', reward: { credits: 800, xp: 400 } },
   { id: 'sys06', ch: 1, title: 'Zurück hinters Schiff', text: '{camera} noch einmal, du sitzt wieder hinter dem Schiff.', goal: { type: 'camera', target: 'chase' }, key: 'V', k2: 'camera', reward: { credits: 500, xp: 300 } },
   { id: 'sys07', ch: 1, title: 'Weiter draußen', text: 'Der nächste Wegpunkt liegt außerhalb der sicheren Zone. Unten rechts auf der Karte siehst du, wo du bist.', goal: { type: 'reach', dx: -1800, dz: -1400, r: 220 }, key: 'KARTE', reward: { credits: 1000, xp: 500 } },
@@ -219,6 +219,14 @@ export class SystemSeries {
       case 'fly':
         if (g.camera && this.cameraMode() !== g.camera) return;
         if (g.config && this._config !== g.config) return;
+        if (g.turn && w.flight3d) {
+          // 3D-Flug (Runde 3): „weite Kurve“ heißt wirklich kurven – gezählt wird die Drehung der Flugbahn in Grad
+          // (vorher reichten 1.500 m geradeaus mit W, ohne die Maus zu bewegen)
+          const vx = p.vx || 0, vy = p.vy || 0, vz = p.vz || 0, v = Math.hypot(vx, vy, vz), l = this._lastV;
+          if (v > 40 && l) { const c = (vx * l[0] + vy * l[1] + vz * l[2]) / v; this._add(Math.acos(Math.max(-1, Math.min(1, c))) * 180 / Math.PI, g.turn); }
+          this._lastV = v > 40 ? [vx / v, vy / v, vz / v] : null;
+          break;
+        }
         this._add(speed * dt, g.meters);
         break;
       case 'brake':

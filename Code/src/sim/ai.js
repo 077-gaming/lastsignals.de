@@ -21,7 +21,7 @@ import { turnToward, headingOf, wrapAngle, rollDamage } from './combat.js';
 import { leaderOf, slotPos, slotGap } from './spawn.js';
 import { hashString } from './rng.js';
 import { steer3d, direct3d, stalkPoint, pitchToward } from './ai3d.js';
-import { ENEMY_SPEED3, DODGE3, JINK_TIME3, DODGE_CD3, SECTOR_BAND, HOME_BAND } from '../flight/params.js';
+import { ENEMY_SPEED3, DODGE3, JINK_TIME3, DODGE_CD3, SECTOR_BAND, HOME_BAND, FLEE3, tier3 } from '../flight/params.js';
 
 const near = [];          // wiederverwendete Trefferliste für die Nachbarsuche
 const rocks = [];         // wiederverwendete Trefferliste für Brocken
@@ -253,7 +253,7 @@ export function thinkEnemy(w, e) {
     if (e.state === 'attack') trySpecial(w, e, d);
     if (!e.spPhase) e.tactic = tacticOf(e, ai, d, focus);
     // ausweichen, wenn der Spieler auf ihn feuert (vorausschauend, nicht nur nach Treffern)
-    if (p.targetId === e.id && (p.attacking || w.aimInfo.fire) && e.dodgeCd <= 0 && d < 750 && w.rng.next() < ai.dodge * (w.flight3d ? DODGE3[(w.sector && w.sector.index) > 1 ? 1 : 0] : 0.22)) jink(w, e, dx / (d || 1), dz / (d || 1), dy3 / (d || 1));
+    if (p.targetId === e.id && (p.attacking || w.aimInfo.fire) && e.dodgeCd <= 0 && d < 750 && w.rng.next() < ai.dodge * (w.flight3d ? DODGE3[tier3(w)] : 0.22)) jink(w, e, dx / (d || 1), dz / (d || 1), dy3 / (d || 1));
     return;
   }
   // Konvoi-Überfall: Frachter angreifen, solange er lebt
@@ -614,7 +614,11 @@ export function moveEnemy(w, e, dt) {
   if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) { e.slowT = 0; e.slowK = 1; } }
   if (e.jamT > 0) { e.jamT -= dt; if (e.jamT < 0) e.jamT = 0; }
   // 3D-Flug: Tempo je Stil angehoben (Runde 2, params.js ENEMY_SPEED3), Taktik unverändert
-  const k3 = w.flight3d ? (e.radius >= 55 || def.speed < 100 ? ENEMY_SPEED3.big : ENEMY_SPEED3[ai.style] || 1) : 1;
+  let k3 = w.flight3d ? (e.radius >= 55 || def.speed < 100 ? ENEMY_SPEED3.big : ENEMY_SPEED3[ai.style] || 1) : 1;
+  // Rückzug zum Heilen im 3D-Flug (Runde 3): angeschlagen fliegt der Gegner langsamer (FLEE3), der Spieler holt ihn mit
+  // Kampftempo ein. Vorher floh ein Raider mit 284 m/s, die Jagd dauerte 15–32 s (Abschuss-Ausreißer). Diebe mit Beute
+  // fliegen weiter voll.
+  if (w.flight3d && e.state === 'flee' && !e.lootRun) k3 = Math.min(k3, FLEE3);
   const speed = def.speed * k3 * (e.slowT > 0 ? e.slowK : 1); // Bremsmine
 
   e.fireCd -= dt;

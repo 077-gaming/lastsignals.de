@@ -6,7 +6,7 @@ import { createState, makeCtl, stepN, enter, derive, applyEdges, halt, interrupt
 import {
   shipParams, labParams, BOLT_SPEED, BOLT_PER_SHOT, BOLT_SPREAD, ENEMY_HIT_PAD, AUTO_K, AUTO_CONE, CONVERGE_DEFAULT, SECTOR_BAND,
   HOME_BAND, ZONE_DY, TRACTOR_RANGE, TRACTOR_SPEED, CLASS, PVP_GIMBAL, FLAT_BAND, AIM_PVE, ASSIST_CONE, ASSIST, K as FK,
-  BAND_WARN, ENEMY_DMG3, EDGE_DAMP, EDGE_PUSH, EDGE_PUSH_MAX, JUMP_HOLD_K, JUMP_HOLD_R,
+  BAND_WARN, BAND_WARN_V, ENEMY_DMG3, HIT_PAD3, tier3, AUTO_PVE, EDGE_DAMP, EDGE_PUSH, EDGE_PUSH_MAX, JUMP_HOLD_K, JUMP_HOLD_R,
 } from '../flight/params.js';
 import { assistLevel } from '../flight/aim.js';
 import { qFromYPR, qRot, qSlerp, qCopy, vAngle, fwdOf } from '../flight/math3.js';
@@ -18,7 +18,7 @@ import { rollDamage, applyDamage, headingOf } from './combat.js';
 import { updateDrones, droneShield } from './drones.js';
 import { sosAbsorb, breakCloak } from './abilities.js';
 
-export { ZONE_DY, AUTO_K };
+export { ZONE_DY, AUTO_K, AUTO_PVE };
 export const LASER_KEYS = Object.keys(LASERS);
 export const AMMO_KEYS3 = Object.keys(AMMO);
 const BOLTS = 640;
@@ -92,7 +92,7 @@ export function edge3d(w, dt) {
   E.vert = false;
   if (dy < d) { d = dy; E.vert = true; dir = p.y >= 0 ? 1 : -1; }
   E.d = d; E.dir = dir; E.out = out;
-  E.warn = !out && (dx < size * (1 - BAND_WARN) || dz < size * (1 - BAND_WARN) || dy < band * (1 - BAND_WARN));
+  E.warn = !out && (dx < size * (1 - BAND_WARN) || dz < size * (1 - BAND_WARN) || dy < band * (1 - BAND_WARN_V));
   if (out) E.t += dt; else E.t = 0;
   E.left = 0;
   if (out && st && dt > 0) {
@@ -175,7 +175,11 @@ export function flyPlayer(w, dt, tgt) {
   if (w.flLab) labParams(P, w.flLab); // Fluglabor (nur Entwicklung)
   st.p[0] = p.x; st.p[1] = p.y; st.p[2] = p.z; // Stöße, Kollisionen der Welt aus dem letzten Schritt übernehmen
   const msg = applyEdges(st, w.ctl, P, { inCombat: w.inCombat });
-  if (msg) { w.flMsg = msg; w.bus.emit('flight', { msg, mode: st.modeWant, coupled: st.coupled, landing: st.landing }); }
+  if (msg) {
+    // Landemodus im All (Runde 3): ohne Boden sagt das HUD es (Planetenlandung ist der nächste Meilenstein)
+    const m2 = st.landing && /^LANDEMODUS · FAHRWERK/.test(msg) && !(w.env && w.env.ground) ? msg + ' · KEIN BODEN IN REICHWEITE' : msg;
+    w.flMsg = m2; w.bus.emit('flight', { msg: m2, mode: st.modeWant, coupled: st.coupled, landing: st.landing });
+  }
   let ctl = w.ctl;
   if (p.hasMove) {
     if (w.ctlActive) { p.hasMove = false; w.homing = false; apReiseOff(w, st); w.bus.emit('flight', { msg: 'AUTOPILOT AUS' }); }
@@ -350,7 +354,7 @@ function aimInfo(w, dt) {
     if (d > Cfg.PLAYER_RANGE * 1.1) continue;
     const cosA = (dx * _a[0] + dy * _a[1] + dz * _a[2]) / d;
     if (cosA < 0.9) continue;
-    const ang = Math.acos(Math.min(1, cosA)), lim = Math.max(1.5 * D, Math.atan((e.radius * ENEMY_HIT_PAD) / d) * 1.4);
+    const ang = Math.acos(Math.min(1, cosA)), lim = Math.max(1.5 * D, Math.atan((e.radius * HIT_PAD3[tier3(w)]) / d) * 1.4);
     if (ang > lim) continue;
     const k = ang / lim;
     if (k < bestK) { bestK = k; best = e; bd = d; }
@@ -393,7 +397,7 @@ export function updateGuns(w, dt, tgt) {
   A.reise = reise;
   let firing = false;
   if (want) {
-    if (reise) { if (!w._wasFiring3) w._msg('Waffen gesperrt: REISE bzw. Landemodus. B halten schaltet auf KAMPF.', 'info', 'reiseGuns', 3); }
+    if (reise) { if (!w._wasFiring3) w._msg(st.landing ? 'Waffen gesperrt: Landemodus. Landemodus aus schaltet auf KAMPF.' : 'Waffen gesperrt: REISE. {d:modeHold} schaltet auf KAMPF.', 'info', 'reiseGuns', 3); }
     else firing = w._canShoot(w._wasFiring3);
   }
   A.fire = firing;
@@ -592,10 +596,11 @@ function playerBolt(w, B, i, x0, y0, z0, x1, y1, z1) {
   const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, half = Math.hypot(x1 - x0, z1 - z0) / 2;
   const n = w.grid.query(mx, mz, half + 260, NEAR);
   let best = null, bt = 2;
+  const pad = HIT_PAD3[tier3(w)];
   for (let j = 0; j < n; j++) {
     const e = NEAR[j];
     if (!e.alive) continue;
-    const t = segSphere(x0, y0, z0, x1, y1, z1, e.px, e.py, e.pz, e.x, e.y, e.z, e.radius * ENEMY_HIT_PAD);
+    const t = segSphere(x0, y0, z0, x1, y1, z1, e.px, e.py, e.pz, e.x, e.y, e.z, e.radius * pad);
     if (t >= 0 && t < bt) { bt = t; best = e; }
   }
   for (let j = 0; j < REM.length; j++) {
@@ -676,7 +681,7 @@ export function enemyFire3d(w, e, tgt) {
   if (w.enemyBolts && toPlayer) {
     // Etappe 2: Fehler je Rang (normal 3°, Elite 1,5°, Alpha 0,8°), Treffer entscheidet die Kapsel
     const sig = (e.rank === 'alpha' ? 0.8 : e.rank === 'elite' ? 1.5 : 3) * D;
-    spawnEnemyBolt(w, e, 3, _lp, sig, rollDamage(w.rng, e.def.damage, e.dmgMult) * ENEMY_DMG3);
+    spawnEnemyBolt(w, e, 3, _lp, sig, rollDamage(w.rng, e.def.damage, e.dmgMult) * ENEMY_DMG3[tier3(w)]);
     w.bus.emit('shot', { from: e.id, to: tgt.id, laser: null, ammo: null, hit: false, enemyType: e.type, bolt: true, x: _lp[0], y: _lp[1], z: _lp[2], dx: dx / d, dy: dy / d, dz: dz / d });
     return true;
   }
@@ -688,7 +693,7 @@ export function enemyFire3d(w, e, tgt) {
     return true;
   }
   // gegen den 3D-Piloten härter (Runde 2, ENEMY_DMG3): Kampf mit echter Gefahr; Frachter wie im Taktikweg
-  const dmg = hit ? rollDamage(w.rng, e.def.damage, e.dmgMult) * (toPlayer ? ENEMY_DMG3 : 1) : 0;
+  const dmg = hit ? rollDamage(w.rng, e.def.damage, e.dmgMult) * (toPlayer ? ENEMY_DMG3[tier3(w)] : 1) : 0;
   if (!toPlayer) {
     // Frachter (Konvoi): sofort wie im Taktikweg
     w.bus.emit('shot', { from: e.id, to: tgt.id, laser: null, ammo: null, hit, enemyType: e.type, x: tgt.x, z: tgt.z, y: tgt.y || 0, dx: dx / d, dz: dz / d });

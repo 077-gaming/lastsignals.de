@@ -7,7 +7,10 @@ import { hashString } from './rng.js';
 import { fwdOf } from '../flight/math3.js';
 import { enemyFwd } from './world3d.js';
 import { cancelSpecial } from './ai.js';
-import { TAIL3 } from '../flight/params.js';
+import { TAIL3, tier3 } from '../flight/params.js';
+// Wer sich ins Heck setzt (Runde 3): ab Sektor 3 auch Schwärme und Wächter (vorher lag der Feind in Sektor 4 nur 2–6 %
+// der Kampfzeit im Heck des Spielers)
+const tailer = (w, st) => st === 'pack' || st === 'ambush' || st === 'thief' || (tier3(w) >= 2 && (st === 'swarm' || st === 'guard'));
 
 const D = Math.PI / 180;
 const _f = new Float64Array(3), _e = new Float64Array(3);
@@ -56,7 +59,7 @@ export function steer3d(w, e, tgt, speed, MV, hold) {
   // Manöver wählen und fortschreiben
   const agile = !big(e) && st !== 'kite';
   // Eröffnung: Rudel und Lauerer kommen zur Hälfte gleich über das Heck (Runde 2: vorher immer frontal)
-  if (!e.m3) { e.m3 = agile ? ((st === 'pack' || st === 'ambush') && hr(e, 7) < TAIL3[(w.sector && w.sector.index) > 1 ? 1 : 0] * 0.66 ? 'tail' : 'run') : 'orbit'; e.m3T = 0; e.m3N = 0; }
+  if (!e.m3) { e.m3 = agile ? ((st === 'pack' || st === 'ambush' || (tier3(w) >= 2 && st === 'swarm')) && hr(e, 7) < TAIL3[(w.sector && w.sector.index) > 1 ? 1 : 0] * 0.66 ? 'tail' : 'run') : 'orbit'; e.m3T = 0; e.m3N = 0; }
   e.m3T += 1 / 60;
   fwdOf(_f, w.fl.q); // Bug des Spielers
   const inFront = -(nx * _f[0] + ny * _f[1] + nz * _f[2]); // > 0: Gegner liegt vor dem Spieler
@@ -83,7 +86,7 @@ export function steer3d(w, e, tgt, speed, MV, hold) {
       gx = e.m3X - e.x; gy = e.m3Y - e.y; gz = e.m3Z - e.z;
       faceT = false;
       if (Math.hypot(gx, gy, gz) < 90 || e.m3T > 3) {
-        const tail = (st === 'pack' || st === 'ambush' || st === 'thief') && !e._noRear && hr(e, 120 + e.m3N) < TAIL3[(w.sector && w.sector.index) > 1 ? 1 : 0];
+        const tail = tailer(w, st) && !e._noRear && hr(e, 120 + e.m3N) < TAIL3[(w.sector && w.sector.index) > 1 ? 1 : 0];
         e.m3 = tail ? 'tail' : 'run'; e.m3T = 0; e.m3N++;
       }
       break;

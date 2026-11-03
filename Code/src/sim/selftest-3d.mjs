@@ -8,6 +8,7 @@ import { leadPoint } from '../flight/aim.js';
 import { fwdOf } from '../flight/math3.js';
 import * as Cfg from './config.js';
 import { enemyFwd } from './world3d.js';
+import { HOME_BAND } from '../flight/params.js';
 
 const DT = 1 / 60, D = Math.PI / 180;
 const sp = new Float64Array(3), tp = new Float64Array(3), tv = new Float64Array(3), lp = new Float64Array(3), f = new Float64Array(3);
@@ -46,6 +47,32 @@ function botStep(w, hist, R) {
 function lcg(seed) { let s = seed >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
 
 export function run3dTests(check, makeBus) {
+  // ── Landeprobe in der Welt (Runde 3): Boden mit Schwerkraft über w.env, Landemodus, Autoland, Abheben ──
+  {
+    const bus = makeBus();
+    const pr = newProfile('Land3D', 'europa'); pr.created = '2026-11-03';
+    const w = new World(pr, bus, { seed: 5 });
+    w.setFlight3d(true);
+    const p = w.player; p.x += 3000; p.z += 3000; w.fl.p[0] = p.x; w.fl.p[2] = p.z;
+    for (const e of w.enemies) { e.x += 20000; e.px = e.x; }
+    const gy = p.y - 60;
+    w.env = { gravity: [0, -9.81, 0], rho: 0, ground(px, py, pz, out) { out.h = py - gy; out.nx = 0; out.ny = 1; out.nz = 0; out.pad = 1; } };
+    const c = w.ctl; c.fill(0); c[C.AZ] = -1;
+    let msgLand = '';
+    bus.on('flight', (m) => { if (m && /LANDEMODUS/.test(m.msg)) msgLand = m.msg; });
+    c[C.EDGE] = EDGE.LAND;
+    for (let i = 0; i < 120; i++) w._step(DT);
+    const hover = Math.abs(p.y - (gy + 60));
+    c[C.BTN] = BTN.AUTOLAND;
+    let t = 0; while (!w.fl.landed && t < 60) { w._step(DT); t += DT; }
+    const landed = w.fl.landed, hurt = p.hp < p.hpMax;
+    c[C.BTN] = 0; c[C.TY] = 1;
+    for (let i = 0; i < 90; i++) w._step(DT);
+    c[C.TY] = 0;
+    check('Landeprobe in der Welt: Schweben im Landemodus (Schwerkraft ausgeglichen), Autoland setzt auf, Abheben', hover < 3 && landed && !hurt && !w.fl.landed && p.y > gy + 5, `schwebt ±${hover.toFixed(1)} m, gelandet nach ${t.toFixed(1)} s, ${msgLand}`);
+    w.env = null; c[C.EDGE] = EDGE.LAND; w._step(DT); c[C.EDGE] = EDGE.LAND; let m2 = ''; bus.on('flight', (m) => { if (m) m2 = m.msg; }); w._step(DT);
+    check('Landemodus im All meldet: kein Boden in Reichweite', /KEIN BODEN/.test(m2), m2);
+  }
   // ── Kampf im Heimatsektor mit Menschenmodell ──
   {
     const bus = makeBus();
@@ -88,7 +115,7 @@ export function run3dTests(check, makeBus) {
       if (w.playerDead) w.repair('station');
     }
     check('3D-Welt: 150 s Kampf ohne NaN', bad === 0);
-    check('3D-KI: Höhen im Band ±1.500 m', maxY <= 1500, Math.round(maxY) + ' m');
+    check(`3D-KI: Höhen im Band ±${HOME_BAND - 100} m (Heimat, folgt dem Höhenband des Sektors)`, maxY <= HOME_BAND - 100, Math.round(maxY) + ' m');
     check('3D-KI: Anflug mit Abdrehen und Durchflug treten auf', !!(seen.run && seen.break && seen.pass), Object.keys(seen).join(','));
     check('3D-KI: kein Ineinanderfliegen (< 1 % der Paare)', pairs === 0 || overlap / pairs < 0.01, `${overlap}/${pairs}`);
     check('3D-KI: Gegner feuern nur im 3D-Feuerkegel', enemyShots > 0 && coneBad === 0, `${enemyShots} Schüsse, ${coneBad} außerhalb`);

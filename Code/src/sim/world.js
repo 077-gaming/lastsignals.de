@@ -755,7 +755,9 @@ export class World {
     this._hitFrom = from;
     // kritischer Treffer der Schiffslaser: 1,5-facher Schaden (SAL-Salven zeigen sich weiter als kritisch, ohne Zuschlag)
     const cm = crit && ammoKey !== 'SAL' ? C.CRIT_MULT : 1;
-    this._hitEnemy(tgt, rollDamage(this.rng, src ? src.damage : L.damage, mult * cm), shieldOnly, crit, dx, dz, hx, hz);
+    // Feuerleitrechner im 3D-Flug gegen NPC: Schaden × AUTO_PVE (Runde 3, params.js); Taktik und Drohnen unverändert
+    const k3 = this.flight3d && !src && tgt.kind === 'enemy' ? F.AUTO_PVE : 1;
+    this._hitEnemy(tgt, rollDamage(this.rng, src ? src.damage : L.damage, mult * cm) * k3, shieldOnly, crit, dx, dz, hx, hz);
     this._hitFrom = null;
   }
 
