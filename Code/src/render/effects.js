@@ -254,6 +254,7 @@ void main() {
 }`;
 const SHIELD_FS = `
 uniform vec3 uColor; uniform float uOpacity; uniform vec3 uHit; uniform float uAge; uniform float uFull; uniform float uTime;
+uniform float uMaxA, uBubble;
 varying vec3 vL; varying vec3 vN; varying vec3 vV;
 float hexEdge(vec2 p) {
   p.x *= 1.1547; p.y += mod(floor(p.x), 2.0) * 0.5;
@@ -275,9 +276,9 @@ void main() {
   float ring = exp(-pow((ang - ra) / 0.11, 2.0)) * inv;
   float ring2 = exp(-pow((ang - ra * 0.6) / 0.07, 2.0)) * inv * 0.45;
   float core = exp(-pow(ang / 0.2, 2.0)) * fade;
-  float bubble = fres * (0.14 + 0.46 * fade) * (0.5 + 0.5 * smoothstep(1.6, 0.0, ang));
+  float bubble = fres * (0.14 + 0.46 * fade) * (0.5 + 0.5 * smoothstep(1.6, 0.0, ang)) * uBubble;
   float a = bubble * (0.7 + 0.5 * edge) + (ring + ring2) * (0.75 + 0.9 * edge) + core * (1.1 + edge * 0.8);
-  a = mix(a, (fres * 0.9 + 0.2 + edge * 0.5) * inv, uFull) * uOpacity;
+  a = min(mix(a, (fres * 0.9 + 0.2 + edge * 0.5) * inv, uFull) * uOpacity, uMaxA);
   vec3 col = mix(uColor, vec3(1.0), clamp(core * 0.6 + ring * 0.25, 0.0, 1.0));
   gl_FragColor = vec4(col * a * 1.6, a);${OUT}
 }`;
@@ -530,7 +531,7 @@ export class Effects {
     // Schildblasen
     this.shieldGeo = new THREE.SphereGeometry(1, 40, 24);
     this.shieldBase = new THREE.ShaderMaterial({
-      uniforms: { uColor: { value: new THREE.Color(SHIELD_COLOR) }, uOpacity: { value: 0 }, uHit: { value: new THREE.Vector3(0, 0, -1) }, uAge: { value: 0 }, uFull: { value: 0 }, uTime },
+      uniforms: { uColor: { value: new THREE.Color(SHIELD_COLOR) }, uOpacity: { value: 0 }, uHit: { value: new THREE.Vector3(0, 0, -1) }, uAge: { value: 0 }, uFull: { value: 0 }, uTime, uMaxA: { value: 10 }, uBubble: { value: 1 } },
       vertexShader: SHIELD_VS, fragmentShader: SHIELD_FS,
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     });
@@ -1180,8 +1181,12 @@ export class Effects {
     for (let i = 0; i < this.shields.length; i++) if (this.shields[i].on && this.shields[i].id === id) { s = this.shields[i]; break; }
     if (!s) for (let i = 0; i < this.shields.length; i++) if (!this.shields[i].on) { s = this.shields[i]; break; }
     if (!s) return;
-    s.on = true; s.id = id; s.t = 0; s.dur = full ? dur : Math.min(dur, big ? 0.6 : 0.5); s.big = !!big;
+    // Runde 4: eigenes Schiff (Verfolgersicht) nur kurz und schwach: Hex-Kuppel und Trefferring höchstens ≈ 30 %
+    // Deckkraft über dem Rumpf, 0,3 s, ohne Fresnel-Wand über die ganze Kugel; Wiedereinstieg (full) wie bisher
+    s.own = id === 'player' && !full;
+    s.on = true; s.id = id; s.t = 0; s.dur = full ? dur : s.own ? 0.3 : Math.min(dur, big ? 0.6 : 0.5); s.big = !!big;
     s.m.uniforms.uFull.value = full ? 1 : 0;
+    s.m.uniforms.uMaxA.value = s.own ? 0.32 : 10; s.m.uniforms.uBubble.value = s.own ? 0.35 : 1;
     s.r = this.host.visualRadius(id) * 1.12;
     // Einschläge kommen flach; zur Kamera geneigt liegt das Raster sichtbar oben statt nur am Rand der Kugel
     s.m.uniforms.uHit.value.set(hx, hy, hz).normalize();
@@ -1461,7 +1466,7 @@ export class Effects {
       s.mesh.position.copy(_v);
       s.mesh.scale.setScalar(s.r);
       s.m.uniforms.uAge.value = t;
-      s.m.uniforms.uOpacity.value = s.big ? 1.0 : 0.8;
+      s.m.uniforms.uOpacity.value = s.own ? 0.3 : s.big ? 1.0 : 0.8;
     }
     // Sprung-Ladung: Ring zieht sich zusammen, Lichtstriche strömen ein, Kern wird heller
     const J = this.jump;
