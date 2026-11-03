@@ -331,3 +331,28 @@ Fadenkreuz (Zielrichtung, sofort) · Bugmarke · Waffenkreuz/Kardanmarke · Flug
 | Netz 9 Hz | Hermite, Vorhersage; eigener Server später |
 | Taktik bricht | alter Weg unverändert, Goldtest bitgleich |
 | Headless-Leistungswerte | nur Vergleich; Abnahme am M5 durch Toni |
+
+---
+
+## 16. Umsetzungsstand (03.11.2026, Zweig `claude/flug`)
+
+**Gebaut:** Flugkern (`src/flight/`), Welt und KI im 3D-Weg (`sim/world3d.js`, `sim/ai3d.js`), Maus mit Zeigerfang und virtuellem Stick, Belegungstabelle (`input/bindings.js`), Controller (`input/padflight.js`, Zielhilfe), Touch vereinfacht, Verfolger und Cockpit mit voller Lage, Flug-HUD (`ui/hud-flight.js`), Mehrspieler mit Höhe und Lage (abwärtsverträglich), Landemodus-Vorbereitung (Fahrwerk, `env`, Rahmen und Ursprungsversatz), Fluglabor (`?dev=fluglabor`, `ui/fluglabor.js`, nur Entwicklung), Ton (Steuerdüsen, Boost, Vorbeiflug, höchstens 24 Stimmen). Neue Spieler und alte Spielstände starten im Verfolger (einmalige Umstellung `ls.flight.migrated`, Telefone bleiben taktisch); Taktik über V.
+
+**Gemessen (headless, Entwicklungsserver, 03.11.2026):**
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm test` | alle Prüfungen bestanden, Taktik-Goldtest bitgleich (3 Szenarien) |
+| `tools/playtest/flug.mjs` | 27/27; Fadenkreuz 1 Bild Verzug, Nase erreicht 63 % in 0,23 s (S1), Heap-Zuwachs 0,3 MB; Maus 81 % Treffer, Cockpit 89 %, Controller 83 % (Controller/Maus 1,02), 60 Bilder/s |
+| `tools/playtest/controller.mjs` | 88/88, 0 Konsolenfehler |
+| `tools/mehrspieler/test.mjs` | alle bestanden (inkl. Höhe/Lage fremder Schiffe, Taktik-Flag, PvP-Treffer und Abschuss im 3D-Flug) |
+| `tools/playtest/tief.mjs 25 saturn` | 3D und `--flug=taktik` ohne Fehler, 60 Bilder/s |
+| `tools/playtest/spielen.mjs --minuten 1` (3D) | 59,6 Bilder/s, Kampf ohne Bild über 20 ms, Raider-Abschuss Median 3,8 s (mit Raketen, wie F0) |
+| `ansichten.mjs` neue Ansichten | Kurvenkampf/Modelle von unten, Himmel steil oben/unten: keine Fehler, keine Nähte an den Polen |
+
+**Offen:**
+- Abschusszeit nur mit Lasern (Startschiff S1, ein L1-Laser, Bot ohne Raketen) liegt bei ≈ 13 s und damit über dem Ziel ≤ 8 s aus 15. Ursache ist der unveränderte Dauerschaden (gleicher Schaden je Sekunde wie Taktik, Treffer 80–90 %); eine Änderung wäre eine Balance-Entscheidung, nicht Teil des Flugmodells.
+- Gefühlsabnahmen 1–3 durch Toni am M5 (Maus, Waffen, Controller) im Fluglabor; erst danach Merge-Entscheidung.
+- Liegt das Schiff beim Start innerhalb der Stations-Hüllquader, schiebt die Stationsfreihaltung die Kamera bei steilem Nicken über das Schiff (Schiff kurz nicht im Bild); betrifft nur den Startpunkt an der Station.
+- Cockpit-Ebene wird auf Qualität NIEDRIG nicht gezeichnet (bestand schon vorher, kein Composer).
+- Planetenlandung selbst (Boden, Atmosphäre, Weltrenderer mit kameranahem Zeichnen) ist nur vorbereitet.

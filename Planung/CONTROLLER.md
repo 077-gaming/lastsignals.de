@@ -28,16 +28,38 @@ Je Bild gibt es genau einen Besitzer des Controllers: die **Flugsteuerung**, sol
 
 **Eingabeart:** Sobald am Controller etwas passiert, gilt `html[data-input="pad"]` (dazu `data-pad="xbox|ps|nin"`) und das Ereignis `ls:inputmode`. Echte Tastatur-, Maus- (mehr als 12 px Bewegung) oder Touch-Eingabe schaltet zurück auf `kb`. Nachgestellte Tasten (z. B. Esc für das Bordmenü) sind nicht „vertrauenswürdig“ und schalten nicht um.
 
-## Belegung im Flug (Verfolger, Cockpit, Taktisch)
+## Belegung im 3D-Flug (Verfolger, Cockpit) – Hauptmodus
+
+Quelle der Belegung ist `src/input/bindings.js` (`PAD`), umgesetzt in `padflight.js` (`frame3d`), Regeln in `Planung/FLUGMODELL.md` 5.3. Glyphen im HUD wechseln über `html[data-flight="3d"]` (`padglyph.js`, Ereignis `ls:flightview`).
+
+| Controller (Xbox · PlayStation) | Wirkung | Tastatur/Maus |
+|---|---|---|
+| Linker Stick | Schub vor/zurück, seitlich schieben | W/S, A/D |
+| LB / RB · L1 / R1 | Rollen links / rechts | Q / E |
+| LB + RB zusammen | Linker Stick ↕ = hoch/runter (Schwebemodus) | Leertaste / Strg |
+| Rechter Stick | Zielrichtung im Lenkkegel bewegen (Kurve 1,6, bis 160°/s), das Schiff folgt mit Trägheit; Option „Drehraten“ (Stick = Drehrate) | Maus |
+| L3 · L3 halten | Boost an/aus (Vorrat) · Landemodus (Fahrwerk) | Umschalt · N |
+| RT · R2 | Laser feuern | Linksklick |
+| LT · L2 | Präzisionszielen (langsamer, engerer Hilfekegel), schaltet Raketen auf | Rechtsklick halten |
+| A · × | Ziel im Fadenkreuz, sonst nächstes Ziel | T / Tab |
+| B · ○ · B halten | Abbrechen (Ziel lösen, Autopilot aus) · Raumbremse | – · X |
+| X · □ · X halten | Rakete · gekoppelt/entkoppelt | R · Alt+C |
+| Y · △ · Y halten | Kontext (andocken, springen, Beute) · Autopilot zur Station | F · H |
+| R3 · R3 halten | Kamera Verfolger → Cockpit → Taktisch · umsehen | V · Y (QWERTZ) |
+| Steuerkreuz ◂ ▸ / ▴ / ▾ | Schnellleiste: Platz wählen / auslösen / Leiste wechseln (ohne Kombination) | 1–0, Alt+1–5 |
+| MENU · MENU halten | Bordmenü · KAMPF/REISE | Esc · B halten |
+| VIEW · CREATE | Karte | – |
+
+**Zielhilfe** (Einstellung `ls.flight.assist`, Standard STANDARD): Zielbremse nahe der Vorhaltemarke und Mitnahme nur bei Stickeingabe, höchstens 40 % der Drehrate, im PvP höchstens NIEDRIG. **Vibration:** leichtes Rumpeln bei eigenen Bolzentreffern, dazu wie bisher Treffer am eigenen Schiff, Explosionen, Raketenstart. Loslass-Befehle zählen nur für Tasten, die im 3D-Flug gedrückt wurden (kein doppeltes R3 beim Wechsel aus der Taktik).
+
+## Belegung im Taktikmodus (Klickflug, unverändert)
+
+Die Taktik (R3 bis „Taktisch“) behält die bisherige Belegung.
 
 | Controller (Xbox · PlayStation) | Wirkung | Tastatur-Gegenstück |
 |---|---|---|
-| Linker Stick | Lenken wie die Maus: Ausschlag links/rechts entspricht der Mausposition auf der Bildbreite, gleiche Kurve (`renderer.steerHeading`), gleiche Wendigkeit. Ohne Schub: auf der Stelle wenden | Maus, A/D |
 | Linker Stick (taktisch) | Bildbezogen fliegen (oben = Bild oben), Ausschlag = Tempo | WASD |
-| RT · R2 | Schub stufenlos (halber Trigger ≈ halbes Höchsttempo) | W |
-| LT · L2 | Bremsen | S |
-| L3 | Dauerschub an/aus (bleibt an wie W; LT oder B beendet) | W |
-| Rechter Stick | Verfolger: Kamera um das Schiff schwenken, federt beim Loslassen zurück. Cockpit: umsehen (`lookBy`). Taktisch: Zoom | Mittlere Maustaste, Mausrad |
+| Rechter Stick | Zoom | Mausrad |
 | R3 | Kamera wechseln Verfolger → Cockpit → Taktisch | V |
 | A · × | Angriff an/aus (ohne Ziel: nächster Gegner) | Strg |
 | X · □ | Rakete | Leertaste, R |
@@ -52,11 +74,9 @@ Je Bild gibt es genau einen Besitzer des Controllers: die **Flugsteuerung**, sol
 | MENU · OPTIONS | Bordmenü | Esc |
 | VIEW · CREATE | Karte (NAV·07) ein/aus | Shift+Zahl |
 
-**Entscheidung Schnellleiste:** Alle Tasten sind im Flug belegt, deshalb löst eine Kombination den gewählten Platz aus. RB + A, weil RB ohnehin „Zielwahl“ ist und A „Angriff“: RB wirkt erst beim Loslassen (kurz gedrückt, ohne A) als Zielwechsel, mit A dazwischen nur als Auslöser. Das Ziel bleibt dabei unverändert.
+**Entscheidung Schnellleiste (Taktik):** Alle Tasten sind im Flug belegt, deshalb löst eine Kombination den gewählten Platz aus. RB + A, weil RB ohnehin „Zielwahl“ ist und A „Angriff“: RB wirkt erst beim Loslassen (kurz gedrückt, ohne A) als Zielwechsel, mit A dazwischen nur als Auslöser. Das Ziel bleibt dabei unverändert.
 
-**Schub stufenlos:** Die Simulation bleibt unverändert. Der Trigger setzt den Zielpunkt so weit voraus, dass das Flugmodell genau den gewünschten Anteil des Höchsttempos anstrebt (`input.throttleDist`).
-
-**Nachbrenner:** Das Spiel hat keinen eigenen Nachbrenner (die Düse leuchtet bei vollem Schub auf). L3 ist deshalb Dauerschub wie W.
+**Früherer Verfolger (vor dem 3D-Flug):** RT als stufenloser Schub (`input.throttleDist`), LT Bremsen und L3 als Dauerschub gehörten zum alten 2D-Verfolger. Im 3D-Flug schiebt der linke Stick, L3 ist Boost mit Vorrat, B halten die Raumbremse; die Schnellleiste braucht dort keine Kombination mehr (Steuerkreuz ▴ löst aus).
 
 ## Menüs ohne Maus
 
@@ -109,4 +129,4 @@ Joystick und Knöpfe von `hud-touch.js` sind ausgeblendet, solange der Controlle
 
 ## Prüfen ohne Controller
 
-`cd Code && node tools/playtest/controller.mjs --url http://localhost:5196 [--stil xbox|ps] [--sichtbar]` (Dev-Server nötig). Ersetzt `navigator.getGamepads` per `addInitScript` durch eine steuerbare Attrappe (Standard-Mapping, Tasten und Achsen je Prüfschritt, `vibrationActuator` zeichnet Effekte auf) und löst `gamepadconnected` aus. Geprüft werden 73 Punkte: Titel bis Flug ohne Maus, Hub-Bereiche, Einstellungen, Shop, Schub stufenlos, Lenken, Bremsen, Kamera (Verfolger schwenken und zurückfedern, Cockpit umsehen, Taktisch bildbezogen), Ziele vor/zurück, Angriff, Rakete, Vibration, Schnellleiste, Karte, Bordmenü, Andocken, Station (Reiter, Kaufen, Fokus danach), Abdocken, Sprung, Beute, Autopilot, Tastatur weiter nutzbar, Wechsel auf einen zweiten Controller (ohne Loslass-Befehle), An-/Abstecken (auch mitten im Flug mit gehaltenem Schub) und Touch-Knöpfe. Ergebnis und Bilder unter `tools/playtest/berichte/controller-<zeit>/`.
+`cd Code && node tools/playtest/controller.mjs --url http://localhost:5196 [--stil xbox|ps] [--sichtbar]` (Dev-Server nötig). Ersetzt `navigator.getGamepads` per `addInitScript` durch eine steuerbare Attrappe (Standard-Mapping, Tasten und Achsen je Prüfschritt, `vibrationActuator` zeichnet Effekte auf) und löst `gamepadconnected` aus. Geprüft werden 88 Punkte (Stand 3D-Flug; Abschnitt 3 prüft die 3D-Belegung, 3b die Taktik): Titel bis Flug ohne Maus, Hub-Bereiche, Einstellungen, Shop, Schub stufenlos, Lenken, Bremsen, Kamera (Verfolger schwenken und zurückfedern, Cockpit umsehen, Taktisch bildbezogen), Ziele vor/zurück, Angriff, Rakete, Vibration, Schnellleiste, Karte, Bordmenü, Andocken, Station (Reiter, Kaufen, Fokus danach), Abdocken, Sprung, Beute, Autopilot, Tastatur weiter nutzbar, Wechsel auf einen zweiten Controller (ohne Loslass-Befehle), An-/Abstecken (auch mitten im Flug mit gehaltenem Schub) und Touch-Knöpfe. Ergebnis und Bilder unter `tools/playtest/berichte/controller-<zeit>/`.

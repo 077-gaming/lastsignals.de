@@ -1,5 +1,7 @@
 # Fluggefühl und Kamera (Toni, 30.10.2026)
 
+> **Nachtrag 03.11.2026:** Auf dem Zweig `claude/flug` ersetzt der 3D-Flug (`Planung/FLUGMODELL.md`) den hier beschriebenen 2D-Verfolger: Verfolger und Cockpit fliegen mit voller Lage (Nicken, Gieren, Rollen, sechs Schubrichtungen), Taktisch bleibt der Klickflug. Die Ziele dieser Datei (schwer, mächtig, schnell; Kamera federt, FOV-Kick, Steuerdüsen) gelten weiter und sind dort eingearbeitet.
+
 Toni: „Fühlt sich an, als ob man einfach so ein kleines Ding hin und her schweben lässt.“ Die Sicht schräg von oben findet er mittelmäßig. Ziel: Das Schiff muss sich schwer, mächtig und schnell anfühlen.
 
 ## Zwei Kameras (Taste V, Wahl gespeichert)
