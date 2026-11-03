@@ -874,21 +874,27 @@ export class HangarBay {
       }
     }
     // Positionslichter: Backbord rot, Steuerbord grün, Heck weiß blinkend
-    const navAt = (sprite, x, y, z, s, blink) => {
+    // Runde 4: Seitenlichter gerichtet (nz = Außenrichtung in z) – das Licht der abgewandten Seite wird ausgeblendet,
+    // statt als Lichtfleck über die Rumpfsilhouette zu ragen; etwas kleiner (1,7 statt 2,4)
+    this._side = [];
+    const navAt = (sprite, x, y, z, s, blink, nz = 0) => {
       const sp = new THREE.Sprite(sprite);
       sp.position.set(x, y, z); sp.scale.setScalar(s);
       this.fit.add(sp);
       if (blink) this.nav.push(sp);
+      if (nz) { sp.userData.nz = nz; this._side.push(sp); }
     };
     const F = this.factory;
     const port = this._hit(c.x + L * 0.05, c.y, box.max.z + 6, 0, 0, -1, parts);
     const star = this._hit(c.x + L * 0.05, c.y, box.min.z - 6, 0, 0, 1, parts);
     const tail = this._hit(box.max.x + 6, c.y + 1, c.z, -1, 0, 0, parts);
     const topH = this._hit(c.x, box.max.y + 6, c.z, 0, -1, 0, parts);
-    if (port) { navAt(F.sprite(0xff3a26, 1.6, 'nav:r'), port.point.x, port.point.y, port.point.z + 0.3, 2.4, false); P.box(M.red, port.point.x, port.point.y, port.point.z + 0.05, 0.6, 0.35, 0.2); }
-    if (star) { navAt(F.sprite(0x3aff8a, 1.3, 'nav:g'), star.point.x, star.point.y, star.point.z - 0.3, 2.4, false); P.box(F.glow(0x3aff8a, 1.4), star.point.x, star.point.y, star.point.z - 0.05, 0.6, 0.35, 0.2); }
+    if (port) { navAt(F.sprite(0xff3a26, 1.6, 'nav:r'), port.point.x, port.point.y, port.point.z + 0.3, 1.7, false, 1); P.box(M.red, port.point.x, port.point.y, port.point.z + 0.05, 0.6, 0.35, 0.2); }
+    if (star) { navAt(F.sprite(0x3aff8a, 1.3, 'nav:g'), star.point.x, star.point.y, star.point.z - 0.3, 1.7, false, -1); P.box(F.glow(0x3aff8a, 1.4), star.point.x, star.point.y, star.point.z - 0.05, 0.6, 0.35, 0.2); }
     if (tail) navAt(F.sprite(0xffffff, 1.6, 'nav:w'), tail.point.x + 0.4, tail.point.y, tail.point.z, 3, true);
-    if (topH) navAt(F.sprite(0xff3a26, 1.4, 'nav:r'), topH.point.x, topH.point.y + 0.3, topH.point.z, 2, true);
+    // Rückenlicht: nur von oben sichtbar (≥ 8° über der Rumpfoberseite), kleiner; flach von der Seite stand es als roter
+    // Fleck über der Silhouette (S1 nah-flanke)
+    if (topH) { navAt(F.sprite(0xff3a26, 1.4, 'nav:r'), topH.point.x, topH.point.y + 0.3, topH.point.z, 1.5, true); const sp = this.fit.children[this.fit.children.length - 1]; sp.userData.up = true; this._side.push(sp); }
     if (this.ship.placeholder) this._greebles(P, M, parts, box, c, L, Bw);
     G.build(this.gear);
     P.build(this.fit);
@@ -1111,6 +1117,11 @@ export class HangarBay {
     }
     const on = this.orbit ? true : (this._t % 1.6) < 0.12;
     for (let i = 0; i < this.nav.length; i++) this.nav[i].visible = i === 0 || this.orbit ? on : (this._t + 0.8) % 1.6 < 0.12;
+    if (this._side && this._cam) for (const sp of this._side) {
+      const d = this._cam.position;
+      if (sp.userData.up) sp.visible = sp.visible && (d.y - sp.position.y) > 0.14 * Math.hypot(d.x - sp.position.x, d.z - sp.position.z);
+      else sp.visible = (d.z - sp.position.z) * sp.userData.nz > 0;
+    }
     const wasDirty = this._dirty;
     this._dirty = false;
     this._render();
