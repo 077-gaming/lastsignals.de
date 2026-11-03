@@ -18,6 +18,8 @@ import { GpuTimer } from '../perf/gputimer.js';
 import { renderHints, PR_CAP, hdTextures } from '../perf/quality.js';
 import { CameraRig, FOV_TAC, FOV_CHASE } from './camrig.js';
 import { Cockpit } from './cockpit.js';
+import { keyName } from '../input/bindings.js';
+import { padMode, glyph } from '../input/padglyph.js';
 import { Telegraph } from './telegraph.js';
 import { StationLife } from './stationlife.js';
 import { SpeedDust } from './speeddust.js';
@@ -473,8 +475,12 @@ export class Renderer {
 
   // ---------- Welt ----------
   setWorld(world) {
-    this.views.forEach((v, id) => this._removeView(id));
-    this.views.clear();
+    // Sektorsprung (Runde 3): die Ansicht des eigenen Schiffs bleibt stehen (dieselbe Welt, dasselbe Schiff) – ihr
+    // Neuaufbau kostete ≈ 145 ms Hauptthread und war der Hänger beim Sektorwechsel (200 ms in 3D und Taktik)
+    const keep = world && world === this.world && this.views.get('player');
+    const keepOk = keep && world.player && this._sig(world.player) === keep.sig;
+    this.views.forEach((v, id) => { if (!(keepOk && id === 'player')) this._removeView(id); });
+    if (!keepOk) this.views.clear();
     this._clearDying();
     this.effects.clear();
     this.trails.clear();
@@ -520,14 +526,44 @@ export class Renderer {
     this._alpha = 1; this._dt = 0;
     if (world.player) this.camTarget.set(world.player.x || 0, 0, world.player.z || 0);
     this._viewBudget = 0;
-    try { if (world.entities) world.entities.forEach(this._syncCb); } catch (err) { console.warn('Ansichten unvollständig', err); }
-    t1 = performance.now(); WT.views = t1 - t0; t0 = t1;
+    // Runde 3: Ansichten nicht mehr alle in einem Bild anlegen (≈ 150 ms, der Hänger beim Sektorwechsel), sondern
+    // gestaffelt mit 6 ms je Bild, solange das letzte Bild (Sprungblitz) stehen bleibt; danach parallel übersetzen
+    const H = this._hold = { t0: performance.now(), phase: 'views', ready: false, world };
+    this._viewsStep(H);
+    t1 = performance.now(); WT.views = t1 - t0;
+  }
+  /** Ansichten gestaffelt anlegen (Sprung): true, wenn alle stehen */
+  _viewsStep(H) {
+    const world = H.world;
+    this._viewDeadline = performance.now() + 6;
+    let missing = 0;
+    try {
+      if (world.entities) {
+        world.entities.forEach(this._syncCb);
+        world.entities.forEach((e) => { if (!this.views.has(e.id) && this._wantsView(e)) missing++; });
+      }
+    } catch (err) { console.warn('Ansichten unvollständig', err); }
+    this._viewDeadline = 0;
+    if (missing > 0 && performance.now() - H.t0 < 1200) return false;
+    this._warmCompile(H);
+    return true;
+  }
+  /** wie _sync: würde diese Entität jetzt eine Ansicht bekommen? (nah genug oder immer sichtbar) */
+  _wantsView(e) {
+    if (e.kind === 'player' || e.kind === 'station' || e.kind === 'portal') return true;
+    const dx = (e.x || 0) - this.camTarget.x, dz = (e.z || 0) - this.camTarget.z;
+    return dx * dx + dz * dz <= 3200 * 3200;
+  }
+  _warmCompile(H) {
+    const WT = this.warmT || {};
+    let t0 = performance.now();
+    const world = H.world;
     const cam = this.camera, d = this.targetDist;
     const px = world.player ? world.player.x || 0 : 0, pz = world.player ? world.player.z || 0 : 0;
     cam.position.set(px, d * SIN_P, pz + d * COS_P); cam.lookAt(px, 0, pz); cam.updateMatrixWorld();
     const gl = this.gl, prevRT = gl.getRenderTarget();
     const useComposer = this._useComposer();
-    const H = this._hold = { t0: performance.now(), phase: 'compile', ready: false };
+    H.phase = 'compile'; H.t0 = performance.now(); H.ready = false;
     try {
       try { this.env.planets.warmPrograms(); } catch (err) { console.warn('Planeten-Vorübersetzen', err); }
       const eqVis = this.env.sky.bgEq.visible;
@@ -538,13 +574,14 @@ export class Renderer {
       p.then(() => { H.ready = true; WT.wait = performance.now() - H.t0; }, () => { H.ready = true; });
     } catch (err) { console.warn('Aufwärmen unvollständig', err); H.ready = true; }
     gl.setRenderTarget(prevRT);
-    t1 = performance.now(); WT.compile = t1 - t0;
+    WT.compile = performance.now() - t0;
     this.gl.shadowMap.needsUpdate = true;
   }
 
   /** true = dieses Bild nicht zeichnen (Sektorsprung wärmt noch vor) */
   _holdStep() {
     const H = this._hold, now = performance.now();
+    if (H.phase === 'views') { this._viewsStep(H); return true; }
     if (H.phase === 'compile') {
       if (!H.ready && now - H.t0 < 1500) return true;
       // fertig übersetzt: einmal winzig zeichnen (Zeichenzustände anlegen), sichtbar erst im nächsten Bild
@@ -996,6 +1033,8 @@ export class Renderer {
       this._removeView(e.id); v = null;
     }
     if (!v) {
+      // Sprung (Runde 3): Zeitbudget je Bild, der Rest kommt im nächsten
+      if (this._viewDeadline && performance.now() > this._viewDeadline) return;
       // neue Ansichten fern der Kamera gestaffelt anlegen (höchstens wenige je Bild), nahe sofort
       if (this._viewBudget <= 0) {
         const dx = (e.x || 0) - this.camTarget.x, dz = (e.z || 0) - this.camTarget.z;
@@ -1108,13 +1147,17 @@ export class Renderer {
         let hx = 0, hy = 0, hz = 0, hn = 0, main = 0, ms = 0;
         for (let i = 0; i < m.engines.length; i++) if (m.engines[i].size >= 0.9) main++;
         const E = this._engP || (this._engP = new Float32Array(24));
+        // eigenes Schiff im Verfolger (Runde 3): Flammen kürzer, Glühen kleiner – mit S3 überstrahlten sie samt Bloom die
+        // untere Bildmitte bis zum Fadenkreuz
+        const ownC = e === (this.world && this.world.player) && !!(this.world.flight3d && this.rig.k > 0.5 && this.rig.kc < 0.5);
+        const fk = ownC ? 0.55 : 1, gk = ownC ? 0.62 : 1;
         for (let i = 0; i < m.engines.length; i++) {
           const en = m.engines[i], s = en.size;
-          const w = (4.4 + pk * 2.2 + surge * 1.8) * s * (1 + 0.12 * ab);
-          en.trail.scale.set(w, w, (5 + pk * 40 + surge * 20 + ab * (10 + 12 * pulse)) * s);
+          const w = (4.4 + pk * 2.2 + surge * 1.8) * s * (1 + 0.12 * ab) * (ownC ? 0.8 : 1);
+          en.trail.scale.set(w, w, (5 + pk * 40 + surge * 20 + ab * (10 + 12 * pulse)) * s * fk);
           // Flamme pulsiert mit dem Schub (schnelles Flackern, Stärke an den Schub gekoppelt)
           const fl = 1 + v.thr * (0.07 * Math.sin(t * 31 + i * 2.1) + 0.05 * Math.sin(t * 47.3 + i));
-          en.glow.scale.setScalar((4.6 + pk * 3 + surge * 3.5 + Math.sin(t * 27 + i * 1.7) * 0.35) * s * (1 + ab * (0.18 + 0.32 * pulse)) * fl);
+          en.glow.scale.setScalar((4.6 + pk * 3 + surge * 3.5 + Math.sin(t * 27 + i * 1.7) * 0.35) * s * (1 + ab * (0.18 + 0.32 * pulse)) * fl * gk);
           en.hp.getWorldPosition(_v);
           if (boost) this.effects.boost(_v.x, _v.y, _v.z, s, m.plumeHex ?? v.shieldColor);
           // Hauptdüsen sammeln: ein gemeinsames Band (zwei Strahlen, die verschmelzen)
@@ -1713,14 +1756,34 @@ export class Renderer {
     const m = rig.shakeOn ? rig.motion : 0;
     _so.set(rig.kick.x * 0.002 * m, rig.kick.y * 0.002 * m - Math.max(-1, Math.min(1, (rig.accel || 0) / 400)) * 0.03 * m, 0);
     this.cockpit.look(rig.lookYaw, rig.lookPitch);
-    this.cockpit.update(dt, fov, _so, rig.shakeRoll(this.time) * 0.3 * m, {
-      hull: p.hpMax ? p.hp / p.hpMax : 1, shield: p.shieldMax ? p.shield / p.shieldMax : 0,
-      // 3D-Flug: räumliches Tempo und räumliche Entfernung wie Tempoleiter und Zielklammer (früher nur waagrecht:
-      // Konsole 158 M/S, Leiter 172 M/S)
-      speed: W.flight3d && W.fl ? Math.hypot(W.fl.v[0], W.fl.v[1], W.fl.v[2]) : Math.hypot(p.vx || 0, p.vz || 0) || p.speed || 0, maxSpeed: pv.maxSpeed || 320, ab: (pv.ab || 0) > 0.1,
-      target: t && t.alive !== false ? (t.name || t.def?.name || t.type) : null,
-      dist: t ? Math.hypot(t.x - p.x, t.z - p.z, W.flight3d ? (t.y || 0) - (p.y || 0) : 0) : 0, tHull: t && t.hpMax ? t.hp / t.hpMax : 0,
-    });
+    // Runde 3: keine Tempozahl mehr auf der Konsole (sie lief 0,2 s hinter der Tempoleiter her: HUD 183, Konsole 170
+    // M/S „NACHBRENNER“ im selben Bild) – das Tempo steht nur auf der Leiter. Die Konsole zeigt, was im Cockpit sonst
+    // fehlt: Boost-Vorrat, Flugrechner, Waffen und Munition, Auftrag, Ziel mit Schild und Hülle.
+    const st = W.fl, pr = W.profile || {}, q = W.quest, A = W.aimInfo, ci = this._ckInfo || (this._ckInfo = {});
+    ci.hull = p.hpMax ? p.hp / p.hpMax : 1; ci.shield = p.shieldMax ? p.shield / p.shieldMax : 0;
+    ci.boost = st ? st.boost : null; ci.boostOn = !!(st && st.boostOn); ci.boostLock = !!(st && st.boostLock);
+    ci.decoupled = !!(st && !st.coupled);
+    ci.modeLine = st ? `${['KAMPF', 'REISE', 'LANDUNG'][st.mode] || 'KAMPF'} · ${st.coupled ? 'GEKOPPELT' : 'ENTKOPPELT'}` : '';
+    ci.limiter = st && Number.isFinite(st.limiter) ? Math.round(st.limiter) : 0;
+    ci.cruise = st && st.cruise ? Math.round(st.cruiseV) : 0;
+    ci.reise = !!(A && A.reise); ci.auto = !!p.attacking;
+    ci.ammo = pr.selectedAmmo && pr.selectedAmmo !== 'SAL' ? pr.selectedAmmo : 'L1'; ci.ammoN = pr.ammo ? pr.ammo[ci.ammo] : null;
+    ci.rocket = pr.selectedRocket || 'R1'; ci.rocketN = pr.ammo ? pr.ammo[ci.rocket] : null;
+    ci.questTitle = q && q.def ? q.def.title || '' : ''; ci.questText = q && q.def ? q.def.text || '' : '';
+    ci.questProg = q && q.def ? `${Math.min((q.def.goal && q.def.goal.count) || 1, q.progress || 0)} / ${(q.def.goal && q.def.goal.count) || 1}` : '';
+    ci.target = t && t.alive !== false ? (t.name || t.def?.name || t.type) : null;
+    ci.dist = t ? Math.hypot(t.x - p.x, t.z - p.z, W.flight3d ? (t.y || 0) - (p.y || 0) : 0) : 0;
+    ci.tHull = t && t.hpMax ? t.hp / t.hpMax : 0; ci.tShield = t && t.shieldMax ? t.shield / t.shieldMax : 0;
+    ci.tState = t && t.state === 'flee' ? 'RÜCKZUG' : '';
+    // letzter Funkspruch (Funkfenster ist im Cockpit aus): aus dem Verlauf des HUD, höchstens 5-mal je Sekunde gelesen
+    if (!(this.time - (this._ckRT || -9) < 0.2)) {
+    this._ckRT = this.time;
+    const hm = document.querySelector('[data-win="comms"] .hm');
+    ci.radio = hm ? (hm.querySelector('.hm-b')?.textContent || '') : ''; ci.radioFrom = hm ? (hm.querySelector('.hm-f')?.textContent || hm.querySelector('.hm-k')?.textContent || '') : '';
+    ci.radioWarn = !!(hm && hm.classList.contains('hm-warn'));
+    ci.nextHint = padMode() ? `${glyph('A')}: GEGNER ERFASSEN` : document.body.classList.contains('is-touch') ? 'ZIEL: NÄCHSTER GEGNER' : `${keyName('next')}: NÄCHSTER GEGNER`;
+    }
+    this.cockpit.update(dt, fov, _so, rig.shakeRoll(this.time) * 0.3 * m, ci);
   }
   get cameraMode() { return this.rig.mode; }
   /** Verfolger-Kamera zu mehr als der Hälfte eingeblendet */

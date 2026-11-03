@@ -13,7 +13,9 @@ const KEY_CAM = 'ls.camera';
 const TAU = Math.PI * 2;
 export const FOV_TAC = 40, FOV_CHASE = 70;
 // 3D-Verfolger (Planung/FLUGMODELL.md 6): Neigung 6° über der Kameraachse, Schiff im unteren Drittel
-const CH3_ELEV = 6 * Math.PI / 180, CH3_SHIP_Y = -0.3;
+// Runde 3: Schiff tiefer im Bild (NDC −0,3 → −0,42, Mitte bei ≈ 71 % der Bildhöhe) und Blick 8° statt 6° von oben:
+// ein Ziel genau voraus lag sonst hinter dem eigenen Rumpf bzw. im Triebwerksglühen (S3, Sektor 4)
+const CH3_ELEV = 8 * Math.PI / 180, CH3_SHIP_Y = -0.42;
 const _f3 = new THREE.Vector3(), _u3 = new THREE.Vector3(), _r3 = new THREE.Vector3(), _a3 = new THREE.Vector3(), _w3 = new THREE.Vector3();
 const _m3 = new THREE.Matrix4(), _q3 = new THREE.Quaternion(), _q4 = new THREE.Quaternion(), _e3 = new THREE.Euler(0, 0, 0, 'YXZ');
 const WUP = new THREE.Vector3(0, 1, 0);
