@@ -108,10 +108,18 @@ sRGB-Bild nach der Kantenglättung. Ohne Hochrechnen nur Schärfen (ein Durchgan
 ## Schnittstelle Desktop-Hülle
 
 Die Engine erkennt die Desktop-App an `window.lsDesktop` (im Entwicklungsserver vortäuschbar: `?desktop=1`).
-Optional ruft sie bei jeder Grafikänderung `window.lsDesktop.setGraphics({ fpsCap, renderScale })` auf. Die Hülle kann
-damit z. B. beim nächsten Start `--disable-frame-rate-limit` / `--disable-gpu-vsync` setzen (UNBEGRENZT braucht einen
-Neustart; die Oberfläche zeigt „NEUSTART (APP)“). Desktop-only: Stufe EXTREM, AO VOLL, Spiegelung ULTRA,
-Partikel 130 %, Sichtweite 200 %.
+Beim Start und bei jeder Grafikänderung ruft sie `window.lsDesktop.setGraphics({ fpsCap, renderScale })` auf.
+Umgesetzt in `Apps/desktop/main.cjs` (Stand 03.11.2026): Bildrate UNBEGRENZT (0) setzt beim nächsten Start
+`--disable-frame-rate-limit` und `--disable-gpu-vsync`, jede Begrenzung lässt Chromium beim Standard (VSync, das Spiel
+begrenzt selbst). Gespeichert in `einstellungen.json` im App-Profil (`app.getPath('userData')`, Felder `graphics`,
+`unlimitedFps`); übernommen wird nur eine geänderte Spielwahl, eine Umstellung über das App-Menü bleibt so bis zur
+nächsten Änderung im Spiel bestehen. `lsDesktop.unlimitedFps` meldet den Zustand des laufenden Starts; die Oberfläche
+zeigt weiter „NEUSTART (APP)“. Prüfung ohne sichtbares Fenster: `node Apps/tests/huelle.mjs`.
+Desktop-only: Stufe EXTREM, AO VOLL, Spiegelung ULTRA, Partikel 130 %, Sichtweite 200 %.
+
+Anisotropie greift auf allen Ladewegen: GLB beim Laden (`preloadGLB`), beim Einhängen (`registerGLB`, auch für Modelle,
+die `_need`/`EXTRA_MODELS` erst im Sektor anfordert, und fremde Mehrspieler-Schiffe), Drohnen, neue Fabrik-Materialien
+(`factory.mat`) und Umgebungs-Texturen nach dem Sektoraufbau. Prüfung im Spiel: `node Code/tools/playtest/grafik.mjs`.
 
 ## Erweitern
 
