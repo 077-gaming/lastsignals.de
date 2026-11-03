@@ -2,7 +2,7 @@
 // oben eine schlanke Pilotenleiste, links die Bereiche als Liste mit großen Symbolen, in der Mitte immer nur EIN Bereich.
 // Start = 3D-Szene (Heimatstation, eigenes Schiff) mit großem START-Knopf und drei Kurzinfos. Jeder andere Bereich:
 // klare Überschrift, wenige große Kacheln, Details erst auf Klick. Bildsprache: Planung/UI_STIL.md.
-import { flightHelp, flightPractice, touchHelp } from '../input/bindings.js';
+import { flightHelp, flightPractice, touchHelp, FLIGHT, keyName, label, applyDownKey } from '../input/bindings.js';
 import { wireInstall } from './install.js';
 import { newCode, waitForHost } from '../net/coop.js';
 import {
@@ -807,7 +807,7 @@ function kontoSection(P, account) {
 function einstView(P, ctx) {
   const s = settings();
   const ps = padSettings();
-  const fs = flightSettings();
+  const fs = flightSettings(); applyDownKey(fs.down);
   const h = hudState();
   return `<div class="st">
     <div class="st-c">
@@ -885,6 +885,7 @@ function einstView(P, ctx) {
           ${setRow('Y-ACHSE UMKEHREN', 'Maus nach oben: Nase nach unten.', seg('fl.invertY', [[false, 'AUS'], [true, 'AN']], fs.invertY))}
           ${setRow('KURVENROLLEN', 'Das Schiff legt sich in die Kurve. Aus: reines Gieren wie im Simulator.', seg('fl.autoRoll', [[false, 'AUS'], [true, 'AN']], fs.autoRoll))}
           ${setRow('HORIZONT-HILFE', 'In Ruhe richtet sich das Schiff langsam waagrecht aus. Nie während eines Manövers.', seg('fl.horizon', [[false, 'AUS'], [true, 'AN']], fs.horizon))}
+          ${setRow('TASTE RUNTER', `Automatisch: im Browser unter Windows C (Strg+W schließt dort den Tab), sonst Strg. Mit C liegt der Tempomat auf ${label('KeyY')}. Jetzt: ${keyName('down')}.`, seg('fl.down', [['auto', 'AUTOMATISCH'], ['ctrl', 'STRG'], ['c', 'C']], fs.down))}
           ${setRow('KAMERA', 'Verfolger: Mischung aus Bug und Zielrichtung oder ganz der Zielrichtung nach.', seg('fl.cam', [['mix', 'MISCHUNG'], ['aim', 'ZIELRICHTUNG']], fs.cam))}
         </div>
       </section>
@@ -896,10 +897,11 @@ const EINST = { overview: (P, store, ctx) => einstView(P, ctx), details: {} };
 // ---------------------------------------------------------------- Steuerung
 
 const KEYS = [
-  // Hauptmodus 3D-Flug (Verfolger, Cockpit): Belegung aus input/bindings.js
-  ['flug3d', 'FLUG 3D', flightHelp().map(([k, t]) => [[k], t])],
+  // Hauptmodus 3D-Flug (Verfolger, Cockpit): Belegung aus input/bindings.js (je Aufruf neu: die Taste „runter“ ist
+  // einstellbar, Runde 3)
+  ['flug3d', 'FLUG 3D', () => flightHelp().map(([k, t]) => [[k], t])],
   // Flugpraxis und Touch (Runde 2): Sprung aus voller Fahrt, Sektorrand ohne Schaden, Kurvenkampf, Feuerleitrechner
-  ['praxis', 'FLUGPRAXIS 3D', flightPractice().map(([k, t]) => [[k], t])],
+  ['praxis', 'FLUGPRAXIS 3D', () => flightPractice().map(([k, t]) => [[k], t])],
   ['touch', 'TOUCH', touchHelp().flatMap(([g, rows]) => rows.map(([k, t]) => [[k], `${g.replace('TOUCH · ', '')}: ${t}`]))],
   ['flug', 'TAKTIK · DRAUFSICHT', [
     [['LMB'], 'Hinfliegen, Klick ins All'],
@@ -930,25 +932,25 @@ const KEYS = [
   ]],
 ];
 // Tastatur im Hauptmodus (3D-Flug, QWERTZ); die Taktik-Belegung steht in der Liste darunter
-const KB = [
+const KB = (c) => [
   [['ESC', 'MENÜ', 1.5], ['1', 'L1'], ['2', 'L2'], ['3', 'L3'], ['4', 'L4'], ['5', 'SAB'], ['6', 'SAL'], ['7'], ['8'], ['9'], ['0']],
-  [['TAB', 'ZIEL', 1.5], ['Q', 'ROLLEN'], ['W', 'VOR'], ['E', 'ROLLEN'], ['R', 'R1'], ['T', 'ZIEL+'], ['Z'], ['U'], ['I'], ['O'], ['P']],
+  [['TAB', 'ZIEL', 1.5], ['Q', 'ROLLEN'], ['W', 'VOR'], ['E', 'ROLLEN'], ['R', 'R1'], ['T', 'ZIEL+'], c ? ['Z', 'TEMPOMAT'] : ['Z'], ['U'], ['I'], ['O'], ['P']],
   [['⇪', '', 1.75], ['A', 'LINKS'], ['S', 'ZURÜCK'], ['D', 'RECHTS'], ['F', 'KONTEXT'], ['G'], ['H', 'HEIM'], ['J', 'SPRUNG'], ['K'], ['L'], ['Ö', '', 0.75]],
-  [['⇧', 'BOOST', 2.25], ['Y', 'UMSEHEN'], ['X', 'BREMSE'], ['C', 'TEMPOMAT'], ['V', 'KAMERA'], ['B', 'REISE'], ['N', 'LANDUNG'], ['M'], ['⇧', '', 2.25]],
-  [['STRG', 'RUNTER', 1.5], ['⌥', 'ZEIGER', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'HOCH', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
+  [['⇧', 'BOOST', 2.25], ['Y', 'UMSEHEN'], ['X', 'BREMSE'], c ? ['C', 'RUNTER'] : ['C', 'TEMPOMAT'], ['V', 'KAMERA'], ['B', 'REISE'], ['N', 'LANDUNG'], ['M'], ['⇧', '', 2.25]],
+  [c ? ['STRG', '', 1.5] : ['STRG', 'RUNTER', 1.5], ['⌥', 'ZEIGER', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'HOCH', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
 ];
 function keyboard() {
-  return `<div class="mc-kb" aria-hidden="true">${KB.map((row) => `<div class="mc-kb-r" style="grid-template-columns:${row.map((r) => `${r[2] || 1}fr`).join(' ')}">${row.map(([k, fn]) =>
+  return `<div class="mc-kb" aria-hidden="true">${KB(FLIGHT.down[0] === 'KeyC').map((row) => `<div class="mc-kb-r" style="grid-template-columns:${row.map((r) => `${r[2] || 1}fr`).join(' ')}">${row.map(([k, fn]) =>
     `<span class="mc-kb-k${fn ? ' on' : ''}"><b>${k}</b>${fn ? `<i>${fn}</i>` : ''}</span>`).join('')}</div>`).join('')}</div>`;
 }
 const STEUERUNG = {
   overview() {
     const nPad = PAD_ROWS.reduce((n, [, r]) => n + r.length, 0);
-    return `${keyboard()}${tiles(...KEYS.map(([id, t, rows]) => tile(id, t, `${pad2(rows.length)}<i> BEFEHLE</i>`, esc(rows[0][1]), { wide: id === 'mc' })),
+    return `${keyboard()}${tiles(...KEYS.map(([id, t, r0]) => [id, t, typeof r0 === 'function' ? r0() : r0]).map(([id, t, rows]) => tile(id, t, `${pad2(rows.length)}<i> BEFEHLE</i>`, esc(rows[0][1]), { wide: id === 'mc' })),
       tile('controller', 'CONTROLLER', `${pad2(nPad)}<i> BELEGUNGEN</i>`, 'Xbox, PlayStation, Switch Pro: Flug, Kampf und Menüs ohne Maus', { wide: true }))}`;
   },
   details: {
-    ...Object.fromEntries(KEYS.map(([id, t, rows]) => [id, [t, () => `<div class="hb-keys">${rows.map(([keys, txt]) =>
+    ...Object.fromEntries(KEYS.map(([id, t, r0]) => [id, [t, () => `<div class="hb-keys">${(typeof r0 === 'function' ? r0() : r0).map(([keys, txt]) =>
       `<div class="mc-key"><span class="mc-key-k">${keys.map((k) => (k === '…' ? '<span class="ls-label">BIS</span>' : `<span class="ls-key">${k}</span>`)).join('')}</span><span>${esc(txt)}</span></div>`).join('')}</div>`]])),
     controller: ['CONTROLLER', () => `<div class="hb-pad">${sub('CT', 'BELEGUNG', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}${padMapHtml()}</div>`],
   },

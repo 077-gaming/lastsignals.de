@@ -39,30 +39,45 @@ export const K = {
   steerErr: 3 * D,     // Mausziel weiter als 3° vom Bug = der Pilot lenkt
   brakeK: 0.92,        // Bremsgrenze im Nasenregler ω ≤ 0,92·√(2·α·θ)
   capK: 3,             // weicher Tempodeckel: Überschuss baut mit 1 − e^(−3h) ab
+  turnHold: 0.85,      // Bahnführung gekoppelt: Querreserve × Vorwärtstempo × Drehrate (Runde 3, core.js Schritt 5)
 };
 
 // Waffen (ein Tempo für alle Laser: eine Vorhaltemarke)
 export const BOLT_SPEED = 2400;
 export const BOLT_PER_SHOT = 4;     // Bolzen je Laser und Sekunde (je ¼ Schaden, Munition je 4 Bolzen)
 export const BOLT_SPREAD = 0.12 * D;
-export const ENEMY_HIT_PAD = 1.1;   // Trefferkugel Gegner × Radius (Runde 2: 1,25 → 1,1, Schießbude)
+export const ENEMY_HIT_PAD = 1.1;   // Trefferkugel Gegner × Radius im Heimatsektor (Runde 2: 1,25 → 1,1, Schießbude)
+// Gestaffelt nach Sektor (Runde 3): [Heimat, Sektor 2, Sektor 3, ab Sektor 4]. Der Einstieg bleibt gutmütig, tiefer
+// werden Trefferkugel kleiner, Ausweichen häufiger und Gegnerschaden höher (vorher fiel die Hülle in Sektor 4 mit dem
+// Referenzschiff nie unter 69 %, während ein Elite-Raider im Heimatsektor den Bot einmal zerstörte).
+export const HIT_PAD3 = [1.1, 1.02, 0.95, 0.9];
+export const tier3 = (w) => Math.max(0, Math.min(3, ((w && w.sector && w.sector.index) || 1) - 1));
 export const PVP_GIMBAL = 5 * D;    // Kardan im PvP höchstens 5°
 export const AUTO_K = 0.8;          // Feuerleitrechner: Trefferchance × 0,8
+// Feuerleitrechner gegen NPC im 3D-Flug: Schaden × 2 (Runde 3). Ohne Faktor traf er gewürfelt × 0,8 ohne den
+// Handziel-Faktor 2,5 und lag 2- bis 5-mal unter der Taktik (tief.mjs: 94–321 gegen 397–880 Schaden/s), am Tablet ein
+// Abschuss je Minute. Mit × 2 trägt er ungefähr wie die Taktik; Handzielen (× 2,5 je echtem Treffer) bleibt stärker.
+export const AUTO_PVE = 2;
 // Handzielen gegen NPC (PvE): Bolzenschaden × 2,5. Die Startausrüstung (2 Laser, 140 Schaden/s) braucht gegen einen
 // Raider (1.650 Hülle + Schild) bei 85 % Treffern sonst 14 s – im Taktikmodus gleich, dort tragen Würfel und Raketen
 // (3,8 s mit Raketen). Mit × 2,5 liegt der Abschuss nur mit Lasern im Median bei ≈ 6 s, auch mit Ausweichen und
 // Rückzug des Raiders sicher unter der Kennzahl ≤ 8 s (FLUGMODELL.md 3; × 2,25 ergab 6,0–8,1 s je Lauf). PvP, SAL,
 // Feuerleitrechner und Taktik bleiben unverändert (Taktik-Goldtest bitgleich).
-export const AIM_PVE = 2.5;
+// Runde 3: × 2,9. Mit 2,5 lag der Median mit Mensch-Bots bei 6,5–8,9 s (unter Last über der Grenze), ein Controller-Bot
+// mit 230 ms Reaktion brauchte 7,9–16,5 s; jetzt ≈ 5–7 s, Rückzüge fliegen langsamer (FLEE3).
+export const AIM_PVE = 2.9;
 // Kampf im 3D-Flug (Runde 2): Gegner schneller (Raider 210 → 284 m/s gegen 340 m/s Kampftempo S1, vorher 184 gegen 340:
 // man flog ihnen einfach hinterher), weichen unter Beschuss häufiger aus, setzen sich ins Heck und treffen härter.
 // Nur im 3D-Weg; Taktik bitgleich.
 export const ENEMY_SPEED3 = { pack: 1.35, ambush: 1.4, swarm: 1.35, thief: 1.3, guard: 1.2, kite: 1.15, big: 1 };
-export const ENEMY_DMG3 = 1.6;      // Schaden der Gegner gegen den 3D-Piloten
+// Heimat 1,0 (wie die Taktik: ein Elite-Raider brachte den Spieler-Bot sonst auf 3–9 % Hülle bzw. zum Tod), tiefer
+// deutlich härter (Sektor 4 mit Referenzschiff: Hülle fiel vorher nie unter 69–80 %)
+export const ENEMY_DMG3 = [1.0, 1.7, 2.2, 2.7]; // Schaden der Gegner gegen den 3D-Piloten je Sektorstufe (Runde 2: 1,6)
+export const FLEE3 = 0.8;           // Rückzug zum Heilen im 3D-Flug: Tempo × 0,8 des Grundtempos (angeschlagen)
 // Ausweichen und Heck-Anflüge steigen mit dem Sektor: Heimatsektor (Einstieg, Kennzahl Abschuss ≤ 8 s) milder,
 // ab Sektor 2 voll. [Heimat, sonst]
-export const DODGE3 = [0.55, 0.9];  // Ausweichen unter Beschuss je Denkschritt × ai.dodge (Taktik 0,22)
-export const TAIL3 = [0.4, 0.75];   // Anteil der Anflüge, die über das Heck des Spielers laufen
+export const DODGE3 = [0.45, 0.9, 1.05, 1.2];  // Runde 3: Heimat 0,55 → 0,45 (Einstieg); Ausweichen unter Beschuss je Denkschritt × ai.dodge je Sektorstufe (Taktik 0,22)
+export const TAIL3 = [0.3, 0.75];   // Anteil der Anflüge, die über das Heck des Spielers laufen
 export const JINK_TIME3 = [0.6, 0.75], DODGE_CD3 = [1.6, 3.2, 1.2, 2.6]; // Ausweichhaken (Taktik 0,55 s, 2,5–4,5 s)
 export const AUTO_CONE = 30 * D;    // Feuerleitrechner: Ziel im 30°-Kegel um den Bug
 export const CONVERGE_DEFAULT = 500;
@@ -82,7 +97,9 @@ export const ASSIST_MAX_RATE = 0.4; // Mitnahme höchstens 40 % der Klassen-Dreh
 
 // Sektor als Raum (Runde 2): Höhe ±4.000 m im Heimatsektor, ±4.500 m sonst (vorher ±1.200 / ±1.500 m: mit Boost in
 // 2 s an der Decke, die Scheibe war für echten 3D-Flug zu flach). Gegner, Felder und Station bleiben nahe der Ebene.
-export const SECTOR_BAND = 4500, HOME_BAND = 4000, BAND_WARN = 0.83;
+// Runde 3: ±6.000 m (Heimat, so weit wie der Sektor breit ist) bzw. ±7.000 m; vorher erreichte normaler Kurven- und
+// Loopingflug die Obergrenze +4.000 m nach ≈ 75 s, die Warnung kam ständig. Die Höhenwarnung greift erst ab 90 %.
+export const SECTOR_BAND = 7000, HOME_BAND = 6000, BAND_WARN = 0.83, BAND_WARN_V = 0.9;
 // Sektorrand im 3D-Flug ohne Schaden (Runde 2): Warnung ab 83 %, jenseits der Grenze ein Navigationsfeld, das die
 // Bewegung nach außen abbaut und sanft zurückschiebt (keine unsichtbare Wand mit Hüllenschaden). Taktik unverändert.
 export const EDGE_DAMP = 1.6;       // 1/s: Abbau der Geschwindigkeit nach außen jenseits der Grenze

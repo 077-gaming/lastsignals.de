@@ -204,8 +204,18 @@ export function step(st, ctl, P, env, h = H) {
     if (st.boostOn && !st.cruise && tz < 0.05) vz = Math.min(vz, -0.95 * Math.abs(_vb[2])); // Boost ohne W: hält, bremst nicht
     let vy = ty * vv;
     if ((btn & BTN.AUTOLAND) && st.landing) vy = -2;
-    _ab[0] = clamp((tx * vl - _vb[0]) / h, -aL, aL);
-    _ab[1] = clamp((vy - _vb[1]) / h, -aV, aV);
+    // Bahnführung (Runde 3): Dreht das Schiff, kippt die Geschwindigkeit im Körper zur Seite (Schlupf v·ω je Sekunde).
+    // Der Flugrechner führt die Bahn mit der Nase nach – mit eigener Reserve proportional zu Vorwärtstempo und
+    // Drehrate (K.turnHold). Vorher mussten die Seitendüsen (S1 100 m/s²) gegen ≈ 550 m/s² Schlupf arbeiten, und jede
+    // Dauerkurve halbierte das Tempo (340 → 171 m/s). Mit 0,85 hält KAMPF die volle Drehrate ohne Tempoverlust;
+    // Boost und REISE driften in harten Kurven leicht nach außen (Masse spürbar). Landemodus ohne Bahnführung.
+    let aLc = aL, aVc = aV;
+    if (st.mode !== MODE.LANDUNG) {
+      const vf = Math.abs(_vb[2]) * K.turnHold;
+      aLc = aL + vf * Math.abs(w[1]); aVc = aV + vf * Math.abs(w[0]);
+    }
+    _ab[0] = clamp((tx * vl - _vb[0]) / h, -aLc, aLc);
+    _ab[1] = clamp((vy - _vb[1]) / h, -aVc, aVc);
     _ab[2] = clamp((vz - _vb[2]) / h, -aF, aB);
   } else {
     _ab[0] = tx * aL; _ab[1] = ty * aV; _ab[2] = tz >= 0 ? -tz * aF : -tz * aB;
@@ -222,8 +232,8 @@ export function step(st, ctl, P, env, h = H) {
     }
   } else { _g[0] = 0; _g[1] = 0; _g[2] = 0; }
   // Düsenauslastung (Grafik, Ton)
-  st.thr[0] = _ab[0] > 0 ? _ab[0] / aL : 0; st.thr[1] = _ab[0] < 0 ? -_ab[0] / aL : 0;
-  st.thr[2] = _ab[1] > 0 ? _ab[1] / aV : 0; st.thr[3] = _ab[1] < 0 ? -_ab[1] / aV : 0;
+  st.thr[0] = _ab[0] > 0 ? Math.min(1, _ab[0] / aL) : 0; st.thr[1] = _ab[0] < 0 ? Math.min(1, -_ab[0] / aL) : 0;
+  st.thr[2] = _ab[1] > 0 ? Math.min(1, _ab[1] / aV) : 0; st.thr[3] = _ab[1] < 0 ? Math.min(1, -_ab[1] / aV) : 0;
   st.thr[4] = _ab[2] < 0 ? -_ab[2] / aF : 0; st.thr[5] = _ab[2] > 0 ? _ab[2] / aB : 0;
   vCopy(st.accB, _ab);
   qRot(_aw, st.q, _ab);

@@ -3,6 +3,7 @@
 // Tastenlage); die Beschriftung kommt aus navigator.keyboard.getLayoutMap() (Chrome, Edge, Electron), sonst aus einer
 // festen QWERTZ-Tabelle (auf QWERTZ heißt KeyZ „Y“).
 
+import { flightSettings } from './flightsettings.js';
 // Hauptmodus (Verfolger und Cockpit, 3D-Flug)
 export const FLIGHT = {
   fwd: ['KeyW'], back: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
@@ -91,6 +92,26 @@ const QWERTZ = {
   Wheel: 'MAUSRAD', Semicolon: 'Ö', Quote: 'Ä', BracketLeft: 'Ü', Minus: 'ß',
 };
 const isMac = () => { try { return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || ''); } catch { return false; } };
+
+/**
+ * Taste für „runter“ (Runde 3, Einstellung ls.flight.down): 'ctrl' Strg links (wie große 6-DoF-Simulatoren), 'c' Taste C
+ * (Tempomat wandert auf die Taste rechts neben T: QWERTZ „Z“, QWERTY „Y“). 'auto': im Browser unter Windows und Linux
+ * C – dort schließt Strg+W (Sinkflug mit Schub) den Tab und Strg+Tab wechselt ihn, beides ohne Vollbild nicht
+ * abfangbar; auf dem Mac und in der Desktop-App Strg (Strg+W ist dort kein Browser-Kürzel).
+ */
+export function resolveDownKey(choice) {
+  if (choice === 'ctrl' || choice === 'c') return choice;
+  try {
+    const ua = navigator.userAgent || '';
+    if (/Electron/i.test(ua) || isMac()) return 'ctrl';
+    return 'c';
+  } catch { return 'ctrl'; }
+}
+export function applyDownKey(choice) {
+  const c = resolveDownKey(choice);
+  if (c === 'c') { FLIGHT.down = ['KeyC']; FLIGHT.cruise = ['KeyY']; } else { FLIGHT.down = ['ControlLeft']; FLIGHT.cruise = ['KeyC']; }
+  return c;
+}
 let layout = null;
 /** Tastatur-Layout des Systems laden (wo der Browser es kann). Danach liefern keyName/label die echte Beschriftung. */
 export async function loadLayout() {
@@ -181,11 +202,16 @@ export function flightPractice() {
   const k = (a) => keyName(a);
   return [
     [`${k('context')} AM TOR`, 'Springen: das Sprungfeld fängt das Schiff auch aus voller Fahrt und hält es beim Aufladen; Boost reißt heraus und bricht ab'],
-    ['SEKTORRAND', 'Kein Schaden: ab 83 % warnt das HUD, jenseits bremst ein Navigationsfeld und schiebt zurück. Höhe ±4.000 m (Heimat), sonst ±4.500 m'],
+    ['SEKTORRAND', 'Kein Schaden: ab 83 % warnt das HUD (Höhe ab 90 %), jenseits bremst ein Navigationsfeld und schiebt zurück. Höhe ±6.000 m (Heimat), sonst ±7.000 m'],
     ['KURVENKAMPF', 'Gegner setzen sich ins Heck und weichen unter Beschuss aus: wenden, seitlich schieben, mit Boost aus dem Feuer'],
     [`${k('autofire')}`, 'Feuerleitrechner: feuert gewürfelt und führt die Zielrichtung, solange du nicht selbst zielst; Handzielen trifft stärker'],
     ['RAUTE', 'Vorhalt: dorthin zielen, wo der Gegner sein wird. Leuchtet sie, schwenken die Laser selbst auf die Marke'],
     ['HORIZONT', 'Am Controller richtet sich das Schiff in Ruhe waagrecht aus (abschaltbar), mit Maus zuschaltbar'],
+    ['KURVEN', 'Gekoppelt führt der Flugrechner die Bahn mit der Nase: volle Drehrate ohne Tempoverlust. Mit Boost und in REISE driftet das Schiff in harten Kurven leicht nach außen, entkoppelt bleibt die Bahn stehen'],
+    ['LENKKEGEL', 'Das Fadenkreuz läuft höchstens bis zum Kegel vor (Einstellung). Was ein schneller Mausausschlag darüber hinaus will, fließt nach, sobald die Nase aufholt'],
+    [`${k('down')} / ${k('up')}`, `Runter / hoch schieben. Im Browser unter Windows liegt runter auf C (Strg+W schließt dort den Tab), einstellbar unter Einstellungen → TASTE RUNTER`],
+    [`${k('landing')}`, 'Landemodus: Fahrwerk, 60 m/s. Im All ohne Boden; Planetenlandung folgt'],
+    ['COCKPIT', 'Konsolen links Schiff (Schild, Hülle, Boost), Mitte Waffen, Auftrag und Funk, rechts Ziel; Fenster über die Leiste oben zuschaltbar'],
   ];
 }
 export function padHelp() {
@@ -197,3 +223,7 @@ export function padHelp() {
     ['▴ ◂ ▸ ▾', 'Schnellleiste: ◂▸ wählen, ▴ auslösen, ▾ Leiste'], ['MENU', 'Bordmenü · halten: KAMPF/REISE'], ['VIEW', 'Karte'],
   ];
 }
+
+// Taste „runter“ beim Laden und bei jeder Einstellungsänderung anwenden (Hilfe, Coach und Quests lesen dieselbe Tabelle)
+applyDownKey(flightSettings().down);
+if (typeof window !== 'undefined') window.addEventListener('ls:flight', () => applyDownKey(flightSettings().down));

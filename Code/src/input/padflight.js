@@ -11,7 +11,7 @@
 // dann übernimmt die Menü-Navigation (padnav.js).
 import { pad, BTN, padSettings } from './gamepad.js';
 import { topModal, synth } from './padnav.js';
-import { EDGE } from '../flight/core.js';
+import { EDGE, aimAxes } from '../flight/core.js';
 import { BOLT_SPEED } from '../flight/params.js';
 import { leadTime, assist } from '../flight/aim.js';
 import { flightSettings } from './flightsettings.js';
@@ -187,7 +187,7 @@ export class PadFlight {
       F.rateMode = fs.padMode === 'rate';
       const sens = set.sens * (F.precise ? 0.6 : 1);
       // Zielhilfe: Zielbremse und Mitnahme der Vorhaltemarke, nur mit Stickeingabe (FLUGMODELL.md 5.3)
-      const A = this._assist(w, fi, dt, mag, F.precise);
+      const A = this._assist(w, fi, dt, mag, F.precise, rx, ry);
       if (F.rateMode) {
         // Drehraten (Wahl in den Einstellungen; Standard ist „Zielrichtung“): Stick = Schiffsdrehrate, Fadenkreuz = Bug,
         // nichts läuft voraus. Nach dem Loslassen dreht das Schiff nur seinen Bremsweg nach (S1 ω²/2α ≈ 9°), wie im
@@ -249,7 +249,7 @@ export class PadFlight {
   }
 
   /** Zielhilfe je Bild: Winkel Fadenkreuz → Vorhaltemarke, deren Winkelgeschwindigkeit → { brake, follow } */
-  _assist(w, fi, dt, stick, precise) {
+  _assist(w, fi, dt, stick, precise, sx = 0, sy = 0) {
     const p = w.player, id = p.targetId != null ? p.targetId : w.aimInfo.under;
     const t = id != null ? w.entities.get(id) : null;
     const lvl = flightSettings().assist;
@@ -265,9 +265,20 @@ export class PadFlight {
     const pipRate = had ? Math.acos(Math.min(1, last[0] * dx + last[1] * dy + last[2] * dz)) / Math.max(1e-3, dt) : 0;
     last[0] = dx; last[1] = dy; last[2] = dz; this._hadPip = true;
     this._pipDir = last;
-    const a = fi.aim, err = Math.acos(Math.min(1, a[0] * dx + a[1] * dy + a[2] * dz));
+    const a = fi.aim, ca = a[0] * dx + a[1] * dy + a[2] * dz, err = Math.acos(Math.min(1, ca));
     const pvp = t.kind === 'player';
-    return assist(lvl, pvp, err, pipRate, stick, Math.atan((t.radius || 20) / d), w.flP.rate * (precise ? 0.6 : 1));
+    // Stickrichtung gegen die Richtung zur Marke (in der Bildebene der Zielrichtung): Weg vom Ziel bremst nicht
+    let toward = 1;
+    if (stick > 0.02 && w.fl) {
+      const R = this._ar || (this._ar = new Float64Array(3)), U = this._au || (this._au = new Float64Array(3));
+      aimAxes(w.fl, R, U);
+      const inv = fi.set.invertY ? -1 : 1;
+      const mx = R[0] * sx - U[0] * sy * inv, my = R[1] * sx - U[1] * sy * inv, mz = R[2] * sx - U[2] * sy * inv;
+      const tx = dx - a[0] * ca, ty = dy - a[1] * ca, tz = dz - a[2] * ca;
+      const ml = Math.hypot(mx, my, mz), tl = Math.hypot(tx, ty, tz);
+      if (ml > 1e-6 && tl > 1e-6) toward = (mx * tx + my * ty + mz * tz) / (ml * tl);
+    }
+    return assist(lvl, pvp, err, pipRate, stick, Math.atan((t.radius || 20) / d), w.flP.rate * (precise ? 0.6 : 1), toward);
   }
 
   _release() {

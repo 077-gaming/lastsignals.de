@@ -136,6 +136,22 @@ export function runFlightTests(check) {
     const tSoll = 120 / P.aLat + 0.1; let t = 0;
     while (Math.abs(st.v[0]) > 1 && t < 10) { stepN(st, ctl, P, null, DT); t += DT; }
     check(`Gekoppelt: Seitendrift < 1 m/s in v/a_seite + 0,1 s (${tSoll.toFixed(2)} s)`, t <= tSoll + 1e-6, t.toFixed(2) + ' s');
+    // Bahnführung (Runde 3): Dauerkurve mit voller Drehrate und W gehalten hält das Kampftempo (vorher 340 → 171 m/s)
+    for (const id of ['s1', 's4', 's8']) {
+      const Q = shipParams(id, id === 's1' ? 340 : 300);
+      const s2 = createState(), c2 = makeCtl(); s2.v[2] = -Q.vK; c2[C.TZ] = 1;
+      let vmin = Infinity, yaw = 0;
+      for (let i = 0; i < 360; i++) { aimAt(c2, yawOf(s2.q, 0) + 60 * D, 0); stepN(s2, c2, Q, null, DT); if (i > 60) vmin = Math.min(vmin, Math.hypot(...s2.v)); yaw = yawOf(s2.q, yaw); }
+      const drift = vAngle(fwdOf(new Float64Array(3), s2.q), s2.v.map((x) => x / Math.hypot(...s2.v)));
+      check(`Bahnführung ${id}: Dauerkurve mit voller Drehrate hält ≥ 95 % Kampftempo, Schlupf < 5°`, vmin >= Q.vK * 0.95 && drift < 5 * D, `${Math.round(vmin)}/${Math.round(Q.vK)} m/s · ${(drift / D).toFixed(1)}°`);
+    }
+    {
+      // entkoppelt bleibt newtonsch: dieselbe Kurve lässt die Bahn stehen (Bug und Bahn laufen auseinander)
+      const Q = shipParams('s1', 340), s2 = createState(), c2 = makeCtl(); s2.v[2] = -Q.vK; s2.coupled = false;
+      for (let i = 0; i < 60; i++) { aimAt(c2, yawOf(s2.q, 0) + 60 * D, 0); stepN(s2, c2, Q, null, DT); }
+      const drift = vAngle(fwdOf(new Float64Array(3), s2.q), s2.v.map((x) => x / Math.hypot(...s2.v)));
+      check('Entkoppelt: keine Bahnführung (1 s Kurve, Bahn bleibt, Schlupf > 45°)', drift > 45 * D, (drift / D).toFixed(0) + '°');
+    }
     st = createState(); st.coupled = false; st.v[2] = -P.vK * 1.6; ctl = makeCtl();
     stepN(st, ctl, P, null, DT); const v1 = Math.hypot(...st.v);
     for (let i = 0; i < 180; i++) stepN(st, ctl, P, null, DT);
@@ -307,6 +323,12 @@ export function runFlightTests(check) {
     check('Zielhilfe-Mitnahme höchstens 40 % der Klassen-Drehrate', a1.follow <= ASSIST_MAX_RATE * 50 * D + 1e-12 && a1.follow > 0, (a1.follow / D).toFixed(1) + '°/s');
     check('Zielhilfe im PvP höchstens NIEDRIG, ohne Mitnahme', assistLevel(3, true) === 1 && assist(3, true, 0.2 * D, 5, 1, 0.01, 1).follow === 0);
     check('Zielbremse nahe der Marke (STANDARD 55 %)', Math.abs(assist(2, false, 0.1 * D, 0, 1, 0.01, 1).brake - 0.55) < 1e-9);
+    // Runde 3: Bremsbereich klein (Raider r 20 in 150 m: Winkelradius 7,6° → innen höchstens 4°, auslaufend bis 7°),
+    // vom Ziel weg ohne Bremse
+    const rr = Math.atan(20 / 150);
+    check('Zielbremse: Raider in 150 m bremst nicht mehr bei 8° (vorher bis 34°)', assist(2, false, 8 * D, 0, 1, rr, 1).brake === 1, assist(2, false, 8 * D, 0, 1, rr, 1).brake.toFixed(2));
+    check('Zielbremse: vom Ziel weg (Zielwechsel) ungebremst', assist(2, false, 3 * D, 0, 1, rr, 1, -1).brake === 1);
+    check('Zielbremse: zum Ziel hin gebremst', assist(2, false, 3 * D, 0, 1, rr, 1, 1).brake < 0.6);
   }
   // ── Netz ──
   {

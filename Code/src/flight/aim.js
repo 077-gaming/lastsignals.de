@@ -102,14 +102,25 @@ export function assistLevel(level, pvp) {
  * → { brake (Faktor der Stickrate), follow (rad/s zusätzlich entlang der Markenbewegung) }
  */
 const AS = { brake: 1, follow: 0 };
-export function assist(level, pvp, err, pipRate, stick, targetAng, classRate) {
+// Bereich der Zielbremse (Runde 3): innen 1,3 × Winkelradius des Ziels, mindestens 1°, höchstens 4°; nach außen
+// auslaufend über noch einmal so viel (höchstens 3°). Vorher 2,5 × Radius und doppelt so weit auslaufend: ein Raider in
+// 150 m bremste den Stick bis 17° (auslaufend 34°), im Kurvenkampf auf kurze Distanz war der Stick fast immer gebremst.
+export const BRAKE_IN = 1.3, BRAKE_MIN = 1 * Math.PI / 180, BRAKE_MAX = 4 * Math.PI / 180, BRAKE_OUT = 3 * Math.PI / 180;
+/**
+ * toward: Richtung der Stickbewegung gegen die Richtung zur Marke (cos, −1..1). Die Bremse greift nur, wenn das
+ * Fadenkreuz auf die Marke zu oder an ihr entlang läuft; wer vom Ziel weg auf ein anderes umschwenkt, wird nicht
+ * gebremst (Runde 3: „klebrig“ beim Zielwechsel). Die Mitnahme gilt weiter nur mit Stickeingabe.
+ */
+export function assist(level, pvp, err, pipRate, stick, targetAng, classRate, toward = 1) {
   const L = assistLevel(level, pvp), A = ASSIST[L];
   AS.brake = 1; AS.follow = 0;
   if (!L || stick <= 0.02) return AS; // ohne Eingabe zieht nichts
-  const inner = Math.max(1.2 * Math.PI / 180, 2.5 * targetAng), outer = inner * 2;
+  const inner = Math.min(BRAKE_MAX, Math.max(BRAKE_MIN, BRAKE_IN * targetAng)), outer = inner + Math.min(BRAKE_OUT, inner);
   const k = err >= outer ? 0 : err <= inner ? 1 : 1 - (err - inner) / (outer - inner);
   const sk = k * k * (3 - 2 * k);
-  AS.brake = 1 + (A.brake - 1) * sk;
+  // auf der Marke selbst (innere Hälfte) zählt jede Richtung als Feinzielen
+  const tw = err <= inner * 0.5 ? 1 : Math.max(0, Math.min(1, toward * 1.5 + 0.25));
+  AS.brake = 1 + (A.brake - 1) * sk * tw;
   if (!pvp && A.k > 0 && sk > 0) AS.follow = Math.min(A.k * pipRate * sk, ASSIST_MAX_RATE * classRate);
   return AS;
 }

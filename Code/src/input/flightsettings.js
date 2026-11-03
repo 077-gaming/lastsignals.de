@@ -18,13 +18,14 @@ export const FLIGHT_DEFAULT = Object.freeze({
   autofire: null,      // Feuerleitrechner beim Start an (null = auf Touch-Geräten an)
   enemyBolts: false,   // Etappe 2: echte Gegnerbolzen
   hint: true,          // Hinweise im ersten Flug
+  down: 'auto',        // Taste „runter“: 'auto' (Browser unter Windows/Linux C, sonst Strg) | 'ctrl' | 'c' (Runde 3)
   migrated: false,     // alte Kamerawahl „taktisch“ einmalig auf den neuen Hauptmodus umgestellt
   rev: 3,              // Stand der Voreinstellungen (2: Kurvenrollen/Horizont aus, Controller mit kurzem Vorlauf; 3: Kamera rollt voll mit)
 });
 export const FLIGHT_CHOICES = {
   mouse: ['aim', 'vjoy'], sens: [0.04, 0.055, 0.07, 0.09, 0.12], cone: [15, 22, 30, 45, 70], cam: ['mix', 'aim'],
   fov: [60, 70, 80, 90], autoRoll: [true, false], horizon: [true, false], padHorizon: [true, false], assist: [0, 1, 2, 3], padMode: ['aim', 'rate'],
-  invertY: [false, true], enemyBolts: [false, true],
+  invertY: [false, true], enemyBolts: [false, true], down: ['auto', 'ctrl', 'c'],
 };
 let cache = null;
 export function flightSettings() {
@@ -47,6 +48,7 @@ export function flightSettings() {
   s.cone = Math.max(15, Math.min(70, Number(s.cone) || 30));
   s.fov = Math.max(55, Math.min(90, Number(s.fov) || 70));
   s.assist = Math.max(0, Math.min(3, s.assist | 0));
+  if (!FLIGHT_CHOICES.down.includes(s.down)) s.down = 'auto';
   cache = s;
   return s;
 }

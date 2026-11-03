@@ -6,7 +6,7 @@ import { C, BTN, EDGE, aimAxes } from '../flight/core.js';
 import { qFromAxisAngle, qRot, fwdOf, vAngle } from '../flight/math3.js';
 import { clampCone, leadTime } from '../flight/aim.js';
 import { LOCK_TIME, LOCK_CONE, BOLT_SPEED } from '../flight/params.js';
-import { FLIGHT, matches, codeOf } from './bindings.js';
+import { FLIGHT, matches, codeOf, applyDownKey } from './bindings.js';
 import { flightSettings, isTouchOnly } from './flightsettings.js';
 import { synth } from './padnav.js';
 
@@ -23,6 +23,7 @@ const HELD = ['fwd', 'back', 'left', 'right', 'up', 'down', 'rollL', 'rollR', 'b
 const heldCodes = () => { const m = new Map(); for (const a of HELD) for (const c of FLIGHT[a] || []) if (!c.includes('+')) m.set(c, a); return m; };
 const FREE_CODES = new Set(['AltLeft', 'AltRight']); // Option links und rechts geben den Zeiger frei
 // Einzeltasten: Taste aus der Tabelle ohne Alt (Umschalt für Boost darf gehalten sein: F im Boost dockt weiter)
+const OVER_MAX = 1, OVER_MIN = 6 * Math.PI / 180; // Überlauf höchstens ein Kegel, nur aus schnellen Ausschlägen (≥ 6° über den Kegel je Mausereignis, ≈ 360 °/s)
 const tap = (e, a) => !e.altKey && (FLIGHT[a] || []).some((c) => !c.includes('+') && c === e.code);
 
 export class FlightInput {
@@ -30,6 +31,7 @@ export class FlightInput {
     this.input = input;
     this.canvas = input.canvas;
     this.aim = new Float64Array([0, 0, -1]);   // Zielrichtung (Welt), Fadenkreuz
+    this.over = 0; this.overDir = new Float64Array(3); // Überlauf über den Lenkkegel (Maus, rad) und seine Richtung
     this.keys = new Set();
     this.codes = heldCodes();   // e.code → Handlung (gehaltene Tasten)
     this.act = new Set();       // gehaltene Handlungen
@@ -46,7 +48,8 @@ export class FlightInput {
     this.lastMoveAt = 0;
     this.clickHint = false;
     this.set = flightSettings();
-    this._onSet = () => { this.set = flightSettings(); };
+    applyDownKey(this.set.down); this.codes = heldCodes();
+    this._onSet = () => { this.set = flightSettings(); applyDownKey(this.set.down); this.codes = heldCodes(); this.keys.clear(); this.act.clear(); };
     window.addEventListener('ls:flight', this._onSet);
     this._onLock = () => this.onLockChange();
     // abgelehnter Fang (Ereignis und Promise melden denselben Fehler: innerhalb 100 ms nur einmal zählen)
@@ -137,7 +140,7 @@ export class FlightInput {
       if (l > 1) { this.vx /= l; this.vy /= l; }
       return;
     }
-    this.turnAim(mx, my);
+    this.turnAim(mx, my, 1, true);
   }
   /**
    * Zielrichtung drehen (Mausweg in Pixeln) – sofort, ohne auf die Simulation zu warten. Drehachsen sind die Achsen
@@ -145,15 +148,54 @@ export class FlightInput {
    * der mitrollenden Kamera. (Früher drehte die Maus um die Kameraachsen; mit Kurvenrollen und rollender Kamera
    * kippte die Drehachse, und eine waagrechte Maus flog eine absinkende Spirale.)
    */
-  turnAim(mx, my, sensK = 1) {
+  turnAim(mx, my, sensK = 1, mouse = false) {
     const w = this.world;
     if (!w || !w.fl) return;
     const s = this.set.sens * D * sensK, inv = this.set.invertY ? -1 : 1;
     aimAxes(w.fl, _r, _u);
+    if (mouse && this.over > 0) {
+      // Mausweg zurück Richtung Bug baut zuerst den Überlauf ab (der Rest dreht das Fadenkreuz)
+      const ox = this.overDir, dx = _r[0] * mx * s - _u[0] * my * s * inv, dy = _r[1] * mx * s - _u[1] * my * s * inv, dz = _r[2] * mx * s - _u[2] * my * s * inv;
+      const along = dx * ox[0] + dy * ox[1] + dz * ox[2];
+      if (along < 0) this.over = Math.max(0, this.over + along);
+    }
     if (mx) { qFromAxisAngle(_q, _u[0], _u[1], _u[2], -mx * s); qRot(this.aim, _q, this.aim); }
     if (my) { qFromAxisAngle(_q, _r[0], _r[1], _r[2], -my * s * inv); qRot(this.aim, _q, this.aim); }
     const l = Math.hypot(this.aim[0], this.aim[1], this.aim[2]) || 1;
     this.aim[0] /= l; this.aim[1] /= l; this.aim[2] /= l;
+    if (mouse) {
+      // Überlauf (Runde 3): Was ein schneller Mausausschlag über den Lenkkegel hinaus will, verfällt nicht sofort, sondern
+      // wird kurz gemerkt (höchstens ein Kegel, verblasst nach 0,25 s mit 0,3 s) und fließt nach, sobald die Nase
+      // aufholt – ein schneller 60°-Ausschlag dreht ≈ 60° statt 30°. Nur schnelle Ausschläge zählen (je Mausereignis
+      // ≥ 6° über den Kegel): ruhiges Verfolgen am Kegelrand sammelt nichts an (sonst schösse man über das Ziel hinaus).
+      // Zurück zum Bug baut ihn zuerst ab.
+      fwdOf(_n, w.fl.q);
+      const cone = this.set.cone * D, ang = vAngle(this.aim, _n);
+      if (ang > cone + OVER_MIN) {
+        const c = Math.cos(ang), od = this.overDir;
+        od[0] = this.aim[0] - _n[0] * c; od[1] = this.aim[1] - _n[1] * c; od[2] = this.aim[2] - _n[2] * c;
+        const ol = Math.hypot(od[0], od[1], od[2]) || 1; od[0] /= ol; od[1] /= ol; od[2] /= ol;
+        this.over = Math.min(cone * OVER_MAX, (this.over || 0) + ang - cone);
+        this.overAt = performance.now();
+      }
+    }
+    this.clampAim();
+  }
+  /** Überlauf nachspeisen: so viel, wie der Kegel durch die aufholende Nase frei geworden ist (je Bild) */
+  _feedOver(dt) {
+    const w = this.world;
+    if (!(this.over > 0) || !w || !w.fl) return;
+    if (performance.now() - (this.overAt || 0) > 250) this.over *= Math.exp(-dt / 0.3);
+    fwdOf(_n, w.fl.q);
+    const cone = this.set.cone * D, room = cone - vAngle(this.aim, _n);
+    if (room <= 1e-4) return;
+    const k = Math.min(room, this.over), od = this.overDir;
+    // Zielrichtung um k entlang der Überlaufrichtung (senkrecht zum Bug) weiterdrehen
+    const ax = od[1] * this.aim[2] - od[2] * this.aim[1], ay = od[2] * this.aim[0] - od[0] * this.aim[2], az = od[0] * this.aim[1] - od[1] * this.aim[0];
+    const al = Math.hypot(ax, ay, az);
+    if (al < 1e-6) { this.over = 0; return; }
+    qFromAxisAngle(_q, -ax / al, -ay / al, -az / al, k); qRot(this.aim, _q, this.aim);
+    this.over -= k;
     this.clampAim();
   }
   /** Zielrichtung um höchstens ang (rad) zur Richtung dir drehen (Zielhilfe-Mitnahme am Controller) */
@@ -179,7 +221,7 @@ export class FlightInput {
     clampCone(this.aim, _n, this.set.cone * D, this.aim);
   }
   /** Zielrichtung auf den Bug setzen (Übergang, Abdocken, Kamerawechsel) */
-  resetAim() { const w = this.world; if (w && w.fl) fwdOf(this.aim, w.fl.q); this.vx = this.vy = 0; }
+  resetAim() { const w = this.world; if (w && w.fl) fwdOf(this.aim, w.fl.q); this.vx = this.vy = 0; this.over = 0; }
 
   mouseDown(e) {
     if (!this.active()) return false;
@@ -229,6 +271,8 @@ export class FlightInput {
     // Strg+A Alles markieren …) im Flug abfangen. Strg+W/T/N lässt Chrome nur im Vollbild mit Tastatursperre abfangen
     // (keyboardLock), sonst sichert die Rückfrage „Seite verlassen?“ (main.js) ab.
     if (e.ctrlKey && e.code !== 'ControlRight') e.preventDefault();
+    // Alt+C (Kopplung) vor den gehaltenen Tasten: mit „runter“ auf C wäre es sonst Sinken
+    if (e.altKey && !e.repeat && matches(e, 'couple')) { this.edge |= EDGE.COUPLE; if (this.altDown >= 0) this.altUsed = true; return true; }
     const held = this.codes.get(e.code) || (FREE_CODES.has(e.code) ? 'free' : null);
     if (held) {
       if (e.code === 'Space' || e.code === 'ControlLeft' || held === 'free') e.preventDefault();
@@ -372,7 +416,7 @@ export class FlightInput {
     const manual = tx !== 0 || ty !== 0 || tz !== 0 || rr !== 0 || this.moved > 3 || (btn & (BTN.BOOST | BTN.BRAKE)) !== 0 || (pad && pad.aimInput);
     w.ctlActive = !!manual;
     if (p.hasMove && !manual) { this.aim[0] = w.apAim[0]; this.aim[1] = w.apAim[1]; this.aim[2] = w.apAim[2]; }
-    if (aimMode) this.clampAim();
+    if (aimMode) { if (this.locked && !pad && !tch && !autoAim && !p.hasMove) this._feedOver(dt); else this.over = 0; this.clampAim(); }
     this.moved = 0;
     // Raketen-Aufschaltung (rechte Maustaste bzw. LT): Ziel 0,8 s im 12°-Kegel um das Fadenkreuz
     const locking = this.rmb || (pad && pad.lock);
