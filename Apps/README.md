@@ -23,8 +23,9 @@ Das Spiel wird mit relativer Basis gebaut (`web.mjs` → `www/`, nicht im Reposi
 startet offline. Koop läuft wie im Browser über Supabase Realtime. In den Hüllen registriert das Spiel keinen Service
 Worker und zeigt keinen Installieren-Knopf (`Code/src/core/shell.js`).
 
-- Bauen: `bash Apps/bauen.sh [mac] [windows] [ios] [android]` → `~/LAST-SIGNALS-Uebergabe/downloads/`
-- Testen: `node tests/huelle.mjs` (ungepackte Desktop-Hülle ohne sichtbares Fenster: `window.lsDesktop.setGraphics`, EXTREM, Bildratenschalter; braucht `node web.mjs`), `node tests/mac.mjs`, `node tests/windows.mjs` (Aufbau der .zip/.exe, läuft auf dem Mac), `node tests/ios.mjs "iPhone 18 Pro"`, `node tests/android.mjs`
+- Version: nur `"version"` in `package.json` (aktuell 0.9.0); `version.mjs` überträgt sie auf iOS (`MARKETING_VERSION`, Build = major·10000 + minor·100 + patch) und Android (`versionName`, `versionCode`), Mac/Windows lesen sie beim Packen.
+- Bauen: `bash Apps/bauen.sh [mac] [windows] [ios] [android]` → `~/LAST-SIGNALS-Uebergabe/downloads/`, Dateien `LAST-SIGNALS-<Version>-<Plattform>-<Art>.<Endung>` plus `LAST-SIGNALS-<Version>-SHA256.txt` (SHA-256)
+- Testen: `node tests/huelle.mjs` (ungepackte Desktop-Hülle ohne sichtbares Fenster: `window.lsDesktop.setGraphics`, EXTREM, Bildratenschalter; braucht `node web.mjs`), `node tests/mac.mjs` (Fenster unsichtbar; prüft auch Version, Ton ohne Klick und das Grafikmenü; `BELEGE=<ordner>` lenkt die Bildschirmfotos um), `node tests/windows.mjs` (Aufbau der .zip/.exe, läuft auf dem Mac), `node tests/ios.mjs "iPhone 18 Pro"`, `node tests/android.mjs`
 - Download-Seite der Website: Dateinamen, Größen und Release-Tag stehen in `src/content/downloads.js`;
   `node Apps/download-groessen.mjs` überträgt nach einem neuen Bau die Dateigrößen dorthin.
 - Symbole neu erzeugen: `python3 symbole.py`

@@ -1,7 +1,7 @@
 {
   "name": "last-signals-apps",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.9.0",
   "description": "LAST SIGNALS als App-Dateien zum Testen: Mac und Windows (Electron), iPhone/iPad und Android (Capacitor)",
   "main": "desktop/main.cjs",
   "scripts": {

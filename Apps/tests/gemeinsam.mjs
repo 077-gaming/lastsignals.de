@@ -6,13 +6,19 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(HERE, '..', '..');
 
-/** Öffentliche Supabase-Adresse und öffentlichen Schlüssel aus coop.js lesen (nichts doppelt im Repository). */
+/** Öffentliche Supabase-Adresse und öffentlichen Schlüssel aus dem Spielcode lesen (nichts doppelt im Repository):
+ *  net/supa.js (SUPA_URL, SUPA_KEY), ältere Stände hatten URL/KEY in net/coop.js. */
 export function realtimeConfig() {
-  const src = fs.readFileSync(path.join(ROOT, 'Code', 'src', 'net', 'coop.js'), 'utf8');
-  const url = /const URL = '([^']+)'/.exec(src)?.[1];
-  const key = /const KEY = '([^']+)'/.exec(src)?.[1];
-  if (!url || !key) throw new Error('Supabase-Adresse/Schlüssel in coop.js nicht gefunden');
-  return { url, key };
+  const lies = (datei, reUrl, reKey) => {
+    const f = path.join(ROOT, 'Code', 'src', 'net', datei);
+    if (!fs.existsSync(f)) return {};
+    const src = fs.readFileSync(f, 'utf8');
+    return { url: reUrl.exec(src)?.[1], key: reKey.exec(src)?.[1] };
+  };
+  let c = lies('supa.js', /SUPA_URL = '([^']+)'/, /SUPA_KEY = '([^']+)'/);
+  if (!c.url || !c.key) c = lies('coop.js', /const URL = '([^']+)'/, /const KEY = '([^']+)'/);
+  if (!c.url || !c.key) throw new Error('Supabase-Adresse/Schlüssel in net/supa.js nicht gefunden');
+  return { url: c.url, key: c.key };
 }
 
 /**

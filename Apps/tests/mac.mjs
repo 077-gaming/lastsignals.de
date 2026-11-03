@@ -13,14 +13,15 @@ const { _electron: electron } = require('playwright-core');
 
 const APP = path.resolve(process.argv[2] || path.join(ROOT, 'Apps', 'out', 'mac', 'build', 'LAST SIGNALS-darwin-arm64', 'LAST SIGNALS.app'));
 const EXE = path.join(APP, 'Contents', 'MacOS', 'LAST SIGNALS');
-const BELEGE = path.join(os.homedir(), 'LAST-SIGNALS-Uebergabe', 'downloads', 'belege');
+// Bildschirmfotos: Standard downloads/belege, mit BELEGE=<ordner> anderswo (Probebau: Scratch statt downloads)
+const BELEGE = path.resolve(process.env.BELEGE || path.join(os.homedir(), 'LAST-SIGNALS-Uebergabe', 'downloads', 'belege'));
 fs.mkdirSync(BELEGE, { recursive: true });
 const PROFIL = fs.mkdtempSync(path.join(os.tmpdir(), 'ls-mac-test-'));
 let failed = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FEHL'}  ${name}${extra ? '  ' + extra : ''}`); if (!ok) failed++; };
 
 async function start(env = {}) {
-  const app = await electron.launch({ executablePath: EXE, env: { ...process.env, LS_USER_DATA: PROFIL, ...env }, timeout: 60000 });
+  const app = await electron.launch({ executablePath: EXE, env: { ...process.env, LS_USER_DATA: PROFIL, LS_HIDE_WINDOW: process.env.SICHTBAR === '1' ? '0' : '1', ...env }, timeout: 60000 });
   const page = await app.firstWindow();
   return { app, page };
 }
@@ -38,10 +39,28 @@ const fps = (page) => page.evaluate(() => new Promise((res) => { let n = 0; cons
   check('Fenster lädt app://ls/', page.url().startsWith('app://ls/'), page.url());
   const desk = await page.evaluate(() => window.lsDesktop && { platform: window.lsDesktop.platform, version: window.lsDesktop.version, electron: window.lsDesktop.electron, arch: window.lsDesktop.arch, fn: typeof window.lsDesktop.fullscreen });
   check('window.lsDesktop vorhanden (platform mac)', !!desk && desk.platform === 'mac' && !!desk.version, JSON.stringify(desk));
+  const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'Apps', 'package.json'), 'utf8')).version;
+  check(`App-Version ${VERSION} (aus Apps/package.json)`, !!desk && desk.version === VERSION, desk && desk.version);
   const iso = await page.evaluate(() => ({ require: typeof window.require, process: typeof window.process }));
   check('Kein Node im Spiel (contextIsolation, nodeIntegration aus)', iso.require === 'undefined' && iso.process === 'undefined', JSON.stringify(iso));
   await bisZumHub(page);
   await page.screenshot({ path: path.join(BELEGE, 'mac-hub.png') });
+  // Grafikmenü: EINSTELLUNGEN → Grafik-Panel mit Renderer (Grafikchip), Auflösungsskalierung und Hochskalierung
+  await page.click('button[data-sec="einst"]');
+  await page.waitForSelector('.st [data-gx]', { timeout: 10000 });
+  const gfx = await page.evaluate(() => {
+    const q = (sel) => document.querySelector(sel);
+    const ro = [...document.querySelectorAll('.st [data-gx] .gx-ro > div')].map((d) => [d.querySelector('.ls-label')?.textContent, d.querySelector('.ls-num')?.textContent]);
+    return { chip: (ro.find((r) => r[0] === 'GRAFIK') || [])[1] || '', stufen: [...document.querySelectorAll('.st [data-gx] [data-gfx="preset"]')].map((b) => b.dataset.v) };
+  });
+  check('Grafikmenü: Renderer (Grafikchip) wird angezeigt', !!gfx.chip && gfx.chip !== '?', gfx.chip);
+  check('Grafikmenü: Stufen inkl. EXTREM (Desktop-Kennung)', gfx.stufen.includes('extreme'), gfx.stufen.join(','));
+  await page.click('.st [data-gx] [data-gfx="tab"][data-v="bild"]');
+  const zeilen = await page.$$eval('.st [data-gx] .gx-row[data-k]', (r) => r.map((x) => x.dataset.k));
+  check('Grafikmenü: Auflösungsskalierung und Hochskalierung vorhanden', zeilen.includes('renderScale') && zeilen.includes('upscale'), zeilen.join(','));
+  const wahl = await page.$$eval('.st [data-gx] .gx-row[data-k="upscale"] [data-gfx="set"]', (b) => b.map((x) => x.dataset.v));
+  check('Grafikmenü: Hochskalierung wählbar (AUS / LS)', wahl.includes('off') && wahl.includes('ls'), wahl.join(','));
+  console.log('      Renderer-Wahl (WebGPU) im Menü:', zeilen.includes('renderer') ? 'vorhanden' : 'nicht in diesem Stand (Zweig claude/webgpu)');
   const sw = await page.evaluate(async () => {
     if (!navigator.serviceWorker) return 'keine API';
     try { return String((await navigator.serviceWorker.getRegistrations()).length); } catch (e) { return 'nicht möglich (' + e.name + ')'; }
@@ -70,6 +89,17 @@ const fps = (page) => page.evaluate(() => new Promise((res) => { let n = 0; cons
   fs.writeFileSync(path.join(PROFIL, 'einstellungen.json'), JSON.stringify(s));
   const { app, page } = await start();
   await page.waitForLoadState('domcontentloaded');
+  // Ton ohne Klick: Ein neuer AudioContext muss ohne eigene Eingabe sofort „running“ sein (autoplayPolicy
+  // no-user-gesture-required). userActivation.hasBeenActive ist hier nur Information: die Teststeuerung zählt teils selbst als Eingabe.
+  const ton = await page.evaluate(async () => {
+    const act = navigator.userActivation ? navigator.userActivation.hasBeenActive : null;
+    const ctx = new AudioContext();
+    await new Promise((r) => setTimeout(r, 300));
+    const state = ctx.state;
+    ctx.close();
+    return { gesteBisher: act, audioContext: state };
+  });
+  check('Ton startet ohne Klick (neuer AudioContext läuft sofort)', ton.audioContext === 'running', JSON.stringify(ton));
   const b = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds());
   check('Fenstergröße gemerkt', Math.abs(b.width - 1234) <= 2 && Math.abs(b.height - 777) <= 2, JSON.stringify(b));
   const sw = await app.evaluate(({ app: a }) => ({ fr: a.commandLine.hasSwitch('disable-frame-rate-limit'), vs: a.commandLine.hasSwitch('disable-gpu-vsync'), gpu: a.commandLine.hasSwitch('force_high_performance_gpu') }));
