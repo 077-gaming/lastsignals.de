@@ -1555,7 +1555,10 @@ export class Renderer {
     if (!on) return;
     const p = W.player, rig = this.rig;
     const t = p.targetId != null ? W.entities.get(p.targetId) : null;
-    this.cockpit.setAccent(FACTIONS[W.profile?.faction]?.accent ?? 0xff8a2a);
+    // Cockpit-Leuchtfarbe: Fraktionsakzent; ist er dunkel (Saturn: Dunkelmetall 0x3a3a3e), die Hauptfarbe (Orange/Bernstein)
+    const FX = FACTIONS[W.profile?.faction];
+    const acc = FX ? (FX.accent >> 16 & 255) + (FX.accent >> 8 & 255) + (FX.accent & 255) < 330 ? parseInt(FX.css.main.slice(1), 16) : FX.accent : 0xff8a2a;
+    this.cockpit.setAccent(acc);
     // Kopfbewegung: Stoß-Feder und Beschleunigung, abschaltbar über Kamerawackeln
     const m = rig.shakeOn ? rig.motion : 0;
     _so.set(rig.kick.x * 0.002 * m, rig.kick.y * 0.002 * m - Math.max(-1, Math.min(1, (rig.accel || 0) / 400)) * 0.03 * m, 0);
