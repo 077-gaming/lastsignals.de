@@ -1,4 +1,4 @@
-# LAST SIGNALS · Schiffsqualität (Stand 03.11.2026, Nachbesserung Runde 3)
+# LAST SIGNALS · Schiffsqualität (Stand 03.11.2026, Nachbesserung Runde 4)
 
 Ziel (Toni): Die Spielerschiffe sind das Wichtigste und sollen mit dem Grafikstand auf Space-Shooter-Niveau kommen.
 Dieser Stand betrifft die 24 Meshy-Rümpfe (Starter bis Schiff 8, je Europa/Saturn/Eris), Drohnen und Sprungtor.
@@ -11,10 +11,10 @@ Eingabe sind die Spieldateien nach dem Meshy-Einbau (Fraktionslackierung schon i
 
 | Karte | Inhalt | Herkunft |
 |---|---|---|
-| Farbe (sRGB) | Fraktionslackierung, Kennungen entfernt (Spenderstück), Ränder aufgefüllt, leichte Kantenabnutzung; Europa-Gold geglättet und satter, Saturn/Eris-Akzent kräftiger | Spieldatei |
-| Normal (linear) | Kanten-Normalen aus der Geometrie (Auto-Glättung 50°, Anteil 55 %) + Detailhöhe (Luminanz-Bandpass r1–r3, Stärke 0,9; an entfernten Kennungen null) | Geometrie + Rohtextur |
+| Farbe (sRGB) | Fraktionslackierung, Kennungen entfernt (Randgrundton + Plattenstruktur des Spenders), Inselränder per Dilation aufgefüllt, leichte Kantenabnutzung; Europa-Gold geglättet und satter, Saturn/Eris-Akzent kräftiger, Rest-Cyan der Vorlage in Saturn/Eris neutral | Spieldatei |
+| Normal (linear) | Kanten-Normalen aus der Geometrie (Auto-Glättung 50°, Anteil 55 %, an harten Kanten 4 × 4 unterabgetastet, leicht geglättet, Splitterdreiecke aus der Umgebung) + Detailhöhe (Luminanz-Bandpass r1–r3, Stärke 0,9, am UV-Inselrand ausgeblendet; an entfernten Kennungen halb vom Spender) | Geometrie + Rohtextur |
 | ORM (linear) | R Umgebungsverdeckung (32 Strahlen je Texel, 1K, beide Seiten, Reichweite 12 % der Länge, Stärke 80 %), G Rauheit, B Metall | Strahlen + Farbanalyse |
-| Leuchten (sRGB) | Düsen/Lichtleisten: Europa Eisblau, Saturn Bernstein, Eris Violett (gleich hell); kleine warme/rote/grüne Lichtpunkte; Stärke 2,2. Schiff 2: keine (Rohtextur ohne Leuchtflächen, Karte weggelassen) | Rohtextur |
+| Leuchten (sRGB) | Düsen/Lichtleisten: Europa Eisblau, Saturn Bernstein, Eris Violett mit Randabfall und Plattenstruktur; kleine warme/rote/grüne Lichtpunkte; kalte Splitter (< 40 Texel bzw. < 160 Texel und < 40 Texel lang) entfernt; Stärke 2,2. Schiff 2: keine (Rohtextur ohne Leuchtflächen, Karte weggelassen) | Rohtextur |
 
 Rauheit/Metall je Fraktion (Rumpf / Akzent): Europa 0,22 · 0,44 / 0,9 · 0,36, Saturn 0,72 · 0,36 / 0,35 · 0,4,
 Eris 0,8 · 0,3 / 0,5 · 0,28. Saturn/Eris: Rumpfrauheit höchstens 0,5, dunkler Lack zählt nicht als „Dunkelteil“
@@ -22,6 +22,21 @@ Eris 0,8 · 0,3 / 0,5 · 0,28. Saturn/Eris: Rumpfrauheit höchstens 0,5, dunkler
 
 „Gebackene Formnormalen“ aus einem Hochpolygon-Modell sind nicht möglich: Meshy liefert nur das Spielnetz
 (14–33 Tsd. Dreiecke). Stattdessen werden harte Kanten aus dem Netz selbst gebacken.
+
+### Runde 4: Sägezahnfugen an harten Kanten und UV-Rändern
+
+Ursache (Kanalprüfung `tools/bilder/diag-hangar.mjs`, Kanäle einzeln abgeschaltet): die Zahnlinien kamen allein aus
+der Normalkarte – an S2-Bug eine 1–2 Texel breite Geometriefuge, deren Kanten-Normale texelweise wechselte, dazu der
+Bandpass der Detailhöhe, der am UV-Inselrand Texel angrenzender Inseln aus dem Atlas mischte. Behoben in
+`qualitaet.mjs`:
+- Detailhöhe am Inselrand ausgeblendet (Abstand zum Rand je Texel, Rand = Nachbar ungültig oder im Raum > 6 Texel weg;
+  voll ab 4 Texeln bei 2K bzw. 8 bei 4K).
+- Kanten-Normale an Texeln mit harter Kante 4 × 4 unterabgetastet (Kandidaten: Dreiecke der 3 × 3-Nachbarschaft auf
+  derselben Fläche), Formanteil danach leicht geglättet (Gauß ≈ 1,4 Texel, nicht am Inselrand).
+- Splitterdreiecke (Höhe im UV < 0,8 Texel) liefern keine eigenen Texel mehr, sondern werden aus der Umgebung gefüllt.
+- Ränder aller vier Karten per Dilation (8 Schritte 2K, 16 Schritte 4K, je Schritt Mittel der gültigen 8-Nachbarn),
+  danach Push-Pull für den Rest (vorher nur Push-Pull: Mittelwert über Nachbarinseln direkt am Rand).
+- Je Normalkarte im Bericht: unterabgetastete Kantentexel (2K 0,20–0,32 Mio.) und gefüllte Splittertexel (1.200–7.900).
 
 ### Abnahmeprüfung Bänderung (neu in Runde 2)
 
@@ -79,6 +94,41 @@ Texel für Rechtecke).
   (2K 0,6, 4K 1,0).
 - Kontaktbögen der Fundstellen (2K links, 4K rechts, je Fraktion): `bilder/schiffe-qualitaet/r3-fuellung/<klasse>-fuellung(-vorher).jpg`.
 
+### Füllung Runde 4 (ohne Wolken, ohne Farbstich; S4-Bildschirm, Leuchtsplitter)
+
+- Füllung = Grundton aus dem Rand (Push-Pull, Randtexel nach Helligkeit UND Buntheit gewichtet: ein gleich heller
+  Goldrand zieht den Ton nicht mehr ins Gelbe) + Plattenstruktur des Spenders (alles über Kastenmittel r 3, alle Kanäle).
+  Keine tiefen Frequenzen vom Spender (keine Wolken, keine Schattenflecken), Strukturstärke höchstens das 1,2-Fache des
+  Randes (Streuung des Feinanteils), Einzelabweichung je Texel höchstens 0,09 Helligkeit, 3 Texel weicher Rand.
+- Spender je Lackierung geprüft: Gold-, Orange- und Violett-Akzente stehen nur in der Lackierung, nicht in der Rohtextur
+  der Spenderwahl. Der erste von zwölf Kandidaten, dessen Texel in der Buntheit zum Bezug passen (Mittel ≤ 0,025,
+  95 %-Wert ≤ 0,07), wird genommen; sonst nur der Helligkeits-Feinanteil (`report.fuellModus`: spender/spender-alt/fein).
+  Gefunden durch die neue Prüfung: S2 Europa „S02“ hatte einen Goldfleck aus einem Spender in der Goldleiste.
+- Neue Prüfungen je Fundstelle in `qualitaet.mjs` (2K-Farbe, Abbruch): **Farbton** – Mittel der Buntheit (r−g, g−b)
+  der Füllung außerhalb des Bereichs 10–90 % des Bezugs ≤ 0,03 (an Plattengrenzen liegt die Füllung zwischen beiden
+  Seiten und besteht) – und **niederfrequente Streuung** – Streuung der Helligkeit nach Kastenmittel r 3 höchstens das
+  1,35-Fache des Bezugs (oder absolut ≤ 0,02). Ergebnis alle 24 Rümpfe: ΔFarbton ≤ 0,028, NF-Streuung ≤ 1,46-fach (S6
+  „S06“ 2,13-fach bei absolut 0,016 – Plattenkante in der Fundstelle), Helligkeit ≤ 0,038, Blockigkeit 4K-Höhe ≤ 1,18.
+  Die Prüfung fand außerdem einen Rest der S8-Kennung (heller Bogen neben „1714,1711“, jetzt Rechteck in
+  `kennungen.json`) und den Streifen-Spender an S6 „S06“ (Struktur jetzt auf Randstärke begrenzt).
+- **S4 Flügel**: der pixelige Zeichen-Bildschirm mit Leuchten (UV ≈ 0,10/0,64) ist als ganze Fläche gefüllt
+  (`kennungen.json` s4 rechtecke [172, 1290, 236, 1332, 1]) – in allen drei Lackierungen, Leuchtkarte dort leer, Stelle in
+  der Prüfung je Fundstelle enthalten (`hand:172,1290,236,1332`). Beleg 2K und 4K-Verfolger nah: `r4-s4-fluegel.jpg`.
+- **Leuchtsplitter**: Zusammenhangsflächen der kalten Leuchtmaske (Cyan-Erkennung bzw. kaltes Leuchten der Vorlage) unter
+  40 Texeln oder unter 160 Texeln bei weniger als 40 Texeln Länge sind keine Düsen oder Leisten, sondern Schriftzeichen,
+  Funken und Pixelreste – in Eris als magenta Flecken (S4). Sie leuchten nicht mehr, gesättigte Texel bekommen den Lack der
+  Umgebung. Entfernt: S1 8, S3 256, S4 708, S5 315, S6 99, S7 70, S8 157 Stellen (S2 0).
+- **Leuchtflächen mit Struktur** (S3-Gondel, Eris-Leisten und -Felder): Leuchten × (0,45 + 0,55 · Randabfall über 6
+  Texel) × Plattenstruktur der Vorlage (Hochpass der Helligkeit, 0,45–1,25) × Fugen dunkler (Detailhöhe); das
+  Grundmaterial darunter behält seine Helligkeitsstruktur in der Leuchtfarbe (vorher flache Farbfläche).
+- **Rest-Cyan** der Vorlage auf Lack (keine Leuchtfläche) in Saturn und Eris neutral grau bei gleicher Helligkeit: S3
+  1,9 % → 0,07 %, S5 3,4 % → 0 % der Texel (türkiser Farbstich auf den Gondeln).
+- Rauheit ohne niederfrequentes Rauschen (nur die feine Oktave, halbe Stärke): weniger Glanzwolken auf dunklem Lack.
+- **Schiff 8, Saum**: gedämpft wird nur noch die helle dünne Linie (Zylinderhut r 2) direkt neben einer dunklen Fuge
+  (Schwarzhut, Abstand ≤ 2 Texel), auf 25 %; die Detailhöhe wird aus der ungedämpften Helligkeit gebildet und nur ihr
+  positiver Anteil (Grat) im Saum um 80 % gekappt – die Plattenfugen haben wieder volle Tiefe (Stärke 2K 0,8, 4K 1,25
+  statt 0,6/1,0). Beleg Runde 2 / Runde 3 / Runde 4: `r4-s8-saum.jpg`.
+
 ## Zwei Texturstufen
 
 - **2K** (im GLB, alle Stufen, Browser/Mobil): Farbe, Normal, ORM, Leuchten je 2048 (Schiff 2 ohne Leuchten).
@@ -100,10 +150,25 @@ Texel für Rechtecke).
 - Fresnel-Randlicht in Fraktionsfarbe (Runde 3: Europa 0,05, Saturn 0,10, Eris 0,10; S5/S6 × 0,8, S7/S8 × 0,6), nicht
   mehr unbeleuchtet addiert: gewichtet mit der Beleuchtung an der Stelle (direkt + Umgebung, auf die Grundfarbe
   bezogen, 20–100 %) und der Umgebungsverdeckung – kein violettes Plastik in Spalten und im Schatten.
-- Rumpfaufhellung (Runde 3, `SHIP_FILL`): weiches Füll-/Kopflicht aus Kamerarichtung auf der Grundfarbe, nur auf dem
-  Rumpf (Saturn 0,25, Eris 0,6; große Rümpfe Eris × 3, Saturn × 1,6, S5/S6 halb so viel Zuschlag). Lesbarkeit vor
-  dunklem Nebel über Plattenstruktur statt über den Umriss. Faktor je Grafik-Engine (`factory.uShipFill`: Flug 1,
-  Hangar Europa 0,45 / Saturn 0,7 / Eris 1,4).
+- Rumpfaufhellung (Runde 4 umgebaut, `SHIP_FILL`): weiches Füll-/Kopflicht aus Kamerarichtung auf der Grundfarbe,
+  nur noch im Unbeleuchteten (× (1 − lit)², lit = Beleuchtung an der Stelle wie beim Randlicht): beleuchtete Flächen
+  bleiben satt, das Violett wird nicht mehr pastell. Saturn 0,2, Eris 0,3 (vorher 0,6), große Rümpfe nur + 30 % (vorher
+  Eris × 3 für S7/S8). Faktor je Grafik-Engine (`factory.uShipFill`): Flug 1, Hangar eigener kleinerer Wert Europa 0,3 /
+  Saturn 0,45 / Eris 0,5 (vorher 0,45 / 0,7 / 1,4).
+- Silhouettenlicht (Runde 4, statt flacher Aufhellung für die Lesbarkeit): kühles helles Kantenlicht (Eris #d4e4ff
+  0,42, Saturn #dfe8ff 0,14, Europa aus) nur am streifenden Rand (smoothstep 0,6–0,97 der Abwendung, quadriert), mit
+  der Verdeckung gewichtet – trennt den Umriss vom violetten Nebel, ohne die Fläche zu grauen. Beleg Flug/Kampf Eris S1,
+  S6, S8: `r4-kampf-eris-vergleich.jpg`.
+- Positionslichter der Flügelspitzen (Runde 4): kleiner (1,3 statt 1,8) und gerichtet nach außen – die abgewandte Spitze
+  blendet aus (Blickwinkel zur Außenrichtung < 0), statt als Lichtfleck über die Rumpfsilhouette zu ragen
+  (`lightPointsGeometry` mit Richtung, Abfrage je Punkt im Vertex-Shader). Der rote Punkt über der Silhouette in S1
+  nah-flanke war das Rückenlicht der Hangar-Ausstattung (`station-bay.js _buildFit`): es ist jetzt kleiner (1,5) und nur
+  sichtbar, wenn die Kamera mindestens ≈ 8° über der Rumpfoberseite steht; die Seitenlichter (Backbord/Steuerbord) zeigen
+  nur zur Kamera hin (abgewandte Seite aus). Beleg S1 nah-flanke Eris/Saturn: `r4-positionslicht.jpg`.
+- Schildtreffer am eigenen Schiff (Runde 4, `effects.js _shield`): Deckkraft 0,3 und höchstens 0,32 je Bildpunkt,
+  Fresnel-Hülle auf 35 %, Dauer 0,3 s – kurzes Aufblitzen von Hex-Raster und Trefferring statt bildfüllender Wand;
+  Gegner unverändert, Wiedereinstieg (volle Kuppel) unverändert. Beleg Kampf mit HUD S1/S6/S8 Eris:
+  `r4-kampf-eris-vergleich.jpg` (Zeilen „SCHILD“, 0,08 s nach dem Treffer).
 - Positionslichter echter Rümpfe sitzen auf der Flügelspitze (vorher 0,3 m außen, 0,4 m darüber: bei hängenden
   Flügelspitzen ein schwebender Punkt neben S3 Saturn).
 - Klarlack auf gebackenen Karten 0,15 (vorher 0,3), Rauheit 0,42: Schiff 8 Europa wirkt nicht mehr gläsern.
@@ -112,6 +177,10 @@ Texel für Rechtecke).
 
 Belichtung je Lackierung (`station-bay.js setShip`, [Oberlicht, Kante, Füllung, Umgebung, Kontur, Höhe Kantenlicht]):
 Europa 1,5 / 1,9 / 0,45 / 0,3 / 0 / 22, Saturn 1,6 / 2,4 / 0,6 / 0,42 / 0,9 / 30, Eris 2,0 / 1,7 / 1,05 / 0,62 / 2,6 / 58.
+Runde 4: Saturn-Kantenlicht neutral (#dcd8d2 statt #9db8ff) – es spiegelte als lila Wolke im dunklen Metallrumpf
+(S2 Saturn nah-bug); Rumpfaufhellung im Hangar s. oben. Beleg Eris S6/S7/S8 Hangar und nah-flanke:
+`r4-eris-aufhellung.jpg`. Nahaufnahme Heck zusätzlich **mit Halle** (`nah-heck-halle`, wie im Spiel), je Klasse:
+`r4-hangar-halle.jpg` – kein Hallenträger vor dem Rumpf.
 Runde 3 Eris: Kantenlicht steil statt flach von hinten (spiegelte als heller Bodenfleck vor der Kamera), Konturlicht
 steil von hinten oben setzt Rücken und Flügelkanten vom Hintergrund ab, Boden und Plattform matter und dunkler,
 Rumpfaufhellung 1,4. Belege: `r3-hangar-eris-s2-vergleich.jpg`, `r3-hangar-eris-s6-vergleich.jpg`.
@@ -143,31 +212,43 @@ Meshy-Rümpfe nach Grundfläche √(Länge × Breite) (`SHIP_FOOT`, je Klasse �
 | S7 | 99 × 73 | 55,2 |
 | S8 | 189 × 49 | 85,5 |
 
-Verfolgersicht (Runde 3, `render/camrig.js CHASE_FRAME`): Abstand, Neigung und Bildlage je Klasse statt Abstand aus
-dem Hüllkugel-Radius (Flügel und Länge verfälschen ihn: S2/S3 waren von hinten kleiner als der breite Starter).
-Ziel-Bildanteil: **Bildhöhe des Rumpfs**, Starter 18 %, je Klasse ≈ 10 % mehr, Schiff 8 ≈ 36 % (Obergrenze 38–40 %).
-Die Fläche taugt nicht als einziges Maß: Schiff 8 ist schlank (189 × 49 m) und hätte für eine größere Fläche als S7
-über 50 % der Bildhöhe gebraucht. `k` = Abstandsfaktor im Kampf (steilere Kamera und Zielschwenk verschieben die
-Bildhöhe je Rumpfform). Seitlicher Versatz langer Rümpfe 17° → 6°, blendet beim Lenken (Kurswechsel > 0,15 rad/s) und
-im Kampf auf 0 aus; Schild- und Kursbogen bleiben am Rumpf.
+Verfolgersicht (Runde 4, `render/camrig.js CHASE_FRAME`): Abstand, Neigung, Bildlage und bei Schiff 8 Gier je Klasse;
+gestaffelt nach **Bildfläche und Bildhöhe zusammen**. `tools/bilder/groessen.mjs` bricht jetzt ab (Rückgabewert 2),
+wenn je Fraktion von S1 bis S8 die Fläche ODER die Höhe nicht um mindestens 8 % je Stufe steigt oder (mit HUD) ein Heck
+im HUD-Band liegt. Gelaufen für Europa, Saturn und Eris in Flug, Flug mit HUD, Kampf und Kampf mit HUD (1280 × 720):
+alle vier Läufe bestanden (`r4-nachher/groessen/*.log`, `groessen*.json`, `staffelung-<fraktion>[-kampf][-hud].jpg`).
 
-Messung `tools/bilder/groessen.mjs` (1280 × 720, gleiche Szene, Europa und Eris gleich; Höhe / Breite des projizierten
-Rumpfs, Zuwachs der Höhe zur vorigen Klasse):
+- **Schiff 8** (189 × 49 m): ruhige Verfolgersicht flach (Neigung 15° − 14° = 1°) mit 12° Gier – die Länge ist sichtbar,
+  Bildfläche 10,2 % gegen 9,4 % bei S7 (vorher 3,6 %), Höhe 53,7 %, Unterkante 61,5 % über dem HUD-Band (65,8 %),
+  Oberkante 7,8 %. Im Kampf bleibt die doppelte Gier (24°), die steilere Kampfkamera nur zu 80 %, die Zielhöhe im Bild
+  darf bis 0,9 steigen (`tc`): Fläche 9,0–9,4 % gegen 7,7–7,9 % bei S7, Unterkante ≤ 64,1 %.
+- **S2 größer als S1**: Starter etwas weiter weg (Flug 16,4 % Höhe, 2,19 % Fläche), S2 19,8 % / 2,46 % (+12 % Fläche).
+- **Kampf**: alle Klassen etwas kleiner im Bild (mehr Überblick, Abstandsfaktor `k` 0,9–1,26), die Stufen liegen im Mittel
+  ≈ 15–20 % auseinander, weil der Zielschwenk (Gier −11…+5°) die Bildhöhe je Lage um ±4 % streut; S6/S7 heben das Bild
+  im Kampf an (`yc`, `tc`), damit das Heck über dem HUD-Band bleibt.
+- **Zielmarke und Zielbogen** (Kampf): `zielFrei` per Strahltest gegen die Rumpfdreiecke – die Zielmarke auf dem Gegner
+  und die Strecke vom Bug zum Ziel ab 1,3 Radien werden nicht vom Rumpf verdeckt. In allen Kampfmessungen (3 Fraktionen ×
+  8 Klassen, mit und ohne HUD) frei; vorher bei S8 Saturn und Eris verdeckt.
+- **Bildmitte**: `mitteFrei` (Bildmitte und Flugachse nicht in der konvexen Hülle des Rumpfs) bleibt in allen Messungen
+  falsch – das ist gewollt und die frühere Aussage „Flugachse vor dem Bug frei“ war falsch: der Verfolger setzt das Schiff
+  mittig über das HUD-Band, die Bildmitte liegt auf dem Rumpf. Frei liegt das, worauf es im Kampf ankommt (Zielmarke,
+  Zielbogen; s. o.); Schild-/Hüllenbögen sitzen bewusst am eigenen Schiff.
 
 | Klasse | S1 | S2 | S3 | S4 | S5 | S6 | S7 | S8 |
 |---|---|---|---|---|---|---|---|---|
-| vorher Höhe × Breite | 18 × 19 % | 15 × 18 % | 18 × 18 % | 18 × 25 % | 25 × 22 % | 27 × 26 % | 27 × 28 % | 57 × 22 % |
-| nachher Höhe × Breite | 17,9 × 19,4 % | 19,8 × 22,9 % | 21,7 × 20,8 % | 24,2 × 31,5 % | 26,8 × 24,1 % | 29,8 × 28,1 % | 32,9 × 36,2 % | 35,9 × 14,3 % |
-| Zuwachs Höhe | – | +11 % | +10 % | +12 % | +11 % | +11 % | +10 % | +9 % |
-| Kampf (ck = 1) Europa / Eris Höhe | 18,3 / 17,9 % | 18,9 / 20,4 % | 22,2 / 22,2 % | 24,9 / 25,0 % | 28,4 / 26,7 % | 30,2 / 29,8 % | 34,8 / 34,0 % | 36,1 / 36,5 % |
+| Flug Fläche | 2,19 % | 2,46 % | 2,88 % | 4,11 % | 4,91 % | 5,53 % | 9,44 % | 10,23 % |
+| Flug Höhe | 16,4 % | 19,8 % | 21,7 % | 24,2 % | 26,8 % | 29,2 % | 32,4 % | 53,7 % |
+| Zuwachs Fläche / Höhe | – | +12 / +21 % | +17 / +10 % | +43 / +12 % | +20 / +11 % | +13 / +9 % | +71 / +11 % | +8 / +66 % |
+| Kampf mit HUD Europa Fläche / Höhe | 1,09 / 12,6 % | 1,44 / 15,6 % | 1,83 / 17,4 % | 2,65 / 20,8 % | 3,20 / 24,5 % | 4,87 / 28,0 % | 7,65 / 31,9 % | 9,35 / 55,8 % |
+| Kampf mit HUD Saturn Fläche / Höhe | 1,04 / 12,1 % | 1,42 / 15,6 % | 1,85 / 17,2 % | 2,70 / 21,2 % | 3,14 / 23,9 % | 4,78 / 27,7 % | 7,87 / 32,7 % | 9,23 / 56,0 % |
+| Kampf mit HUD Eris Fläche / Höhe | 1,09 / 12,4 % | 1,40 / 15,5 % | 1,76 / 17,0 % | 2,63 / 20,7 % | 3,18 / 23,7 % | 4,77 / 28,1 % | 7,87 / 32,9 % | 8,96 / 55,8 % |
+| Kampf ohne HUD Europa Fläche / Höhe | 1,11 / 13,1 % | 1,41 / 15,4 % | 1,92 / 17,4 % | 2,70 / 21,1 % | 3,12 / 23,5 % | 5,10 / 28,7 % | 7,75 / 31,6 % | 9,83 / 55,1 % |
+| Kampf ohne HUD Saturn Fläche / Höhe | 1,10 / 13,0 % | 1,42 / 16,0 % | 1,95 / 17,5 % | 2,66 / 21,0 % | 3,19 / 23,9 % | 5,07 / 28,5 % | 7,80 / 32,0 % | 9,17 / 55,3 % |
+| Kampf ohne HUD Eris Fläche / Höhe | 1,11 / 13,0 % | 1,43 / 15,4 % | 1,90 / 17,5 % | 2,68 / 21,0 % | 3,14 / 23,9 % | 4,86 / 28,2 % | 7,88 / 31,6 % | 9,49 / 54,3 % |
 
-Im Kampf schwenkt die Kamera je nach Zielrichtung (Gier −10…+4°), die Werte streuen deshalb um einige Prozent; S2 und S3
-sind auch im Kampf größer als S1 (S2 Europa +3 % Höhe, +23 % Breite; S3 +21–24 % Höhe). Schiff 8 mit HUD (1280 × 720):
-Unterkante 64,6 % (Kampf 64,8–65,2 %), Oberkante des HUD-Bands (SYS·03 SCHIFF, Schnellleiste) 65,8 % – das Heck liegt
-vollständig darüber; die Flugachse vor dem Bug ist frei. Die Bildmitte liegt beim Verfolger in allen Klassen auf dem
-Rumpf (Schiff sitzt mittig über dem HUD-Band); bei Schiff 8 reicht der Bug bis 29 % Bildhöhe (vorher 29 %, dazu das
-Heck bis 86 % unter dem HUD-Band). Eine freie Bildmitte und das Heck über dem HUD-Band ginge nur mit < 16 % Bildhöhe.
-Belege: `r3-nachher/groessen/` (`staffelung-<fraktion>[-kampf][-hud].jpg`, `groessen*.json`), `r3-s8-hud-*-vergleich.jpg`.
+Belege: `r4-s8-verfolger-hud.jpg` (S8 Europa/Saturn/Eris, ruhig und Kampf, je mit HUD, vorher/nachher),
+`r4-nachher/groessen/staffelung-*.jpg`, Messwerte `r4-nachher/groessen/groessen*.json` (vorher S7/S8:
+`r4-vorher/groessen/`).
 
 ## Cockpit (`render/cockpit.js`)
 
@@ -181,8 +262,21 @@ Grundlicht. Runde 3:
 - Verkleidung ohne Kachelung: Wandtextur 2 × 2 m mit unregelmäßigen Plattenreihen, Lüfter und Schalter nur an wenigen
   Stellen, Welt-UV (Meter) mit Versatz je Bauteil; Konsole mit eigener Fläche (Fugen an den Kanten und zwischen den
   drei Bildschirmfeldern); Warnstreifen neutral grau.
-Prüfung: `tools/bilder/cockpit.mjs` (vorn, links, rechts, unten), Bögen `r3-cockpit-vergleich/<klasse>-<fraktion>.jpg`
-für S1 Europa, S8 Saturn, S6 Eris.
+Runde 4 – Innenraum beleuchtet:
+- Füll-Licht von vorn unten (0,75, Instrumentenschein) und von beiden Seiten (je 0,45): Rückwand, Sitz und Innenseiten
+  der Schale, die das Hauptlicht von hinten oben nicht erreicht; Halbkugel-Licht unten heller (#3a3f4a statt #1a1c22).
+- Schwache Eigenhelligkeit als Grundlicht: Schale und Seitenverkleidung mit Wandtextur (#2b2e36), Streben (#17191e),
+  Sitz (#15171c); Schale heller lackiert (#c4cad4 statt #8a909a).
+- Prüfung in `tools/bilder/cockpit.mjs` (Abbruch): zwölf Blickrichtungen, darunter Gier ±1,9 rad und Neigung −0,6/+0,7
+  in allen Kombinationen; je Bild Anteil der Kanzel-Bildpunkte unter 6/255 höchstens 5 % des Bildes (Bildpunkte durch die
+  Scheiben zählen nicht: Maske aus zwei Aufnahmen mit ausgeblendeter Welt vor schwarzem bzw. weißem Hintergrund).
+  Ergebnis schlechteste Richtung (rechts unten): S1 Europa 27,0 % → 1,3 %, S8 Saturn 38,0 % → 4,1 %, S6 Eris 40,3 % →
+  4,5 % (`r4-nachher/cockpit/*-pruefung.json`, vorher `r4-vorher/cockpit/`).
+- `cockpit.mjs` hält die Blickwinkel während der ganzen Aufnahme (Intervall setzt `looking/lookYaw/lookPitch` alle 16 ms;
+  vorher federte der Blick zwischen Setzen und Bild zurück).
+Bögen: `r4-cockpit-vergleich/<klasse>-<fraktion>.jpg` (S1 Europa, S8 Saturn, S6 Eris; je Blickrichtung ein sauberes
+Vorher/Nachher-Paar, Beschriftung über den Bildern). Die Runde-3-Bögen `r3-cockpit-vergleich/*.jpg` sind aus den
+Runde-3-Quellen neu zusammengesetzt (s8-saturn hatte überlappende Kacheln).
 
 ## Drohnen und Sprungtor
 
@@ -191,30 +285,54 @@ für S1 Europa, S8 Saturn, S6 Eris.
 
 ## Leistung (Apple-Chip, 960 × 600, HOCH, `tools/bilder/ansichten.mjs`, unsichtbar, fester Zufall, Welt angehalten)
 
-Grafikzeit im Flug Runde 3: 2,4–4,3 ms (flug-* 3,5–3,8, schiff-nah 3,2, kampf-saturn 3,4, cockpit 2,4, feld 3,4,
-tor 4,3, schiff5 3,6, kampf-schwarm 2,9, kampf-eris-s6 3,0, kampf-eris-s8 3,5); Ziel ≤ 8 ms gehalten. Stationsansichten
-(angedockt) schwanken unsichtbar stark und sind kein Flugwert. Bericht: `r3-nachher/ansichten/bericht.json`.
+Grafikzeit im Flug Runde 4: 2,5–4,5 ms (flug-saturn 3,5, flug-europa 3,7, flug-eris 3,8, schiff-nah 3,0, kampf-saturn 3,0,
+cockpit-eris 2,5, feld 3,6, tor 4,5, schiff5-eris 3,9, kampf-schwarm 2,8, kampf-eris-s6 3,2, kampf-eris-s8 4,2); Ziel
+≤ 8 ms gehalten (Runde 3: 2,4–4,3 ms). Die näher gerahmten großen Rümpfe (S8 jetzt 10 % der Bildfläche) und das
+Silhouettenlicht kosten im Kampf mit S8 ≈ 0,7 ms. Stationsansichten (angedockt) schwanken unsichtbar stark und sind kein
+Flugwert. Bericht: `r4-nachher/ansichten/bericht.json`, Log `r4-ansichten.log`.
 
 ## Speicher (`tools/bilder/speicher.mjs`, alle WebGL-Kontexte, Texturen + Renderpuffer)
 
 Ablauf: andocken, Hangar, alle 8 Klassen als eigenes Schiff, Werft durchblättern (30 Karten), Hangar verlassen.
-Runde 3: Hangar verlassen (auch Reiterwechsel) gibt außer den 4K-Karten die 2K-Karten aller fremden Rümpfe und der
-Werft-Karten frei (`ModelFactory.releaseShipTextures`; die Texturen sind zwischen beiden Grafik-Engines geteilt, die
-Bilddaten bleiben im Zwischenspeicher und werden beim nächsten Zeigen neu hochgeladen). Nur das eigene Schiff bleibt.
+Hangar verlassen (auch Reiterwechsel) gibt außer den 4K-Karten die 2K-Karten aller fremden Rümpfe und der Werft-Karten
+frei (`ModelFactory.releaseShipTextures`; die Bilddaten bleiben im Zwischenspeicher und werden beim nächsten Zeigen neu
+hochgeladen). Nur das eigene Schiff bleibt.
 
-| Einstellung | Spitze vorher → nachher | Ende vorher → nachher | 4K-Texturen nach Verlassen |
-|---|---|---|---|
-| Browser ULTRA | 1.746 → 1.489 MB | 1.746 → 913 MB | 2 (eigenes Schiff im Flug) |
-| Desktop-App HOCH | 1.733 → 1.484 MB | 1.716 → 908 MB | 2 |
-| Desktop-App MITTEL | 1.864 → 1.288 MB | 1.864 → 712 MB | 0 |
-| Browser HOCH | 1.932 → 1.356 MB | 1.932 → 780 MB | 0 |
+| Einstellung | Spitze R2 → R3 → R4 | Ende R2 → R3 → R4 | 4K-Texturen nach Verlassen | Log Runde 4 |
+|---|---|---|---|---|
+| Browser ULTRA | 1.746 → 1.489 → 1.470 MB | 1.746 → 913 → 868 MB | 2 (eigenes Schiff im Flug) | `r4-speicher-ultra.log` |
+| Desktop-App HOCH | 1.733 → 1.484 → 1.484 MB | 1.716 → 908 → 908 MB | 2 | `r4-speicher-desktop-hoch.log` |
+| Desktop-App MITTEL | 1.864 → 1.288 → 1.288 MB | 1.864 → 712 → 712 MB | 0 | `r4-speicher-desktop-mittel.log` |
+| Browser HOCH | 1.932 → 1.356 → 1.356 MB | 1.932 → 780 → 780 MB | 0 | `r4-speicher-browser-hoch.log` |
 
-Beim Durchschalten der eigenen Klassen bleibt der Speicher jetzt flach (≈ 760 MB statt + 85 MB je Klasse), die
-Spitze entsteht beim Durchblättern der Werft (alle 8 Rümpfe als Standbild) und wird beim Verlassen freigegeben.
-Je 2K-Textur ≈ 22,4 MB, je 4K-Textur ≈ 89,5 MB (RGBA8 mit Mipmaps). Download: Schiffsdateien 57 MB (24 Dateien),
-4K-Zusatz 30 MB. Logs: `r3-speicher-*.log` (vorher `r2-speicher-*.log`).
+- Beim Durchschalten der eigenen Klassen bleibt der Speicher flach (HOCH ≈ 760 MB, ULTRA 950–1.060 MB mit den zwei
+  4K-Karten des eigenen Schiffs); die Spitze entsteht beim Durchblättern der Werft (alle 8 Rümpfe als Standbild, 2K) und
+  wird beim Verlassen freigegeben.
+- Je 2K-Textur ≈ 22,4 MB, je 4K-Textur ≈ 89,5 MB (RGBA8 mit Mipmaps). Ein eigenes Schiff mit 4K belegt damit
+  2 × 89,5 MB (Farbe, Normal) + 2 × 22,4 MB (ORM, Leuchten) ≈ 224 MB statt 4 × 22,4 ≈ 90 MB in 2K.
+- Download: Schiffsdateien 24 GLB (2K) ≈ 57 MB, 4K-Zusatz (24 Farb- + 8 Normalkarten) ≈ 30 MB; geladen wird nur, was das
+  eigene Schiff bzw. der gezeigte Rumpf braucht.
+- Runde 4 ändert weder Zahl noch Größe der Texturen (nur ihren Inhalt); die Werte entsprechen Runde 3 innerhalb der
+  Messstreuung. Logs Runde 4: `r4-speicher-ultra.log`, `r4-speicher-desktop-hoch.log`, `r4-speicher-desktop-mittel.log`,
+  `r4-speicher-browser-hoch.log` (Runde 3: `r3-speicher-*.log`, Runde 2: `r2-speicher-*.log`).
 
 ## Belege (`LAST-SIGNALS-Uebergabe/bilder/schiffe-qualitaet/`)
+
+Runde 4 (Vorher = Stand 6d11e27, exportiert nach `sicherung/r4-vorher`, Dev-Server 5197; Nachher = dieser Stand, 5198;
+Bögen mit `python3 vergleich-r4.py` im Belegordner, Beschriftung über den Bildern):
+- `r4-saegezahn-2k.jpg`, `r4-saegezahn-4k.jpg`: S2 nah-bug Europa/Saturn/Eris, S1 und S3 nah-bug, 2K (HOCH) und 4K (ULTRA)
+- `r4-fuellung.jpg`: S2 Saturn nah-bug, S8 Saturn/Eris nah-bug, S3 Eris/Saturn nah-heck
+- `r4-eris-aufhellung.jpg`: S6/S7/S8 Eris Hangar-Totale und nah-flanke; `r4-kampf-eris-vergleich.jpg`: S1/S6/S8 Eris
+  Flug, Kampf und Schildtreffer mit HUD (1280 × 720, `tools/bilder/kampf.mjs`)
+- `r4-s8-saum.jpg`: S8 Europa/Saturn nah-oben und nah-bug, Runde 2 / Runde 3 / Runde 4
+- `r4-leuchten.jpg`: S3 Gondel (Saturn/Eris), S4 Eris (Splitter, Flanke, Oberseite), S5 Eris Heck
+- `r4-positionslicht.jpg`: S1 nah-flanke Eris und Saturn; `r4-hangar-halle.jpg`: Heck mit Halle je Klasse
+- `r4-s4-fluegel.jpg`: S4 Flügel-Bildschirm in allen Lackierungen, 2K Hangar und 4K Verfolger nah
+- `r4-cockpit-vergleich/`, `r4-s8-verfolger-hud.jpg`, `r4-nachher/groessen/`, `r4-nachher/ansichten/`, `r4-speicher-*.log`
+- vollständige Sätze: `r4-vorher/high`, `r4-nachher/high` (je Klasse Hangar + 6 Nahaufnahmen in allen drei Fraktionen,
+  Verfolger, nah, Cockpit), `r4-vorher/ultra`, `r4-nachher/ultra` (S1–S3 Hangar, S4 nah in 4K)
+- Werkzeug der Karten (außerhalb des Repos): `werkzeug/schiffe-q/qualitaet.mjs` (Stand Runde 3 gesichert in
+  `sicherung/schiffe-q-r3/`), Prüfwerte je Klasse in `arbeit/<klasse>.json` (`fuellung`, `fuellModus`, `notes`)
 
 Runde 3 (Vorher = Stand 32e27d7, exportiert nach `sicherung/r3-vorher`, Dev-Server 5197; Nachher = dieser Stand, 5198):
 - `r3-vorher/high`, `r3-nachher/high`: je Klasse Hangar + 5 Nahaufnahmen (alle drei Fraktionen, Heck ohne Halle),
