@@ -74,6 +74,8 @@ export class PadFlight {
   owns(dt) {
     const w = this.input.world;
     if (!w || !w.player || w.docked || w.playerDead || (this.hud && this.hud._menuOpen)) return false;
+    const ae = document.activeElement; // Chat oder anderes Textfeld offen: der Stick lenkt nicht weiter
+    if (ae && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !/^(button|submit|reset|checkbox|radio|range|color|file|image)$/i.test(ae.type || 'text')))) return false;
     this._modalT -= dt;
     if (this._modalT <= 0) { this._modalT = 0.12; this._modal = topModal(); }
     return !this._modal;

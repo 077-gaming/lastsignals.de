@@ -207,7 +207,9 @@ async function main() {
   await sleep(400);
   await C.screenshot({ path: path.join(IMG, '03-einladung.png') });
   // Annehmen über den Knopf in der Spielerliste
-  await C.evaluate(() => { const b = document.querySelector('[data-win="players"] [data-mpact="acc"]'); b && b.click(); });
+  const popInfo = await C.evaluate(() => { const p = document.querySelector('.mpl-pop'); const list = document.querySelector('[data-win="players"]'); return { pop: !!p && !p.hidden, dialog: p?.getAttribute('role'), listShown: !!list?.offsetParent }; });
+  check('Einladung sichtbar (Spielerfenster oder Einblendung mit role=dialog)', popInfo.listShown || (popInfo.pop && popInfo.dialog === 'dialog'), JSON.stringify(popInfo));
+  await C.evaluate(() => { const b = document.querySelector('.mpl-pop:not([hidden]) [data-mpact="acc"]') || document.querySelector('[data-win="players"] [data-mpact="acc"]'); b && b.click(); });
   const coopA = await waitFor(A, () => { const w = window.__ls.world; return w.coop && w.coop.host && w.entities.get('ally'); }, null, 15000);
   const coopC = await waitFor(C, () => { const w = window.__ls.world; return w.coop && w.coop.guest && w.entities.get('ally'); }, null, 15000);
   check('Einladung → beide im Koop (Alpha Gastgeber, Charlie Gast)', coopA && coopC);

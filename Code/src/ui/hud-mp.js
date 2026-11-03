@@ -78,6 +78,18 @@ export class HudMp {
     this._onClick = (e) => this._click(e);
     chatEl.addEventListener('click', this._onClick);
     listEl.addEventListener('click', this._onClick);
+    // Einladung als eigene Einblendung, solange das Fenster PILOTEN nicht zu sehen ist (im 3D-Flug ausgeblendet).
+    // role="dialog": der Controller wechselt auf die Menüführung (A annehmen, B ablehnen), die Flugsteuerung pausiert.
+    this.invPop = document.createElement('div');
+    this.invPop.className = 'mpl-pop';
+    this.invPop.setAttribute('role', 'dialog');
+    this.invPop.setAttribute('aria-label', 'Einladung zum Koop');
+    this.invPop.hidden = true;
+    this.invPop.addEventListener('click', this._onClick);
+    this._onPopKey = (e) => { if (e.key === 'Escape') { const sid = this.invPop.querySelector('[data-sid]')?.dataset.sid; if (sid && this.mp) this.mp.answer(sid, false); e.stopPropagation(); } };
+    this.invPop.addEventListener('keydown', this._onPopKey);
+    document.body.appendChild(this.invPop);
+    this._popKey = '';
     this._onInput = () => this._count();
     this.input.addEventListener('input', this._onInput);
     this._onField = (e) => this._fieldKey(e);
@@ -231,6 +243,13 @@ export class HudMp {
       this._invKey = ik;
       this.invBox.innerHTML = inv.map((v) => `<div class="mpl-ir" data-sid="${v.sid}"><span class="mpl-it">EINLADUNG</span><b style="--c:${facColor(v.fac)}">${escapeHtml(v.cs)}</b><span class="mpl-il ls-num">${v.left} S</span><span class="hg-sp"></span><button type="button" class="mpl-b is-fx" data-mpact="acc">ANNEHMEN</button><button type="button" class="mpl-b" data-mpact="dec">ABLEHNEN</button></div>`).join('');
     }
+    const pop = inv.length && !this.listEl.offsetParent ? inv[0] : null;
+    const pk = pop ? pop.sid + pop.left : '';
+    if (pk !== this._popKey) {
+      this._popKey = pk;
+      this.invPop.hidden = !pop;
+      this.invPop.innerHTML = pop ? `<div class="mpl-ir" data-sid="${pop.sid}"><span class="mpl-it">EINLADUNG ZUM KOOP</span><b style="--c:${facColor(pop.fac)}">${escapeHtml(pop.cs)}</b><span class="mpl-il ls-num">${pop.left} S</span><span class="hg-sp"></span><button type="button" class="mpl-b is-fx" data-mpact="acc">ANNEHMEN</button><button type="button" class="mpl-b" data-mpact="dec">ABLEHNEN</button></div><div class="mpl-ph"><span class="mpl-ph-pad">Controller: A annehmen · B ablehnen</span><span class="mpl-ph-kb">Maus: Alt (Mac: Option) halten und klicken</span></div>` : '';
+    }
     // Zeilen wiederverwenden (Knöpfe bleiben beim Klicken bestehen)
     const seen = new Set();
     let prev = null;
@@ -326,6 +345,7 @@ export class HudMp {
     this.input.removeEventListener('input', this._onInput);
     this.chatEl.removeEventListener('click', this._onClick);
     this.listEl.removeEventListener('click', this._onClick);
+    this.invPop.remove();
     this.tagLayer.remove();
   }
 }

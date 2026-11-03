@@ -103,11 +103,11 @@
 @keyframes mpl-blink { 50% { border-color: var(--fx); } }
 .mpl-it { font-family: var(--ls-display); font-size: 11px; letter-spacing: .16em; color: var(--fx); }
 .mpl-ir b { font-family: var(--ls-display); font-weight: 400; font-size: 14px; letter-spacing: .08em; color: var(--c, var(--ls-tx)); }
-.mpl-il { font-size: 10px; color: var(--hd-lab); }
+.mpl-il { font-size: 10px; color: var(--hd-lab, rgba(255, 255, 255, .62)); }
 .mpl-foot { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--ls-line); }
 .mpl-pvp b { font-weight: 400; color: var(--hd-deco); }
 .mpl-pvp.is-on b { color: var(--ls-danger); }
-.mpl-net { font-family: var(--ls-mono); font-size: 10px; color: var(--hd-lab); letter-spacing: .04em; }
+.mpl-net { font-family: var(--ls-mono); font-size: 10px; color: var(--hd-lab, rgba(255, 255, 255, .62)); letter-spacing: .04em; }
 .mpl-foot .mpl-b[hidden] { display: none; }
 
 /* ---------- Namensschilder ---------- */
@@ -133,3 +133,13 @@
 .mp-sw[data-act="mppvp"] i:last-child { color: var(--hd-deco); background: none; }
 .mp-sw.is-on[data-act="mppvp"] i:first-child { color: var(--hd-deco); background: none; }
 .mp-sw.is-on[data-act="mppvp"] i:last-child { color: #000; background: var(--ls-danger); }
+
+/* Einladung als Einblendung (Fenster PILOTEN ausgeblendet, z. B. im 3D-Flug) */
+.mpl-pop { position: fixed; left: 50%; top: 112px; transform: translateX(-50%); z-index: 60; min-width: 340px; max-width: calc(100vw - 32px);
+  padding: 8px 10px 6px; background: var(--hd-bg, rgba(8, 10, 14, .92)); border: 1px solid var(--ls-line); pointer-events: auto; }
+.mpl-pop[hidden] { display: none; }
+.mpl-pop .mpl-ir { margin: 0 0 4px; }
+.mpl-ph { display: flex; gap: 12px; font-size: 10px; color: var(--hd-lab, rgba(255, 255, 255, .62)); letter-spacing: .04em; }
+.mpl-ph-pad { display: none; }
+html[data-input="pad"] .mpl-ph-pad { display: inline; }
+html[data-input="pad"] .mpl-ph-kb, body.is-touch .mpl-ph-kb { display: none; }
