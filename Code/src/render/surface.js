@@ -117,16 +117,21 @@ ${VN}
 // entfernt – es lief als gestrichelte Naht quer über die Panele der Meshy-Textur (die Fugen trägt die Textur selbst).
 // Dazu ein Fresnel-Randlicht in Fraktionsfarbe (uRimC, auch aus der Ferne: Silhouette vor dunklem Nebel).
 // uDet = Qualitätsstufe (0 = Nahdetail aus), uUnit = Meter je Modelleinheit (Rumpf-Maßstab).
-export function glbShipDetail(m, uDet, uUnit, rim) {
+// rim: { color, k } Fresnel-Randlicht; fill: { color, k } Rumpfaufhellung; uFillMul: Faktor der Grafik-Engine
+// (Flug 1, Hangar mit eigenem Licht kleiner)
+export function glbShipDetail(m, uDet, uUnit, rim, fill, uFillMul) {
   const prev = m.onBeforeCompile;
   const uRimC = { value: new THREE.Color(rim ? rim.color : 0x9fb4d0) }, uRimK = { value: rim ? rim.k : 0.08 };
-  m.userData.uRimC = uRimC; m.userData.uRimK = uRimK;
+  const uFillC = { value: new THREE.Color(fill ? fill.color : 0xffffff) }, uFill = { value: fill ? fill.k : 0 };
+  const uFM = uFillMul || { value: 1 };
+  m.userData.uRimC = uRimC; m.userData.uRimK = uRimK; m.userData.uFillC = uFillC; m.userData.uFill = uFill;
   m.onBeforeCompile = (sh, r) => {
     if (prev) prev(sh, r);
     sh.uniforms.uDet = uDet; sh.uniforms.uUnit = uUnit; sh.uniforms.uRimC = uRimC; sh.uniforms.uRimK = uRimK;
+    sh.uniforms.uFillC = uFillC; sh.uniforms.uFill = uFill; sh.uniforms.uFillMul = uFM;
     sh.vertexShader = 'varying vec3 vSdP;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
       vSdP = position;`);
-    sh.fragmentShader = `uniform float uDet, uUnit, uRimK; uniform vec3 uRimC;
+    sh.fragmentShader = `uniform float uDet, uUnit, uRimK, uFill, uFillMul; uniform vec3 uRimC, uFillC;
 varying vec3 vSdP;
 float sdNear = 0.0, sdDirt = 0.0, sdEdge = 0.0;
 ${VN}
@@ -151,14 +156,28 @@ ${VN}
         }`)
       .replace('#include <opaque_fragment>', `
         {
+          float sdAO = 1.0;
+          #ifdef USE_AOMAP
+            sdAO = ambientOcclusion;
+          #endif
+          // Fraktions-Randlicht (Runde 3) nicht unbeleuchtet: gewichtet mit der Beleuchtung an dieser Stelle (direkt +
+          // Umgebung, auf die Grundfarbe bezogen) und der Umgebungsverdeckung – in Spalten und im Schatten kein Leuchten
           float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
-          outgoingLight += uRimC * fr * uRimK;
+          vec3 irr = (reflectedLight.directDiffuse + reflectedLight.indirectDiffuse) / max(diffuseColor.rgb, vec3(0.03));
+          float lit = clamp(dot(irr, vec3(0.3, 0.59, 0.11)), 0.0, 1.0);
+          outgoingLight += uRimC * fr * uRimK * sdAO * (0.2 + 0.8 * lit);
+          // Rumpfaufhellung: weiches Füll-/Kopflicht aus Kamerarichtung (oben links) auf der Grundfarbe; zeigt Platten,
+          // Fugen und Normalkarte dunkler Lackierungen auch vor dunklem Nebel
+          if (uFill > 0.001) {
+            float kl = max(dot(normal, normalize(vec3(-0.35, 0.55, 0.76))), 0.0);
+            outgoingLight += diffuseColor.rgb * uFillC * (uFill * uFillMul * sdAO * (0.25 + 0.75 * kl));
+          }
           if (uDet > 0.001) outgoingLight += vec3(0.62, 0.7, 0.82) * sdEdge * 0.05 * uDet;
         }
         #include <opaque_fragment>`);
   };
   const prevKey = m.customProgramCacheKey ? m.customProgramCacheKey.bind(m) : () => '';
-  m.customProgramCacheKey = () => prevKey() + '|glbdet2';
+  m.customProgramCacheKey = () => prevKey() + '|glbdet3';
   return m;
 }
 
