@@ -6,7 +6,7 @@ import { createState, makeCtl, stepN, enter, derive, applyEdges, halt, interrupt
 import {
   shipParams, labParams, BOLT_SPEED, BOLT_PER_SHOT, BOLT_SPREAD, ENEMY_HIT_PAD, AUTO_K, AUTO_CONE, CONVERGE_DEFAULT, SECTOR_BAND,
   HOME_BAND, ZONE_DY, TRACTOR_RANGE, TRACTOR_SPEED, CLASS, PVP_GIMBAL, FLAT_BAND, AIM_PVE, ASSIST_CONE, ASSIST, K as FK,
-  BAND_WARN, EDGE_GRACE,
+  BAND_WARN, ENEMY_DMG3, EDGE_DAMP, EDGE_PUSH, EDGE_PUSH_MAX, JUMP_HOLD_K, JUMP_HOLD_R,
 } from '../flight/params.js';
 import { assistLevel } from '../flight/aim.js';
 import { qFromYPR, qRot, qSlerp, qCopy, vAngle, fwdOf } from '../flight/math3.js';
@@ -77,11 +77,13 @@ export function initPlayer3d(w, p) {
 }
 
 /**
- * Sektorrand im 3D-Flug: Abstand zur seitlichen Grenze und zum Höhenband, Warnung ab 83 %, außerhalb läuft eine Frist
- * von 6 s (Zählwerk im HUD), erst danach Schaden. → true, wenn Schaden fällig ist. w.edge für das HUD.
+ * Sektorrand im 3D-Flug (Runde 2): Abstand zur seitlichen Grenze und zum Höhenband, Warnung ab 83 %. Jenseits der
+ * Grenze wirkt ein Navigationsfeld: Die Geschwindigkeit nach außen baut mit EDGE_DAMP ab, dazu ein Schub zurück, der
+ * mit der Tiefe wächst. Kein Schaden, keine harte Wand (früher 6 s Frist, dann 2 % Hülle je Sekunde). → immer false
+ * (kein Schaden fällig). w.edge für das HUD.
  */
 export function edge3d(w, dt) {
-  const p = w.player, E = w.edge, size = w.sector.size, band = bandOf(w);
+  const p = w.player, E = w.edge, size = w.sector.size, band = bandOf(w), st = w.fl;
   const dx = size - Math.abs(p.x), dz = size - Math.abs(p.z), dy = band - Math.abs(p.y);
   const out = dx < 0 || dz < 0 || dy < 0;
   // nächste Grenze: Abstand und Richtung (Kurs in Grad, ±90 = oben/unten)
@@ -92,9 +94,39 @@ export function edge3d(w, dt) {
   E.d = d; E.dir = dir; E.out = out;
   E.warn = !out && (dx < size * (1 - BAND_WARN) || dz < size * (1 - BAND_WARN) || dy < band * (1 - BAND_WARN));
   if (out) E.t += dt; else E.t = 0;
-  E.left = Math.max(0, EDGE_GRACE - E.t);
-  return out && E.t > EDGE_GRACE;
+  E.left = 0;
+  if (out && st && dt > 0) {
+    const damp = 1 - Math.exp(-EDGE_DAMP * dt);
+    const field = (depth, i, sgn) => {
+      // sgn: Richtung nach außen (+1/−1); Anteil nach außen abbauen, Schub zurück nach innen
+      const vo = st.v[i] * sgn;
+      if (vo > 0) st.v[i] -= vo * damp * sgn;
+      st.v[i] -= sgn * Math.min(EDGE_PUSH_MAX, EDGE_PUSH + depth * 0.1) * dt;
+    };
+    if (dx < 0) field(-dx, 0, Math.sign(p.x));
+    if (dz < 0) field(-dz, 2, Math.sign(p.z));
+    if (dy < 0) field(-dy, 1, Math.sign(p.y));
+  }
+  return false;
 }
+
+/**
+ * Sprungfeld (3D-Flug): Solange ein Sprung lädt, baut das Tor die Geschwindigkeit ab und zieht das Schiff sanft zur
+ * Tormitte (höchstens 60 m/s), auch wenn W noch gehalten wird. Nur Boost reißt aus dem Feld; der Sprung bricht dann
+ * außerhalb von 2 × Torradius ab (world.js _updateJump).
+ */
+export function jumpHold(w, dt) {
+  const j = w.jump, st = w.fl, c = w.ctl;
+  if (!j || !j.portal || !st || w.player.hasMove) return;
+  if ((c[CI.BTN] & BTN.BOOST) !== 0) return; // Boost reißt aus dem Feld (Sprung bricht dann außerhalb ab)
+  const P = j.portal, p = w.player, k = 1 - Math.exp(-JUMP_HOLD_K * dt);
+  const ox = P.x - p.x, oy = (P.y || 0) - p.y, oz = P.z - p.z, od = Math.hypot(ox, oy, oz) || 1;
+  const pull = Math.min(60, od * 0.6);
+  const wx = ox / od * pull, wy = oy / od * pull, wz = oz / od * pull;
+  st.v[0] += (wx - st.v[0]) * k; st.v[1] += (wy - st.v[1]) * k; st.v[2] += (wz - st.v[2]) * k;
+  if (st.cruise) st.cruise = false;
+}
+export const JUMP_ABORT_R = Cfg.PORTAL_RADIUS * JUMP_HOLD_R;
 
 export function bandOf(w) { return (w.sector && w.sector.index) === 1 ? HOME_BAND : SECTOR_BAND; }
 export function reiseActive(w) { return w.fl.mode === MODE.REISE; }
@@ -151,6 +183,7 @@ export function flyPlayer(w, dt, tgt) {
   } else if (w._apReise) apReiseOff(w, st);
   if (w._undockT && (w.time > w._undockT || w.ctlActive)) { if (st.cruise && st.cruiseV === 40) st.cruise = false; w._undockT = 0; }
   stepN(st, ctl, P, w.env, dt);
+  if (w.jump) jumpHold(w, dt);
   collide3d(w, st, p);
   // Tempo-Verlauf für den Vorhalt der Gegner (0,25 s verzögert)
   w._pvi = (w._pvi + 1) % (LEAD_DELAY + 1);
@@ -483,13 +516,17 @@ function coneAssist(w, mz, aim, dist) {
   return l;
 }
 
-/** Feuerleitrechner (Autofeuer, Touch und Barrierefreiheit): gewürfelt × AUTO_K, Ziel im 30°-Kegel um den Bug */
+/** Feuerleitrechner (Autofeuer, Touch und Barrierefreiheit): gewürfelt × AUTO_K, gegen NPC im ±75°-Kegel (Spieler 30°) */
 function autofire(w, dt, tgt) {
   const p = w.player, lasers = p.loadout.lasers, n = Math.min(lasers.length, 16), cd = w._laserCd;
   if (!w._validTarget(tgt)) { p.attacking = false; w._wasFiring = false; return; }
   const dx = tgt.x - p.x, dy = tgt.y - p.y, dz = tgt.z - p.z, d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
   fwdOf(_f, w.fl.q);
-  const inCone = (dx * _f[0] + dy * _f[1] + dz * _f[2]) / d >= Math.cos(AUTO_CONE);
+  // Kegel (Runde 2): gegen NPC wie im Taktikmodus ±75° (Cfg.LASER_ARC) – der Rechner ist die Barrierefreiheits- und
+  // Touch-Hilfe und trifft gewürfelt × 0,8 ohne den Handziel-Faktor, Handzielen bleibt rund dreimal so stark. Vorher
+  // nur 30° um den Bug: in tiefen Sektoren lag das Ziel fast nie darin (0 Schüsse). Gegen Spieler weiter 30° (PvP-Prüfung).
+  const cone = tgt.kind === 'player' ? AUTO_CONE : Math.max(AUTO_CONE + (w.flP.gimbal || 0), Cfg.LASER_ARC);
+  const inCone = (dx * _f[0] + dy * _f[1] + dz * _f[2]) / d >= Math.cos(cone);
   if (d > Cfg.PLAYER_RANGE) { w._rangeMsg(tgt, 'Ziel ist zu weit weg. Flieg näher ran (650 m).', false); w._wasFiring = false; return; }
   if (!inCone || !w._canShoot(true)) { for (let i = 0; i < n; i++) { cd[i] -= dt; if (cd[i] < 0) cd[i] = 0; } w._wasFiring = false; return; }
   if (!w._wasFiring) { for (let i = 0; i < n; i++) cd[i] = (cd[i] > 0 ? cd[i] : 0) + i * Cfg.LASER_STAGGER + w.rng.next() * 0.04; w._wasFiring = true; }
@@ -639,7 +676,7 @@ export function enemyFire3d(w, e, tgt) {
   if (w.enemyBolts && toPlayer) {
     // Etappe 2: Fehler je Rang (normal 3°, Elite 1,5°, Alpha 0,8°), Treffer entscheidet die Kapsel
     const sig = (e.rank === 'alpha' ? 0.8 : e.rank === 'elite' ? 1.5 : 3) * D;
-    spawnEnemyBolt(w, e, 3, _lp, sig, rollDamage(w.rng, e.def.damage, e.dmgMult));
+    spawnEnemyBolt(w, e, 3, _lp, sig, rollDamage(w.rng, e.def.damage, e.dmgMult) * ENEMY_DMG3);
     w.bus.emit('shot', { from: e.id, to: tgt.id, laser: null, ammo: null, hit: false, enemyType: e.type, bolt: true, x: _lp[0], y: _lp[1], z: _lp[2], dx: dx / d, dy: dy / d, dz: dz / d });
     return true;
   }
@@ -650,7 +687,8 @@ export function enemyFire3d(w, e, tgt) {
     spawnEnemyBolt(w, e, 2, aimPt(w._pt), 0, 0, false);
     return true;
   }
-  const dmg = hit ? rollDamage(w.rng, e.def.damage, e.dmgMult) : 0;
+  // gegen den 3D-Piloten härter (Runde 2, ENEMY_DMG3): Kampf mit echter Gefahr; Frachter wie im Taktikweg
+  const dmg = hit ? rollDamage(w.rng, e.def.damage, e.dmgMult) * (toPlayer ? ENEMY_DMG3 : 1) : 0;
   if (!toPlayer) {
     // Frachter (Konvoi): sofort wie im Taktikweg
     w.bus.emit('shot', { from: e.id, to: tgt.id, laser: null, ammo: null, hit, enemyType: e.type, x: tgt.x, z: tgt.z, y: tgt.y || 0, dx: dx / d, dz: dz / d });
@@ -715,7 +753,8 @@ function enemyBoltLand(w, B, i) {
   const e = w.entities.get(B.from[i]);
   if (!w.playerTargetable()) return;
   const miss = playerCapsuleDist(w, B.ax[i], B.ay[i], B.az[i]);
-  if (miss > 14) { w.bus.emit('dodge', { from: B.from[i], miss }); return; }
+  // Spielraum 8 m um die Kapsel (Runde 2: 14 m; mit schnelleren Gegnern muss Ausweichen weiter sichtbar zählen)
+  if (miss > 8) { w.bus.emit('dodge', { from: B.from[i], miss }); return; }
   applyEnemyHit(w, e, B.dmg[i], B.vx[i], B.vy[i], B.vz[i], B.ax[i], B.ay[i], B.az[i]);
 }
 

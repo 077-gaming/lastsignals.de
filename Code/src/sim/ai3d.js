@@ -7,6 +7,7 @@ import { hashString } from './rng.js';
 import { fwdOf } from '../flight/math3.js';
 import { enemyFwd } from './world3d.js';
 import { cancelSpecial } from './ai.js';
+import { TAIL3 } from '../flight/params.js';
 
 const D = Math.PI / 180;
 const _f = new Float64Array(3), _e = new Float64Array(3);
@@ -54,7 +55,8 @@ export function steer3d(w, e, tgt, speed, MV, hold) {
   }
   // Manöver wählen und fortschreiben
   const agile = !big(e) && st !== 'kite';
-  if (!e.m3) { e.m3 = agile ? 'run' : 'orbit'; e.m3T = 0; e.m3N = 0; }
+  // Eröffnung: Rudel und Lauerer kommen zur Hälfte gleich über das Heck (Runde 2: vorher immer frontal)
+  if (!e.m3) { e.m3 = agile ? ((st === 'pack' || st === 'ambush') && hr(e, 7) < 0.5 ? 'tail' : 'run') : 'orbit'; e.m3T = 0; e.m3N = 0; }
   e.m3T += 1 / 60;
   fwdOf(_f, w.fl.q); // Bug des Spielers
   const inFront = -(nx * _f[0] + ny * _f[1] + nz * _f[2]); // > 0: Gegner liegt vor dem Spieler
@@ -76,11 +78,37 @@ export function steer3d(w, e, tgt, speed, MV, hold) {
       break;
     }
     case 'break': {
-      // Abdrehen: senkrecht zur Anflugachse (oben/unten bevorzugt), 400–700 m weg, dann Wende
+      // Abdrehen: senkrecht zur Anflugachse (oben/unten bevorzugt), 400–700 m weg, dann Wende – frontal oder (Runde 2)
+      // über das Heck des Spielers, wenn dort noch Platz ist (Regie: höchstens 2 hinten)
       gx = e.m3X - e.x; gy = e.m3Y - e.y; gz = e.m3Z - e.z;
       faceT = false;
-      if (Math.hypot(gx, gy, gz) < 90 || e.m3T > 3) { e.m3 = 'run'; e.m3T = 0; e.m3N++; }
+      if (Math.hypot(gx, gy, gz) < 90 || e.m3T > 3) {
+        const tail = (st === 'pack' || st === 'ambush' || st === 'thief') && !e._noRear && hr(e, 120 + e.m3N) < TAIL3;
+        e.m3 = tail ? 'tail' : 'run'; e.m3T = 0; e.m3N++;
+      }
       break;
+    }
+    case 'tail': {
+      // Ins Heck setzen (Runde 2): Punkt 240–360 m hinter dem Spieler (leicht versetzt), dort sein Tempo übernehmen und
+      // feuern. Der Spieler muss wenden, ausweichen oder boosten – Kurvenkampf statt Schießbude. Endet nach 7 s, wenn
+      // die Regie den Platz hinten braucht oder der Spieler zu nah kommt (dann Abdrehen).
+      fwdOf(_e, w.fl.q);
+      const back = 240 + 120 * hr(e, 130 + e.m3N), so = (hr(e, 140 + e.m3N) - 0.5) * 160, uo = (hr(e, 150 + e.m3N) - 0.5) * 140;
+      const sx = -_e[2], sz = _e[0], sl = Math.hypot(sx, sz) || 1;
+      const px = tgt.x - _e[0] * back + sx / sl * so, py = tgt.y - _e[1] * back + uo, pz = tgt.z - _e[2] * back + sz / sl * so;
+      const hx = px - e.x, hy = py - e.y, hz = pz - e.z, hd = Math.hypot(hx, hy, hz) || 1;
+      // Soll-Geschwindigkeit: Tempo des Spielers plus Annäherung an den Punkt, begrenzt auf das eigene Tempo
+      const close = Math.min(speed * 1.05, hd * 1.4);
+      let vx = (tgt.vx || 0) + hx / hd * close, vy = (tgt.vy || 0) + hy / hd * close, vz = (tgt.vz || 0) + hz / hd * close;
+      const vl = Math.hypot(vx, vy, vz) || 1, vs = Math.min(vl, speed * 1.05);
+      vx = vx / vl * vs; vy = vy / vl * vs; vz = vz / vl * vs;
+      if (e._noRear) { e.m3 = 'run'; e.m3T = 0; e.m3N++; }
+      else if (e.m3T > 7 || d < 120) startBreak(e, tgt, nx, ny, nz);
+      MV.tx = vx; MV.ty = vy; MV.tz = vz;
+      // nah am Heckpunkt: auf den Spieler zielen, sonst in Flugrichtung
+      if (hd < 260 && d <= Math.max(def.range * 1.4, 500)) { MV.face = true; MV.fx = -ox; MV.fy = -oy; MV.fz = -oz; }
+      else { MV.face = true; MV.fx = vx; MV.fy = vy; MV.fz = vz; }
+      return d;
     }
     case 'pass': {
       // Durchflug: frontal mit seitlichem Versatz vorbei, 600 m Auslauf, dann halber Looping (nach oben) zurück

@@ -45,7 +45,7 @@ export const K = {
 export const BOLT_SPEED = 2400;
 export const BOLT_PER_SHOT = 4;     // Bolzen je Laser und Sekunde (je ¼ Schaden, Munition je 4 Bolzen)
 export const BOLT_SPREAD = 0.12 * D;
-export const ENEMY_HIT_PAD = 1.25;  // Trefferkugel Gegner × Radius (PvE großzügig)
+export const ENEMY_HIT_PAD = 1.1;   // Trefferkugel Gegner × Radius (Runde 2: 1,25 → 1,1, Schießbude)
 export const PVP_GIMBAL = 5 * D;    // Kardan im PvP höchstens 5°
 export const AUTO_K = 0.8;          // Feuerleitrechner: Trefferchance × 0,8
 // Handzielen gegen NPC (PvE): Bolzenschaden × 2,5. Die Startausrüstung (2 Laser, 140 Schaden/s) braucht gegen einen
@@ -54,24 +54,42 @@ export const AUTO_K = 0.8;          // Feuerleitrechner: Trefferchance × 0,8
 // Rückzug des Raiders sicher unter der Kennzahl ≤ 8 s (FLUGMODELL.md 3; × 2,25 ergab 6,0–8,1 s je Lauf). PvP, SAL,
 // Feuerleitrechner und Taktik bleiben unverändert (Taktik-Goldtest bitgleich).
 export const AIM_PVE = 2.5;
+// Kampf im 3D-Flug (Runde 2): Gegner schneller (Raider 210 → 284 m/s gegen 340 m/s Kampftempo S1, vorher 184 gegen 340:
+// man flog ihnen einfach hinterher), weichen unter Beschuss häufiger aus, setzen sich ins Heck und treffen härter.
+// Nur im 3D-Weg; Taktik bitgleich.
+export const ENEMY_SPEED3 = { pack: 1.35, ambush: 1.4, swarm: 1.35, thief: 1.3, guard: 1.2, kite: 1.15, big: 1 };
+export const ENEMY_DMG3 = 1.6;      // Schaden der Gegner gegen den 3D-Piloten
+export const DODGE3 = 0.9;          // Ausweichen unter Beschuss je Denkschritt × ai.dodge (Taktik 0,22)
+export const TAIL3 = 0.75;          // Anteil der Anflüge, die über das Heck des Spielers laufen
+export const JINK_TIME3 = 0.75, DODGE_CD3 = [1.2, 2.6]; // Ausweichhaken im 3D-Weg (Taktik 0,55 s, 2,5–4,5 s)
 export const AUTO_CONE = 30 * D;    // Feuerleitrechner: Ziel im 30°-Kegel um den Bug
 export const CONVERGE_DEFAULT = 500;
 export const LOCK_TIME = 0.8, LOCK_CONE = 12 * D;
 // Waffenkegel der Zielhilfe (Waffen schwenken auf die Vorhaltemarke, wenn das Fadenkreuz so nah liegt)
-export const ASSIST_CONE = { mouse: 1.5 * D, pad: 2.5 * D, padPrecise: 4 * D, touch: 7 * D };
+// Runde 2: Controller 2,5° → 3,5° (mit LT 4° → 5°), Mitnahme STANDARD 0,35 → 0,45: gegen die schnelleren, ausweichenden
+// Gegner trug die Hilfe vorher nicht messbar (Median gleich mit AUS)
+export const ASSIST_CONE = { mouse: 1.5 * D, pad: 3.5 * D, padPrecise: 5 * D, touch: 7 * D };
 // Zielhilfe-Stufen: Zielbremse (Faktor der Stickrate nahe der Marke), Mitnahme k, Kegel-Faktor
 export const ASSIST = [
   { brake: 1, k: 0, cone: 0 },          // AUS
   { brake: 0.75, k: 0.15, cone: 0.6 },  // NIEDRIG
-  { brake: 0.55, k: 0.35, cone: 1 },    // STANDARD
-  { brake: 0.45, k: 0.5, cone: 1.2 },   // HOCH
+  { brake: 0.55, k: 0.45, cone: 1 },    // STANDARD
+  { brake: 0.45, k: 0.6, cone: 1.25 },  // HOCH
 ];
 export const ASSIST_MAX_RATE = 0.4; // Mitnahme höchstens 40 % der Klassen-Drehrate
 
-// Sektor als flacher Raum
-export const SECTOR_BAND = 1500, HOME_BAND = 1200, BAND_WARN = 0.83;
-// Sektorrand im 3D-Flug: Warnung ab 83 % (seitlich und Höhe), außerhalb 6 s Frist mit Zählwerk, erst dann Schaden
-export const EDGE_GRACE = 6;
+// Sektor als Raum (Runde 2): Höhe ±4.000 m im Heimatsektor, ±4.500 m sonst (vorher ±1.200 / ±1.500 m: mit Boost in
+// 2 s an der Decke, die Scheibe war für echten 3D-Flug zu flach). Gegner, Felder und Station bleiben nahe der Ebene.
+export const SECTOR_BAND = 4500, HOME_BAND = 4000, BAND_WARN = 0.83;
+// Sektorrand im 3D-Flug ohne Schaden (Runde 2): Warnung ab 83 %, jenseits der Grenze ein Navigationsfeld, das die
+// Bewegung nach außen abbaut und sanft zurückschiebt (keine unsichtbare Wand mit Hüllenschaden). Taktik unverändert.
+export const EDGE_DAMP = 1.6;       // 1/s: Abbau der Geschwindigkeit nach außen jenseits der Grenze
+export const EDGE_PUSH = 40;        // m/s²: Schub zurück, wächst mit der Tiefe (+ 0,1 m/s² je m) bis EDGE_PUSH_MAX
+export const EDGE_PUSH_MAX = 160;
+// Sprungtor im 3D-Flug: Das Sprungfeld fängt das Schiff beim Aufladen (Geschwindigkeit baut mit 4/s ab, Zug zur
+// Tormitte), nur Boost reißt aus dem Feld; abgebrochen wird erst außerhalb von 2 × Torradius. Früher rollte ein
+// Schiff mit Kampftempo gekoppelt 400 m aus und der Sprung brach ab (Bremsweg S1 464 m, Torradius 150 m).
+export const JUMP_HOLD_K = 4, JUMP_HOLD_R = 2;
 export const ZONE_DY = 400;         // Zonen (sichere Zone, Tor, Andocken) als Zylinder: |Δy| ≤ 400 m
 export const TRACTOR_RANGE = 150, TRACTOR_SPEED = 60;
 export const FLAT_BAND = 40;        // Gegner gegen Taktik-Piloten: ±40 m um dessen Höhe

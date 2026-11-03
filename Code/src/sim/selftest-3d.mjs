@@ -131,6 +131,26 @@ export function run3dTests(check, makeBus) {
     for (let i = 0; i < 200; i++) { w.ctl.fill(0); w._step(DT); }
     check('Sprung ausgeführt, Höhe danach 0', w.sector.id !== `SA-1` && Math.abs(p.y) < 1, w.sector.id);
   }
+  // ── Sprung im natürlichen Anflug (Runde 2): mit Kampftempo aufs Tor, F bei 120 m, W gehalten bzw. losgelassen ──
+  for (const holdW of [false, true]) {
+    const bus = makeBus(), pr = newProfile('Tor', 'saturn'); pr.created = 'x';
+    const w = new World(pr, bus, { seed: 4 }); w.setFlight3d(true);
+    const p = w.player, o = w.portals[0];
+    w.enemies.forEach((e) => { e.alive = false; });
+    // 600 m vor dem Tor, Bug aufs Tor, Kampftempo
+    p.x = o.x + 600; p.z = o.z; p.y = o.y || 0; w.fl.p[0] = p.x; w.fl.p[1] = p.y; w.fl.p[2] = p.z;
+    let maxD = 0, jumped = false, from = w.sector.id, sp0 = 0;
+    for (let i = 0; i < 60 * 12 && !jumped; i++) {
+      const c = w.ctl; c.fill(0); c[C.AIM] = 1;
+      const dx = o.x - p.x, dz = o.z - p.z, dd = Math.hypot(dx, dz) || 1; c[C.AX] = dx / dd; c[C.AZ] = dz / dd;
+      if (!w.jump && dd > 120) c[C.TZ] = 1; else if (holdW) c[C.TZ] = 1;
+      w._step(DT);
+      if (w.sector.id !== from) { jumped = true; break; }
+      if (w.jump || dd <= 120) { if (!w.jump && dd <= 120 && !sp0) { sp0 = p.speed; w._updateZones(); w.tryJump(); } maxD = Math.max(maxD, Math.hypot(p.x - o.x, p.z - o.z)); }
+      if (w.sector.id !== from) jumped = true;
+    }
+    check(`Sprung aus dem Anflug mit Kampftempo (W ${holdW ? 'gehalten' : 'losgelassen'}): Sprungfeld hält das Schiff`, jumped && sp0 > 250 && maxD < Cfg.PORTAL_RADIUS * 2, `v ${Math.round(sp0)} m/s, weitester Abstand ${Math.round(maxD)} m, ${w.sector.id}`);
+  }
   // ── Traktor, Raketen, Autopilot, Ebenenfänger ──
   {
     const bus = makeBus(), pr = newProfile('Trak', 'eris'); pr.created = 'x'; pr.ammo.R1 = 10;

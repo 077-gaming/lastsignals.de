@@ -408,7 +408,7 @@ export class World {
 
     this._updateZones();
 
-    // außerhalb der Karte (3D-Flug: Warnung ab 83 %, 6 s Frist mit Zählwerk im HUD, erst dann Schaden)
+    // außerhalb der Karte (3D-Flug: Warnung ab 83 %, jenseits schiebt ein Navigationsfeld zurück, ohne Schaden)
     const size = this.sector.size;
     const out3 = this.flight3d ? F.edge3d(this, dt) : false;
     if (this.flight3d ? out3 : Math.abs(p.x) > size || Math.abs(p.z) > size) {
@@ -1566,7 +1566,7 @@ export class World {
     const tgt = p.targetId ? this.entities.get(p.targetId) : null;
     if (!this._validTarget(tgt)) { this._msg('Kein Ziel ausgewählt. Klicke einen Gegner an.', 'info', 'noTarget', 1.5); return; }
     p.attacking = true;
-    if (this.flight3d) this._msg('Feuerleitrechner an: feuert auf das Ziel im 30°-Kegel (Trefferchance × 0,8). Selbst zielen trifft besser.', 'info', 'autofire', 30);
+    if (this.flight3d) this._msg('Feuerleitrechner an: feuert gewürfelt (Trefferchance × 0,8) und führt die Zielrichtung, solange du nicht selbst zielst. Selbst zielen trifft stärker.', 'info', 'autofire', 30);
   }
 
   selectAmmo(key) {
@@ -1675,7 +1675,7 @@ export class World {
     j.progress = 0; j.t = 0; j.portal = portal; j.to = portal.type; j.dur = C.JUMP_TIME; j.jmp = false;
     this.jump = j;
     this.bus.emit('jumpStart', { seconds: C.JUMP_TIME });
-    this._msg(`Sprung nach ${this.sectors[portal.type].name} wird geladen …`, 'info');
+    this._msg(this.flight3d ? `Sprung nach ${this.sectors[portal.type].name} wird geladen … Das Sprungfeld hält das Schiff, Boost bricht ab.` : `Sprung nach ${this.sectors[portal.type].name} wird geladen …`, 'info');
   }
 
   _updateJump(dt) {
@@ -1684,7 +1684,9 @@ export class World {
     if (!p.alive) { this.jump = null; return; }
     if (j.portal) {
       const dx = p.x - j.portal.x, dz = p.z - j.portal.z;
-      if (dx * dx + dz * dz > C.PORTAL_RADIUS * C.PORTAL_RADIUS || (this.flight3d && Math.abs(p.y - j.portal.y) > F.ZONE_DY)) {
+      // 3D-Flug: Das Sprungfeld hält das Schiff (world3d.js jumpHold), abgebrochen wird erst bei 2 × Torradius
+      const R = this.flight3d ? F.JUMP_ABORT_R : C.PORTAL_RADIUS;
+      if (dx * dx + dz * dz > R * R || (this.flight3d && Math.abs(p.y - j.portal.y) > F.ZONE_DY)) {
         this.jump = null;
         this._msg('Sprung abgebrochen: zu weit vom Sprungtor weg.', 'warn');
         return;

@@ -21,6 +21,7 @@ import { turnToward, headingOf, wrapAngle, rollDamage } from './combat.js';
 import { leaderOf, slotPos, slotGap } from './spawn.js';
 import { hashString } from './rng.js';
 import { steer3d, direct3d, stalkPoint, pitchToward } from './ai3d.js';
+import { ENEMY_SPEED3, DODGE3, JINK_TIME3, DODGE_CD3, SECTOR_BAND, HOME_BAND } from '../flight/params.js';
 
 const near = [];          // wiederverwendete Trefferliste für die Nachbarsuche
 const rocks = [];         // wiederverwendete Trefferliste für Brocken
@@ -252,7 +253,7 @@ export function thinkEnemy(w, e) {
     if (e.state === 'attack') trySpecial(w, e, d);
     if (!e.spPhase) e.tactic = tacticOf(e, ai, d, focus);
     // ausweichen, wenn der Spieler auf ihn feuert (vorausschauend, nicht nur nach Treffern)
-    if (p.targetId === e.id && (p.attacking || w.aimInfo.fire) && e.dodgeCd <= 0 && d < 750 && w.rng.next() < ai.dodge * 0.22) jink(w, e, dx / (d || 1), dz / (d || 1), dy3 / (d || 1));
+    if (p.targetId === e.id && (p.attacking || w.aimInfo.fire) && e.dodgeCd <= 0 && d < 750 && w.rng.next() < ai.dodge * (w.flight3d ? DODGE3 : 0.22)) jink(w, e, dx / (d || 1), dz / (d || 1), dy3 / (d || 1));
     return;
   }
   // Konvoi-Überfall: Frachter angreifen, solange er lebt
@@ -419,8 +420,9 @@ export function jink(w, e, dx, dz, dy = 0) {
   e.jinkX = -dz * side; e.jinkZ = dx * side; e.jinkY = 0;
   // 3D-Flug: abwechselnd seitlich und senkrecht zur Schusslinie ausweichen
   if (w.flight3d && ((e.dodgeN = (e.dodgeN || 0) + 1) & 1)) { e.jinkY = side; e.jinkX *= 0.25; e.jinkZ *= 0.25; }
-  e.jinkT = JINK_TIME;
-  e.dodgeCd = w.rng.range(DODGE_COOLDOWN[0], DODGE_COOLDOWN[1]);
+  // 3D-Flug (Runde 2): länger und öfter ausweichen (echte Bolzen, kein Würfel – Ausweichen muss sichtbar Treffer kosten)
+  e.jinkT = w.flight3d ? JINK_TIME3 : JINK_TIME;
+  e.dodgeCd = w.flight3d ? w.rng.range(DODGE_CD3[0], DODGE_CD3[1]) : w.rng.range(DODGE_COOLDOWN[0], DODGE_COOLDOWN[1]);
 }
 
 // ───────────────────────── Spezialangriffe ─────────────────────────
@@ -610,7 +612,9 @@ export function moveEnemy(w, e, dt) {
   const p = w.player;
   if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) { e.slowT = 0; e.slowK = 1; } }
   if (e.jamT > 0) { e.jamT -= dt; if (e.jamT < 0) e.jamT = 0; }
-  const speed = def.speed * (e.slowT > 0 ? e.slowK : 1); // Bremsmine
+  // 3D-Flug: Tempo je Stil angehoben (Runde 2, params.js ENEMY_SPEED3), Taktik unverändert
+  const k3 = w.flight3d ? (e.radius >= 55 || def.speed < 100 ? ENEMY_SPEED3.big : ENEMY_SPEED3[ai.style] || 1) : 1;
+  const speed = def.speed * k3 * (e.slowT > 0 ? e.slowK : 1); // Bremsmine
 
   e.fireCd -= dt;
   if (e.fireCd < 0 && e.state !== 'attack') e.fireCd = 0;
@@ -862,7 +866,7 @@ export function moveEnemy(w, e, dt) {
   const lim = w.sector.size * 0.97;
   if (e.x > lim) tx -= speed; else if (e.x < -lim) tx += speed;
   if (e.z > lim) tz -= speed; else if (e.z < -lim) tz += speed;
-  const band = (w.sector.index || 1) === 1 ? 1100 : 1400;
+  const band = w.flight3d ? ((w.sector.index || 1) === 1 ? HOME_BAND : SECTOR_BAND) - 100 : (w.sector.index || 1) === 1 ? 1100 : 1400;
   if (e.y > band) ty -= speed; else if (e.y < -band) ty += speed;
 
   // Trägheit: weich lenken, Beschleunigung begrenzt
