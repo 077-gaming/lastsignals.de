@@ -889,3 +889,6 @@ html[data-flight="3d"] [data-win="ship"] .cs { grid-template-columns: 386px; }
 html[data-flight="3d"] [data-win="ship"] .cs-def { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding-right: 0; }
 html[data-flight="3d"] [data-win="ship"] .cs-def::after { display: none; }
 html[data-view="cockpit"] [data-win="ship"] { display: none !important; }
+
+/* Controller und Touch (Runde 3): Tastaturkürzel (⇧1–⇧9) in den Hinweisen der Fensterleiste ausblenden */
+html[data-input="pad"] .hb-tip .ls-key, body.is-touch .hb-tip .ls-key { display: none; }

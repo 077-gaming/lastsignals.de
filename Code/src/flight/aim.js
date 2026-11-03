@@ -121,7 +121,8 @@ export function assist(level, pvp, err, pipRate, stick, targetAng, classRate, to
   // auf der Marke selbst (innere Hälfte) zählt jede Richtung als Feinzielen
   const tw = err <= inner * 0.5 ? 1 : Math.max(0, Math.min(1, toward * 1.5 + 0.25));
   AS.brake = 1 + (A.brake - 1) * sk * tw;
-  if (!pvp && A.k > 0 && sk > 0) AS.follow = Math.min(A.k * pipRate * sk, ASSIST_MAX_RATE * classRate);
+  // Mitnahme ebenso nur, solange der Stick nicht vom Ziel weg zeigt (Umschwenken auf ein anderes Ziel bleibt frei)
+  if (!pvp && A.k > 0 && sk > 0) AS.follow = Math.min(A.k * pipRate * sk * tw, ASSIST_MAX_RATE * classRate);
   return AS;
 }
 // PvP zwischen den Ansichten: Ein Taktik-Schütze (Würfel, misst in der Ebene) trifft einen fremden Spieler nur, wenn

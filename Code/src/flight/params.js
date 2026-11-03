@@ -72,7 +72,7 @@ export const AIM_PVE = 2.9;
 export const ENEMY_SPEED3 = { pack: 1.35, ambush: 1.4, swarm: 1.35, thief: 1.3, guard: 1.2, kite: 1.15, big: 1 };
 // Heimat 1,0 (wie die Taktik: ein Elite-Raider brachte den Spieler-Bot sonst auf 3–9 % Hülle bzw. zum Tod), tiefer
 // deutlich härter (Sektor 4 mit Referenzschiff: Hülle fiel vorher nie unter 69–80 %)
-export const ENEMY_DMG3 = [1.0, 1.7, 2.2, 2.7]; // Schaden der Gegner gegen den 3D-Piloten je Sektorstufe (Runde 2: 1,6)
+export const ENEMY_DMG3 = [1.0, 1.6, 2.0, 2.4]; // Schaden der Gegner gegen den 3D-Piloten je Sektorstufe (Runde 2: 1,6)
 export const FLEE3 = 0.8;           // Rückzug zum Heilen im 3D-Flug: Tempo × 0,8 des Grundtempos (angeschlagen)
 // Ausweichen und Heck-Anflüge steigen mit dem Sektor: Heimatsektor (Einstieg, Kennzahl Abschuss ≤ 8 s) milder,
 // ab Sektor 2 voll. [Heimat, sonst]
