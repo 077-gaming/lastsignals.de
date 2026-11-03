@@ -6,7 +6,7 @@ export const SITE = {
   de: 'https://lastsignals.de',
   en: 'https://lastsignals.online', // internationale Adresse (vorerst .online)
   play: '/play/', // Spiel unter /play/ derselben Domain (auf lastsignals.online liegt derselbe Build; vorher absolut → Domainwechsel)
-  version: '0.1.0', // einzige Versionsnummer der Website (Fußzeile, Download-Seite, Browser-Kachel)
+  version: '0.9.0', // einzige Versionsnummer der Website (Fußzeile, Download-Seite, Browser-Kachel)
   status: 'live', // 'test' = Testphase, "Jetzt spielen" ohne Link; 'live' = Link auf SITE.play (seit 31.10.2026 öffentlich)
 };
 

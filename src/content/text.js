@@ -3,6 +3,7 @@
 // und README/CHANGELOG des Spiels. Keine erfundenen Zahlen, Zitate oder Bewertungen.
 
 import { RELEASE } from './downloads.js';
+import { SITE } from '../site.js';
 
 // Apps erst als verfügbar nennen, wenn das GitHub-Release mit den Dateien veröffentlicht ist (RELEASE.published)
 const APPS = RELEASE.published;
@@ -43,7 +44,7 @@ export const TEXT = {
       lead: 'Die Erde schweigt. Drei Mächte kämpfen um das, was von der Menschheit übrig ist.',
       sub: 'Weltraum-MMO im Browser. Drei Fraktionen, je acht Sektoren, acht Schiffsklassen. Kostenlos, ohne Download. Stärke ist nicht käuflich.',
       play: 'Jetzt spielen',
-      playState: 'Öffentliche Testversion 0.1.0',
+      playState: `Öffentliche Testversion ${SITE.version}`,
       more: 'Was dich erwartet',
       community: 'Gemeinschaft',
       sector: 'SA-1 · Enceladus',
@@ -328,7 +329,7 @@ export const TEXT = {
       imprint: ['Impressum', '/impressum/'],
       privacy: ['Datenschutz', '/datenschutz/'],
       copy: '© 2026 LAST SIGNALS',
-      state: 'Testphase · Version 0.1.0',
+      state: `Testphase · Version ${SITE.version}`,
     },
     download: {
       kicker: 'DL · Testversion',
@@ -337,9 +338,9 @@ export const TEXT = {
       noteHead: 'Stand der Apps',
       notes: [
         'Testversion {v}. Noch nicht im App Store, nicht bei Google Play und nicht auf Steam.',
-        'Die Dateien sind nicht signiert. Mac, Windows und Android warnen deshalb beim ersten Start. Unter „Installation“ steht je Gerät, wie du sie trotzdem öffnest.',
+        'Die Dateien sind nicht signiert. Mac, Windows und Android warnen deshalb beim ersten Start. Unter „Installation“ steht je Gerät, wie du sie trotzdem öffnest. Öffne sie nur, wenn du sie von dieser Seite oder aus dem verlinkten GitHub-Release hast. Die Installation erfolgt auf eigene Verantwortung.',
         'iPhone und iPad: Die App-Datei lässt sich nur per Sideloading (AltStore oder Sideloadly) aufspielen. Einfacher ist die Web-App: Spiel in Safari öffnen und zum Home-Bildschirm hinzufügen.',
-        'Spielstände in einer App sind getrennt von denen im Browser.',
+        'Ohne Konto ist der Spielstand in einer App getrennt von dem im Browser. Mit Konto gleicht ihn der Server auf allen Geräten ab.',
       ],
       detected: 'Erkannt', unknown: 'Gerät nicht erkannt. Wähle unten die passende Datei.', yours: 'Dein Gerät', recommended: 'Passend für dein Gerät', jump: 'Zur Kachel',
       version: 'Version', size: 'Größe', req: 'Voraussetzung', state: 'Status', stateTest: 'Testversion · unsigniert', stateWeb: 'Web-App · immer aktuell',
@@ -454,7 +455,7 @@ export const TEXT = {
       lead: 'Earth has gone silent. Three powers fight over what is left of humanity.',
       sub: 'A space MMO in your browser. Three factions, eight sectors each, eight ship classes. Free to play, no download. Power is never for sale.',
       play: 'Play now',
-      playState: 'Public test version 0.1.0',
+      playState: `Public test version ${SITE.version}`,
       more: 'What awaits you',
       community: 'Community',
       sector: 'SA-1 · Enceladus',
@@ -739,7 +740,7 @@ export const TEXT = {
       imprint: ['Imprint', '/en/imprint/'],
       privacy: ['Privacy', '/en/privacy/'],
       copy: '© 2026 LAST SIGNALS',
-      state: 'In testing · Version 0.1.0',
+      state: `In testing · Version ${SITE.version}`,
     },
     download: {
       kicker: 'DL · Test build',
@@ -748,9 +749,9 @@ export const TEXT = {
       noteHead: 'State of the apps',
       notes: [
         'Test build {v}. Not on the App Store, Google Play or Steam yet.',
-        'The files are unsigned, so Mac, Windows and Android warn on first launch. “Installation” on each tile shows how to open them anyway.',
+        'The files are unsigned, so Mac, Windows and Android warn on first launch. “Installation” on each tile shows how to open them anyway. Only open them if you got them from this page or the linked GitHub release. You install them at your own risk.',
         'iPhone and iPad: the app file can only be installed by sideloading (AltStore or Sideloadly). The easy way is the web app: open the game in Safari and add it to your Home Screen.',
-        'Progress in an app is kept separately from the browser.',
+        'Without an account, an app’s save game is kept separately from the browser. With an account, the server syncs it across your devices.',
       ],
       detected: 'Detected', unknown: 'Device not detected. Pick the right file below.', yours: 'Your device', recommended: 'Right for your device', jump: 'Go to tile',
       version: 'Version', size: 'Size', req: 'Requires', state: 'Status', stateTest: 'Test build · unsigned', stateWeb: 'Web app · always up to date',
