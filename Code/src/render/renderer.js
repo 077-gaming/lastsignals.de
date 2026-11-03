@@ -592,16 +592,21 @@ export class Renderer {
   /** Gegner des Sektors (auch noch nicht erschienene, Ereignis-Piraten, Brut) gleich beim Sektoraufbau anfordern */
   _needSector(world) {
     const sec = world.sector || {};
-    if (sec.station) this._need('station:' + this.faction); // Station zuerst (größte Datei, steht beim Start im Bild)
+    // erstes Bild des Sektors: Station, Gegner und Brocken. main.js zeigt den Flug beim Sitzungsstart erst, wenn sie
+    // eingetauscht sind (sectorReady) – das Eintauschen kostete sonst 200–500 ms Hänger, während schon gesteuert wurde
+    const first = [];
+    const need = (k) => { const p = this._need(k); if (p) first.push(p); };
+    if (sec.station) need('station:' + this.faction); // Station zuerst (größte Datei, steht beim Start im Bild)
     const types = new Set([...(sec.spawns || []).map((s) => s.type), ...(sec.eventPirates || [])]);
     for (const t of [...types]) { const b = ENEMIES[t]?.brood?.type; if (b) types.add(b); }
-    for (const t of types) this._need('enemy:' + t);
+    for (const t of types) need('enemy:' + t);
     // Außenposten (Meshy-Stationsvarianten Europa/Eris) als ferne Kulisse in den tiefen Sektoren 4–8, nicht andockbar
     if (this._outpost) { this.scene.remove(this._outpost); this._outpost = null; }
     this._outpostKey = (sec.index || 1) >= 4 && EXTRA_MODELS['outpost:' + this.faction] ? 'outpost:' + this.faction : null;
     if (this._outpostKey) this._need(this._outpostKey);
     // Asteroidenfelder zeigen die großen Brocken als Meshy-Formen (fields.js tauscht sie nach dem Laden ein)
-    if ((this.env.fields?.fields || sec.fields || []).some((F) => F.type === 'asteroids')) for (const k of ['asteroid', 'asteroid:2']) { this._need(k); this._need(k + ':lod1'); }
+    if ((this.env.fields?.fields || sec.fields || []).some((F) => F.type === 'asteroids')) for (const k of ['asteroid', 'asteroid:2']) { need(k); need(k + ':lod1'); }
+    this.sectorReady = Promise.all(first);
     // Requisiten des Sektors gestaffelt vorladen (Entpacken läuft im Hauptthread: einzeln, nicht erst beim Auftauchen
     // mitten im Kampf); Ereignis-Modelle (Frachter, Nest, Wrack) zuletzt
     const later = ['portal', 'asteroid:3', 'asteroid:3:lod1'];
@@ -616,11 +621,14 @@ export class Renderer {
   /** Zusatzmodell anfordern (einmal je Schlüssel; fehlt die Datei, bleibt das prozedurale Modell) */
   _need(key) {
     const M = EXTRA_MODELS[key];
-    if (!M || !this._loadGLB || this.factory.glb.has(key)) return;
+    if (!M || !this._loadGLB || this.factory.glb.has(key)) return null;
     const T = this._needT || (this._needT = new Set());
-    if (T.has(key)) return;
+    const P = this._needP || (this._needP = new Map());
+    if (T.has(key)) return P.get(key) || null;
     T.add(key);
-    this._loadGLB(key, M[0], M[1]);
+    const pr = this._loadGLB(key, M[0], M[1]);
+    P.set(key, pr);
+    return pr;
   }
 
   // Alles vorab vorbereiten, was sonst beim ersten Auftreten ruckelt: Ansichten aller vorhandenen Entities,
@@ -681,6 +689,10 @@ export class Renderer {
       gl.setRenderTarget(useComposer ? this.composer.readBuffer : null);
       gl.compile(this.scene, cam);
       if (useComposer) { gl.setRenderTarget(null); gl.compile(this.scene, cam); } // Rückfall ohne Bloom
+      // Cockpit-Ebene mit übersetzen und einmal zeichnen (sonst ≈ 200 ms Hänger beim ersten Wechsel ins Cockpit)
+      if (this.cockpit && this.cockpit.scene && this.cockpit.camera) {
+        try { gl.compile(this.cockpit.scene, this.cockpit.camera); gl.setRenderTarget(useComposer ? this.composer.readBuffer : null); gl.render(this.cockpit.scene, this.cockpit.camera); } catch (err) { console.warn('Cockpit-Vorübersetzen', err); }
+      }
       t1 = performance.now(); WT.compile = t1 - t0; t0 = t1;
       // Texturen hochladen (compile lädt keine Bilder)
       const seen = new Set();

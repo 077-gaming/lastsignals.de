@@ -128,10 +128,14 @@ function playSession(profile, opts = {}) {
     canvas.addEventListener('webglcontextlost', onCtxLost, { once: true });
     if (sessionCap < 3) renderer.setQualityCap(sessionCap);
     renderer.setWorld(world);
-    // Flug erst zeigen, wenn das eigene Schiffsmodell da ist (höchstens 5 s), sonst sähe man den Platzhalter-Wechsel
+    // Flug erst zeigen, wenn das eigene Schiffsmodell und die Modelle des ersten Bildes (Station, Gegner, Brocken) da
+    // und eingetauscht sind (höchstens 5 s), sonst sähe man den Platzhalter-Wechsel. Bis dahin steht die Simulation
+    // und die Eingabe ruht (live = false): Das Eintauschen kostet einmalig 200–500 ms, und das darf kein Flugbild sein.
     canvas.style.opacity = '0';
-    const showCanvas = () => { canvas.style.transition = 'opacity 180ms'; canvas.style.opacity = '1'; };
-    Promise.race([renderer.ownModelReady || Promise.resolve(), new Promise((r) => setTimeout(r, 5000))])
+    let live = false;
+    const showCanvas = () => { live = true; canvas.style.transition = 'opacity 180ms'; canvas.style.opacity = '1'; };
+    const twoFrames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    Promise.race([Promise.all([renderer.ownModelReady || Promise.resolve(), renderer.sectorReady || Promise.resolve()]).then(twoFrames), new Promise((r) => setTimeout(r, 5000))])
       .then(() => setTimeout(showCanvas, 250));
     perfHud.setRenderer(renderer);
     if (import.meta.env.DEV) import('./perf/bench.js').then((m) => m.installBench(renderer, world)).catch(() => {});
@@ -241,6 +245,7 @@ function playSession(profile, opts = {}) {
       if (dt > MAX_FRAME) dt = MAX_FRAME;
       if (dt < 0) dt = 0;
       const tf = performance.now();
+      if (!live) { world.update(0); renderer.render(0, 0); hud.update(dt); return; } // Start: Modelle tauschen noch ein
       input.update(dt);
       // Ein einziger Akkumulator (in World.update, feste 1/60-s-Schritte, höchstens MAX_STEPS_PER_UPDATE je Bild).
       // Vorher rechnete main.js zusätzlich mit eigenem Akkumulator: bis zu 15 Schritte je Bild auf schwachen Geräten.
