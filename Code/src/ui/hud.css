@@ -892,3 +892,4 @@ html[data-view="cockpit"] [data-win="ship"] { display: none !important; }
 
 /* Controller und Touch (Runde 3): Tastaturkürzel (⇧1–⇧9) in den Hinweisen der Fensterleiste ausblenden */
 html[data-input="pad"] .hb-tip .ls-key, body.is-touch .hb-tip .ls-key { display: none; }
+html[data-input="pad"] .dd-oh .ls-key, body.is-touch .dd-oh .ls-key { display: none; }
