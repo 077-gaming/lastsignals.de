@@ -223,7 +223,7 @@ function cleanGraphics(g, prev) {
   const o = g && typeof g === 'object' ? g : {};
   const cap = Number(o.fpsCap), rs = Number(o.renderScale);
   return {
-    fpsCap: Number.isFinite(cap) && cap >= 0 && cap <= 1000 ? Math.round(cap) : (prev ? prev.fpsCap : 0),
+    fpsCap: Number.isFinite(cap) && cap >= -1 && cap <= 1000 ? Math.round(cap) : (prev ? prev.fpsCap : 0),
     renderScale: Number.isFinite(rs) ? Math.min(200, Math.max(50, Math.round(rs))) : (prev ? prev.renderScale : 100),
   };
 }

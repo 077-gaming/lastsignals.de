@@ -46,7 +46,7 @@ function syncGfx() {
   const g = currentGfx();
   if (g.sig === gfxSig) return;
   gfxSig = g.sig;
-  limiter.setCap(g.v.fpsCap);
+  limiter.setCap(Math.max(0, g.v.fpsCap | 0)); // -1 = BILDSCHIRM: kein Begrenzer
   // Leistungsanzeige nur umschalten, wenn sich die Einstellung selbst ändert (F3 bleibt bis dahin gültig)
   if (g.v.perfHud !== perfSet) { perfSet = g.v.perfHud; perfHud.toggle(!!g.v.perfHud); }
   notifyDesktop(g.v);

@@ -218,7 +218,7 @@ export class Renderer {
     this.caps = detectCaps();       // Fähigkeiten (engine/caps.js)
     this.gfx = this._readGfx();     // wirksame Grafikwerte (engine/settings.js)
     this.quality = Math.min(3, this.gfx.tier);
-    this.fpsCap = this.gfx.v.fpsCap; // Bildratenbegrenzung (main.js lässt Bilder aus; Absicherungen rechnen damit)
+    this.fpsCap = Math.max(0, this.gfx.v.fpsCap | 0); // Bildratenbegrenzung (main.js lässt Bilder aus; Absicherungen rechnen damit)
     this._fovChase = this.gfx.v.fovChase;
     this._farK = this.gfx.v.viewDist / 100;
     this._ipr = 1; this._opr = 1; this._upscaling = false; this._post = true;
@@ -361,7 +361,7 @@ export class Renderer {
     this.effects.density = g.particles / 100;
     this._farK = g.viewDist / 100;
     this._fovChase = g.fovChase;
-    this.fpsCap = g.fpsCap;
+    this.fpsCap = Math.max(0, g.fpsCap | 0);
     this.env.reflectRes = REFLECT_RES[g.reflections] || 512;
     this._applyAniso();
     // Pixeldichte der Stufe (ultra/hoch 2, mittel 1,5, niedrig 1): Puffer neu anlegen, falls sich etwas ändert
