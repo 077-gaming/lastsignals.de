@@ -19,16 +19,18 @@ const CH_R0 = 24.7, CH_EXP = 0.5, CH_ELEV_BIG = 9 * Math.PI / 180, CH_YAW_BIG = 
 // Neigung el (Grad) und Bildlage y (NDC-Versatz, + = tiefer). Abgeglichen mit tools/bilder/rahmung.mjs auf eine
 // monotone Staffelung der Bildhöhe des Rumpfs: Starter 18 %, je Klasse ≈ 10 % mehr, Schiff 8 ≈ 34 % (Obergrenze 38 %).
 // Der Hüllkugel-Radius allein taugt nicht (Flügel und Länge verfälschen ihn). Schiff 8 flacher (−6°) und höher im
-// Bild, damit das Heck in 1280 × 720 über dem unteren HUD-Band liegt. Klassen ohne Eintrag: Radius-Formel.
+// Bild, damit das Heck in 1280 × 720 über dem unteren HUD-Band liegt. k = Abstandsfaktor im Kampf (steilere Kamera und
+// Zielschwenk verschieben die Bildhöhe je Rumpfform unterschiedlich; Abgleich mit groessen.mjs KAMPF=1).
+// Klassen ohne Eintrag: Radius-Formel.
 export const CHASE_FRAME = {
-  s1: { d: 100.5, el: 0, y: 0 },
-  s2: { d: 88.5, el: 0, y: 0 },
-  s3: { d: 101.8, el: 0, y: 0 },
-  s4: { d: 98, el: 0, y: 0 },
-  s5: { d: 133.6, el: 0, y: 0 },
-  s6: { d: 133.7, el: 0, y: 0 },
-  s7: { d: 130, el: 0, y: 0 },
-  s8: { d: 228, el: -6, y: -0.1 },
+  s1: { d: 100.5, el: 0, y: 0, k: 1 },
+  s2: { d: 88.5, el: 0, y: 0, k: 0.97 },
+  s3: { d: 101.8, el: 0, y: 0, k: 0.94 },
+  s4: { d: 98, el: 0, y: 0, k: 1 },
+  s5: { d: 133.6, el: 0, y: 0, k: 1 },
+  s6: { d: 133.7, el: 0, y: 0, k: 0.88 },
+  s7: { d: 127, el: 0, y: 0, k: 0.97 },
+  s8: { d: 228, el: -6, y: -0.1, k: 0.94 },
 };
 const BLEND_T = 0.9; // Sekunden für den Wechsel
 
@@ -192,7 +194,7 @@ export class CameraRig {
     const big = Math.min(1, Math.max(0, (r - 45) / 35));
     if (fr) {
       // Rahmung je Klasse (Bildfläche gestaffelt), nie näher als 1,2 Radien
-      D = Math.max(r * 1.2, fr.d * grow);
+      D = Math.max(r * 1.2, fr.d * grow * (1 + ((fr.k ?? 1) - 1) * ck));
       elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck + fr.el * Math.PI / 180;
     } else {
       const rEff = CH_R0 * Math.pow(r / CH_R0, CH_EXP);
