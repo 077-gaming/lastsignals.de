@@ -1,0 +1,130 @@
+/* Feinschliff vor der Veröffentlichung (Runde 3, 03.11.2026). Wird als letzte Datei geladen und überschreibt
+   ältere Regeln gezielt: ruhiger Hero, Kopfleiste am Handy, Unterseiten-Köpfe mit Spielbild, News-Bilder,
+   Konto-Hinweis neutral, Mindestgrößen für Klickflächen und Schrift. */
+
+/* ---------- Kopfleiste ---------- */
+.hdr-dc { display: inline-flex; align-items: center; width: auto; gap: 8px; padding: 0 10px; font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .16em; font-size: 13px; line-height: 1; }
+.hdr-dc span:not(.sr) { padding-top: 2px; }
+.hdr-play .hp-s { display: none; }
+@media (max-width: 1240px) { .hdr-dc { display: none; } }
+.menu-top { display: grid; gap: 14px; padding: 0 0 22px; margin-bottom: 22px; border-bottom: 1px solid var(--ls-line); }
+.menu-play { width: 100%; justify-content: center; }
+.menu-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.menu-ctl-i { display: inline-flex; align-items: center; gap: 8px; }
+.menu-ctl-i:has(.scene-btn[hidden]) { display: none; }
+.menu-ctl .menu-lang { margin-left: auto; height: 34px; }
+@media (min-width: 721px) { .menu-top { display: none; } }
+@media (max-width: 720px) {
+  .hdr-ctl { display: none !important; }
+  .hdr-play { display: inline-flex; height: 36px; padding: 0 12px; gap: 8px; }
+  .hdr-play .hp-l, .hdr-play em { display: none; }
+  .hdr-play .hp-s { display: inline; }
+  .hdr-play .ico { width: 13px; height: 13px; }
+}
+@media (max-width: 360px) { .brand-wm { width: 112px; } .hdr-play { padding: 0 10px; } }
+
+/* ---------- Hero: Wortmarke, ein Satz, zwei Hauptaktionen ---------- */
+.hero .hero-cta { margin-top: 30px; }
+@media (max-width: 720px) {
+  .hero { padding-bottom: 36px; }
+  .hero-wm { position: static; width: auto; height: auto; overflow: visible; clip: auto; margin: 0 0 16px; }
+  .wm-hero { width: 100%; max-width: 330px; }
+  .hero-head { font-size: clamp(30px, 9vw, 40px); margin-bottom: 0; }
+  .hero .hero-cta { margin-top: 22px; }
+}
+
+/* Merkmale direkt unter dem Hero */
+.intro { position: relative; padding: 48px 0 8px; }
+.intro-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.3fr); gap: 20px 48px; align-items: start; border-top: 1px solid var(--ls-line-2); padding-top: 26px; }
+.intro-k { margin: 0 0 12px; font-size: 11px; }
+.intro-sub { font-size: clamp(15px, 1.2vw, 17px); line-height: 1.5; color: rgba(255, 255, 255, .84); margin: 0; max-width: 44ch; }
+.intro .hero-trust { margin-top: 14px; font-size: 11px; color: var(--ls-tx-2); }
+.intro .feat { margin: 0; max-width: none; animation: none; }
+.intro .feat-list { border-top: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.intro .feat-list li { padding-top: 2px; }
+@media (max-width: 1240px) { .intro-in { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .intro .feat-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 720px) {
+  .intro { padding: 28px 0 0; }
+  .intro-in { padding-top: 20px; gap: 18px; }
+  .intro .feat-list { grid-template-columns: 1fr 1fr; }
+  .intro .feat-list li { padding: 12px 10px 10px 0; }
+}
+
+/* ---------- Unterseiten: eigenes Spielbild im Kopf ---------- */
+.sub-bg.is-plain { background: #020306; filter: none; }
+.sub-bg.is-plain::after { display: none; }
+.sub-hero { position: absolute; top: 0; left: 0; right: 0; height: clamp(360px, 62vh, 660px); z-index: 0; overflow: hidden; pointer-events: none; }
+.sub-hero.is-low { height: clamp(220px, 34vh, 340px); }
+.sub-hero picture, .sub-hero img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+.sub-hero::after { content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(2, 3, 6, .62) 0%, rgba(2, 3, 6, .08) 26%, rgba(2, 3, 6, .2) 56%, rgba(2, 3, 6, .86) 84%, #020306 100%),
+    linear-gradient(90deg, rgba(2, 3, 6, .78) 0%, rgba(2, 3, 6, .3) 46%, rgba(2, 3, 6, 0) 70%); }
+.sub-hero.is-low::after { background: linear-gradient(180deg, rgba(2, 3, 6, .7) 0%, rgba(2, 3, 6, .55) 50%, #020306 100%); }
+.sub-hero::before { content: ""; position: absolute; inset: 0; z-index: 1; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .02) 0 1px, transparent 1px 3px); }
+main.sub { position: relative; z-index: 1; padding-top: calc(var(--hdr) + clamp(150px, 30vh, 330px)); }
+main.legal { position: relative; z-index: 1; }
+.sub-head h1 { text-shadow: 0 2px 30px rgba(0, 0, 0, .6); }
+.sub-head .sec-lede { color: rgba(255, 255, 255, .84); text-shadow: 0 1px 18px rgba(0, 0, 0, .7); }
+@media (max-width: 720px) {
+  .sub-hero { height: 330px; }
+  .sub-hero.is-low { height: 200px; }
+  .sub-hero img { object-position: 58% 50%; }
+  main.sub { padding-top: calc(var(--hdr) + 130px); }
+}
+
+/* ---------- News: ein Bild aus dem Spiel je Eintrag ---------- */
+.log-entry.has-img { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 22px; align-items: start; }
+.log-img { margin: 4px 0 0; border: 1px solid var(--ls-line); background: #05070b; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.log-img img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+@media (max-width: 720px) { .log-entry.has-img { grid-template-columns: 1fr; gap: 12px; } }
+
+/* ---------- Welt: Gegner ohne fertiges Modell kompakt, ohne Bildfeld ---------- */
+.wd-foes-grid.is-compact { margin-top: 10px; }
+.wd-foe.is-compact { grid-template-rows: auto; border-left: 2px solid var(--ls-line-2); }
+.wd-foe.is-compact .wd-foe-in { padding: 12px 14px; }
+.wd-foe.is-compact .wd-dl { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 10px; }
+.wd-foe.is-compact .wd-dl div { display: grid; gap: 2px; justify-content: stretch; }
+.wd-foe.is-compact .wd-dl dd { text-align: left; }
+@media (min-width: 1101px) { .wd-foes-grid.is-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .wd-foes-grid.is-compact { grid-template-columns: 1fr; } }
+
+/* ---------- Konto: neutraler Hinweis, Formular deckend ---------- */
+.fd-form { background: rgba(6, 9, 13, .9); }
+.fd-closed { border: 1px solid var(--ls-line-2); background: rgba(255, 255, 255, .035); color: var(--ls-tx-2); }
+.fd-closed .ico { color: var(--ls-tx-3); }
+.fld-in input::placeholder { color: rgba(255, 255, 255, .5); opacity: 1; }
+
+/* ---------- Schiffe am Handy: Kopfleiste HGR·01 in einer Zeile ---------- */
+.sg .ls-head { flex-wrap: nowrap; min-width: 0; }
+.sg .ls-head .ls-code, .sg .ls-head .ls-title { white-space: nowrap; flex: none; }
+.sg-cur { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+@media (max-width: 560px) {
+  .sg .ls-head { gap: 10px; }
+  .sg .ls-head .ls-spacer { flex: 0 0 0; }
+  .sg-cur { flex: 1; letter-spacing: .08em; }
+  .sg-ship b, .sg-ship .ls-num, .sg-ship em { white-space: nowrap; }
+}
+
+/* ---------- Hangar (Startseite): Ladeanzeige ---------- */
+.hg-state { position: absolute; left: 14px; top: 12px; z-index: 3; margin: 0; font-family: var(--ls-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--fx); pointer-events: none; }
+.hangar.is-loading .hg-canvas { opacity: 0 !important; }
+.hangar.is-loading .hg-fallback { opacity: 1 !important; }
+.hangar.is-loading .hg-pins { visibility: hidden; }
+
+/* ---------- Klickflächen und Mindestschrift ---------- */
+.ftr-col ul a, .ftr-col .sb-row { display: inline-flex; align-items: center; min-height: 28px; }
+.ftr-top-link { display: inline-flex; align-items: center; min-height: 28px; }
+@media (max-width: 720px) {
+  .ftr-col ul { gap: 2px; }
+  .ftr-col ul a, .ftr-col .sb-row { min-height: 32px; }
+  .map-reset { min-width: 32px; min-height: 28px; justify-content: center; }
+}
+.log-img img[src*="/schiffe/"] { object-fit: contain; padding: 8px; background: radial-gradient(60% 60% at 50% 55%, rgba(224, 120, 42, .1), transparent 75%); }
+@media (max-width: 720px) { .hg-state { top: auto; bottom: 44px; } }
+.hangar .ls-head { min-width: 0; }
+.hangar .ls-head .ls-code, .hangar .ls-head .ls-title { flex: none; white-space: nowrap; }
+.hangar .ls-head .hg-tag { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 560px) { .hangar .ls-head .ls-spacer { flex: 0 0 4px; } .hangar .ls-head .hg-tag { flex: 1; text-align: right; letter-spacing: .08em; } }
+.hangar .ls-head .hg-tag { display: block; }
+.hangar .ls-head .hg-tag::before { display: inline-block; margin-right: 8px; vertical-align: 1px; }

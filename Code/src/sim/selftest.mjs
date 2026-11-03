@@ -1337,7 +1337,7 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   check('Fehlertexte deutsch: Passwort, Bestätigung, offline, Rufname',
     /PASSWORT FALSCH/.test(L.errorText({ code: 'invalid_credentials' })) && /NICHT BESTÄTIGT/.test(L.errorText({ code: 'email_not_confirmed' }))
     && /KEINE VERBINDUNG/.test(L.errorText({ message: 'Failed to fetch', status: 0 })) && /VERGEBEN/.test(L.errorText({ code: '23505' })));
-  check('Rufname-Regeln wie Datenbank', !L.callsignProblem('Kora_7') && !!L.callsignProblem('ab') && !!L.callsignProblem('7up') && !!L.callsignProblem('Admin'));
+  check('Rufname-Regeln wie Datenbank', !L.callsignProblem('Kora_7') && !L.callsignProblem('7up') && !L.callsignProblem('a--b') && !!L.callsignProblem('ab') && !!L.callsignProblem('Kora 7') && !!L.callsignProblem('Admin'));
 
   // Ablauf mit Attrappe: zwei Geräte, ein Server
   const api = mockApi();

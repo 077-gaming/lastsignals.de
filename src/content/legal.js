@@ -3,6 +3,8 @@
 // Der Text nennt nur, was wirklich passiert. Was aktiv ist, kommt beim Bauen aus vite.config.js:
 //   open  = Reservierung per E-Mail offen (VITE_RESERVATION_OPEN=true)
 //   oauth = Google/Discord, die Supabase gerade meldet (GET /auth/v1/settings). Abschnitt erscheint erst dann.
+//   mail  = eigener Mailversand, der in Supabase > Auth > SMTP eingetragen ist (VITE_MAIL_PROVIDER, z. B. resend).
+//           Leer: Supabase-Standardversand. Vor dem Start den tatsächlich eingetragenen Dienst prüfen und hier setzen.
 
 import { RELEASE } from './downloads.js';
 
@@ -22,6 +24,21 @@ const PROV = {
   en: { google: 'Google (Google Ireland Limited, Ireland)', discord: 'Discord (Discord Inc., USA)' },
 };
 const POL = { google: 'https://policies.google.com/privacy', discord: 'https://discord.com/privacy' };
+// Mögliche eigene Mailversand-Dienste (Supabase > Auth > SMTP). Nur nennen, was wirklich eingetragen ist.
+const MAILER = {
+  resend: { name: 'Resend', de: 'Resend (Resend, Inc., USA)', en: 'Resend (Resend, Inc., USA)', pol: 'https://resend.com/legal/privacy-policy' },
+};
+// Supabase: Sitz in den USA, Daten in Frankfurt am Main; Zugriffe aus den USA möglich
+const SB_US = {
+  de: 'Supabase, Inc. hat ihren Sitz in den USA. Die Daten liegen in Frankfurt am Main, Supabase und seine Unterauftragsverarbeiter können für Betrieb, Wartung und Support aber auch aus den USA darauf zugreifen. Für solche Übermittlungen gelten die EU-Standardvertragsklauseln aus dem Auftragsverarbeitungsvertrag von Supabase (Art. 46 Abs. 2 lit. c DSGVO).',
+  en: 'Supabase, Inc. is based in the USA. The data is stored in Frankfurt am Main, but Supabase and its sub-processors may also access it from the USA for operation, maintenance and support. Such transfers are covered by the EU Standard Contractual Clauses in the Supabase data processing agreement (Art. 46(2)(c) GDPR).',
+};
+const mailDe = (m) => (MAILER[m]
+  ? `Bestätigungs- und Passwort-Mails verschickt der Anmeldedienst von Supabase über den Versanddienst ${MAILER[m].de}, der in unserem Auftrag arbeitet (Art. 28 DSGVO). Dafür erhält ${MAILER[m].name} deine E-Mail-Adresse und den Inhalt der Mail mit dem Link. Dabei können Daten in die USA übertragen werden; Grundlage sind die EU-Standardvertragsklauseln im Auftragsverarbeitungsvertrag des Anbieters (Art. 46 Abs. 2 lit. c DSGVO). Mehr: ${ext(MAILER[m].pol, `Datenschutz bei ${MAILER[m].name}`)}.`
+  : 'Bestätigungs- und Passwort-Mails verschickt der Anmeldedienst von Supabase mit seinem eigenen Mailversand.');
+const mailEn = (m) => (MAILER[m]
+  ? `Confirmation and password emails are sent by the Supabase authentication service through the email provider ${MAILER[m].en}, acting on our behalf (Art. 28 GDPR). ${MAILER[m].name} receives your email address and the content of the email with the link. Data may be transferred to the USA; the basis is the EU Standard Contractual Clauses in the provider’s data processing agreement (Art. 46(2)(c) GDPR). More: ${ext(MAILER[m].pol, `${MAILER[m].name} privacy`)}.`
+  : 'Confirmation and password emails are sent by the Supabase authentication service using its own email delivery.');
 const list = (arr, and) => (arr.length < 2 ? arr.join('') : `${arr.slice(0, -1).join(', ')} ${and} ${arr[arr.length - 1]}`);
 // Abschnitte nummerieren, ausgelassene (null) überspringen
 const sections = (arr) => arr.filter(Boolean).map(([h, body], i) => `<h2>${i + 1}. ${h}</h2>\n${body}`).join('\n');
@@ -95,13 +112,13 @@ const KEYS = {
 };
 const keyTable = (lang) => `<table class="legal-table"><thead><tr><th scope="col">${lang === 'de' ? 'Schlüssel' : 'Key'}</th><th scope="col">${lang === 'de' ? 'Inhalt' : 'Content'}</th></tr></thead><tbody>${KEYS[lang].map(([k, v]) => `<tr><td><code>${k.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></td><td>${v}</td></tr>`).join('')}</tbody></table>`;
 
-const DATENSCHUTZ = ({ open, oauth }) => `<h1>Datenschutz</h1>
+const DATENSCHUTZ = ({ open, oauth, mail: mailer }) => `<h1>Datenschutz</h1>
 <p>Stand: ${DATE.de}</p>
 ${sections([
   ['Verantwortlicher', `<p>${addr('Deutschland')}<br>Telefon: <a href="tel:${OP.phoneHref}">${OP.phone}</a><br>E-Mail: ${mail}</p>`],
   ['Kurz gesagt', `<ul>
 <li>Keine Analyse-, Tracking- oder Werbedienste, keine Cookies. Schriften, Skripte, Bilder, Videos und Klänge kommen von unserem Hosting bei Netlify, nicht von fremden Diensten.</li>
-<li>Verbindungen zu Supabase (Frankfurt am Main) entstehen nur für Konto, Rufnamen-Prüfung, Ruhmeshalle und Mehrspieler. Dabei sieht Supabase deine IP-Adresse.</li>
+<li>Verbindungen zu Supabase (Daten in Frankfurt am Main, Anbieter mit Sitz in den USA) entstehen nur für Konto, Rufnamen-Prüfung, Ruhmeshalle und Mehrspieler. Dabei sieht Supabase deine IP-Adresse.</li>
 <li>Ohne Konto bleibt dein Spielstand nur in deinem Browser${APPS ? ' bzw. in der App' : ''}.</li>
 <li>Mit Konto speichern wir E-Mail-Adresse, Rufname, Fraktion und deinen Spielstand bei Supabase in Frankfurt am Main. Dein Passwort sehen wir nie.</li>
 <li>Öffentlich sind Rufname, Fraktion, Titel und Spielwerte (Ruhmeshalle, Pilotenliste), nie deine E-Mail-Adresse oder dein Spielstand.</li>
@@ -119,8 +136,8 @@ ${sections([
 <li>bei Anmeldungen protokolliert der Anmeldedienst zur Sicherheit IP-Adresse und Zeitpunkt.</li>
 </ul>
 <p>Öffentlich lesbar: Die Tabelle <code>pilots</code> (Konto-Kennung, Rufname, Fraktion, Titel und Gründungspilot-Status) kann über die öffentliche Datenbankschnittstelle von jedem gelesen werden. Darüber zeigen Spiel und Website Rufnamen an und prüfen, ob ein Name frei ist. Die Konto-Kennung ist eine zufällige Zeichenfolge. E-Mail-Adresse, Passwort und Spielstand stehen nicht in dieser Tabelle und sind nicht öffentlich.</p>
-<p>Nach dem Anlegen bekommst du eine E-Mail mit einem Bestätigungslink. Bestätigungs- und Passwort-Mails verschickt der Anmeldedienst von Supabase. Rechtsgrundlage ist die Bereitstellung des Kontos, das du angefordert hast (Art. 6 Abs. 1 lit. b DSGVO).</p>
-<p>Die Daten liegen bei Supabase, Inc. in einem Rechenzentrum in der EU (Frankfurt am Main). Supabase verarbeitet sie in unserem Auftrag (Art. 28 DSGVO). Mehr: ${ext('https://supabase.com/privacy', 'Datenschutz bei Supabase')}.</p>`],
+<p>Nach dem Anlegen bekommst du eine E-Mail mit einem Bestätigungslink. ${mailDe(mailer)} Rechtsgrundlage ist die Bereitstellung des Kontos, das du angefordert hast (Art. 6 Abs. 1 lit. b DSGVO).</p>
+<p>Die Daten liegen bei Supabase, Inc. in einem Rechenzentrum in der EU (Frankfurt am Main). Supabase verarbeitet sie in unserem Auftrag (Art. 28 DSGVO). ${SB_US.de} Mehr: ${ext('https://supabase.com/privacy', 'Datenschutz bei Supabase')}.</p>`],
   ['Server-Spielstand', `<p>Spielst du mit Konto, sichern wir deinen Spielstand zusätzlich auf dem Server (Tabelle <code>pilot_saves</code>), damit du auf anderen Geräten weiterspielen kannst. Gespeichert werden der vollständige Spielstand (unter anderem Rufname, Fraktion, Stufe, Erfahrung, Ehre, Rangpunkte, Credits, Tritium, Schiffe, Ausrüstung, Munition, Drohnen, Laderaum, Sektor, Aufträge und Spielstatistik wie Abschüsse, Tode und Spielzeit), dazu eine Versionsnummer, die Art des Geräts mit Spielversion (zum Beispiel „web“, „electron“ oder „capacitor“) und der Zeitpunkt der letzten Sicherung. Gesichert wird beim Andocken, im Hub, alle zwei Minuten im Flug und beim Verlassen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Der Spielstand liegt ebenfalls bei Supabase in Frankfurt am Main.</p>`],
   ['Ruhmeshalle', `<p>Die Ruhmeshalle im Spiel und auf der Website zeigt öffentlich die Piloten mit Konto: Rufname, Fraktion, Stufe, Ehre, Erfahrung und Abschüsse. E-Mail-Adressen erscheinen nie. Beim Öffnen der Seite Ruhmeshalle lädt dein Browser die Liste direkt bei Supabase (öffentliche Datenbankfunktion <code>hall_of_fame</code>); dabei wird deine IP-Adresse an Supabase übertragen. Rechtsgrundlage für diesen Abruf ist unser Interesse, die Bestenliste anzuzeigen, die du aufrufst (Art. 6 Abs. 1 lit. f DSGVO). Die Ruhmeshalle gehört zum Spiel, das du mit dem Konto nutzt (Art. 6 Abs. 1 lit. b DSGVO). Wer ohne Konto spielt, erscheint nicht. Möchtest du nicht in der Ruhmeshalle stehen, schreib uns. Dann löschen wir das Konto oder nehmen dich aus der Liste.</p>`],
   ['Mehrspieler, Chat und Koop', `<p>Im Mehrspieler und im Koop verbindet sich das Spiel über Supabase Realtime mit den Mitspielern im selben Kanal (Sektor, Fraktion, alle, Koop). Das geht auch ohne Konto. Übertragen werden:</p>
@@ -130,7 +147,7 @@ ${sections([
 <li>eine zufällige Sitzungskennung je Flug,</li>
 <li>Chat-Nachrichten mit Rufname und Fraktion.</li>
 </ul>
-<p>Diese Daten gehen in Echtzeit an die Mitspieler im Kanal und werden nicht in einer Datenbank gespeichert. Chat-Nachrichten sehen alle, die gerade im Kanal sind. Was sie auf ihrem Gerät damit machen, liegt außerhalb unseres Einflusses. Schreib im Chat deshalb nichts Persönliches. Für die Verbindung verarbeitet Supabase deine IP-Adresse. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Mehrspieler-Funktion, die du nutzt). Supabase arbeitet auch hier in unserem Auftrag (Art. 28 DSGVO).</p>`],
+<p>Diese Daten gehen in Echtzeit an die Mitspieler im Kanal und werden nicht in einer Datenbank gespeichert. Chat-Nachrichten sehen alle, die gerade im Kanal sind. Was sie auf ihrem Gerät damit machen, liegt außerhalb unseres Einflusses. Schreib im Chat deshalb nichts Persönliches. Für die Verbindung verarbeitet Supabase deine IP-Adresse. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Mehrspieler-Funktion, die du nutzt). Supabase arbeitet auch hier in unserem Auftrag (Art. 28 DSGVO); für mögliche Zugriffe aus den USA gilt dasselbe wie beim Konto (Standardvertragsklauseln).</p>`],
   ['Rufname prüfen', `<p>Tippst du auf der Website oder beim Anlegen eines Kontos im Spiel einen Rufnamen ein, fragt die Seite bei Supabase in Frankfurt am Main nach, ob er noch frei ist (Datenbankfunktion <code>callsign_available</code>). Übertragen werden der eingegebene Name und, technisch bedingt, deine IP-Adresse. Der Name wird dabei nicht gespeichert. Rechtsgrundlage ist unser Interesse, doppelte Rufnamen zu vermeiden (Art. 6 Abs. 1 lit. f DSGVO).</p>`],
   ['Weitere Abrufe der Website bei Supabase', `<ul>
 <li>Anmeldestatus: Nur wenn in deinem Browser eine Anmeldesitzung gespeichert ist oder du über einen Bestätigungslink kommst, lädt die Website die Anmeldefunktion und fragt bei Supabase deinen Piloten ab (Rufname, Fraktion, Titel), um ihn in der Kopfleiste zu zeigen. Ohne gespeicherte Sitzung findet dieser Abruf nicht statt.</li>
@@ -150,13 +167,13 @@ ${keyTable('de')}
   ['Deine Rechte', '<p>Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21). Eine Einwilligung kannst du jederzeit für die Zukunft widerrufen (Art. 7 Abs. 3). Du kannst dich bei einer Datenschutz-Aufsichtsbehörde beschweren (Art. 77). Zuständig ist die Landesbeauftragte für den Datenschutz Niedersachsen, Prinzenstraße 5, 30159 Hannover.</p>'],
 ])}`;
 
-const PRIVACY = ({ open, oauth }) => `<h1>Privacy</h1>
+const PRIVACY = ({ open, oauth, mail: mailer }) => `<h1>Privacy</h1>
 <p class="legal-note">The German version is authoritative: <a href="https://lastsignals.de/datenschutz/" hreflang="de" lang="de">Datenschutz</a>. Last updated: ${DATE.en}.</p>
 ${sections([
   ['Controller', `<p>${addr('Germany')}<br>Phone: <a href="tel:${OP.phoneHref}">${OP.phone}</a><br>Email: ${mail}</p>`],
   ['In short', `<ul>
 <li>No analytics, tracking or advertising services, no cookies. Fonts, scripts, images, videos and sounds come from our hosting at Netlify, not from third-party services.</li>
-<li>Connections to Supabase (Frankfurt am Main) are made only for accounts, the callsign check, the hall of fame and multiplayer. Supabase sees your IP address in the process.</li>
+<li>Connections to Supabase (data in Frankfurt am Main, provider based in the USA) are made only for accounts, the callsign check, the hall of fame and multiplayer. Supabase sees your IP address in the process.</li>
 <li>Without an account your save game stays only in your browser${APPS ? ' or in the app' : ''}.</li>
 <li>With an account we store your email address, callsign, faction and save game with Supabase in Frankfurt am Main. We never see your password.</li>
 <li>Callsign, faction, title and game stats are public (hall of fame, pilot list), never your email address or your save game.</li>
@@ -174,8 +191,8 @@ ${sections([
 <li>on sign-in the authentication service logs IP address and time for security.</li>
 </ul>
 <p>Publicly readable: the table <code>pilots</code> (account ID, callsign, faction, title and founding pilot status) can be read by anyone through the public database interface. The game and the website use it to show callsigns and to check whether a name is free. The account ID is a random string. Email address, password and save game are not in this table and are not public.</p>
-<p>After creating the account you receive an email with a confirmation link. Confirmation and password emails are sent by the Supabase authentication service. The legal basis is providing the account you requested (Art. 6(1)(b) GDPR).</p>
-<p>The data is stored with Supabase, Inc. in a data center in the EU (Frankfurt am Main). Supabase processes it on our behalf (Art. 28 GDPR). More: ${ext('https://supabase.com/privacy', 'Supabase privacy')}.</p>`],
+<p>After creating the account you receive an email with a confirmation link. ${mailEn(mailer)} The legal basis is providing the account you requested (Art. 6(1)(b) GDPR).</p>
+<p>The data is stored with Supabase, Inc. in a data center in the EU (Frankfurt am Main). Supabase processes it on our behalf (Art. 28 GDPR). ${SB_US.en} More: ${ext('https://supabase.com/privacy', 'Supabase privacy')}.</p>`],
   ['Server save game', `<p>If you play with an account, we also store your save game on the server (table <code>pilot_saves</code>) so you can continue on other devices. Stored are the complete save game (including callsign, faction, level, experience, honor, rank points, credits, tritium, ships, gear, ammo, drones, cargo, sector, quests and game statistics such as kills, deaths and play time), a version number, the kind of device with game version (for example “web”, “electron” or “capacitor”) and the time of the last save. Saving happens when docking, in the hub, every two minutes in flight and when leaving. The legal basis is Art. 6(1)(b) GDPR. The save game is also stored with Supabase in Frankfurt am Main.</p>`],
   ['Hall of fame', `<p>The hall of fame in the game and on the website publicly shows pilots with an account: callsign, faction, level, honor, experience and kills. Email addresses never appear. When you open the hall of fame page, your browser loads the list directly from Supabase (public database function <code>hall_of_fame</code>); your IP address is transferred to Supabase in the process. The legal basis for this request is our interest in showing the leaderboard you asked for (Art. 6(1)(f) GDPR). The hall of fame is part of the game you use with your account (Art. 6(1)(b) GDPR). Players without an account do not appear. If you do not want to be listed, write to us and we will delete the account or remove you from the list.</p>`],
   ['Multiplayer, chat and co-op', `<p>In multiplayer and co-op the game connects via Supabase Realtime to the other players in the same channel (sector, faction, all, co-op). This also works without an account. Transferred are:</p>
@@ -185,7 +202,7 @@ ${sections([
 <li>a random session ID per flight,</li>
 <li>chat messages with callsign and faction.</li>
 </ul>
-<p>This data goes to the players in the channel in real time and is not stored in a database. Chat messages are seen by everyone currently in the channel. What they do with them on their own device is beyond our control, so do not post personal information in chat. For the connection Supabase processes your IP address. The legal basis is Art. 6(1)(b) GDPR (the multiplayer feature you use). Supabase acts on our behalf here too (Art. 28 GDPR).</p>`],
+<p>This data goes to the players in the channel in real time and is not stored in a database. Chat messages are seen by everyone currently in the channel. What they do with them on their own device is beyond our control, so do not post personal information in chat. For the connection Supabase processes your IP address. The legal basis is Art. 6(1)(b) GDPR (the multiplayer feature you use). Supabase acts on our behalf here too (Art. 28 GDPR); possible access from the USA is covered as for the account (Standard Contractual Clauses).</p>`],
   ['Callsign check', '<p>When you type a callsign on the website or while creating an account in the game, the page asks Supabase in Frankfurt am Main whether it is still free (database function <code>callsign_available</code>). The name you entered and, for technical reasons, your IP address are transferred. The name is not stored. The legal basis is our interest in avoiding duplicate callsigns (Art. 6(1)(f) GDPR).</p>'],
   ['Other requests from the website to Supabase', `<ul>
 <li>Sign-in status: only if a sign-in session is stored in your browser or you arrive via a confirmation link does the website load the sign-in function and ask Supabase for your pilot (callsign, faction, title) to show it in the header. Without a stored session this request does not happen.</li>
@@ -205,8 +222,8 @@ ${keyTable('en')}
   ['Your rights', '<p>You have the right of access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20) and objection (Art. 21). You may withdraw consent at any time with effect for the future (Art. 7(3)). You may lodge a complaint with a supervisory authority (Art. 77). The competent authority is the Landesbeauftragte für den Datenschutz Niedersachsen, Prinzenstraße 5, 30159 Hannover, Germany.</p>'],
 ])}`;
 
-export function legal(id, { reservationOpen = false, oauth = [] } = {}) {
-  const f = { open: !!reservationOpen, oauth: oauth.filter((k) => k === 'google' || k === 'discord') };
+export function legal(id, { reservationOpen = false, oauth = [], mail = '' } = {}) {
+  const f = { open: !!reservationOpen, oauth: oauth.filter((k) => k === 'google' || k === 'discord'), mail: MAILER[mail] ? mail : '' };
   if (id === 'de-impressum') return IMPRESSUM;
   if (id === 'en-imprint') return IMPRINT;
   if (id === 'de-datenschutz') return DATENSCHUTZ(f);

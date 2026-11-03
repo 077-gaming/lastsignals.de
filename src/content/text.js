@@ -134,9 +134,9 @@ export const TEXT = {
           specs: ['6 Ziele', '20 bis 50 Wellen', 'Gruppen ab Antares'],
         },
         {
-          id: 'bosses', t: 'Drei Bosse in der Tiefe', s: 'Schwarze Werft in Sektor 6, Sternenwal-Ältester in Sektor 7, Dreadnought in Sektor 8. Die Beute gehört dem letzten Treffer.',
-          d: 'Jede Heimat hat drei Bosse. Die Schwarze Werft in Sektor 6 ruft laufend Merc-Piraten zur Verstärkung. Der Sternenwal-Älteste in Sektor 7 heilt sich selbst. Der Dreadnought in Sektor 8 ruft Corsairs. Nach dem Abschuss kehren Werft und Wal nach 15 Minuten zurück, der Dreadnought nach 20. Die Beute bekommt, wer den letzten Treffer setzt. Ab Sektor 2 fliegen Piloten aller Fraktionen im selben Raum, also auch um denselben Boss.',
-          specs: ['Sektor 6 · 7 · 8', 'Letzter Treffer zählt', 'Rückkehr nach 15 bis 20 min'],
+          id: 'bosses', t: 'Drei Bosse in der Tiefe', s: 'Schwarze Werft in Sektor 6, Sternenwal-Ältester in Sektor 7, Dreadnought in Sektor 8. Jeder kommt nach dem Abschuss zurück.',
+          d: 'Jede Heimat hat drei Bosse. Die Schwarze Werft in Sektor 6 ruft laufend Merc-Piraten zur Verstärkung. Der Sternenwal-Älteste in Sektor 7 heilt sich selbst. Der Dreadnought in Sektor 8 ruft Corsairs. Nach dem Abschuss kehren Werft und Wal nach 15 Minuten zurück, der Dreadnought nach 20. Ab Sektor 2 fliegen Piloten aller Fraktionen im selben Raum. Gegner und Bosse rechnet im Mehrspieler-Test jeder Pilot für sich, außer im Koop. Gemeinsame Bosse mit Beute für den letzten Treffer sind geplant.',
+          specs: ['Sektor 6 · 7 · 8', 'Rückkehr nach 15 bis 20 min', 'Gemeinsame Bosse geplant'],
         },
         {
           id: 'war', t: 'Battle Maps, Clans, Events', plan: true, s: 'Geplant: Battle Maps ohne sichere Zone, Clans über alle Fraktionen und jeden Abend CORE RUSH.',
@@ -181,7 +181,7 @@ export const TEXT = {
         head: 'Wurmlöcher', cols: ['Ziel', 'Wellen', 'Leben', 'Ab Stufe'], group: 'Gruppe', coords: 'Koordinaten',
       },
       bosses: {
-        head: 'Boss-Lage', sector: 'Sektor', last: 'Beute: letzter Treffer', names: { werft: 'Schwarze Werft', wal: 'Sternenwal-Ältester', dread: 'Dreadnought' }, calls: { werft: 'ruft Merc', wal: 'heilt sich', dread: 'ruft Corsair' }, same: 'In allen drei Heimaten gleich',
+        head: 'Boss-Lage', sector: 'Sektor', last: 'Gemeinsame Bosse: geplant', names: { werft: 'Schwarze Werft', wal: 'Sternenwal-Ältester', dread: 'Dreadnought' }, calls: { werft: 'ruft Merc', wal: 'heilt sich', dread: 'ruft Corsair' }, same: 'In allen drei Heimaten gleich',
       },
 
       war: {
@@ -545,9 +545,9 @@ export const TEXT = {
           specs: ['6 destinations', '20 to 50 waves', 'Groups from Antares'],
         },
         {
-          id: 'bosses', t: 'Three bosses in the deep', s: 'Black Shipyard in sector 6, Elder Star Whale in sector 7, Dreadnought in sector 8. The loot goes to the last hit.',
-          d: 'Every home has three bosses. The Black Shipyard in sector 6 keeps calling Merc pirates as reinforcements. The Elder Star Whale in sector 7 heals itself. The Dreadnought in sector 8 calls Corsairs. After a kill, Shipyard and Whale return after 15 minutes, the Dreadnought after 20. The loot goes to whoever lands the last hit. From sector 2 on, pilots of all factions share the same space, and the same boss.',
-          specs: ['Sector 6 · 7 · 8', 'Last hit wins', 'Back after 15 to 20 min'],
+          id: 'bosses', t: 'Three bosses in the deep', s: 'Black Shipyard in sector 6, Elder Star Whale in sector 7, Dreadnought in sector 8. Each one returns after a kill.',
+          d: 'Every home has three bosses. The Black Shipyard in sector 6 keeps calling Merc pirates as reinforcements. The Elder Star Whale in sector 7 heals itself. The Dreadnought in sector 8 calls Corsairs. After a kill, Shipyard and Whale return after 15 minutes, the Dreadnought after 20. From sector 2 on, pilots of all factions share the same space. In the multiplayer test, each pilot runs their own enemies and bosses, except in co-op. Shared bosses with loot for the last hit are planned.',
+          specs: ['Sector 6 · 7 · 8', 'Back after 15 to 20 min', 'Shared bosses planned'],
         },
         {
           id: 'war', t: 'Battle Maps, clans, events', plan: true, s: 'Planned: Battle Maps without a safe zone, clans across all factions and CORE RUSH every evening.',
@@ -592,7 +592,7 @@ export const TEXT = {
         head: 'Wormholes', cols: ['Target', 'Waves', 'Lives', 'From level'], group: 'Group', coords: 'Coordinates',
       },
       bosses: {
-        head: 'Boss status', sector: 'Sector', last: 'Loot: last hit', names: { werft: 'Black Shipyard', wal: 'Elder Star Whale', dread: 'Dreadnought' }, calls: { werft: 'calls Mercs', wal: 'heals itself', dread: 'calls Corsairs' }, same: 'The same in all three homes',
+        head: 'Boss status', sector: 'Sector', last: 'Shared bosses: planned', names: { werft: 'Black Shipyard', wal: 'Elder Star Whale', dread: 'Dreadnought' }, calls: { werft: 'calls Mercs', wal: 'heals itself', dread: 'calls Corsairs' }, same: 'The same in all three homes',
       },
 
       war: {

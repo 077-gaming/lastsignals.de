@@ -158,6 +158,8 @@ export function initHangar(root, opts = {}) {
       const url = wantUrl;
       loadReal(url).then(() => { if (wantUrl === url) { show(); opts.onReady?.(); } }).catch(() => opts.onFail?.());
     }
+    // Ladeanzeige, solange das gewünschte Modell noch unterwegs ist (S-05 bis S-08 sind 2–3,6 MB)
+    opts.onLoading?.(!!(wantReal && !real));
     const useReal = wantReal && real;
     if (useReal) turn.add(real);
     else if (!wantReal) { bp = blueprint(tier, viz[0], viz[1], FX[fx]); turn.add(bp); }

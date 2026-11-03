@@ -106,8 +106,6 @@ export function callsignProblem(raw) {
   if (s.length < 3) return 'RUFNAME: MINDESTENS 3 ZEICHEN.';
   if (s.length > 16) return 'RUFNAME: HÖCHSTENS 16 ZEICHEN.';
   if (!/^[A-Za-z0-9_-]+$/.test(s)) return 'RUFNAME: NUR A-Z, 0-9, - UND _.';
-  if (!/^[A-Za-z]/.test(s)) return 'RUFNAME MUSS MIT EINEM BUCHSTABEN BEGINNEN.';
-  if (/[_-]{2}/.test(s) || /[_-]$/.test(s)) return 'RUFNAME: KEIN DOPPELTES ODER ENDENDES - ODER _.';
   const low = s.toLowerCase().replace(/[_-]/g, '');
   if (['__proto__', 'constructor', 'prototype'].includes(s.toLowerCase()) || RESERVED.some((r) => low === r || low.startsWith(r + 'team'))) return 'RUFNAME NICHT ERLAUBT.';
   return '';

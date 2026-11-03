@@ -52,7 +52,7 @@ Google/Discord: `src/api.js` liest `GET {VITE_SUPABASE_URL}/auth/v1/settings` (H
 Solange `VITE_RESERVATION_OPEN` nicht `true` ist, prüft das Formular nur, ob ein Rufname frei ist, zeigt „Reservierung öffnet in Kürze“ (kein E-Mail-Feld, kein Absenden) und speichert nichts. Die Datenschutzerklärung beschreibt dann auch nur das. Zum Öffnen der Reihe nach:
 
 1. Supabase > Auth > URL Configuration: Site URL `https://lastsignals.de`, Redirect URLs `https://lastsignals.de/**`, `https://lastsignals.online/**`, `http://localhost:5180/**`.
-2. Supabase > Auth > SMTP: eigenen Mailversand eintragen (zum Beispiel über die 077-Domain). Der eingebaute Mailer von Supabase verschickt nur an Team-Adressen.
+2. Supabase > Auth > SMTP: eigenen Mailversand eintragen (zum Beispiel über die 077-Domain). Der eingebaute Mailer von Supabase verschickt nur an Team-Adressen. Danach `VITE_MAIL_PROVIDER` (z. B. `resend`) in `.env.local` und bei Netlify setzen, damit die Datenschutzerklärung den Dienst nennt (Liste `MAILER` in `src/content/legal.js`, andere Dienste dort ergänzen).
 3. Einen echten Double-Opt-in mit einer fremden Adresse testen (Mail kommt an, Link führt zurück, Rufname steht in `pilots`).
 4. Supabase > Legal Documents: Vertrag zur Auftragsverarbeitung (DPA) abschließen.
 5. `VITE_RESERVATION_OPEN=true` in `.env.local` und bei Netlify (Environment variables) setzen, neu bauen.

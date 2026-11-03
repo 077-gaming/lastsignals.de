@@ -88,6 +88,8 @@ export default defineConfig(async ({ mode }) => {
   const flags = {
     oauth: await fetchProviders(env),
     reservationOpen: online && String(env.VITE_RESERVATION_OPEN || '').trim() === 'true',
+    // Eigener Mailversand in Supabase > Auth > SMTP (z. B. resend); steuert nur den Text der Datenschutzerklärung
+    mail: String(env.VITE_MAIL_PROVIDER || '').trim().toLowerCase(),
   };
   return {
   plugins: [pages(flags), posterSaver(), seoFiles()],

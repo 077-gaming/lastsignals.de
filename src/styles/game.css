@@ -121,7 +121,7 @@
 .sg-block:last-child { border-bottom: 0; }
 .sg-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .sg-ship { position: relative; display: grid; gap: 2px; width: 100%; text-align: left; padding: 8px 8px 7px; border: 1px solid var(--ls-line); background: transparent; cursor: pointer; color: var(--ls-tx-2); }
-.sg-ship .ls-num { font-family: var(--ls-mono); font-size: 9.5px; letter-spacing: .08em; color: var(--ls-tx-3); }
+.sg-ship .ls-num { font-family: var(--ls-mono); font-size: 10px; letter-spacing: .08em; color: var(--ls-tx-3); }
 .sg-ship b { font-family: var(--ls-display); text-transform: uppercase; letter-spacing: .08em; font-size: 13px; font-weight: 400; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sg-ship em { font-style: normal; font-size: 10.5px; color: var(--ls-tx-3); }
 .sg-ship:hover { color: #fff; border-color: var(--ls-line-2); }
@@ -235,7 +235,7 @@
 @media (max-width: 560px) { .sg-help { display: none; } }
 
 /* Kennzeichnung „geplant“: neutral, gestrichelt, nie in Warnfarbe (Farbe hat Funktion) */
-.plan-tag { display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 6px 1px; border: 1px dashed var(--ls-line-2); font-family: var(--ls-mono); font-size: 9.5px; font-style: normal; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--ls-tx-3); line-height: 1.4; white-space: nowrap; }
+.plan-tag { display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 6px 1px; border: 1px dashed var(--ls-line-2); font-family: var(--ls-mono); font-size: 10px; font-style: normal; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--ls-tx-3); line-height: 1.4; white-space: nowrap; }
 .map-btn.is-plan b, .why-tab.is-plan b { color: var(--ls-tx-3); }
 .map-info.is-plan h3 { color: var(--ls-tx-2) !important; }
 .bp-cap { position: absolute; left: 14px; top: 10px; margin: 0; display: flex; gap: 10px; align-items: baseline; font-family: var(--ls-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ls-tx-3); }

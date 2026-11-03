@@ -103,10 +103,17 @@ export const G = {
       respawn: 'Kehrt zurück nach', min: 'min', brood: (n) => `Ruft laufend ${n} zur Verstärkung`, regen: 'Heilt sich selbst',
       bossName: { werft: 'Schwarze Werft', wal: 'Sternenwal-Ältester', dread: 'Dreadnought' },
       shotAlt: (n) => `${n} im Kampf, Aufnahme aus dem Spiel`,
-      modelAlt: (n) => `${n}, Modell aus dem Spiel`, noImg: 'Modellbild folgt',
+      modelAlt: (n) => `${n}, Modell aus dem Spiel`, noImgList: 'eigenes Modell in Arbeit',
       stationAlt: (f) => `Station ${FXN[f]}, Aufnahme aus dem Spiel`,
     },
     nav: { ships: 'Schiffe', world: 'Welt', account: 'Konto', play: 'Spielen' },
+    // Bild je News-Eintrag (gleiche Reihenfolge wie log.entries in text.js)
+    newsImg: [
+      ['spiel/kampf-eris', 'ERIS-Schiff im Gefecht, Aufnahme aus dem Spiel'],
+      ['spiel/station-europa', 'Station EUROPA mit Andockring, Aufnahme aus dem Spiel'],
+      ['schiffe/saturn-1', 'SATURN-Starter, Modell aus dem Spiel'],
+      ['spiel/cockpit-europa', 'Blick aus dem Cockpit mit den Instrumenten der EUROPA, Aufnahme aus dem Spiel'],
+    ],
     meta: {
       ships: 'Alle acht Schiffsklassen von LAST SIGNALS je Fraktion in 3D: Hülle, Tempo, Laser- und Generatorplätze, Laderaum und Preis direkt aus den Spieldaten.',
       world: 'Fraktionen, Sektorleiter 1 bis 8, Piraten, Schwarm und Bosse von LAST SIGNALS. Mit Bildern aus dem Spiel und Werten aus den Spieldaten.',
@@ -181,10 +188,16 @@ export const G = {
       respawn: 'Returns after', min: 'min', brood: (n) => `Keeps calling ${n} as reinforcements`, regen: 'Heals itself',
       bossName: { werft: 'Black Shipyard', wal: 'Elder Star Whale', dread: 'Dreadnought' },
       shotAlt: (n) => `${n} in combat, in-game capture`,
-      modelAlt: (n) => `${n}, in-game model`, noImg: 'Model image to follow',
+      modelAlt: (n) => `${n}, in-game model`, noImgList: 'own model in progress',
       stationAlt: (f) => `${FXN[f]} station, in-game capture`,
     },
     nav: { ships: 'Ships', world: 'World', account: 'Account', play: 'Play' },
+    newsImg: [
+      ['spiel/kampf-eris', 'ERIS ship in combat, in-game capture'],
+      ['spiel/station-europa', 'EUROPA station with docking ring, in-game capture'],
+      ['schiffe/saturn-1', 'SATURN starter, in-game model'],
+      ['spiel/cockpit-europa', 'Cockpit view with EUROPA instruments, in-game capture'],
+    ],
     meta: {
       ships: 'All eight LAST SIGNALS ship classes per faction in 3D: hull, speed, laser and generator slots, cargo and price straight from the game data.',
       world: 'Factions, sector ladder 1 to 8, pirates, swarm and bosses of LAST SIGNALS. With in-game images and numbers from the game data.',
@@ -216,14 +229,10 @@ export function heroVideo(lang) {
   <div class="hero-film-shade" aria-hidden="true"></div>
 </div>`;
 }
-export function heroFilmBtn(lang) {
-  const g = G[lang].hero;
-  return `<button class="film-btn" type="button" data-film-btn hidden aria-pressed="false" data-pause="${esc(g.pause)}" data-resume="${esc(g.resume)}" aria-label="${esc(g.pause)}"><span class="fb-pause" aria-hidden="true"><i></i><i></i></span><span class="fb-play" aria-hidden="true"></span></button>`;
-}
 
 export function features(lang) {
   const f = G[lang].feat;
-  return `<div class="feat" aria-label="${esc(f.label)}"><p class="ls-label feat-l">${esc(f.label)}</p><ul class="feat-list">${f.list.map(([k, a, b]) => `<li><span class="feat-k ls-num">${esc(k)}</span><span class="feat-t"><b>${esc(a)}</b><span>${esc(b)}</span></span></li>`).join('')}</ul></div>`;
+  return `<div class="feat rv"><ul class="feat-list" aria-label="${esc(f.label)}">${f.list.map(([k, a, b]) => `<li><span class="feat-k ls-num">${esc(k)}</span><span class="feat-t"><b>${esc(a)}</b><span>${esc(b)}</span></span></li>`).join('')}</ul></div>`;
 }
 
 export function shotsSection(lang, links) {
@@ -340,15 +349,18 @@ export function worldBody(lang, factionsText) {
       <p class="plan-note">${esc(t.mpNote)}</p>
     </div>
   </section>`;
+  // Gegner ohne fertiges Modell: kompakte Kachel ohne Bildfeld (kein Platzhalter)
   const card = (k) => { const e = ENEMIES[k]; const sec = sectorsOf(k); const name = enemyName(k, lang);
-    const img = NO_IMG.has(k) ? `<div class="wd-foe-img is-none"><span>${esc(t.noImg)}</span></div>` : `<div class="wd-foe-img">${pic(`gegner/${k}`, t.modelAlt(name), { sizes: '(max-width: 600px) 50vw, 240px' })}</div>`;
-    return `<li class="wd-foe is-${e.group}" id="e-${k}">${img}
+    const img = NO_IMG.has(k) ? '' : `<div class="wd-foe-img">${pic(`gegner/${k}`, t.modelAlt(name), { sizes: '(max-width: 600px) 50vw, 240px' })}</div>`;
+    return `<li class="wd-foe is-${e.group}${img ? '' : ' is-compact'}" id="e-${k}">${img}
       <div class="wd-foe-in"><p class="ls-label">${esc(t.group[e.group])}</p><h3>${esc(name)}</h3>
       <p class="wd-beh">${esc(t.beh[e.behavior] || '')}</p>
       <dl class="wd-dl"><div><dt>${esc(t.lvl)}</dt><dd class="ls-num">${e.level}</dd></div><div><dt>${esc(t.hull)}</dt><dd class="ls-num">${num(e.hp, lang)}</dd></div><div><dt>${esc(t.shield)}</dt><dd class="ls-num">${num(e.shield, lang)}</dd></div><div><dt>${esc(t.where)}</dt><dd class="ls-num">${sec.length ? sec.join(', ') : esc(t.event)}</dd></div></dl></div></li>`; };
   const enemies = `<section class="wd-sec" id="${ids.enemies}" aria-labelledby="${ids.enemies}-h">
     <h2 class="sub-h2" id="${ids.enemies}-h">${esc(t.enemies)}</h2><p class="sub-p">${esc(t.enemiesLede)}</p>
-    ${['pirate', 'swarm'].map((g) => `<h3 class="wd-group">${esc(t.group[g])}</h3><ul class="wd-foes-grid">${ENEMY_ORDER.filter((k) => ENEMIES[k].group === g).sort((a, b) => ENEMIES[a].level - ENEMIES[b].level).map(card).join('')}</ul>`).join('')}
+    ${['pirate', 'swarm'].map((g) => { const list = ENEMY_ORDER.filter((k) => ENEMIES[k].group === g).sort((a, b) => ENEMIES[a].level - ENEMIES[b].level);
+      const withImg = list.filter((k) => !NO_IMG.has(k)), without = list.filter((k) => NO_IMG.has(k));
+      return `<h3 class="wd-group">${esc(t.group[g])}</h3><ul class="wd-foes-grid">${withImg.map(card).join('')}</ul>${without.length ? `<ul class="wd-foes-grid is-compact" aria-label="${esc(t.group[g])} · ${esc(t.noImgList)}">${without.map(card).join('')}</ul>` : ''}`; }).join('')}
   </section>`;
   const bosses = `<section class="wd-sec" id="${ids.bosses}" aria-labelledby="${ids.bosses}-h">
     <h2 class="sub-h2" id="${ids.bosses}-h">${esc(t.bosses)}</h2><p class="sub-p">${esc(t.bossLede)}</p>

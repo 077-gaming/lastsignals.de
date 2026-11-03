@@ -30,7 +30,7 @@ export function duration(sec) {
 }
 export function price(item) {
   if (!item) return '';
-  if (item.dropOnly) return 'NUR BEUTE';
+  if (item.dropOnly) return 'GEPLANT';
   if (item.price == null || !item.currency) return 'STARTAUSRÜSTUNG';
   return `${fmt(item.price)} ${CUR[item.currency] || item.currency}`;
 }
