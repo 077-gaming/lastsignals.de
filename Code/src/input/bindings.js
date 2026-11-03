@@ -165,6 +165,29 @@ export function flightHelp() {
     [k('camera'), 'Kamera: Verfolger → Cockpit → Taktisch'],
   ];
 }
+/** Touch-Belegung (Knöpfe und Gesten) für Bordmenü und Mission Control: [[Gruppe, [[Knopf, Wirkung], …]], …] */
+export function touchHelp() {
+  return [
+    ['TOUCH · FLUG 3D', [
+      ['JOYSTICK', 'Zielen, das Schiff folgt'], ['SCHUB', 'Schub an, aus'], ['BOOST', 'halten: Boost'],
+      ['LASER', 'Feuerleitrechner an, aus (führt die Zielrichtung)'], ['RAKETE', 'Rakete aufs Ziel'], ['ZIEL', 'Nächster Gegner'],
+      ['DOCK', 'Andocken, springen, Beute'], ['HEIM', 'Autopilot zur Station'], ['ANSICHT', 'Verfolger, Cockpit, Taktik'],
+    ]],
+    ['TOUCH · TAKTIK', [['JOYSTICK', 'Fliegen'], ['TIPPEN', 'Hinfliegen, Gegner wählen'], ['2× TIPPEN', 'Angriff'], ['2 FINGER', 'Zoom']]],
+  ];
+}
+/** Flugpraxis im 3D-Flug (Mission Control → STEUERUNG): Abläufe, die keine einzelne Taste sind */
+export function flightPractice() {
+  const k = (a) => keyName(a);
+  return [
+    [`${k('context')} AM TOR`, 'Springen: das Sprungfeld fängt das Schiff auch aus voller Fahrt und hält es beim Aufladen; Boost reißt heraus und bricht ab'],
+    ['SEKTORRAND', 'Kein Schaden: ab 83 % warnt das HUD, jenseits bremst ein Navigationsfeld und schiebt zurück. Höhe ±4.000 m (Heimat), sonst ±4.500 m'],
+    ['KURVENKAMPF', 'Gegner setzen sich ins Heck und weichen unter Beschuss aus: wenden, seitlich schieben, mit Boost aus dem Feuer'],
+    [`${k('autofire')}`, 'Feuerleitrechner: feuert gewürfelt und führt die Zielrichtung, solange du nicht selbst zielst; Handzielen trifft stärker'],
+    ['RAUTE', 'Vorhalt: dorthin zielen, wo der Gegner sein wird. Leuchtet sie, schwenken die Laser selbst auf die Marke'],
+    ['HORIZONT', 'Am Controller richtet sich das Schiff in Ruhe waagrecht aus (abschaltbar), mit Maus zuschaltbar'],
+  ];
+}
 export function padHelp() {
   return [
     ['LS', 'Schub vor/zurück, seitlich'], ['RS', 'Zielen: Fadenkreuz kurz vor dem Bug, das Schiff folgt'], ['LB / RB', 'rollen'],

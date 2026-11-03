@@ -55,7 +55,10 @@ export class PadFlight {
         if (!e || e.id === input.world.player?.id) return;
         const pl = input.world.player;
         if (!pl) return;
-        const d = Math.hypot(e.x - pl.x, e.z - pl.z);
+        // räumlicher Abstand (3D-Flug): Explosionen 800 m über dem Spieler rumpeln nicht mehr wie nebenan
+        const ent = e.y == null && input.world.entities ? input.world.entities.get(e.id) : null;
+        const ey = e.y != null ? e.y : ent ? ent.y || 0 : pl.y || 0;
+        const d = Math.hypot(e.x - pl.x, e.z - pl.z, input.world.flight3d ? ey - (pl.y || 0) : 0);
         if (d > 900) return;
         const k = Math.min(1, (e.size || 1) * 0.35) * (1 - d / 900);
         if (k > 0.06) pad.rumble(0.7 * k, 0.4 * k, 160 + 200 * k);
@@ -186,7 +189,9 @@ export class PadFlight {
       // Zielhilfe: Zielbremse und Mitnahme der Vorhaltemarke, nur mit Stickeingabe (FLUGMODELL.md 5.3)
       const A = this._assist(w, fi, dt, mag, F.precise);
       if (F.rateMode) {
-        // Drehraten (Standard): Stick = Schiffsdrehrate, Fadenkreuz = Bug – nichts läuft voraus, nichts dreht nach.
+        // Drehraten (Wahl in den Einstellungen; Standard ist „Zielrichtung“): Stick = Schiffsdrehrate, Fadenkreuz = Bug,
+        // nichts läuft voraus. Nach dem Loslassen dreht das Schiff nur seinen Bremsweg nach (S1 ω²/2α ≈ 9°), wie im
+        // Zielrichtungs-Modus mit kurzem Vorlauf.
         // Zielhilfe: Zielbremse auf die Stickrate, Mitnahme als zusätzliche Drehrate zur Vorhaltemarke hin.
         F.rp = -ry * sens * A.brake; F.ry = -rx * sens * A.brake;
         if (A.follow > 0 && this._pipDir && w.fl) {

@@ -139,6 +139,9 @@ export class CameraRig {
   refresh() {
     const s = readCamSettings();
     this._apply(s);
+    // ?flug=taktik|3d erzwingt die Ansicht für die ganze Sitzung (bis V): früher stellte diese Prüfung je Sekunde die
+    // gespeicherte Wahl wieder her, und ?flug=taktik hielt keine Sekunde (tief.mjs --flug=taktik lief im 3D-Flug)
+    if (this.forced) { this.mode = this.forced.mode; this.cockpit = this.forced.cockpit; this.cockpitFov = s.cockpitFov; return; }
     if (s.mode !== this.mode) this.mode = s.mode;
     this.cockpit = s.cockpit;
     this.cockpitFov = s.cockpitFov;
@@ -156,6 +159,7 @@ export class CameraRig {
   }
   /** Taste V: Verfolger → Cockpit → Taktisch → Verfolger, Wahl speichern. Gibt die neue Ansicht zurück. */
   toggle() {
+    this.forced = null;
     if (this.mode === 'chase' && !this.cockpit) this.cockpit = true;
     else if (this.cockpit) { this.cockpit = false; this.mode = 'tactical'; }
     else this.mode = 'chase';

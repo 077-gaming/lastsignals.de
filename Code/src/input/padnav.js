@@ -199,6 +199,28 @@ export class PadNav {
       pool.push({ el: x.el, main: Math.max(-8, main), side, off });
     }
     if (!pool.length) return;
+    // Einstellungszeilen (Auswahlgruppen) zeilenweise: ▴▾ springt in die nächste Zeile darüber/darunter und dort auf die
+    // gewählte Stufe. Vorher suchte ▴ das räumlich nächste Feld: von ZIELHILFE „HOCH“ landete man bei SICHTFELD 90°
+    // (die kurze Zeile RECHTER STICK dazwischen war nur über ◂◂◂ erreichbar).
+    const row = dir <= 2 && a && a.closest ? a.closest('[role="radiogroup"]') : null;
+    if (row) {
+      const RR = row.getBoundingClientRect(), sp0 = scrollParent(a);
+      let bu = null, bm = Infinity;
+      for (const x of pool) {
+        const g = x.el.closest('[role="radiogroup"]');
+        if (g === row) continue;
+        const u = g || x.el, r = u.getBoundingClientRect();
+        const main = dir === 1 ? RR.top - r.bottom : r.top - RR.bottom;
+        if (main < -8) continue;
+        const v = main + (scrollParent(x.el) === sp0 ? 0 : 2000);
+        if (v < bm - 1) { bm = v; bu = { g, el: x.el }; }
+      }
+      if (bu) {
+        if (bu.g) { const on = bu.g.querySelector('.on, [aria-checked="true"]'); this.focus(on && visible(on) ? on : bu.el); }
+        else this.focus(bu.el);
+        return;
+      }
+    }
     // Erst in derselben Rollfläche bleiben (Liste, Inhalt, Leiste), dann im Strahl das nächste, sonst gewichtet
     const sp = scrollParent(a);
     const same = pool.filter((x) => scrollParent(x.el) === sp);

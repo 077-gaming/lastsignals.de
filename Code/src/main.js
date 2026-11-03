@@ -151,8 +151,9 @@ function playSession(profile, opts = {}) {
     const guide = new SystemGuide(hudRoot, series, world, story);
     const contracts = new Contracts(world, bus); // Tages- und Wochenaufträge
     // ?flug=taktik: im Taktikmodus starten (alter Klickflug), ?flug=3d: im 3D-Flug (Verfolger)
-    if (Q.get('flug') === 'taktik' && renderer.rig.mode !== 'tactical') { renderer.rig.mode = 'tactical'; renderer.rig.cockpit = false; renderer.rig.k = renderer.rig.kRaw = 0; }
-    else if (Q.get('flug') === '3d' && renderer.rig.mode !== 'chase') { renderer.rig.mode = 'chase'; renderer.rig.k = renderer.rig.kRaw = 1; }
+    // (rig.forced: gilt bis zum ersten V, die gespeicherte Kamerawahl bleibt unberührt)
+    if (Q.get('flug') === 'taktik') { renderer.rig.forced = { mode: 'tactical', cockpit: false }; if (renderer.rig.mode !== 'tactical') { renderer.rig.mode = 'tactical'; renderer.rig.cockpit = false; renderer.rig.k = renderer.rig.kRaw = 0; } }
+    else if (Q.get('flug') === '3d') { renderer.rig.forced = { mode: 'chase', cockpit: renderer.rig.cockpit && renderer.rig.mode === 'chase' }; if (renderer.rig.mode !== 'chase') { renderer.rig.mode = 'chase'; renderer.rig.k = renderer.rig.kRaw = 1; } }
     world.setFlight3d(renderer.cameraMode === 'chase');
     // Feuerleitrechner (Autofeuer): auf Touch-Geräten Standard (Flug vereinfacht), sonst Strg rechts
     world.autofireDefault = fs0.autofire != null ? fs0.autofire : isTouchOnly();

@@ -4,18 +4,26 @@
 // (Gerät → Rahmen → Simulation; Controller und Touch schreiben über dieselben Felder).
 import { C, BTN, EDGE, aimAxes } from '../flight/core.js';
 import { qFromAxisAngle, qRot, fwdOf, vAngle } from '../flight/math3.js';
-import { clampCone } from '../flight/aim.js';
-import { LOCK_TIME, LOCK_CONE } from '../flight/params.js';
+import { clampCone, leadTime } from '../flight/aim.js';
+import { LOCK_TIME, LOCK_CONE, BOLT_SPEED } from '../flight/params.js';
 import { FLIGHT, matches, codeOf } from './bindings.js';
 import { flightSettings, isTouchOnly } from './flightsettings.js';
 import { synth } from './padnav.js';
 
 const D = Math.PI / 180;
 const HOLD_MODE = 0.3, TAP_E = 0.25, ALT_FREE = 0.25;
+// Touch-Joystick zielt wie der rechte Stick am Controller (padflight.js AIM_LEAD/PAD_LEAD)
+const TOUCH_RATE = 140, AIM_LEAD = 1.25, PAD_LEAD = 1.1;
 // Im Vollbild fängt die Tastatursperre (Chromium) Strg+W/T/N/Tab ab, die sonst den Tab schließen bzw. wechseln
 const LOCK_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyT', 'KeyN', 'KeyQ', 'KeyE', 'Tab'];
 const _q = new Float64Array(4), _t = new Float64Array(3), _n = new Float64Array(3), _r = new Float64Array(3), _u = new Float64Array(3);
-const MOVE_KEYS = new Set(['KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space', 'ControlLeft', 'KeyQ', 'KeyE']);
+// Gehaltene Tasten kommen aus der Belegungstabelle (bindings.js FLIGHT), nicht aus festem e.code: Umbelegen wirkt so
+// überall (Runde 2: update() las W/A/S/D/Leertaste/Strg/Q/E/Umschalt/X fest)
+const HELD = ['fwd', 'back', 'left', 'right', 'up', 'down', 'rollL', 'rollR', 'boost', 'brake', 'look', 'free'];
+const heldCodes = () => { const m = new Map(); for (const a of HELD) for (const c of FLIGHT[a] || []) if (!c.includes('+')) m.set(c, a); return m; };
+const FREE_CODES = new Set(['AltLeft', 'AltRight']); // Option links und rechts geben den Zeiger frei
+// Einzeltasten: Taste aus der Tabelle ohne Alt (Umschalt für Boost darf gehalten sein: F im Boost dockt weiter)
+const tap = (e, a) => !e.altKey && (FLIGHT[a] || []).some((c) => !c.includes('+') && c === e.code);
 
 export class FlightInput {
   constructor(input) {
@@ -23,6 +31,8 @@ export class FlightInput {
     this.canvas = input.canvas;
     this.aim = new Float64Array([0, 0, -1]);   // Zielrichtung (Welt), Fadenkreuz
     this.keys = new Set();
+    this.codes = heldCodes();   // e.code → Handlung (gehaltene Tasten)
+    this.act = new Set();       // gehaltene Handlungen
     this.locked = false; this.wantLock = false; this.lockFailed = false; this._quiet = false;
     this.fire = false; this.fireCtrl = false; this.rmb = false; this.look = false;
     this.lockT = 0; this.lockId = null; this.locked2 = false;   // Raketen-Aufschaltung
@@ -48,6 +58,13 @@ export class FlightInput {
     this._onResume = (e) => {
       // „Weiter“ im Bordmenü ist eine Nutzergeste: Zeiger gleich wieder fangen
       if (e.target && e.target.closest && e.target.closest('[data-act="resume"], [data-act="close"]') && this.active()) setTimeout(() => this.requestLock(), 0);
+      // Wahl im ersten Flug („Geführter Einstieg“ / „Direkt spielen“) ist ebenfalls eine Nutzergeste: fangen, sobald die
+      // Karte zu ist (vorher fing ein Klick ins Bild nichts, solange die Wahl offen war, und die Maus lenkte still)
+      else if (e.target && e.target.closest && e.target.closest('[data-act="guided"], [data-act="direct"]') && this.active()) {
+        let n = 0;
+        const tryLock = () => { if (!this.active()) return; if (this.input.menuOpen && this.input.menuOpen()) { if (++n < 20) setTimeout(tryLock, 50); return; } this.requestLock(); };
+        setTimeout(tryLock, 0);
+      }
     };
     window.addEventListener('click', this._onResume, true);
     this._onFull = () => {
@@ -97,6 +114,8 @@ export class FlightInput {
   onMove(e) {
     if (!this.active()) return;
     const mx = e.movementX || 0, my = e.movementY || 0;
+    // offene Ebene (Bordmenü, Wahl im ersten Flug, Dialog): die Maus bedient die Ebene und lenkt nicht
+    if (this.input.menuOpen && this.input.menuOpen()) { this.vx = this.vy = 0; return; }
     if (!this.locked) {
       // ohne Zeigerfang (noch nicht geklickt, abgelehnt): Zeigerausschlag aus der Bildmitte als virtueller Stick
       if (e.target !== this.canvas) { this.vx = this.vy = 0; return; }
@@ -165,6 +184,11 @@ export class FlightInput {
   mouseDown(e) {
     if (!this.active()) return false;
     if (this.touchOnly() && e.pointerType === 'touch') return false;
+    if (this.input.menuOpen && this.input.menuOpen()) {
+      // Klick ins Bild, solange eine Ebene offen ist (z. B. die Wahl im ersten Flug): Hinweis statt stiller Lenkung
+      if (e.target === this.canvas) this.menuHintAt = performance.now();
+      return e.target === this.canvas;
+    }
     if (!this.locked) {
       // erster Klick auf die Spielfläche fängt den Zeiger (Nutzergeste), feuert aber nicht. Nach einem abgelehnten
       // Fang (z. B. Neufang nach Alt ohne Nutzergeste) versucht es der nächste Klick noch einmal; erst nach zwei
@@ -205,49 +229,49 @@ export class FlightInput {
     // Strg+A Alles markieren …) im Flug abfangen. Strg+W/T/N lässt Chrome nur im Vollbild mit Tastatursperre abfangen
     // (keyboardLock), sonst sichert die Rückfrage „Seite verlassen?“ (main.js) ab.
     if (e.ctrlKey && e.code !== 'ControlRight') e.preventDefault();
-    if (MOVE_KEYS.has(e.code) || e.code === 'ShiftLeft' || e.code === 'KeyX' || e.code === 'KeyZ' || e.code === 'AltLeft') {
-      if (e.code === 'Space' || e.code === 'ControlLeft' || e.code === 'AltLeft') e.preventDefault();
-      if (e.code === 'KeyE' && !e.repeat) { this.eDown = performance.now(); this.eRolled = false; }
-      if (e.code === 'KeyZ' && !e.repeat) { this.look = true; this.renderer.rig.looking = true; }
+    const held = this.codes.get(e.code) || (FREE_CODES.has(e.code) ? 'free' : null);
+    if (held) {
+      if (e.code === 'Space' || e.code === 'ControlLeft' || held === 'free') e.preventDefault();
+      if (held === 'rollR' && !e.repeat) { this.eDown = performance.now(); this.eRolled = false; }
+      if (held === 'look' && !e.repeat) { this.look = true; this.renderer.rig.looking = true; }
       // Alt/Option allein gehalten gibt den Zeiger frei – aber erst nach 0,25 s ohne weitere Taste, damit Alt+C
       // (Kopplung) und Alt+Mausrad den Zeigerfang nicht lösen (Mac: sonst jedes Mal Hinweis und neuer Fang)
-      if (e.code === 'AltLeft' && !e.repeat) { this.altDown = performance.now(); this.altUsed = false; this.altFreed = false; }
-      else if (this.altDown >= 0 && e.code !== 'AltLeft') this.altUsed = true;
-      this.keys.add(e.code);
+      if (held === 'free' && !e.repeat) { this.altDown = performance.now(); this.altUsed = false; this.altFreed = false; }
+      else if (this.altDown >= 0 && held !== 'free') this.altUsed = true;
+      this.keys.add(e.code); this.act.add(held);
       return true;
     }
     if (this.altDown >= 0) this.altUsed = true;
-    if (e.repeat) return e.code === 'KeyB' || e.code === 'Tab';
+    if (e.repeat) return e.code === codeOf('mode') || e.code === codeOf('next');
     if (matches(e, 'couple')) { this.edge |= EDGE.COUPLE; return true; }
-    switch (e.code) {
-      case 'KeyC': this.edge |= EDGE.CRUISE; return true;
-      case 'KeyB': this.bDown = performance.now(); return true;
-      case 'KeyN': this.edge |= EDGE.LAND; return true;
-      case 'KeyF': inp.context(); return true;
-      case 'KeyJ': w.tryJump(); return true;
-      case 'KeyT': this.targetUnderAim(); return true;
-      case 'Tab': e.preventDefault(); inp.cycleTarget(e.shiftKey ? -1 : 1); return true;
-      case 'ControlRight': case 'KeyK': e.preventDefault(); inp.attack(); return true; // Feuerleitrechner (K: MacBook ohne Strg rechts)
-      case 'KeyR': inp.rocket(); return true;
-      default: return false;
-    }
+    if (tap(e, 'cruise')) { this.edge |= EDGE.CRUISE; return true; }
+    if (tap(e, 'mode')) { this.bDown = performance.now(); return true; }
+    if (tap(e, 'landing')) { this.edge |= EDGE.LAND; return true; }
+    if (tap(e, 'context')) { inp.context(); return true; }
+    if (tap(e, 'jump')) { w.tryJump(); return true; }
+    if (tap(e, 'aimTarget')) { this.targetUnderAim(); return true; }
+    if (e.code === codeOf('next')) { e.preventDefault(); inp.cycleTarget(e.shiftKey ? -1 : 1); return true; }
+    if (FLIGHT.autofire.includes(e.code)) { e.preventDefault(); inp.attack(); return true; } // Feuerleitrechner (K: MacBook ohne Strg rechts)
+    if (tap(e, 'rocket')) { inp.rocket(); return true; }
+    return false;
   }
   keyUp(e) {
     this.keys.delete(e.code);
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.delete('ShiftLeft');
-    if (e.code === 'KeyZ' && this.look && !this._mmb) { this.look = false; if (this.renderer.rig) this.renderer.rig.looking = false; }
-    if (e.code === 'AltLeft') {
+    this._syncAct();
+    if (this.codes.get(e.code) === 'look' && this.look && !this._mmb) { this.look = false; if (this.renderer.rig) this.renderer.rig.looking = false; }
+    if (FREE_CODES.has(e.code)) {
       // Fang nur neu anfordern, wenn Alt ihn wirklich gelöst hat (Alt+C, Alt+Mausrad lassen ihn stehen)
       const freed = this.altFreed;
       this.altDown = -1; this.altFreed = false;
       if (freed && this.active()) this.requestLock();
     }
-    if (e.code === 'KeyB' && this.bDown >= 0) {
+    if (e.code === codeOf('mode') && this.bDown >= 0) {
       const held = (performance.now() - this.bDown) / 1000;
       this.bDown = -1;
       if (held < HOLD_MODE && !this.world.docked) this.input.bus.emit('remoteShop', {}); // B kurz: Fernhandel wie bisher
     }
-    if (e.code === 'KeyE' && this.eDown >= 0) {
+    if (e.code === codeOf('rollR') && this.eDown >= 0) {
       // E kurz getippt und eindeutiger Kontext (sichere Zone, Tor): Andocken/Springen wie bisher (Umsteiger)
       const held = (performance.now() - this.eDown) / 1000;
       this.eDown = -1;
@@ -255,7 +279,9 @@ export class FlightInput {
       if (held < TAP_E && w && !w.docked && (w.inSafeZone || w.nearPortal)) this.input.context();
     }
   }
-  release() { this.keys.clear(); this.fire = false; this.rmb = false; this.vx = this.vy = 0; this.look = false; this.altDown = -1; this.altFreed = false; }
+  /** gehaltene Handlungen aus den gehaltenen Tasten neu bilden (zwei Tasten können dieselbe Handlung tragen) */
+  _syncAct() { this.act.clear(); for (const c of this.keys) { const a = this.codes.get(c) || (FREE_CODES.has(c) ? 'free' : null); if (a) this.act.add(a); } }
+  release() { this.keys.clear(); this.act.clear(); this.fire = false; this.rmb = false; this.vx = this.vy = 0; this.look = false; this.altDown = -1; this.altFreed = false; }
 
   /** Ziel unter dem Fadenkreuz (T, A am Controller): kleinster Winkel bis 12°, sonst nächstes im Blickkegel */
   targetUnderAim() {
@@ -283,17 +309,17 @@ export class FlightInput {
     this.wantLock = !this.touchOnly() && !menu && !this.altFreed;
     this.clickHint = this.wantLock && !this.locked && !this.pad?.active && !this.touch?.active;
     if (menu && this.locked) this.exitLock(true);
-    const k = this.keys, pad = this.pad && this.pad.active ? this.pad : null, tch = this.touch && this.touch.active ? this.touch : null;
-    let tx = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
-    let ty = (k.has('Space') ? 1 : 0) - (k.has('ControlLeft') ? 1 : 0);
-    let tz = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
-    let rr = (k.has('KeyQ') ? 1 : 0) - (k.has('KeyE') ? 1 : 0);
-    if (k.has('KeyE') && this.eDown >= 0 && performance.now() - this.eDown < TAP_E * 1000) rr = Math.max(0, rr); // kurzer E-Tipp: noch nicht rollen
+    const k = this.act, pad = this.pad && this.pad.active ? this.pad : null, tch = this.touch && this.touch.active ? this.touch : null;
+    let tx = (k.has('right') ? 1 : 0) - (k.has('left') ? 1 : 0);
+    let ty = (k.has('up') ? 1 : 0) - (k.has('down') ? 1 : 0);
+    let tz = (k.has('fwd') ? 1 : 0) - (k.has('back') ? 1 : 0);
+    let rr = (k.has('rollL') ? 1 : 0) - (k.has('rollR') ? 1 : 0);
+    if (k.has('rollR') && this.eDown >= 0 && performance.now() - this.eDown < TAP_E * 1000) rr = Math.max(0, rr); // kurzer E-Tipp: noch nicht rollen
     let btn = 0;
-    if (k.has('ShiftLeft')) btn |= BTN.BOOST;
-    if (k.has('KeyX')) btn |= BTN.BRAKE;
+    if (k.has('boost')) btn |= BTN.BOOST;
+    if (k.has('brake')) btn |= BTN.BRAKE;
     if (this.fire && (this.locked || this.lockFailed)) btn |= BTN.FIRE;
-    if (k.has('ControlLeft') && st.landing && !this.fire) btn |= BTN.AUTOLAND;
+    if (k.has('down') && st.landing && !this.fire) btn |= BTN.AUTOLAND;
     // B halten: KAMPF / REISE
     if (this.bDown >= 0 && performance.now() - this.bDown > HOLD_MODE * 1000) { this.edge |= EDGE.MODE; this.bDown = -1; }
     let aimMode = 1, rp = 0, ry = 0;
@@ -310,12 +336,25 @@ export class FlightInput {
     if (tch) {
       tz = Math.max(tz, tch.throttle); if (tch.fire) btn |= BTN.FIRE; if (tch.boost) btn |= BTN.BOOST;
       if (tch.ax || tch.ay) {
-        // Joystick zielt (Drehrate der Zielrichtung, wie der rechte Stick)
-        const R = 140 * dt / (this.set.sens * D);
+        // Joystick zielt wie der rechte Stick (padflight.js): Zielrichtung mit höchstens 1,25 × Schiffsdrehrate
+        // (bzw. 140 °/s), kurzer Vorlauf vor dem Bug. turnAim rechnet Pixel × sens × D, deshalb hier °/s · dt / sens.
+        // (Früher 140 · dt / (sens · D): 140 rad/s statt 140 °/s, das Fadenkreuz sprang bei jeder Auslenkung an den
+        // Rand des Lenkkegels, und das Schiff drehte nach dem Loslassen noch über 30° nach.)
+        const rate = Math.min(TOUCH_RATE, (w.flP.rate / D) * AIM_LEAD);
+        const R = rate * dt / this.set.sens;
         this.turnAim(tch.ax * Math.abs(tch.ax) * R, tch.ay * Math.abs(tch.ay) * R);
+        this.clampAimTo(PAD_LEAD * w.flP.rate / (w.flP.kp || 1));
       }
     }
-    if (!this.locked && !pad && !tch) {
+    if (menu) { this.vx = this.vy = 0; }
+    // Feuerleitrechner führt (Runde 2, Barrierefreiheit und Touch): Ist das Autofeuer an und zielt der Spieler 0,5 s
+    // nicht selbst, dreht die Zielrichtung mit Schiffsdrehrate zur Vorhaltemarke des Ziels – sonst lag das Ziel nie
+    // im Kegel des Rechners (tiefe Sektoren: 0 Schüsse). Eigene Mausbewegung, Stick oder Joystick übernehmen sofort.
+    const aimIn = this.moved > 3 || (pad && pad.aimInput) || (tch && (tch.ax || tch.ay)) || Math.hypot(this.vx, this.vy) >= 0.06;
+    this._aimIdle = aimIn ? 0 : (this._aimIdle || 0) + dt;
+    const autoAim = p.attacking && !p.hasMove && this._aimIdle > 0.5 && !(pad && pad.rateMode) && !(this.locked && this.set.mouse === 'vjoy' && !pad);
+    if (autoAim) { aimMode = 1; this._autoAim(dt); }
+    else if (!this.locked && !pad && !tch) {
       // virtueller Stick (Zeiger in der Bildmitte, noch ohne Zeigerfang): Drehrate statt Zielrichtung
       aimMode = 0;
       const dz = 0.06, mag = Math.hypot(this.vx, this.vy);
@@ -353,7 +392,20 @@ export class FlightInput {
     // Gerät für den Waffenkegel der Zielhilfe: 0 Maus, 1 Controller, 2 Controller mit LT, 3 Touch
     c[C.DEV] = tch ? 3 : pad ? (pad.precise ? 2 : 1) : 0;
     // Touch („Flug vereinfacht“): Kurvenrollen und Horizont-Hilfe immer an (FLUGMODELL.md 5.4)
-    st.autoRoll = this.set.autoRoll || !!tch; st.horizon = this.set.horizon || !!tch;
+    // Controller: Horizont-Hilfe in Ruhe standardmäßig an (padHorizon), sonst hängt das Schiff nach Kurven mit dem
+    // rechten Stick schief (6 Freiheitsgrade: Kreisen rollt das Schiff) und LB/RB müssen es gerade rollen
+    st.autoRoll = this.set.autoRoll || !!tch; st.horizon = this.set.horizon || !!tch || (!!pad && this.set.padHorizon);
+  }
+  /** Zielrichtung zur Vorhaltemarke des aufgeschalteten Ziels drehen (Feuerleitrechner führt) */
+  _autoAim(dt) {
+    const w = this.world, p = w.player, t = p.targetId != null ? w.entities.get(p.targetId) : null;
+    if (!t || t.alive === false || !(t.kind === 'enemy' || (t.kind === 'player' && t.pvpOk))) return;
+    const rx = t.x - p.x, ry = (t.y || 0) - p.y, rz = t.z - p.z;
+    if (Math.hypot(rx, ry, rz) > 4000) return;
+    const lt = Math.max(0, leadTime(rx, ry, rz, t.vx || 0, t.vy || 0, t.vz || 0, BOLT_SPEED));
+    _t[0] = rx + (t.vx || 0) * lt; _t[1] = ry + (t.vy || 0) * lt; _t[2] = rz + (t.vz || 0) * lt;
+    const l = Math.hypot(_t[0], _t[1], _t[2]) || 1; _t[0] /= l; _t[1] /= l; _t[2] /= l;
+    this.turnToward(_t, (w.flP.rate || 1) * 1.1 * dt);
   }
   lockCandidate() {
     const w = this.world, p = w.player;

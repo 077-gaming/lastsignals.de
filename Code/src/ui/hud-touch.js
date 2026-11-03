@@ -46,6 +46,8 @@ export class HudTouch {
     const up = (e) => { const b = e.target.closest && e.target.closest('[data-code="Boost"]'); if (b || this.boost) { this.boost = false; el.querySelector('[data-code="Boost"]')?.classList.remove('is-hit'); } };
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('pointerleave', up);
     this.boost = false; this.throttle = 0.7;
+    // Schub liegt beim Start an: Knopf zeigt das (früher ohne is-on, der Knopf sah AUS aus, das Schiff flog 238 m/s)
+    el.querySelector('[data-code="Throttle"]')?.classList.toggle('is-on', this.throttle > 0);
     if (input && input.fi) input.fi.touch = this.t3 = { active: false, ax: 0, ay: 0, fire: false, boost: false, throttle: 0 };
     document.body.appendChild(el); // über der Spielfläche (im HUD-Container lag sie unter der Leinwand)
 
@@ -119,7 +121,9 @@ export class HudTouch {
       inp.mouseOnCanvas = true; inp.mouseDown = Math.hypot(this.jx, this.jy) > 0.2;
     }
     const t = p.targetId ? w.entities.get(p.targetId) : null;
-    if (!t || !t.alive || w.docked) { this.tg.className = 'ht-tgt'; return; }
+    // 3D-Flug: Zielklammer, Zielschild und Peilmarke zeichnet das Flug-HUD (hud-mid); die zweite Touch-Anzeige lag
+    // darüber und machte „RAIDER“, „286 m · FEUER“ und die Trefferzahl unleserlich (Runde 2)
+    if (!t || !t.alive || w.docked || f3) { this.tg.className = 'ht-tgt'; return; }
     const s = r.toScreen(t.x, t.z, this._s, r.ry ? r.ry(t.y) : 0), W = innerWidth, H = innerHeight, m = 60;
     const d = Math.hypot(t.x - p.x, t.z - p.z, f3 ? (t.y || 0) - p.y : 0);
     this.tg.lastChild.textContent = (d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m') + (p.attacking ? ' · FEUER' : '');

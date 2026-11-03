@@ -7,21 +7,23 @@ export const FLIGHT_DEFAULT = Object.freeze({
   invertY: false,
   cone: 30,            // Lenkkegel: so weit darf das Fadenkreuz vom Bug abweichen (Grad, 15–70)
   cam: 'mix',          // 'mix' 35 % Zielrichtung | 'aim' Kamera folgt der Zielrichtung
-  camRoll: 0.7,        // Anteil, mit dem die Verfolgerkamera das Rollen mitmacht
+  camRoll: 1,          // Anteil, mit dem die Verfolgerkamera das Rollen mitmacht (Runde 2: 1 – bei 0,7 drehte die Kamera in
+                       // Rückenlage mit 1,75-facher, in Normallage mit 0,7-facher Rollrate; ungleichmäßig)
   fov: 70,             // Sichtfeld Verfolger (55–90)
   autoRoll: false,     // Kurvenrollen (Hilfe zum Zuschalten; Touch immer an)
   horizon: false,      // Horizont-Hilfe in Ruhe (Hilfe zum Zuschalten; Touch immer an)
+  padHorizon: true,    // Horizont-Hilfe in Ruhe am Controller (Runde 2: nach Kurven mit dem Stick hing das Schiff schief)
   assist: 2,           // Zielhilfe Controller 0 AUS, 1 NIEDRIG, 2 STANDARD, 3 HOCH
   padMode: 'aim',      // Controller: 'aim' Stick bewegt die Zielrichtung, kurzer Vorlauf (Standard) | 'rate' Stick = Drehrate
   autofire: null,      // Feuerleitrechner beim Start an (null = auf Touch-Geräten an)
   enemyBolts: false,   // Etappe 2: echte Gegnerbolzen
   hint: true,          // Hinweise im ersten Flug
   migrated: false,     // alte Kamerawahl „taktisch“ einmalig auf den neuen Hauptmodus umgestellt
-  rev: 2,              // Stand der Voreinstellungen (2: Kurvenrollen/Horizont aus, Controller mit kurzem Vorlauf)
+  rev: 3,              // Stand der Voreinstellungen (2: Kurvenrollen/Horizont aus, Controller mit kurzem Vorlauf; 3: Kamera rollt voll mit)
 });
 export const FLIGHT_CHOICES = {
   mouse: ['aim', 'vjoy'], sens: [0.04, 0.055, 0.07, 0.09, 0.12], cone: [15, 22, 30, 45, 70], cam: ['mix', 'aim'],
-  fov: [60, 70, 80, 90], autoRoll: [true, false], horizon: [true, false], assist: [0, 1, 2, 3], padMode: ['aim', 'rate'],
+  fov: [60, 70, 80, 90], autoRoll: [true, false], horizon: [true, false], padHorizon: [true, false], assist: [0, 1, 2, 3], padMode: ['aim', 'rate'],
   invertY: [false, true], enemyBolts: [false, true],
 };
 let cache = null;
@@ -33,9 +35,10 @@ export function flightSettings() {
     if (raw && typeof raw === 'object') {
       // Stand 1 speicherte die alten Voreinstellungen mit (Kurvenrollen, Horizont-Hilfe, Controller „Zielrichtung“):
       // diese drei einmalig auf die neuen Werte, alles andere bleibt
-      const old = !(raw.rev >= 2);
+      const old = !(raw.rev >= 2), old3 = !(raw.rev >= 3);
       for (const k in FLIGHT_DEFAULT) {
         if (old && (k === 'autoRoll' || k === 'horizon' || k === 'padMode' || k === 'rev')) continue;
+        if (old3 && (k === 'camRoll' || k === 'rev')) continue;
         if (k in raw && typeof raw[k] === typeof FLIGHT_DEFAULT[k] || (k === 'autofire' && (raw[k] === true || raw[k] === false))) s[k] = raw[k];
       }
     }

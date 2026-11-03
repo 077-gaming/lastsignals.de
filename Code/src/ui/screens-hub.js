@@ -2,7 +2,7 @@
 // oben eine schlanke Pilotenleiste, links die Bereiche als Liste mit großen Symbolen, in der Mitte immer nur EIN Bereich.
 // Start = 3D-Szene (Heimatstation, eigenes Schiff) mit großem START-Knopf und drei Kurzinfos. Jeder andere Bereich:
 // klare Überschrift, wenige große Kacheln, Details erst auf Klick. Bildsprache: Planung/UI_STIL.md.
-import { flightHelp } from '../input/bindings.js';
+import { flightHelp, flightPractice, touchHelp } from '../input/bindings.js';
 import { wireInstall } from './install.js';
 import { newCode, waitForHost } from '../net/coop.js';
 import {
@@ -840,6 +840,20 @@ function einstView(P, ctx) {
         ${sub('VS', 'VORSCHAU HUD')}
         ${hudPreview()}
       </section>
+      <!-- Controller links (Runde 2): rechts stand alles untereinander, links blieb beim Scrollen eine leere Hälfte -->
+      <section class="ak-sec">
+        ${sub('CT', 'CONTROLLER', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}
+        <div class="mc-set st-set">
+          ${setRow('RECHTER STICK', 'Zielrichtung: der Stick schiebt das Fadenkreuz kurz vor den Bug, das Schiff folgt sofort. Drehrate: der Stick dreht das Schiff direkt.', seg('fl.padMode', [['aim', 'ZIELRICHTUNG'], ['rate', 'DREHRATE']], fs.padMode))}
+          ${setRow('HORIZONT-HILFE', 'Am Controller: in Ruhe richtet sich das Schiff langsam waagrecht aus, nie während eines Manövers.', seg('fl.padHorizon', [[false, 'AUS'], [true, 'AN']], fs.padHorizon))}
+          ${setRow('ZIELHILFE', 'Bremst nahe der Vorhaltemarke, zieht sanft mit und richtet die Laser im Waffenkegel auf die Marke. Gegen Spieler höchstens NIEDRIG.', seg('fl.assist', [[0, 'AUS'], [1, 'NIEDRIG'], [2, 'STANDARD'], [3, 'HOCH']], fs.assist))}
+          ${setRow('EMPFINDLICHKEIT', 'Lenken und Umsehen mit den Sticks.', seg('pad.sens', [[0.7, 'NIEDRIG'], [1, 'MITTEL'], [1.3, 'HOCH'], [1.6, 'SEHR HOCH']], ps.sens))}
+          ${setRow('Y-ACHSE UMKEHREN', 'Rechter Stick: nach oben drücken schaut nach unten.', seg('pad.invertY', [[false, 'AUS'], [true, 'AN']], ps.invertY))}
+          ${setRow('TOTZONE', 'Ab welchem Ausschlag die Sticks reagieren. Höher bei driftenden Sticks.', seg('pad.dead', [[0.08, '8 %'], [0.15, '15 %'], [0.22, '22 %'], [0.3, '30 %']], ps.dead))}
+          ${setRow('VIBRATION', 'Treffer am eigenen Schiff, Explosionen in der Nähe, Raketenstart.', seg('pad.rumble', [[true, 'AN'], [false, 'AUS']], ps.rumble))}
+        </div>
+        ${padMapHtml()}
+      </section>
     </div>
     <div class="st-c">
       <section class="ak-sec">
@@ -874,18 +888,6 @@ function einstView(P, ctx) {
           ${setRow('KAMERA', 'Verfolger: Mischung aus Bug und Zielrichtung oder ganz der Zielrichtung nach.', seg('fl.cam', [['mix', 'MISCHUNG'], ['aim', 'ZIELRICHTUNG']], fs.cam))}
         </div>
       </section>
-      <section class="ak-sec">
-        ${sub('CT', 'CONTROLLER', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}
-        <div class="mc-set st-set">
-          ${setRow('RECHTER STICK', 'Zielrichtung: der Stick schiebt das Fadenkreuz kurz vor den Bug, das Schiff folgt sofort. Drehrate: der Stick dreht das Schiff direkt.', seg('fl.padMode', [['aim', 'ZIELRICHTUNG'], ['rate', 'DREHRATE']], fs.padMode))}
-          ${setRow('ZIELHILFE', 'Bremst nahe der Vorhaltemarke, zieht sanft mit und richtet die Laser im Waffenkegel auf die Marke. Gegen Spieler höchstens NIEDRIG.', seg('fl.assist', [[0, 'AUS'], [1, 'NIEDRIG'], [2, 'STANDARD'], [3, 'HOCH']], fs.assist))}
-          ${setRow('EMPFINDLICHKEIT', 'Lenken und Umsehen mit den Sticks.', seg('pad.sens', [[0.7, 'NIEDRIG'], [1, 'MITTEL'], [1.3, 'HOCH'], [1.6, 'SEHR HOCH']], ps.sens))}
-          ${setRow('Y-ACHSE UMKEHREN', 'Rechter Stick: nach oben drücken schaut nach unten.', seg('pad.invertY', [[false, 'AUS'], [true, 'AN']], ps.invertY))}
-          ${setRow('TOTZONE', 'Ab welchem Ausschlag die Sticks reagieren. Höher bei driftenden Sticks.', seg('pad.dead', [[0.08, '8 %'], [0.15, '15 %'], [0.22, '22 %'], [0.3, '30 %']], ps.dead))}
-          ${setRow('VIBRATION', 'Treffer am eigenen Schiff, Explosionen in der Nähe, Raketenstart.', seg('pad.rumble', [[true, 'AN'], [false, 'AUS']], ps.rumble))}
-        </div>
-        ${padMapHtml()}
-      </section>
     </div>
   </div>`;
 }
@@ -896,6 +898,9 @@ const EINST = { overview: (P, store, ctx) => einstView(P, ctx), details: {} };
 const KEYS = [
   // Hauptmodus 3D-Flug (Verfolger, Cockpit): Belegung aus input/bindings.js
   ['flug3d', 'FLUG 3D', flightHelp().map(([k, t]) => [[k], t])],
+  // Flugpraxis und Touch (Runde 2): Sprung aus voller Fahrt, Sektorrand ohne Schaden, Kurvenkampf, Feuerleitrechner
+  ['praxis', 'FLUGPRAXIS 3D', flightPractice().map(([k, t]) => [[k], t])],
+  ['touch', 'TOUCH', touchHelp().flatMap(([g, rows]) => rows.map(([k, t]) => [[k], `${g.replace('TOUCH · ', '')}: ${t}`]))],
   ['flug', 'TAKTIK · DRAUFSICHT', [
     [['LMB'], 'Hinfliegen, Klick ins All'],
     [['LMB', 'HALTEN'], 'Dem Mauszeiger folgen'],

@@ -1,7 +1,8 @@
 // Bordmenü (Esc) als Seitenpanel links über die volle Höhe, mit Reitern FLUG, ANZEIGE, STEUERUNG, SYSTEM.
 // Die Szene bleibt dahinter sichtbar. Werte werden nur bei offenem Menü und höchstens 4-mal pro Sekunde geschrieben.
-import { flightHelp } from '../input/bindings.js';
-import { HOME_BAND, SECTOR_BAND, BAND_WARN, EDGE_GRACE } from '../flight/params.js';
+import { flightHelp, touchHelp } from '../input/bindings.js';
+import { isTouchOnly } from '../input/flightsettings.js';
+import { HOME_BAND, SECTOR_BAND, BAND_WARN } from '../flight/params.js';
 const fmtM = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 import { SHIPS, ENEMIES, AMMO } from '../core/data.js';
 import { TextSlot, ClassSlot, Bar, fmt } from './hud-parts.js';
@@ -42,11 +43,12 @@ const RULES = [
   ['ZIELEN', 'Bolzen fliegen 2.400 m/s. Die Raute vor dem Gegner zeigt den Vorhalt, dort hinzielen. Große Schiffe schwenken ihre Laser weiter (Kardan).'],
   ['GEKOPPELT', 'Der Flugrechner hält das Schiff auf Kurs und bremst Seitendrift. Entkoppelt (Alt+C) fliegt es auf dem letzten Vektor weiter.'],
   ['BOOST UND REISE', 'Boost hat einen Vorrat und lädt nach. REISE ist schneller, sperrt aber Waffen und Schildaufladung, im Kampf geht sie nicht.'],
-  ['HÖHE UND RAND', `Der Heimatsektor reicht ${fmtM(HOME_BAND)} m über und unter die Ebene der Station, alle anderen ${fmtM(SECTOR_BAND)} m. Ab ${Math.round(BAND_WARN * 100)} % warnt das HUD. Wer die Grenze überschreitet, hat ${EDGE_GRACE} Sekunden für den Rückweg, danach nimmt das Schiff Schaden.`],
+  ['HÖHE UND RAND', `Der Heimatsektor reicht ${fmtM(HOME_BAND)} m über und unter die Ebene der Station, alle anderen ${fmtM(SECTOR_BAND)} m. Ab ${Math.round(BAND_WARN * 100)} % warnt das HUD. Jenseits der Grenze bremst ein Navigationsfeld die Bewegung nach außen und schiebt das Schiff sanft zurück, ohne Schaden.`],
 ];
 
 // 3D-Flug (Hauptmodus, Verfolger und Cockpit): Tastennamen aus input/bindings.js; darunter die Taktik (Draufsicht)
 const CONTROLS3 = () => [['FLUG 3D · VERFOLGER UND COCKPIT', flightHelp()]];
+// Touch (Runde 2: am Handy zeigte der Reiter nur Maus und Tastatur): Knöpfe und Gesten aus bindings.js, auf Touch zuerst
 const CONTROLS = [
   ['TAKTIK · DRAUFSICHT', [
     ['LMB', 'Hinfliegen'],
@@ -90,7 +92,7 @@ function row(label, r, cls = '') {
 export function menuHtml(windows) {
   const tabs = TABS.map(([id, no, t], i) => `<button class="mp-tab${i ? '' : ' on'}" type="button" data-act="tab" data-tab="${id}"><i>${no}</i>${t}</button>`).join('');
   const wins = windows.map(([id, code, title, k], i) => `<div class="mp-win" data-mw="${id}"><span class="mp-wc">${code}</span><span class="mp-wt">${title}</span><span class="hg-sp"></span><span class="ls-key mp-wk">${k || '⇧' + (i + 1)}</span><button class="mp-sw" type="button" data-act="winvis" data-id="${id}"><i>AN</i><i>AUS</i></button></div>`).join('');
-  const ctrl = [...CONTROLS3(), ...CONTROLS].map(([g, rows]) => `<div class="mp-cg"><div class="mp-sec">${g}</div>${rows.map(([k, t]) => `<div class="mp-crow"><span class="ls-key">${esc(k)}</span><span>${esc(t)}</span></div>`).join('')}</div>`).join('');
+  const ctrl = [...(isTouchOnly() ? touchHelp() : []), ...CONTROLS3(), ...CONTROLS].map(([g, rows]) => `<div class="mp-cg"><div class="mp-sec">${g}</div>${rows.map(([k, t]) => `<div class="mp-crow"><span class="ls-key">${esc(k)}</span><span>${esc(t)}</span></div>`).join('')}</div>`).join('');
   return `
 <div class="hd-side" data-r="menu" role="dialog" aria-modal="true" aria-label="Bordmenü">
   <aside class="mp ls-panel">
