@@ -4,6 +4,11 @@
 //   open  = Reservierung per E-Mail offen (VITE_RESERVATION_OPEN=true)
 //   oauth = Google/Discord, die Supabase gerade meldet (GET /auth/v1/settings). Abschnitt erscheint erst dann.
 
+import { RELEASE } from './downloads.js';
+
+// Apps und GitHub-Downloads erst als verfügbar beschreiben, wenn das Release veröffentlicht ist
+const APPS = RELEASE.published;
+
 const OP = {
   name: '077 GAMING', owner: 'Antonio Geske', street: 'Tiedexer Tor 8B', city: '37574 Einbeck',
   phone: '+49 179 2275656', phoneHref: '+491792275656', mail: 'support@077-gaming.de',
@@ -60,7 +65,7 @@ const IMPRINT = `<h1>Imprint</h1>
 // Speicherorte im Browser (localStorage, außer wo anders angegeben). Quelle: Code/src und src (Stand 03.11.2026).
 const KEYS = {
   de: [
-    ['weltraumspiel.profiles.v1', 'dein Spielstand im Browser bzw. in der App: je Rufname Fraktion, Stufe, Fortschritt, Ausrüstung, Aufträge und Spielstatistik'],
+    ['weltraumspiel.profiles.v1', `dein Spielstand im Browser${APPS ? ' bzw. in der App' : ''}: je Rufname Fraktion, Stufe, Fortschritt, Ausrüstung, Aufträge und Spielstatistik`],
     ['weltraumspiel.profiles.v1.bak', 'der letzte gültige Spielstand als Sicherung (wird vor jedem Speichern angelegt)'],
     ['weltraumspiel.profiles.v1.corrupt.<Zeit>', 'nur falls ein Spielstand unlesbar war: die unlesbaren Rohdaten, damit nichts verloren geht'],
     ['weltraumspiel.last', 'der zuletzt gespielte Rufname'],
@@ -74,7 +79,7 @@ const KEYS = {
     ['ls.coop (sessionStorage)', 'die laufende Koop-Sitzung, bis der Tab geschlossen wird'],
   ],
   en: [
-    ['weltraumspiel.profiles.v1', 'your save game in the browser or app: per callsign faction, level, progress, gear, quests and game statistics'],
+    ['weltraumspiel.profiles.v1', `your save game in the browser${APPS ? ' or app' : ''}: per callsign faction, level, progress, gear, quests and game statistics`],
     ['weltraumspiel.profiles.v1.bak', 'the last valid save game as a backup (created before every save)'],
     ['weltraumspiel.profiles.v1.corrupt.<time>', 'only if a save game was unreadable: the unreadable raw data, so nothing is lost'],
     ['weltraumspiel.last', 'the callsign you played last'],
@@ -97,14 +102,14 @@ ${sections([
   ['Kurz gesagt', `<ul>
 <li>Keine Analyse-, Tracking- oder Werbedienste, keine Cookies. Schriften, Skripte, Bilder, Videos und Klänge kommen von unserem Hosting bei Netlify, nicht von fremden Diensten.</li>
 <li>Verbindungen zu Supabase (Frankfurt am Main) entstehen nur für Konto, Rufnamen-Prüfung, Ruhmeshalle und Mehrspieler. Dabei sieht Supabase deine IP-Adresse.</li>
-<li>Ohne Konto bleibt dein Spielstand nur in deinem Browser bzw. in der App.</li>
+<li>Ohne Konto bleibt dein Spielstand nur in deinem Browser${APPS ? ' bzw. in der App' : ''}.</li>
 <li>Mit Konto speichern wir E-Mail-Adresse, Rufname, Fraktion und deinen Spielstand bei Supabase in Frankfurt am Main. Dein Passwort sehen wir nie.</li>
 <li>Öffentlich sind Rufname, Fraktion, Titel und Spielwerte (Ruhmeshalle, Pilotenliste), nie deine E-Mail-Adresse oder dein Spielstand.</li>
-<li>Chat-Nachrichten im Mehrspieler gehen direkt an die Mitspieler im Kanal und werden von uns nicht gespeichert.</li>
+<li>Chat-Nachrichten im Mehrspieler gehen über Supabase Realtime an die Mitspieler im Kanal und werden von uns nicht gespeichert.</li>
 <li>Löschung jederzeit: eine kurze E-Mail an ${mail} genügt.</li>
 </ul>`],
   ['Hosting der Website und des Browserspiels', `<p>Website und Browserspiel (unter /play/) werden bei Netlify, Inc. (USA) gehostet. Beim Aufruf verarbeitet Netlify technisch notwendige Daten: IP-Adresse, Datum und Uhrzeit, aufgerufene Adresse, übertragene Datenmenge, Browser und Betriebssystem. Das dient dem sicheren und stabilen Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Netlify verarbeitet diese Daten in unserem Auftrag (Auftragsverarbeitung nach Art. 28 DSGVO). Dabei können Daten in die USA übermittelt werden; Grundlage sind die von Netlify dafür vorgesehenen EU-Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO). Mehr: ${ext('https://www.netlify.com/privacy/', 'Datenschutz bei Netlify')}.</p>`],
-  ['Downloads der Apps (GitHub)', `<p>Die App-Dateien für Mac, Windows, Android, iPhone und iPad liegen als Anhänge eines Releases in unserem öffentlichen Repository bei GitHub, Inc. (USA). Klickst du auf der Download-Seite auf eine Datei, lädt dein Browser sie direkt von GitHub. GitHub verarbeitet dabei technisch notwendige Daten wie IP-Adresse, Zeitpunkt und Browserkennung; dabei können Daten in die USA übertragen werden. Vor dem Klick wird nichts an GitHub übertragen. Rechtsgrundlage ist unser Interesse, die Dateien zuverlässig bereitzustellen (Art. 6 Abs. 1 lit. f DSGVO). Es gelten zusätzlich die ${ext('https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement', 'Datenschutzhinweise von GitHub')}.</p>`],
+  ['Downloads der Apps (GitHub)', `${APPS ? '' : '<p>Die Apps sind noch nicht veröffentlicht. Bis dahin verlinkt die Download-Seite keine Dateien und stellt keine Verbindung zu GitHub her. Sobald die Dateien bereitstehen, gilt Folgendes:</p>'}<p>Die App-Dateien für Mac, Windows, Android, iPhone und iPad ${APPS ? 'liegen' : 'werden'} als Anhänge eines Releases in unserem öffentlichen Repository bei GitHub, Inc. (USA)${APPS ? '' : ' liegen'}. Klickst du auf der Download-Seite auf eine Datei, lädt dein Browser sie direkt von GitHub. GitHub verarbeitet dabei technisch notwendige Daten wie IP-Adresse, Zeitpunkt und Browserkennung; dabei können Daten in die USA übertragen werden. Vor dem Klick wird nichts an GitHub übertragen. Rechtsgrundlage ist unser Interesse, die Dateien zuverlässig bereitzustellen (Art. 6 Abs. 1 lit. f DSGVO). Es gelten zusätzlich die ${ext('https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement', 'Datenschutzhinweise von GitHub')}.</p>`],
   ['Konto', `<p>Ein Konto ist freiwillig. Du kannst es im Spiel anlegen (Titelbildschirm, „Konto anlegen“)${open || oauth.length ? ' oder auf der Website' : ''}. Dafür verarbeiten wir:</p>
 <ul>
 <li>E-Mail-Adresse, für Anmeldung, Bestätigungsmail und „Passwort vergessen“,</li>
@@ -134,10 +139,10 @@ ${sections([
 <p>Rechtsgrundlage ist unser Interesse, die Website mit Konto-Funktionen zu betreiben (Art. 6 Abs. 1 lit. f DSGVO) bzw. die Bereitstellung deines Kontos (Art. 6 Abs. 1 lit. b DSGVO). Supabase verarbeitet die Daten in unserem Auftrag (Art. 28 DSGVO).</p>`],
   open ? ['Rufnamen über die Website sichern', `<p>Sicherst du deinen Rufnamen über die Website, verarbeiten wir Rufname, Fraktion, E-Mail-Adresse und den Zeitpunkt von Anmeldung und Bestätigung. Erst der Klick auf den Link in der Bestätigungsmail sichert den Namen (Double-Opt-in). Daraus entsteht dasselbe Konto wie im Spiel.</p>`] : null,
   oauth.length ? [`Anmeldung mit ${list(oauth.map((k) => k[0].toUpperCase() + k.slice(1)), 'oder')}`, `<p>Du kannst dich wahlweise mit ${list(oauth.map((k) => PROV.de[k]), 'oder')} anmelden. Erst wenn du den jeweiligen Knopf anklickst, wirst du zum Anbieter weitergeleitet. Wir erhalten dann deine Konto-Kennung, deine E-Mail-Adresse und, falls freigegeben, Name und Profilbild. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Es gelten zusätzlich die Hinweise von ${list(oauth.map((k) => ext(POL[k], k[0].toUpperCase() + k.slice(1))), 'und')}.</p>`] : null,
-  ['Speicherung im Browser und in den Apps', `<p>Website und Spiel setzen keine Cookies. Im Speicher deines Browsers (localStorage) legen wir nur ab, was für die Funktion nötig ist. Diese Daten verlassen dein Gerät nicht, außer der Spielstand bei Spielen mit Konto (siehe oben):</p>
+  [APPS ? 'Speicherung im Browser und in den Apps' : 'Speicherung im Browser', `<p>Website und Spiel setzen keine Cookies. Im Speicher deines Browsers (localStorage) legen wir nur ab, was für die Funktion nötig ist. Diese Daten verlassen dein Gerät nicht, außer der Spielstand bei Spielen mit Konto (siehe oben):</p>
 ${keyTable('de')}
 <p>Das ist für den von dir gewünschten Dienst unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG). Das Browserspiel registriert außerdem einen Service Worker, damit es sich als App installieren lässt. Er speichert nichts zwischen. Du kannst alle diese Daten jederzeit in deinem Browser löschen. Ohne Konto ist dein Spielstand danach weg.</p>`],
-  ['Apps für Mac, Windows, Android, iPhone und iPad', `<p>Die Apps enthalten dasselbe Spiel wie die Browserfassung und verarbeiten dieselben Daten auf dieselbe Weise: Spielstand und Einstellungen lokal in der App, mit Konto zusätzlich bei Supabase, im Mehrspieler über Supabase Realtime. Die Apps enthalten keine Analyse-, Werbe- oder Absturzberichts-Dienste und keine automatische Update-Prüfung. Sie sind Testversionen außerhalb der App-Stores.</p>`],
+  [APPS ? 'Apps für Mac, Windows, Android, iPhone und iPad' : 'Apps für Mac, Windows, Android, iPhone und iPad (noch nicht veröffentlicht)', `<p>${APPS ? '' : 'Die Apps sind noch nicht veröffentlicht. Sobald sie erscheinen, gilt: '}Die Apps enthalten dasselbe Spiel wie die Browserfassung und verarbeiten dieselben Daten auf dieselbe Weise: Spielstand und Einstellungen lokal in der App, mit Konto zusätzlich bei Supabase, im Mehrspieler über Supabase Realtime. Die Apps enthalten keine Analyse-, Werbe- oder Absturzberichts-Dienste und keine automatische Update-Prüfung. Sie sind Testversionen außerhalb der App-Stores.</p>`],
   ['Ton', '<p>Klänge und Musik der Website werden direkt in deinem Browser erzeugt. Das Spiel lädt seine Klänge als Dateien von unserem Hosting bei Netlify. In beiden Fällen werden keine Daten an Dritte übertragen.</p>'],
   ['Links zu sozialen Netzwerken', '<p>Die Knöpfe zu Discord, Instagram, TikTok und weiteren Kanälen sind einfache Links. Vor dem Anklicken werden keine Daten an diese Anbieter übertragen. Nach dem Anklicken gelten die Datenschutzhinweise des jeweiligen Anbieters.</p>'],
   ['Speicherdauer und Löschung', `<p>Kontodaten, Server-Spielstand und Eintrag in der Ruhmeshalle speichern wir, solange dein Konto besteht. Eine Löschfunktion im Spiel gibt es noch nicht. Bis dahin genügt eine kurze E-Mail an ${mail} mit der E-Mail-Adresse deines Kontos; wir löschen dann Konto, Pilot und Spielstand vollständig. Nicht bestätigte Konten löschen wir, sobald sie nicht mehr gebraucht werden. Mehrspieler- und Chat-Daten werden nicht gespeichert. Daten im Browser löschst du selbst über die Einstellungen deines Browsers.</p>`],
@@ -152,14 +157,14 @@ ${sections([
   ['In short', `<ul>
 <li>No analytics, tracking or advertising services, no cookies. Fonts, scripts, images, videos and sounds come from our hosting at Netlify, not from third-party services.</li>
 <li>Connections to Supabase (Frankfurt am Main) are made only for accounts, the callsign check, the hall of fame and multiplayer. Supabase sees your IP address in the process.</li>
-<li>Without an account your save game stays only in your browser or in the app.</li>
+<li>Without an account your save game stays only in your browser${APPS ? ' or in the app' : ''}.</li>
 <li>With an account we store your email address, callsign, faction and save game with Supabase in Frankfurt am Main. We never see your password.</li>
 <li>Callsign, faction, title and game stats are public (hall of fame, pilot list), never your email address or your save game.</li>
-<li>Multiplayer chat messages go straight to the players in the channel and are not stored by us.</li>
+<li>Multiplayer chat messages go to the players in the channel via Supabase Realtime and are not stored by us.</li>
 <li>Deletion at any time: a short email to ${mail} is enough.</li>
 </ul>`],
   ['Hosting of the website and the browser game', `<p>The website and the browser game (at /play/) are hosted by Netlify, Inc. (USA). When you visit, Netlify processes technically required data: IP address, date and time, requested address, amount of data transferred, browser and operating system. This serves secure and stable operation (Art. 6(1)(f) GDPR). Netlify processes this data on our behalf (Art. 28 GDPR). Data may be transferred to the USA; the basis is the EU Standard Contractual Clauses provided by Netlify for this purpose (Art. 46(2)(c) GDPR). More: ${ext('https://www.netlify.com/privacy/', 'Netlify privacy')}.</p>`],
-  ['App downloads (GitHub)', `<p>The app files for Mac, Windows, Android, iPhone and iPad are attached to a release in our public repository at GitHub, Inc. (USA). When you click a file on the download page, your browser loads it directly from GitHub. GitHub processes technically required data such as IP address, time and browser identifier; data may be transferred to the USA. Nothing is sent to GitHub before you click. The legal basis is our interest in providing the files reliably (Art. 6(1)(f) GDPR). The ${ext('https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement', 'GitHub privacy statement')} also applies.</p>`],
+  ['App downloads (GitHub)', `${APPS ? '' : '<p>The apps are not published yet. Until then the download page links no files and makes no connection to GitHub. Once the files are available, the following applies:</p>'}<p>The app files for Mac, Windows, Android, iPhone and iPad ${APPS ? 'are' : 'will be'} attached to a release in our public repository at GitHub, Inc. (USA). When you click a file on the download page, your browser loads it directly from GitHub. GitHub processes technically required data such as IP address, time and browser identifier; data may be transferred to the USA. Nothing is sent to GitHub before you click. The legal basis is our interest in providing the files reliably (Art. 6(1)(f) GDPR). The ${ext('https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement', 'GitHub privacy statement')} also applies.</p>`],
   ['Account', `<p>An account is optional. You can create it in the game (title screen, “Create account”)${open || oauth.length ? ' or on the website' : ''}. For this we process:</p>
 <ul>
 <li>email address, for sign-in, the confirmation email and “forgot password”,</li>
@@ -189,10 +194,10 @@ ${sections([
 <p>The legal basis is our interest in running the website with account features (Art. 6(1)(f) GDPR) or providing your account (Art. 6(1)(b) GDPR). Supabase processes the data on our behalf (Art. 28 GDPR).</p>`],
   open ? ['Securing a callsign on the website', '<p>If you secure your callsign on the website, we process your callsign, faction, email address and the time of sign-up and confirmation. The name is only secured once you click the link in the confirmation email (double opt-in). This creates the same account as in the game.</p>'] : null,
   oauth.length ? [`Sign-in with ${list(oauth.map((k) => k[0].toUpperCase() + k.slice(1)), 'or')}`, `<p>You can sign in with ${list(oauth.map((k) => PROV.en[k]), 'or')}. You are only redirected to the provider once you click the button. We then receive your account ID, your email address and, if shared, your name and profile picture. The legal basis is your consent (Art. 6(1)(a) GDPR). The policies of ${list(oauth.map((k) => ext(POL[k], k[0].toUpperCase() + k.slice(1))), 'and')} also apply.</p>`] : null,
-  ['Storage in the browser and in the apps', `<p>The website and the game set no cookies. In your browser’s storage (localStorage) we only keep what is needed for them to work. This data does not leave your device, except the save game when you play with an account (see above):</p>
+  [APPS ? 'Storage in the browser and in the apps' : 'Storage in the browser', `<p>The website and the game set no cookies. In your browser’s storage (localStorage) we only keep what is needed for them to work. This data does not leave your device, except the save game when you play with an account (see above):</p>
 ${keyTable('en')}
 <p>This is strictly necessary for the service you requested (§ 25(2) no. 2 TDDDG). The browser game also registers a service worker so it can be installed as an app. It caches nothing. You can delete all of this data in your browser at any time. Without an account your save game is gone afterwards.</p>`],
-  ['Apps for Mac, Windows, Android, iPhone and iPad', '<p>The apps contain the same game as the browser version and process the same data in the same way: save game and settings locally in the app, with an account also at Supabase, in multiplayer via Supabase Realtime. The apps contain no analytics, advertising or crash reporting services and no automatic update check. They are test versions outside the app stores.</p>'],
+  [APPS ? 'Apps for Mac, Windows, Android, iPhone and iPad' : 'Apps for Mac, Windows, Android, iPhone and iPad (not published yet)', `<p>${APPS ? '' : 'The apps are not published yet. Once they are, the following applies: '}The apps contain the same game as the browser version and process the same data in the same way: save game and settings locally in the app, with an account also at Supabase, in multiplayer via Supabase Realtime. The apps contain no analytics, advertising or crash reporting services and no automatic update check. They are test versions outside the app stores.</p>`],
   ['Sound', '<p>Sounds and music on this website are generated directly in your browser. The game loads its sounds as files from our hosting at Netlify. In neither case is any data passed to third parties.</p>'],
   ['Links to social networks', '<p>The buttons for Discord, Instagram, TikTok and other channels are plain links. No data is sent to these providers before you click. After clicking, the provider’s own privacy policy applies.</p>'],
   ['Retention and deletion', `<p>We keep account data, the server save game and your hall of fame entry as long as your account exists. There is no delete button in the game yet. Until then, a short email to ${mail} with your account email address is enough; we then delete account, pilot and save game completely. Unconfirmed accounts are deleted once no longer needed. Multiplayer and chat data is not stored. You delete data in your browser yourself via your browser settings.</p>`],

@@ -48,13 +48,23 @@
   .feat-list li { margin-right: 0; padding: 12px 10px 8px 0; border-right: 0; border-bottom: 1px solid var(--ls-line); }
   .feat-list li:last-child { grid-column: 1 / -1; }
   .feat-k { font-size: 18px; }
-  /* Handy: eigener Hochformat-Ausschnitt oben, Text darunter (das Schiff liegt nie unter der Schrift) */
-  .hero { display: block; min-height: 0; padding: calc(var(--hdr) + 78vw) 0 48px; }
-  .hero-film { inset: 0 0 auto; height: calc(var(--hdr) + 92vw); }
+  .film-btn { bottom: 14px; width: 36px; height: 36px; }
+}
+/* Handy und Tablet hochkant: Bild oben, Text darunter (das Schiff liegt nie unter der Schrift).
+   Unter dem Text liegt eine deckende dunkle Fläche, die erst unterhalb der Merkmale weich in den Kosmos ausläuft:
+   keine Kante mitten in der Schlagzeile, keine Sterne hinter der Schrift. */
+@media (max-width: 720px), (max-width: 1100px) and (orientation: portrait) {
+  .hero { --hero-img: 62vw; --hero-lap: 12vw; display: block; min-height: 0; padding: calc(var(--hdr) + var(--hero-img) - var(--hero-lap)) 0 112px; }
+  .hero::after { display: none; }
+  .hero-film { inset: 0; background: linear-gradient(180deg, #020306 0, #020306 calc(100% - 128px), rgba(2, 3, 6, .55) calc(100% - 56px), rgba(2, 3, 6, 0) 100%); }
+  .hero-film picture, .hero-still, .hero-video, .hero-film-shade { top: 0; bottom: auto; height: calc(var(--hdr) + var(--hero-img)); }
+  .hero-film-shade { background: linear-gradient(0deg, #020306 0%, rgba(2, 3, 6, .6) 16%, rgba(2, 3, 6, 0) 34%), linear-gradient(180deg, rgba(2, 3, 6, .8) 0%, rgba(2, 3, 6, 0) 22%); }
+  .hero-film::after { bottom: auto; height: calc(var(--hdr) + var(--hero-img)); }
+}
+@media (max-width: 720px) {
+  .hero { --hero-img: 92vw; --hero-lap: 14vw; }
   .hero-film picture img { object-position: 50% 30%; }
   .hero-video { object-position: 80% 50%; }
-  .hero-film-shade { background: linear-gradient(0deg, #020306 0%, rgba(2, 3, 6, .6) 16%, rgba(2, 3, 6, 0) 34%), linear-gradient(180deg, rgba(2, 3, 6, .8) 0%, rgba(2, 3, 6, 0) 22%); }
-  .film-btn { bottom: 14px; width: 36px; height: 36px; }
 }
 @media (prefers-reduced-motion: reduce) { .feat { animation: none; } .hero-film:not(.is-on) .hero-video { display: none; } }
 
@@ -267,7 +277,9 @@
 /* Download: Dateien noch nicht veröffentlicht */
 .dl-main.is-pending { cursor: default; color: var(--ls-tx-2); background: rgba(255, 255, 255, .03); --bd: rgba(255, 255, 255, .22); }
 .dl-main.is-pending:hover { background: rgba(255, 255, 255, .03); }
-.dl-alt.is-pending { cursor: default; opacity: .62; }
+.dl-alt.is-pending { cursor: default; color: var(--ls-tx-2); }
+.dl-alt.is-pending em { color: var(--ls-tx-2); }
+.dl-alt.is-pending:hover { background: none; color: var(--ls-tx-2); }
 .dl-notes li b { font-weight: 500; color: #fff; }
 
 /* Startseite, Hangar am Handy: Bauteil-Schalter ganz sichtbar, Abstand zum Knopf darunter */
@@ -285,3 +297,19 @@
   .hg-stage, .map-stage { min-width: 0; width: 100%; min-height: 0 !important; }
   .map-hint { white-space: normal; right: 14px; }
 }
+
+/* Schild „Geplant“ in der Warum-Liste: eigene Zeile unter dem Titel, Rahmen umschließt das ganze Wort */
+.why-tab .plan-tag { grid-column: 2; justify-self: start; width: max-content; margin: -4px 0 0; }
+.why-tab[aria-pressed="true"] .plan-tag { color: rgba(0, 0, 0, .72); border-color: rgba(0, 0, 0, .45); }
+
+/* Schiffs-Kacheln (Hangar, Klassenwahl): Großbuchstaben und Umlaute (SPÄHER) nicht abschneiden */
+.hg-ship b, .sg-ship b { line-height: 1.32; padding-top: 1px; }
+
+/* Systemkarte (3D): Beschriftungen auf dunklem Grund, damit Ringe und Asteroiden die Schrift nicht durchkreuzen */
+.map-lbl { background: rgba(4, 6, 10, .62); }
+
+/* Hangar ohne WebGL: nur Standbilder je Fraktion und Schiff, keine Bedienelemente des 3D-Modells */
+.hangar.is-nogl .hg-slotsel, .hangar.is-nogl .hg-over, .hangar.is-nogl .hg-pins { display: none; }
+.hangar.is-nogl .hg-ship[data-model="1"] .ls-num::after { content: none; }
+.hangar.is-nogl.is-bp .hg-fallback-p { display: none; }
+.hangar.is-nogl .hg-nogl { z-index: 2; right: 14px; padding: 6px 8px; background: rgba(4, 6, 10, .72); }

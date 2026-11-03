@@ -4,6 +4,10 @@
 
 import { SHIPS, ENEMIES, sectorsFor } from '../../Code/src/core/data.js';
 import { IMG } from './media.js';
+import { RELEASE } from './downloads.js';
+
+// Apps erst als verfügbar nennen, wenn das GitHub-Release mit den Dateien veröffentlicht ist
+const APPS = RELEASE.published;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const pad = (n) => String(n).padStart(2, '0');
@@ -39,8 +43,9 @@ export const G = {
   de: {
     hero: {
       play: 'Im Browser spielen', download: 'Herunterladen', discord: 'Discord',
-      sub: 'Kostenloses Weltraum-MMO. Wähle eine von drei Mächten, fliege acht Schiffsklassen und kämpfe dich durch acht Sektoren deiner Heimat. Im Browser oder als App.',
-      trust: 'Kostenlos · Im Browser ohne Installation · Apps als Testversion',
+      sub: 'Kostenloses Weltraum-MMO. Wähle eine von drei Mächten, fliege acht Schiffsklassen und kämpfe dich durch acht Sektoren deiner Heimat. ' + (APPS ? 'Im Browser oder als App.' : 'Direkt im Browser, Apps folgen.'),
+      trust: APPS ? 'Kostenlos · Im Browser ohne Installation · Apps als Testversion' : 'Kostenlos · Im Browser ohne Installation · Apps folgen',
+      ogAlt: 'Ein SATURN-Schiff der Klasse Leviathan vor der SATURN-Station, Aufnahme aus dem Spiel. Daneben LAST SIGNALS: Die Erde schweigt. Du nicht.',
       video: 'Spielszene aus der Testversion: ein SATURN-Schiff der Klasse Leviathan feuert vor der Heimatstation und dem Saturn auf Larven des Schwarms.',
       pause: 'Video anhalten', resume: 'Video abspielen',
     },
@@ -51,7 +56,7 @@ export const G = {
         ['1–8', 'Schiffsklassen', 'Acht Klassen, jede Fraktion mit eigenen Modellen'],
         ['2+', 'Koop & Mehrspieler', 'Gemeinsame Sektoren, Chat, Einladung zu zweit'],
         ['PAD', 'Controller', 'Flug, Kampf und Menüs mit dem Gamepad'],
-        ['APP', 'Apps', 'Mac, Windows, Android, iPhone und iPad'],
+        APPS ? ['APP', 'Apps', 'Mac, Windows, Android, iPhone und iPad'] : ['WEB', 'Im Browser', 'Ohne Installation · Apps folgen'],
       ],
     },
     shots: {
@@ -105,7 +110,7 @@ export const G = {
     meta: {
       ships: 'Alle acht Schiffsklassen von LAST SIGNALS je Fraktion in 3D: Hülle, Tempo, Laser- und Generatorplätze, Laderaum und Preis direkt aus den Spieldaten.',
       world: 'Fraktionen, Sektorleiter 1 bis 8, Piraten, Schwarm und Bosse von LAST SIGNALS. Mit Bildern aus dem Spiel und Werten aus den Spieldaten.',
-      download: 'LAST SIGNALS als Testversion für Mac, Windows, Android, iPhone und iPad herunterladen oder sofort im Browser spielen.',
+      download: APPS ? 'LAST SIGNALS als Testversion für Mac, Windows, Android, iPhone und iPad herunterladen oder sofort im Browser spielen.' : 'LAST SIGNALS sofort im Browser spielen. Apps für Mac, Windows, Android, iPhone und iPad folgen als Testversion.',
       wiki: 'Wiki-Vorschau von LAST SIGNALS: Sektoren, Gebiete, Währungen, Laser, Munition, Generatoren und Ränge.',
       news: 'Entwicklungslogbuch und Patchnotes von LAST SIGNALS.',
       hall: 'Ruhmeshalle von LAST SIGNALS: Bestenliste der Piloten mit Konto nach Ehre, Erfahrung, Abschüssen und Stufe.',
@@ -116,8 +121,9 @@ export const G = {
   en: {
     hero: {
       play: 'Play in browser', download: 'Download', discord: 'Discord',
-      sub: 'Free-to-play space MMO. Pick one of three powers, fly eight ship classes and fight through eight sectors of your home. In your browser or as an app.',
+      sub: 'Free-to-play space MMO. Pick one of three powers, fly eight ship classes and fight through eight sectors of your home. ' + (APPS ? 'In your browser or as an app.' : 'Right in your browser, apps to follow.'),
       trust: 'Free · Runs in the browser · Game currently in German',
+      ogAlt: 'A SATURN Leviathan-class ship in front of the SATURN station, captured in the game. Next to it LAST SIGNALS: Earth went silent. You won’t.',
       video: 'Gameplay from the test version: a SATURN Leviathan-class ship fires on Swarm larvae in front of its home station and Saturn.',
       pause: 'Pause video', resume: 'Play video',
     },
@@ -128,7 +134,7 @@ export const G = {
         ['1–8', 'Ship classes', 'Eight classes, each faction with its own models'],
         ['2+', 'Co-op & multiplayer', 'Shared sectors, chat, invite a wingmate'],
         ['PAD', 'Controller', 'Flight, combat and menus on a gamepad'],
-        ['APP', 'Apps', 'Mac, Windows, Android, iPhone and iPad'],
+        APPS ? ['APP', 'Apps', 'Mac, Windows, Android, iPhone and iPad'] : ['WEB', 'In the browser', 'No install · apps to follow'],
       ],
     },
     shots: {
@@ -182,7 +188,7 @@ export const G = {
     meta: {
       ships: 'All eight LAST SIGNALS ship classes per faction in 3D: hull, speed, laser and generator slots, cargo and price straight from the game data.',
       world: 'Factions, sector ladder 1 to 8, pirates, swarm and bosses of LAST SIGNALS. With in-game images and numbers from the game data.',
-      download: 'Download LAST SIGNALS as a test version for Mac, Windows, Android, iPhone and iPad, or play right away in your browser.',
+      download: APPS ? 'Download LAST SIGNALS as a test version for Mac, Windows, Android, iPhone and iPad, or play right away in your browser.' : 'Play LAST SIGNALS right away in your browser. Test versions of the apps for Mac, Windows, Android, iPhone and iPad will follow.',
       wiki: 'LAST SIGNALS wiki preview: sectors, regions, currencies, lasers, ammo, generators and ranks.',
       news: 'LAST SIGNALS development log and patch notes.',
       hall: 'LAST SIGNALS hall of fame: leaderboard of pilots with an account by honor, experience, kills and level.',

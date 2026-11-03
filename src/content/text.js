@@ -2,6 +2,11 @@
 // Quelle der Spielinhalte: Vault-Notiz „30 Ideen/Weltraum-Browserspiel 3D“ (Entscheidungen von Toni)
 // und README/CHANGELOG des Spiels. Keine erfundenen Zahlen, Zitate oder Bewertungen.
 
+import { RELEASE } from './downloads.js';
+
+// Apps erst als verfügbar nennen, wenn das GitHub-Release mit den Dateien veröffentlicht ist (RELEASE.published)
+const APPS = RELEASE.published;
+
 export const TEXT = {
   de: {
     meta: {
@@ -202,7 +207,7 @@ export const TEXT = {
       buy: 'Für Nova · Shop geplant',
       buyList: ['Schiffs-Designs ohne Bonus', 'Laserfarben', 'Triebwerksspuren', 'Drohnen-Skins', 'Abzeichen und Clan-Deko'],
       earn: 'Nur erspielt',
-      earnList: ['Waffen und Werte', 'Tritium', 'Erfahrung', 'Booster', 'Designs mit Bonus', 'Gamma Laser'],
+      earnList: ['Waffen und Werte', 'Tritium', 'Erfahrung', 'Booster · geplant', 'Designs mit Bonus · geplant', 'Gamma Laser · geplant'],
       note: 'Keine Zufallskisten gegen echtes Geld.',
     },
     factions: {
@@ -247,7 +252,7 @@ export const TEXT = {
       lede: 'Der echte Stand der Entwicklung. Ohne Schönfärberei.',
       entries: [
         {
-          date: '02.11.2026', tag: 'Patchnotes', title: 'Konten, Mehrspieler und Apps',
+          date: '02.11.2026', tag: 'Patchnotes', title: APPS ? 'Konten, Mehrspieler und Apps' : 'Konten, Mehrspieler und Koop',
           p: 'Die Testversion ist deutlich gewachsen. Alles hier ist spielbar, aber noch im Test: Werte und Abläufe können sich ändern.',
           list: [
             'Konto mit E-Mail und Passwort direkt im Spiel, Server-Spielstand für mehrere Geräte',
@@ -256,7 +261,7 @@ export const TEXT = {
             'Sektoren 4 bis 8 je Fraktion mit neuen Gegnern und drei Bossen',
             'Neue Modelle für alle acht Schiffsklassen jeder Fraktion',
             'Controller-Steuerung für Flug, Kampf und Menüs',
-            'Apps als Testversion für Mac, Windows, Android, iPhone und iPad',
+            APPS ? 'Apps als Testversion für Mac, Windows, Android, iPhone und iPad' : 'Apps für Mac, Windows, Android, iPhone und iPad im Bau, die Dateien folgen auf der Download-Seite',
           ],
         },
         {
@@ -283,7 +288,7 @@ export const TEXT = {
       road: 'Fahrplan',
       now: 'Aktuell',
       phases: [
-        ['Testversion', 'Konten, Mehrspieler-Test, Koop, Apps'],
+        ['Testversion', APPS ? 'Konten, Mehrspieler-Test, Koop, Apps' : 'Konten, Mehrspieler-Test, Koop, Apps folgen'],
         ['Alpha', 'Eigener Spielserver mit Schutz gegen Schummeln'],
         ['Geschlossene Beta', 'Kleine Testgruppe'],
         ['Offene Beta', 'Mit der Discord-Gemeinschaft'],
@@ -306,10 +311,10 @@ export const TEXT = {
       title: 'Fragen und Antworten',
       items: [
         ['Was ist LAST SIGNALS?', 'Ein Weltraum-Onlinespiel im Browser. Du fliegst dein Schiff in echtem 3D, schräg von oben, per Klick oder mit WASD. Drei Fraktionen kämpfen im äußeren Sonnensystem gegeneinander und gegen den Schwarm.'],
-        ['Kann ich schon spielen?', 'Ja. Die Testversion ist für alle offen, direkt im Browser über „Im Browser spielen“ oder als App von der Download-Seite. Ohne Konto liegt dein Spielstand nur in deinem Browser. Mit einem kostenlosen Konto wird er zusätzlich auf dem Server gesichert, du spielst auf mehreren Geräten weiter und erscheinst in der Ruhmeshalle. Termine für weitere Phasen nennen wir erst, wenn sie feststehen.'],
+        ['Kann ich schon spielen?', 'Ja. Die Testversion ist für alle offen, direkt im Browser über „Im Browser spielen“' + (APPS ? ' oder als App von der Download-Seite' : '') + '. Ohne Konto liegt dein Spielstand nur in deinem Browser. Mit einem kostenlosen Konto wird er zusätzlich auf dem Server gesichert, du spielst auf mehreren Geräten weiter und erscheinst in der Ruhmeshalle. Termine für weitere Phasen nennen wir erst, wenn sie feststehen.'],
         ['Kostet das Spiel etwas?', 'Nein. LAST SIGNALS ist kostenlos spielbar. Einen Shop gibt es noch nicht. Wenn er kommt, verkauft er nur Aussehen.'],
-        ['Kann man Stärke kaufen?', 'Nein. Waffen, Werte, Erfahrung, Tritium und Booster gibt es nur im Spiel. Mit Nova, der geplanten Shop-Währung, soll man ausschließlich Aussehen kaufen. Zufallskisten gegen echtes Geld gibt es nicht.'],
-        ['Brauche ich einen Download?', 'Nein. LAST SIGNALS läuft im Browser, auf dem Computer mit einem aktuellen Chrome, Edge, Firefox oder Safari. Wer lieber eine App möchte: Auf der Download-Seite gibt es Testversionen für Mac, Windows, Android, iPhone und iPad, noch unsigniert und nicht in den App-Stores.'],
+        ['Kann man Stärke kaufen?', 'Nein. Waffen, Werte, Erfahrung und Tritium gibt es nur im Spiel, ebenso die geplanten Booster. Mit Nova, der geplanten Shop-Währung, soll man ausschließlich Aussehen kaufen. Zufallskisten gegen echtes Geld gibt es nicht.'],
+        ['Brauche ich einen Download?', 'Nein. LAST SIGNALS läuft im Browser, auf dem Computer mit einem aktuellen Chrome, Edge, Firefox oder Safari. ' + (APPS ? 'Wer lieber eine App möchte: Auf der Download-Seite gibt es Testversionen für Mac, Windows, Android, iPhone und iPad, noch unsigniert und nicht in den App-Stores.' : 'Apps für Mac, Windows, Android, iPhone und iPad folgen als Testversion auf der Download-Seite. Bis dahin lässt sich das Spiel auf iPhone, iPad und Android als Web-App auf den Home-Bildschirm legen.')],
         ['In welchen Sprachen?', 'Die Website gibt es auf Deutsch und Englisch. Das Spiel selbst ist derzeit nur auf Deutsch. Eine englische Fassung ist geplant.'],
         ['Mit wie vielen spielt man zusammen?', 'In der Testversion bleibt Sektor 1 je Fraktion getrennt, ab Sektor 2 treffen sich Piloten aller Fraktionen im selben Raum, mit Chat für Sektor, Fraktion und alle. Zu zweit fliegst du im Koop, PvP ist freiwillig. Gruppen bis acht Spieler und Clans über alle Fraktionen sind geplant.'],
         ['Gibt es ein Wiki?', 'Schiffe, Sektoren, Gegner und Bosse stehen schon jetzt auf den Seiten „Schiffe“ und „Welt“, direkt aus den Spieldaten. Ein vollständiges Wiki mit jedem Gegenstand und jedem Event folgt.'],
@@ -328,7 +333,7 @@ export const TEXT = {
     download: {
       kicker: 'DL · Testversion',
       title: 'Download',
-      lede: 'LAST SIGNALS läuft direkt im Browser. Wer lieber eine eigene App möchte, findet hier die Testversionen für Mac, Windows, iPhone, iPad und Android.',
+      lede: APPS ? 'LAST SIGNALS läuft direkt im Browser. Wer lieber eine eigene App möchte, findet hier die Testversionen für Mac, Windows, iPhone, iPad und Android.' : 'LAST SIGNALS läuft direkt im Browser. Die Apps für Mac, Windows, iPhone, iPad und Android folgen hier als Testversion. Noch sind ihre Dateien nicht veröffentlicht.',
       noteHead: 'Stand der Apps',
       notes: [
         'Testversion {v}. Noch nicht im App Store, nicht bei Google Play und nicht auf Steam.',
@@ -613,7 +618,7 @@ export const TEXT = {
       buy: 'For Nova · shop planned',
       buyList: ['Ship designs without bonus', 'Laser colours', 'Engine trails', 'Drone skins', 'Badges and clan decor'],
       earn: 'Earned only',
-      earnList: ['Weapons and stats', 'Tritium', 'Experience', 'Boosters', 'Designs with bonus', 'Gamma Laser'],
+      earnList: ['Weapons and stats', 'Tritium', 'Experience', 'Boosters · planned', 'Designs with bonus · planned', 'Gamma Laser · planned'],
       note: 'No loot boxes for real money.',
     },
     factions: {
@@ -658,7 +663,7 @@ export const TEXT = {
       lede: 'The real state of development. No spin.',
       entries: [
         {
-          date: '2 Nov 2026', tag: 'Patch notes', title: 'Accounts, multiplayer and apps',
+          date: '2 Nov 2026', tag: 'Patch notes', title: APPS ? 'Accounts, multiplayer and apps' : 'Accounts, multiplayer and co-op',
           p: 'The test version has grown a lot. Everything here is playable but still in testing: numbers and flows may change.',
           list: [
             'Account with email and password right in the game, server save for multiple devices',
@@ -667,7 +672,7 @@ export const TEXT = {
             'Sectors 4 to 8 per faction with new enemies and three bosses',
             'New models for all eight ship classes of every faction',
             'Controller support for flight, combat and menus',
-            'Apps as test versions for Mac, Windows, Android, iPhone and iPad',
+            APPS ? 'Apps as test versions for Mac, Windows, Android, iPhone and iPad' : 'Apps for Mac, Windows, Android, iPhone and iPad in the works, the files will follow on the download page',
           ],
         },
         {
@@ -694,7 +699,7 @@ export const TEXT = {
       road: 'Roadmap',
       now: 'Now',
       phases: [
-        ['Test version', 'Accounts, multiplayer test, co-op, apps'],
+        ['Test version', APPS ? 'Accounts, multiplayer test, co-op, apps' : 'Accounts, multiplayer test, co-op, apps to follow'],
         ['Alpha', 'Own game server with anti-cheat'],
         ['Closed beta', 'Small test group'],
         ['Open beta', 'With the Discord community'],
@@ -717,10 +722,10 @@ export const TEXT = {
       title: 'Questions and answers',
       items: [
         ['What is LAST SIGNALS?', 'An online space game in your browser. You fly your ship in true 3D, from an angled top view, by mouse or with WASD. Three factions fight each other and the Swarm in the outer solar system.'],
-        ['Can I play yet?', 'Yes. The test version is open to everyone, right in your browser via “Play in browser” or as an app from the download page. Without an account your progress stays in your browser. With a free account it is also saved on the server, you can continue on other devices and you appear in the hall of fame. We will name dates for later phases once they are certain.'],
+        ['Can I play yet?', 'Yes. The test version is open to everyone, right in your browser via “Play in browser”' + (APPS ? ' or as an app from the download page' : '') + '. Without an account your progress stays in your browser. With a free account it is also saved on the server, you can continue on other devices and you appear in the hall of fame. We will name dates for later phases once they are certain.'],
         ['Does it cost anything?', 'No. LAST SIGNALS is free to play. There is no shop yet. When it comes, it will sell looks only.'],
-        ['Can you buy power?', 'No. Weapons, stats, experience, Tritium and boosters exist only in the game. Nova, the planned shop currency, is meant to buy appearance and nothing else. There are no loot boxes for real money.'],
-        ['Do I need to download anything?', 'No. LAST SIGNALS runs in the browser, on a computer with a current Chrome, Edge, Firefox or Safari. If you prefer an app: the download page has test builds for Mac, Windows, Android, iPhone and iPad, still unsigned and not in the app stores.'],
+        ['Can you buy power?', 'No. Weapons, stats, experience and Tritium exist only in the game, and so will the planned boosters. Nova, the planned shop currency, is meant to buy appearance and nothing else. There are no loot boxes for real money.'],
+        ['Do I need to download anything?', 'No. LAST SIGNALS runs in the browser, on a computer with a current Chrome, Edge, Firefox or Safari. ' + (APPS ? 'If you prefer an app: the download page has test builds for Mac, Windows, Android, iPhone and iPad, still unsigned and not in the app stores.' : 'Test builds of the apps for Mac, Windows, Android, iPhone and iPad will follow on the download page. Until then you can add the game to the home screen of your iPhone, iPad or Android device as a web app.')],
         ['Which languages?', 'The website is in English and German. The game itself is currently available in German only. An English version is planned.'],
         ['How many people play together?', 'In the test version sector 1 stays separate per faction; from sector 2 on, pilots of all factions meet in the same space, with chat for sector, faction and everyone. Fly as a pair in co-op, PvP is opt-in. Groups of up to eight and clans across all factions are planned.'],
         ['Is there a wiki?', 'Ships, sectors, enemies and bosses are already on the “Ships” and “World” pages, straight from the game data. A complete wiki with every item and event will follow.'],
@@ -739,7 +744,7 @@ export const TEXT = {
     download: {
       kicker: 'DL · Test build',
       title: 'Download',
-      lede: 'LAST SIGNALS runs right in your browser. If you prefer an app of its own, here are the test builds for Mac, Windows, iPhone, iPad and Android. The game itself is currently in German; an English version is planned.',
+      lede: (APPS ? 'LAST SIGNALS runs right in your browser. If you prefer an app of its own, here are the test builds for Mac, Windows, iPhone, iPad and Android.' : 'LAST SIGNALS runs right in your browser. Test builds of the apps for Mac, Windows, iPhone, iPad and Android will follow here; their files are not published yet.') + ' The game itself is currently in German; an English version is planned.',
       noteHead: 'State of the apps',
       notes: [
         'Test build {v}. Not on the App Store, Google Play or Steam yet.',

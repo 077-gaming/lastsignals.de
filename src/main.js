@@ -331,7 +331,21 @@ if (hangarEl) {
     hangarEl.style.setProperty('--fx', FX_HEX[state.fx]);
     if (lenEl) lenEl.textContent = `${b.querySelector('.ls-num').textContent} · ${state.fx.toUpperCase()}`;
     ctl?.set({ ship: state.ship, fx: state.fx, tier: +b.dataset.tier, viz: b.dataset.viz.split(',').map(Number), model: b.dataset.model === '1' });
+    if (hangarEl.classList.contains('is-nogl')) still(b, real);
   }
+  // Ohne WebGL: Standbild des gewählten Schiffs der gewählten Fraktion (public/img/schiffe/<fraktion>-<n>-*.webp)
+  function still(b, real) {
+    const n = /^s(\d)$/.exec(b.dataset.ship)?.[1];
+    if (!real || !n) return;
+    const p = hangarEl.querySelector('.hg-fallback-p');
+    const re = /schiffe\/[a-z]+-\d+-/g, to = `schiffe/${state.fx}-${n}-`;
+    p.querySelectorAll('source').forEach((s) => { s.srcset = s.srcset.replace(re, to); });
+    const img = p.querySelector('img');
+    img.src = img.getAttribute('src').replace(re, to);
+    const de = document.documentElement.lang === 'de';
+    img.alt = `${state.fx.toUpperCase()}-${b.querySelector('b').textContent}, ${de ? 'Modell aus dem Spiel' : 'in-game model'}`;
+  }
+  function noGl() { hangarEl.classList.add('is-nogl'); hangarEl.querySelector('[data-nogl]').hidden = false; apply(); }
   ships.forEach((b) => b.addEventListener('click', () => { state.ship = b.dataset.ship; apply(); }));
   fxBtns.forEach((b) => b.addEventListener('click', () => { state.fx = b.dataset.hgFx; apply(); }));
   let slotKind = 'l';
@@ -345,13 +359,13 @@ if (hangarEl) {
   if (gl2 && !lowDevice) {
     near(hangarEl, () => import('./scene/hangar.js').then(({ initHangar }) => {
       ctl = initHangar(hangarEl, { mobile, reduce, onReady() { hangarEl.classList.add('is-3d'); }, onShow({ real }) { if (!real) hangarEl.classList.add('is-3d'); } });
-      if (!ctl) return;
+      if (!ctl) { noGl(); return; }
       ctl.slots(slotKind);
       apply();
       let on = false;
       visible(hangarEl, (v) => { if (v === on) return; on = v; v ? ctl.start() : ctl.stop(); window.__lsOther?.(v); });
     }), '400px');
-  } else hangarEl.querySelector('[data-nogl]').hidden = false;
+  } else noGl();
 }
 
 // ---------- Systemkarte ----------

@@ -57,12 +57,12 @@ export function visSystem(t) {
   <ellipse cx="${cx + 12}" cy="${cy + 4}" rx="282" ry="64" transform="rotate(-8 ${cx} ${cy})" class="s-line s-eris"/>
   <circle cx="${cx}" cy="${cy}" r="26" fill="url(#sm-sun)"/><circle cx="${cx}" cy="${cy}" r="3.2" fill="#fff"/>
   <text x="${cx}" y="${cy - 34}" class="s-txt s-mid">${esc(s.stille)}</text>
-  <text x="${cx + 62}" y="${cy + 32}" class="s-txt s-red">${esc(s.noSig)}</text>
+  <text x="${cx}" y="${cy + 50}" class="s-txt s-mid s-red">${esc(s.noSig)}</text>
   ${[at(30, 140), at(42, 300), at(56, 40)].map(([x, y]) => `<path d="M${x - 3} ${y - 3}l6 6M${x + 3} ${y - 3}l-6 6" class="s-red-l"/>`).join('')}
-  <text x="${cx - 120}" y="${cy - 42}" class="s-txt">${esc(s.belt)} · BM-1/2/3</text><path d="M${cx - 84} ${cy - 38}l14 10" class="s-line2"/>
+  <text x="${cx - 168}" y="${cy + 80}" class="s-txt">${esc(s.belt)} · BM-1/2/3</text><path d="M${cx - 108} ${cy + 70}L${cx - 76} ${cy + 26}" class="s-line2"/>
   <circle cx="${ux}" cy="${uy}" r="3" class="s-planet-dim"/><circle cx="${nx}" cy="${ny}" r="3" class="s-planet-dim"/>
-  <text x="${nx + 8}" y="${ny - 8}" class="s-txt">${esc(s.front)} · ${esc(s.frontPlanets)}</text>
-  <text x="520" y="114" class="s-txt s-end">${esc(s.kuiper)}</text><path d="M520 118l-6 14" class="s-line2"/>
+  <text x="${nx + 8}" y="${ny - 20}" class="s-txt">${esc(s.front)}</text><text x="${nx + 8}" y="${ny - 8}" class="s-txt">${esc(s.frontPlanets)}</text>
+  <text x="250" y="84" class="s-txt s-end">${esc(s.kuiper)}</text><path d="M253 88l5 11" class="s-line2"/>
   <g style="--c:${FX.europa}"><circle cx="${jx}" cy="${jy}" r="7.5" class="s-planet"/><circle cx="${jx}" cy="${jy}" r="13" class="s-ring-c"/>
     <path d="M${jx - 13} ${jy}H${jx - 52}V${jy - 40}" class="s-lead"/><text x="${jx - 52}" y="${jy - 58}" class="s-lbl">${esc(s.europa)}</text><text x="${jx - 52}" y="${jy - 46}" class="s-txt">${esc(s.per)} · EU-1/8</text></g>
   <g style="--c:${FX.saturn}"><circle cx="${sx}" cy="${sy}" r="6.5" class="s-planet"/><ellipse cx="${sx}" cy="${sy}" rx="13" ry="3.6" transform="rotate(-14 ${sx} ${sy})" class="s-ring-c"/><circle cx="${sx}" cy="${sy}" r="16" class="s-ring-c s-pulse"/>

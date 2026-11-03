@@ -68,8 +68,10 @@ function head(page, t) {
   const shots = ['kampf-saturn', 'flug-eris', 'station-europa', 'cockpit-europa', 'boss-dread'].map((n) => `${SITE.de}/img/spiel/${n}-1920.webp`);
   const ld = isHome ? `<script type="application/ld+json">${JSON.stringify({
     '@context': 'https://schema.org', '@type': 'VideoGame', name: 'LAST SIGNALS', url: SITE[page.lang] + '/',
-    description: t.meta.desc, inLanguage: 'de', // Spiel derzeit nur auf Deutsch (Website DE/EN) genre: ['MMO', 'Space', 'Action'],
-    gamePlatform: ['Web browser', 'macOS', 'Windows', 'Android', 'iOS'], operatingSystem: 'Web browser, macOS, Windows, Android, iOS',
+    description: t.meta.desc, genre: ['MMO', 'Space', 'Action'], inLanguage: 'de', // Spiel derzeit nur auf Deutsch (Website DE/EN)
+    // Apps erst nennen, wenn das Release mit den Dateien veröffentlicht ist
+    gamePlatform: RELEASE.published ? ['Web browser', 'macOS', 'Windows', 'Android', 'iOS'] : ['Web browser'],
+    operatingSystem: RELEASE.published ? 'Web browser, macOS, Windows, Android, iOS' : 'Web browser',
     applicationCategory: 'Game', playMode: ['SinglePlayer', 'MultiPlayer', 'CoOp'], numberOfPlayers: { '@type': 'QuantitativeValue', minValue: 1 },
     offers: { '@type': 'Offer', price: 0, priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: SITE[page.lang] + SITE.play },
     image: og, screenshot: shots,
@@ -98,7 +100,7 @@ function head(page, t) {
   <meta property="og:image" content="${og}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="${esc(isHome ? t.hero.alt : title)}">
+  <meta property="og:image:alt" content="${esc(isHome ? g.hero.ogAlt : title)}">
   <meta property="og:locale" content="${page.lang === 'de' ? 'de_DE' : 'en_US'}">
   ${alt ? `<meta property="og:locale:alternate" content="${alt.lang === 'de' ? 'de_DE' : 'en_US'}">` : ''}
   <meta name="twitter:card" content="summary_large_image">
@@ -639,7 +641,7 @@ function hallBody(page, t) {
     <p class="hi-title">${esc(iv.title)}</p>
     <p class="hi-p">${esc(iv.p)}</p>
     <ol class="hi-steps">${iv.steps.map((x, i) => `<li><span class="ls-num">${pad(i + 1)}</span>${esc(x)}</li>`).join('')}</ol>
-    <div class="hi-act"><a class="ls-btn is-primary is-gold is-big" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(iv.play)}</span></a><a class="ls-btn is-big" href="${P(t.lang, 'download')}">${ICONS.download}<span>${esc(iv.dl)}</span></a></div>
+    <div class="hi-act"><a class="ls-btn is-primary is-gold is-big" href="${SITE.play}" data-click>${ICONS.play}<span>${esc(iv.play)}</span></a>${RELEASE.published ? `<a class="ls-btn is-big" href="${P(t.lang, 'download')}">${ICONS.download}<span>${esc(iv.dl)}</span></a>` : ''}</div>
   </div></li>`;
   return subShell(page, t, h.kicker, h.title, h.lede, `<div class="hall-grid">
     <section class="plaque ls-panel" aria-labelledby="plaque-h" data-hall data-lang="${t.lang}"
@@ -685,7 +687,7 @@ function dlTile(p, i, t) {
   const live = RELEASE.published;
   const mainBtn = isWeb || live
     ? `<a class="ls-btn is-primary is-big dl-main" href="${esc(mainHref)}"${isWeb ? '' : ` data-file="${esc(FILES[p.main].file)}"`} data-click>${isWeb ? ICONS.play : ICONS.download}<span>${esc(mainLabel)}</span>${mainMeta ? `<em class="ls-num">${esc(mainMeta)}</em>` : ''}</a>`
-    : `<span class="ls-btn is-big dl-main is-pending" aria-disabled="true">${ICONS.download}<span>${esc(d.pending)}</span><em class="ls-num">${esc(mainMeta)}</em></span>`;
+    : `<span class="ls-btn is-big dl-main is-pending" aria-disabled="true">${ICONS.download}<span>${esc(d.pending)}</span></span>`;
   const alts = p.alt.length ? `<ul class="dl-alts">${p.alt.map((k) => live
     ? `<li><a class="dl-alt" href="${esc(releaseUrl(k))}" data-file="${esc(FILES[k].file)}">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(extOf(k))} · ${esc(fileSize(k, lang))}</em></a></li>`
     : `<li><span class="dl-alt is-pending">${ICONS.download}<span>${esc(x.alt[k])}</span><em class="ls-num">${esc(d.pendingAlt)} · ${esc(extOf(k))}</em></span></li>`).join('')}</ul>` : '';

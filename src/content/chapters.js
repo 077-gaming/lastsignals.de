@@ -2,6 +2,10 @@
 // Ergänzt text.js. Quelle der Spielinhalte: Vault-Notiz „30 Ideen/Weltraum-Browserspiel 3D“ und Code/src/core/data.js.
 // Werte sind Planungsstand, keine erfundenen Spielerzahlen, Zitate oder Bewertungen.
 import { SHIPS as GAME_SHIPS, ENEMIES as GAME_ENEMIES, sectorsFor } from '../../Code/src/core/data.js';
+import { RELEASE } from './downloads.js';
+
+// Apps erst als verfügbar nennen, wenn das GitHub-Release veröffentlicht ist
+const APPS = RELEASE.published;
 
 // Sektoren je Heimat: direkt aus den Spieldaten (sectorsFor), gleiche Gegner in allen drei Heimaten, Bosse markiert.
 const BOSS_EN = { werft: 'Black Shipyard', wal: 'Elder Star Whale' };
@@ -100,12 +104,12 @@ export const CH = {
         scout: 'Tarnung, Ziel markieren, Radar-Puls gegen Tarnung.',
       },
       gear: 'Ausrüstung', gearList: [
-        ['Laser', 'Pulse · Ion · Plasma · Gamma'], ['Munition', 'L1 · L2 · L3 · L4 · SAB · SAL'], ['Generatoren', 'DR-1 bis DR-3 Tempo · SH-1 bis SH-3 Schild'],
+        ['Laser', 'Pulse · Ion · Plasma · Gamma geplant'], ['Munition', 'L1 · L2 · L3 · L4 · SAB · SAL'], ['Generatoren', 'DR-1 Tempo · SH-1 Schild · weitere geplant'],
         ['Raketen und Minen', 'R1 · R2 · R3 · SPM · BRM · STM'], ['Drohnen', 'Pioneer · Voyager · Cassini · Juno'], ['Begleitschiff · geplant', 'SPUTNIK mit eigenen Modulen'],
       ],
       planNote: 'Werte sind der aktuelle Planungsstand und können sich bis zum Start ändern.',
       gearMore: 'Ausrüstung im Detail',
-      noGl: 'Der 3D-Hangar braucht WebGL. Hier das Standbild des SATURN-Starters aus dem Spiel.',
+      noGl: 'Der 3D-Hangar braucht WebGL. Hier Standbilder der Modelle aus dem Spiel.',
     },
     map: {
       code: '05', label: 'Das Sonnensystem', title: 'Drei Heimaten. Je acht Sektoren.',
@@ -126,7 +130,7 @@ export const CH = {
     founder: {
       code: '06', label: 'Konto', title: 'Sichere dir deinen Rufnamen.',
       lede: 'Ein kostenloses Konto legst du direkt im Spiel an. Rufname, Server-Spielstand und Ruhmeshalle hängen daran.',
-      perks: [['Rufname', 'Mit Konto gehört dein Rufname dir, im Spiel und in der Ruhmeshalle.'], ['Spielstand', 'Gesichert auf dem Server. Weiterspielen im Browser und in den Apps.'], ['Ruhmeshalle', 'Mit Konto erscheinst du auf der Bestenliste.'], ['Founder · geplant', 'Ein Titel und eine Lackierung „Founder“ für Piloten der Testphase sind geplant, nur Aussehen. Wer sie bekommt, steht hier, bevor sie vergeben werden.']],
+      perks: [['Rufname', 'Mit Konto gehört dein Rufname dir, im Spiel und in der Ruhmeshalle.'], ['Spielstand', APPS ? 'Gesichert auf dem Server. Weiterspielen im Browser und in den Apps.' : 'Gesichert auf dem Server. Weiterspielen in jedem Browser, auf jedem Gerät.'], ['Ruhmeshalle', 'Mit Konto erscheinst du auf der Bestenliste.'], ['Founder · geplant', 'Ein Titel und eine Lackierung „Founder“ für Piloten der Testphase sind geplant, nur Aussehen. Wer sie bekommt, steht hier, bevor sie vergeben werden.']],
       callsign: 'Rufname', callsignHint: '3 bis 16 Zeichen: Buchstaben, Ziffern, _ und -. Beginnt mit einem Buchstaben.',
       faction: 'Fraktion', factionHint: 'Aus Kapitel 02 übernommen, hier änderbar.',
       email: 'E-Mail', emailHint: 'Du bekommst eine Bestätigungsmail. Erst der Klick darin sichert den Namen.',
@@ -162,7 +166,7 @@ export const CH = {
       currencyList: [['Credits', 'Viel. Einfache Ausrüstung, Munition, Reparatur.'], ['Tritium', 'Selten, leuchtet grün. Starke Ausrüstung. Nicht kaufbar.'], ['Antimaterie', 'Geplant: nur bei Events, für den Event-Shop.'], ['Nova', 'Geplant: Shop-Währung, nur Aussehen.']],
       laserList: [['Pulse Laser', 'Credits'], ['Ion Laser', 'Credits'], ['Plasma Laser', 'Tritium'], ['Gamma Laser', 'Geplant. Nicht kaufbar: seltener Drop oder 20 Gamma-Fragmente.']],
       ammoList: [['L1 bis L4', 'Lasermunition'], ['SAB', 'Saugt Schild ab'], ['SAL', 'Salve mit eigener Nachladezeit'], ['R1 bis R3', 'Raketen'], ['SPM', 'Sprengmine'], ['BRM', 'Bremsmine'], ['STM', 'Störmine']],
-      genList: [['DR-1, DR-2', 'Tempo · Credits'], ['DR-3', 'Tempo · Tritium'], ['SH-1, SH-2', 'Schild · Credits'], ['SH-3', 'Schild · Tritium']],
+      genList: [['DR-1', 'Tempo · Credits'], ['SH-1', 'Schild · Credits'], ['DR-2, DR-3', 'Geplant: Tempo, DR-3 für Tritium'], ['SH-2, SH-3', 'Geplant: Schild, SH-3 für Tritium']],
       sharedList: [['FRONT-1–3', 'Uranus, Neptun', 'ab 14'], ['BM-1–3', 'Ceres, Vesta, Pallas', 'ab 25'], ['KUIPER-1–3', 'Kuipergürtel', 'ab 38'], ['STILLE-1–4', 'Mars, Erde, Venus, Sonne', 'ab 50']],
     },
     hall: {
@@ -175,7 +179,7 @@ export const CH = {
       empty: 'Noch frei', periods: 'Geplant: Wertung für immer, je Monat und je Woche, getrennt nach Fraktion.',
       note: 'Geplant: Die Top 3 der Wochen- und Monatslisten bekommen einen zeitlich begrenzten Titel.',
       cta: 'Konto anlegen',
-      invite: { kicker: 'Freier Platz', title: 'Die Tafel wartet auf dich.', p: 'Hier stehen Piloten mit Konto. Ehre, Erfahrung, Abschüsse und Stufe kommen direkt aus dem Spiel. So kommst du drauf:', steps: ['Spiel im Browser oder in der App öffnen', 'Auf dem Titelbildschirm „Konto anlegen“ wählen', 'Fliegen: Jeder Abschuss zählt'], play: 'Im Browser spielen', dl: 'Herunterladen' },
+      invite: { kicker: 'Freier Platz', title: 'Die Tafel wartet auf dich.', p: 'Hier stehen Piloten mit Konto. Ehre, Erfahrung, Abschüsse und Stufe kommen direkt aus dem Spiel. So kommst du drauf:', steps: [APPS ? 'Spiel im Browser oder in der App öffnen' : 'Spiel im Browser öffnen', 'Auf dem Titelbildschirm „Konto anlegen“ wählen', 'Fliegen: Jeder Abschuss zählt'], play: 'Im Browser spielen', dl: 'Herunterladen' },
     },
     news: { title: 'News', kicker: 'Logbuch der Entwicklung' },
   },
@@ -256,12 +260,12 @@ export const CH = {
         scout: 'Cloak, mark target, radar pulse against cloaks.',
       },
       gear: 'Gear', gearList: [
-        ['Lasers', 'Pulse · Ion · Plasma · Gamma'], ['Ammo', 'L1 · L2 · L3 · L4 · SAB · SAL'], ['Generators', 'DR-1 to DR-3 speed · SH-1 to SH-3 shield'],
+        ['Lasers', 'Pulse · Ion · Plasma · Gamma planned'], ['Ammo', 'L1 · L2 · L3 · L4 · SAB · SAL'], ['Generators', 'DR-1 speed · SH-1 shield · more planned'],
         ['Rockets and mines', 'R1 · R2 · R3 · SPM · BRM · STM'], ['Drones', 'Pioneer · Voyager · Cassini · Juno'], ['Escort ship · planned', 'SPUTNIK with its own modules'],
       ],
       planNote: 'Values reflect the current plan and may change before launch.',
       gearMore: 'Gear in detail',
-      noGl: 'The 3D hangar needs WebGL. Here is a still of the in-game SATURN starter.',
+      noGl: 'The 3D hangar needs WebGL. Here are stills of the in-game models.',
     },
     map: {
       code: '05', label: 'The solar system', title: 'Three homes. Eight sectors each.',
@@ -282,7 +286,7 @@ export const CH = {
     founder: {
       code: '06', label: 'Account', title: 'Claim your callsign.',
       lede: 'Create a free account right in the game. Your callsign, server save and hall of fame entry are tied to it.',
-      perks: [['Callsign', 'With an account your callsign is yours, in the game and in the hall of fame.'], ['Save game', 'Stored on the server. Continue in the browser and in the apps.'], ['Hall of fame', 'With an account you appear on the leaderboard.'], ['Founder · planned', 'A Founder title and paint job for pilots of the test phase are planned, cosmetic only. Who gets them will be stated here before they are handed out.']],
+      perks: [['Callsign', 'With an account your callsign is yours, in the game and in the hall of fame.'], ['Save game', APPS ? 'Stored on the server. Continue in the browser and in the apps.' : 'Stored on the server. Continue in any browser, on any device.'], ['Hall of fame', 'With an account you appear on the leaderboard.'], ['Founder · planned', 'A Founder title and paint job for pilots of the test phase are planned, cosmetic only. Who gets them will be stated here before they are handed out.']],
       callsign: 'Callsign', callsignHint: '3 to 16 characters: letters, digits, _ and -. Starts with a letter.',
       faction: 'Faction', factionHint: 'Taken from chapter 02, change it here.',
       email: 'Email', emailHint: 'You will get a confirmation email. Your name is only secured once you click the link.',
@@ -318,7 +322,7 @@ export const CH = {
       currencyList: [['Credits', 'Plenty. Basic gear, ammo, repairs.'], ['Tritium', 'Rare, glows green. Strong gear. Not for sale.'], ['Antimatter', 'Planned: events only, for the event shop.'], ['Nova', 'Planned: shop currency, cosmetics only.']],
       laserList: [['Pulse Laser', 'Credits'], ['Ion Laser', 'Credits'], ['Plasma Laser', 'Tritium'], ['Gamma Laser', 'Planned. Not for sale: rare drop or 20 Gamma fragments.']],
       ammoList: [['L1 to L4', 'Laser ammo'], ['SAB', 'Drains shields'], ['SAL', 'Salvo with its own cooldown'], ['R1 to R3', 'Rockets'], ['SPM', 'Blast mine'], ['BRM', 'Slow mine'], ['STM', 'Jammer mine']],
-      genList: [['DR-1, DR-2', 'Speed · Credits'], ['DR-3', 'Speed · Tritium'], ['SH-1, SH-2', 'Shield · Credits'], ['SH-3', 'Shield · Tritium']],
+      genList: [['DR-1', 'Speed · Credits'], ['SH-1', 'Shield · Credits'], ['DR-2, DR-3', 'Planned: speed, DR-3 for Tritium'], ['SH-2, SH-3', 'Planned: shield, SH-3 for Tritium']],
       sharedList: [['FRONT-1–3', 'Uranus, Neptune', '14+'], ['BM-1–3', 'Ceres, Vesta, Pallas', '25+'], ['KUIPER-1–3', 'Kuiper Belt', '38+'], ['SILENCE-1–4', 'Mars, Earth, Venus, Sun', '50+']],
     },
     hall: {
@@ -331,7 +335,7 @@ export const CH = {
       empty: 'Open', periods: 'Planned: all-time, monthly and weekly rankings, per faction.',
       note: 'Planned: the top 3 of the weekly and monthly lists earn a time-limited title.',
       cta: 'Create an account',
-      invite: { kicker: 'Open slot', title: 'The board is waiting for you.', p: 'Pilots with an account are listed here. Honor, experience, kills and level come straight from the game. How to get on it:', steps: ['Open the game in your browser or the app', 'Choose “Konto anlegen” (create account) on the title screen', 'Fly: every kill counts'], play: 'Play in browser', dl: 'Download' },
+      invite: { kicker: 'Open slot', title: 'The board is waiting for you.', p: 'Pilots with an account are listed here. Honor, experience, kills and level come straight from the game. How to get on it:', steps: [APPS ? 'Open the game in your browser or the app' : 'Open the game in your browser', 'Choose “Konto anlegen” (create account) on the title screen', 'Fly: every kill counts'], play: 'Play in browser', dl: 'Download' },
     },
     news: { title: 'News', kicker: 'Development log' },
   },
