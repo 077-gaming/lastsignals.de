@@ -1548,6 +1548,12 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   for (const r of rows) console.log('      ' + r);
 }
 
+// ───────── Welt im 3D-Flug (Planung/FLUGMODELL.md 13) ─────────
+{
+  const { run3dTests } = await import('./selftest-3d.mjs');
+  run3dTests(check, makeBus);
+}
+
 // ───────── Taktik-Goldtest T-01: Klickflug bitgleich zur Spur von vor dem 3D-Umbau ─────────
 {
   const { runAll, readGold } = await import('./goldtest.mjs');

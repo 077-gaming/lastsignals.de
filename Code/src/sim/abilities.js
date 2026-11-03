@@ -193,14 +193,16 @@ function noShoot(w, title) {
 }
 
 /** Gegner im Umkreis (lebend, nach Abstand ohne eigenen Radius) in NEAR sammeln. */
-function enemiesNear(w, x, z, r) {
+function enemiesNear(w, x, z, r, y = null) {
   const n = w.grid.query(x, z, r + 60, NEAR);
   let k = 0;
+  // 3D-Flug: Wirkradius als Kugel um (x, y, z); Taktikweg wie bisher in der Ebene
+  const cy = y != null ? y : w.player.y;
   for (let i = 0; i < n; i++) {
     const e = NEAR[i];
     if (!e.alive || e.kind !== 'enemy') continue;
-    const dx = e.x - x, dz = e.z - z, R = r + e.radius;
-    if (dx * dx + dz * dz <= R * R) NEAR[k++] = e;
+    const dx = e.x - x, dz = e.z - z, R = r + e.radius, dy = w.flight3d ? e.y - cy : 0;
+    if (dx * dx + dz * dz + dy * dy <= R * R) NEAR[k++] = e;
   }
   NEAR.length = k;
   return k;
@@ -375,7 +377,7 @@ export function layMine(w, id) {
   for (const k of MINE_IDS) if (w.abilities[k].readyIn < MINE_RULES.gap) w.abilities[k].readyIn = MINE_RULES.gap;
   const b = MINE_RULES.behind;
   m.active = true; m.type = id; m.armed = false; m.armT = d.arm; m.t = d.life;
-  m.x = p.x + Math.sin(p.rot) * b; m.z = p.z + Math.cos(p.rot) * b;
+  m.x = p.x + Math.sin(p.rot) * b; m.z = p.z + Math.cos(p.rot) * b; m.y = p.y;
   m.radius = d.radius; m.trigger = d.trigger;
   m.id = `mn${++w._mineSeq}`;
   w.bus.emit('telegraph', { id: m.id, kind: MINE_KIND[id], x: m.x, z: m.z, dx: 0, dz: 0, delay: d.life, radius: d.radius, length: 0, targetId: 'mine', label: d.title, own: true });
@@ -397,14 +399,14 @@ function updateMines(w, dt) {
       continue;
     }
     if (!m.armed) { m.armT -= dt; if (m.armT <= 0) m.armed = true; else continue; }
-    if (enemiesNear(w, m.x, m.z, m.trigger) > 0) detonate(w, m);
+    if (enemiesNear(w, m.x, m.z, m.trigger, m.y || 0) > 0) detonate(w, m);
   }
 }
 
 function detonate(w, m) {
   const d = MINES[m.type];
   m.active = false;
-  const n = enemiesNear(w, m.x, m.z, m.radius);
+  const n = enemiesNear(w, m.x, m.z, m.radius, m.y || 0);
   ringFire(w, m.id, MINE_KIND[m.type], m.x, m.z, m.radius);
   let text = '';
   if (m.type === 'SPM') {
