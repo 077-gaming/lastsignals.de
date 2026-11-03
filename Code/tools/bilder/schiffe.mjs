@@ -3,7 +3,8 @@
 //   KLASSEN=s1,s8  nur diese Klassen · ANSICHT=hangar,verfolger,cockpit,nah  nur diese Ansichten
 //   FRAKTIONEN=europa,eris  (Standard: Hangar alle drei, Flugansichten zwei je Klasse)
 // Gleiche Lage, gleicher Kurs, gleiche Wartezeit. „hangar“ nimmt zusätzlich fünf Hangar-Nahaufnahmen auf
-// (Kamera 0,75–1,1 Radien: Bug, Flanke, Heck, Oberseite, Unterseite – Unterseite ohne Hallenboden), dafür braucht der
+// (Kamera 0,75–1,1 Radien: Bug, Flanke, Heck, Oberseite, Unterseite – Heck, Ober- und Unterseite ohne Halle, damit
+// kein Hallenträger und kein Kran vor dem Rumpf steht), dafür braucht der
 // Stand den Prüf-Haken window.__lsBay.orbit (station-bay.js). Fehlt er (alter Stand), entfallen die Nahaufnahmen.
 // Ergebnis: <klasse>-<fraktion>-<ansicht>.png und bericht.json (Bildzeit, GPU-Zeit, Draw Calls, Texturen).
 import { chromium } from 'playwright-core';
@@ -20,7 +21,7 @@ const ALLF = ['europa', 'saturn', 'eris'];
 const facOverride = process.env.FRAKTIONEN ? process.env.FRAKTIONEN.split(',') : null;
 // Hangar-Nahaufnahmen [Name, Gier, Neigung, Abstand in Radien, Blickversatz x (− = Bug), ohne Halle]
 const CLOSE = [
-  ['nah-bug', 28, 16, 0.78, -0.32, false], ['nah-flanke', 74, 6, 0.95, 0, false], ['nah-heck', 158, 20, 0.85, 0.3, false],
+  ['nah-bug', 28, 16, 0.78, -0.32, false], ['nah-flanke', 74, 6, 0.95, 0, false], ['nah-heck', 158, 20, 0.85, 0.3, true],
   ['nah-oben', 115, 58, 1.0, 0, true], ['nah-unten', 48, -32, 1.1, 0, true],
 ];
 const classes = (process.env.KLASSEN || 's1,s2,s3,s4,s5,s6,s7,s8').split(',');
