@@ -1400,6 +1400,6 @@
   "meshy": {
     "datum": "2026-11-02",
     "stufe": 5,
-    "hinweis": "voyager/juno/cassini-europa-l05-laser.glb sind die aufbereiteten Meshy-Drohnen (Stufen 5–9 zeigen sie, Material M_Meshy_<typ>); l01 und l10 bleiben die bisherigen Modelle."
+    "hinweis": "voyager/juno/cassini-europa-l05-laser.glb sind die aufbereiteten Meshy-Drohnen (Stufen 5–9 zeigen sie, Material M_Meshy_<typ>); l01 und l10 sind seit 02.11.2026 ebenfalls Meshy (aus l05 abgeleitet: Stufe 1 schlichter, 8 % kleiner, schwächeres Leuchten; Stufe 10 Goldton, kräftigeres Leuchten, 8 % größer; Material M_Meshy_<typ>_l01/_l10)."
   }
 }

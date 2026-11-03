@@ -6,7 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { CameraLookPass } from './post.js';
 import { BloomPass } from './bloom.js';
 import { FACTIONS, SHIPS, ENEMIES } from '../core/data.js';
-import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, EQUIP_URL, equipKeys, preloadGLB } from './models.js';
+import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, EQUIP_URL, equipKeys, preloadGLB, shipHdUrls } from './models.js';
 import { store } from '../core/store.js';
 import { JumpMarker } from './marker.js';
 import { Environment, sectorFaction } from './environment.js';
@@ -15,7 +15,7 @@ import { Trails } from './trails.js';
 import { disposeTextures, hashString } from './textures.js';
 import { scaleRingMaterial, scaleRingGeometry } from './overlay.js';
 import { GpuTimer } from '../perf/gputimer.js';
-import { renderHints, PR_CAP } from '../perf/quality.js';
+import { renderHints, PR_CAP, hdTextures } from '../perf/quality.js';
 import { CameraRig, FOV_TAC, FOV_CHASE } from './camrig.js';
 import { Cockpit } from './cockpit.js';
 import { Telegraph } from './telegraph.js';
@@ -364,6 +364,7 @@ export class Renderer {
     this.fpsCap = Math.max(0, g.fpsCap | 0);
     this.env.reflectRes = REFLECT_RES[g.reflections] || 512;
     this._applyAniso();
+    this.factory.uShipDetail.value = q >= 2 ? 1 : 0; // Feindetail der Meshy-Schiffe ab HOCH
     // Pixeldichte der Stufe (ultra/hoch 2, mittel 1,5, niedrig 1): Puffer neu anlegen, falls sich etwas ändert
     if (this._sized) { this._sized = false; this.resize(); }
     this._updateChain();
@@ -580,7 +581,7 @@ export class Renderer {
     // Eigenes Schiff als angefordert vermerken: Seit alle Schiffe in EXTRA_MODELS stehen, würde _need() es sonst beim
     // Anlegen der Ansicht (oder für ein fremdes Schiff gleichen Typs) ein zweites Mal laden, solange das erste läuft.
     if (this._mineUrl) (this._needT || (this._needT = new Set())).add(mine);
-    this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl) : Promise.resolve(), drones, equip]);
+    this.ownModelReady = Promise.all([this._mineUrl ? load(mine, this._mineUrl, this._mineOpts(ship)) : Promise.resolve(), drones, equip]);
   }
 
   /** Gegner des Sektors (auch noch nicht erschienene, Ereignis-Piraten, Brut) gleich beim Sektoraufbau anfordern */
@@ -1651,7 +1652,10 @@ export class Renderer {
     if (!on) return;
     const p = W.player, rig = this.rig;
     const t = p.targetId != null ? W.entities.get(p.targetId) : null;
-    this.cockpit.setAccent(FACTIONS[W.profile?.faction]?.accent ?? 0xff8a2a);
+    // Cockpit-Leuchtfarbe: Fraktionsakzent; ist er dunkel (Saturn: Dunkelmetall 0x3a3a3e), die Hauptfarbe (Orange/Bernstein)
+    const FX = FACTIONS[W.profile?.faction];
+    const acc = FX ? (FX.accent >> 16 & 255) + (FX.accent >> 8 & 255) + (FX.accent & 255) < 330 ? parseInt(FX.css.main.slice(1), 16) : FX.accent : 0xff8a2a;
+    this.cockpit.setAccent(acc);
     // Kopfbewegung: Stoß-Feder und Beschleunigung, abschaltbar über Kamerawackeln
     const m = rig.shakeOn ? rig.motion : 0;
     _so.set(rig.kick.x * 0.002 * m, rig.kick.y * 0.002 * m - Math.max(-1, Math.min(1, (rig.accel || 0) / 400)) * 0.03 * m, 0);
@@ -1828,17 +1832,21 @@ export class Renderer {
     for (const [key, url] of MODELS) if (!this.factory.glb.has(key)) setTimeout(() => this._loadGLB(key, url), 200 * i++);
     for (const key in EXTRA_MODELS) if (key.startsWith('enemy:')) setTimeout(() => this._need(key), 200 * i++);
   }
+  /** Eigenes Schiff: 4K-Farbe und -Normalkarte auf ULTRA bzw. in der Desktop-App (fremde Schiffe immer 2K) */
+  _mineOpts(ship) { return hdTextures(this.quality) ? { hd: shipHdUrls(this._mineUrl, ship) } : undefined; }
   /** Schiff gewechselt (Kauf): dessen Modell laden, falls noch nicht da */
   _ensureMine(e) {
     const fac = e.faction || this.world?.profile?.faction || this.faction, sh = e.ship || this.world?.profile?.ship || 's1';
     const key = `ship:${sh}:${fac}`;
     if (key === this._mineKey) return;
+    // 4K-Stufe des alten Schiffs freigeben (Grafikspeicher, Bilddaten im Zwischenspeicher)
+    if (this._mineKey) this.factory.releaseShipHd(key);
     this._mineKey = key; this._mineUrl = MODEL_URL.get(key) || null;
     if (!this._mineUrl || this.factory.glb.has(key) || !this._loadGLB) return;
     const T = this._needT || (this._needT = new Set());
     if (T.has(key)) return; // schon unterwegs (z. B. als fremdes Schiff über _need angefordert)
     T.add(key);
-    this._loadGLB(key, this._mineUrl);
+    this._loadGLB(key, this._mineUrl, this._mineOpts(sh));
   }
   /** Eigenes Schiff fertig (echtes Modell geladen und vorbereitet oder keins vorhanden) */
   _mineReady() {

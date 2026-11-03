@@ -9,7 +9,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { ModelFactory, equipKeys } from '../render/models.js';
+import { ModelFactory, equipKeys, shipHdUrls } from '../render/models.js';
+import { hdTextures, qIndex } from '../perf/quality.js';
 
 // Echte Schiffsmodelle (GLB) je Fraktion und Klasse: Startschiff Saturn sofort, alle anderen erst, wenn die Bucht
 // das Schiff zeigt (Schiffswerft blättert durch alle Klassen; jede Datei 0,7–3 MB).
@@ -18,7 +19,17 @@ const BG = 0x06080c;
 const HAZE = 0x0a0d13;
 const FLOOR = -12;     // Hallenboden
 const PAD = -11.2;     // Oberkante Landeplattform
+const HANGAR_MAX_L = 128; // größte gezeigte Rumpflänge in der Halle (m)
 const YC = 36;        // Unterkante Hallendecke (tief genug, dass Träger, Kran und Licht im Bild stehen)
+// Brückenkran: Kranbahn in z, Kran fährt in x. Unterseiten der Kranteile (relativ zur Kranposition x, Welt-z, Unterkante y)
+// für die Freiraumprüfung über dem Rumpf (Brücke, Laufkatze, Seile, Haken)
+const CRANE_ZR = [-6, 66], CRANE_ZC = (CRANE_ZR[0] + CRANE_ZR[1]) / 2;
+const CRANE_PARTS = [
+  { x0: -2.3, x1: 2.3, z0: CRANE_ZR[0] - 1.7, z1: CRANE_ZR[1] + 1.7, y: YC - 13.7 },  // Brückenträger, Lichtleiste
+  { x0: -2.6, x1: 2.6, z0: CRANE_ZC - 11, z1: CRANE_ZC - 5, y: YC - 16 },               // Laufkatze
+  { x0: -1.2, x1: 1.2, z0: CRANE_ZC - 8.8, z1: CRANE_ZC - 7.2, y: YC - 20.2 },          // Seile und Haken
+];
+const CRANE_TRAVEL = 64, CRANE_LIMIT = 116, CRANE_CLEAR = 2.5; // Fahrweg ±64 m (Wand bei ±116 m), Abstand über dem Rumpf
 
 // Montagepunkte wie in render/models.js (SHIP_LAYOUT), Spiel-Achsen: Bug −z
 const LAYOUT = {
@@ -306,7 +317,11 @@ export class HangarBay {
     const rim = new THREE.DirectionalLight(0x9db8ff, 1.9); rim.position.set(40, 22, 90);
     const fill = new THREE.DirectionalLight(0xbfcde6, 0.45); fill.position.set(-90, -4, -60);
     const hemi = new THREE.HemisphereLight(0x2c3646, 0x050608, 0.5);
-    this.lights.add(top, rim, fill, hemi);
+    // Konturlicht (Runde 3): steil von hinten oben – setzt Rücken- und Flügelkanten vom dunklen Hallenhintergrund ab,
+    // spiegelt wegen des steilen Einfalls nicht im Boden vor der Kamera (dort lag bei Eris der helle Fleck)
+    const contour = new THREE.DirectionalLight(0xdfe6ff, 0); contour.position.set(36, 80, 70);
+    this.lights.add(top, rim, fill, hemi, contour);
+    this._lit = { top, rim, fill, contour, env: 0.3 };
     this.scene.add(this.lights);
 
     this.env = new THREE.Group();
@@ -334,6 +349,9 @@ export class HangarBay {
     this.scene.add(this.plan);
 
     this.hps = { laser: [], gen: [] };
+    this.own = '';             // eigenes, aktives Schiff 'fraktion|sX' (nur dafür 4K)
+    this.orbit = null;         // nur Prüfwerkzeug: { yaw, pitch, dist } (Grad, Vielfaches des Radius) statt Heldenaufnahme
+    if (import.meta.env && import.meta.env.DEV) window.__lsBay = this;
     this.mode = 'werft';
     this.size = { w: 0, h: 0 };
     this.area = { cx: 0.5, cy: 0.5, w: 1, h: 1 };
@@ -387,8 +405,10 @@ export class HangarBay {
     for (const m of this._texMats || []) m.dispose();
     const tFloor = floorTex(), tPad = padTex(fx, this.berth), tWall = wallTex(), tDoor = doorTex(fx), tShaft = shaftTex();
     this._tex = [tFloor, tPad, tWall, tDoor, tShaft];
-    const floorMat = new THREE.MeshStandardMaterial({ map: tFloor, metalness: 0.5, roughness: 0.62, color: 0x5a616c, envMapIntensity: 0.1 });
-    const padMat = new THREE.MeshStandardMaterial({ map: tPad, metalness: 0.35, roughness: 0.78, color: 0x969aa2, envMapIntensity: 0.08 });
+    // Eris: Boden und Plattform matter und dunkler (kein heller Spiegelfleck vor dem Schiff, Rumpf hebt sich ab)
+    const er = faction === 'eris';
+    const floorMat = new THREE.MeshStandardMaterial({ map: tFloor, metalness: er ? 0.3 : 0.5, roughness: er ? 0.82 : 0.62, color: er ? 0x464b55 : 0x5a616c, envMapIntensity: 0.1 });
+    const padMat = new THREE.MeshStandardMaterial({ map: tPad, metalness: er ? 0.25 : 0.35, roughness: er ? 0.88 : 0.78, color: er ? 0x767a84 : 0x969aa2, envMapIntensity: 0.08 });
     const wallMat = new THREE.MeshStandardMaterial({ map: tWall, metalness: 0.65, roughness: 0.5, color: 0xc4ccd8, envMapIntensity: 0.6 });
     const doorMat = new THREE.MeshStandardMaterial({ map: tDoor, metalness: 0.7, roughness: 0.45 });
     const shaftMat = new THREE.MeshBasicMaterial({ map: tShaft, color: 0x8ea6cc, transparent: true, opacity: 0.11, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
@@ -495,7 +515,7 @@ export class HangarBay {
     }
 
     // Kranbahn: zwei Schienen an den Deckenträgern abgehängt, Brückenkran fährt in x
-    const zr = [-6, 66];
+    const zr = CRANE_ZR;
     for (const z of zr) {
       B.box(M.steel, 0, YC - 10, z, 2 * XW - 8, 1.8, 1.6, 0.2);
       B.box(M.dark, 0, YC - 9, z, 2 * XW - 8, 0.3, 0.8);
@@ -519,6 +539,7 @@ export class HangarBay {
     this.craneLight.position.set(0, YC - 15, zc - 6);
     this.crane.add(this.craneLight);
     this.env.add(this.crane);
+    this.crane.position.x = this._craneRange ? this._craneRange[0] : -CRANE_TRAVEL;
 
     // Requisiten: Frachtcontainer, Werkzeugwagen, Leitungen
     const cont = (x, z, ry, h = 0) => {
@@ -563,23 +584,60 @@ export class HangarBay {
 
   // ---------- Schiff ----------
   // Modell der gezeigten Klasse laden (einmal je Schlüssel), bis dahin zeigt die Bucht den Plan-Umriss
+  // 4K-Stufe wie im Flug (ULTRA, Desktop-App ab HOCH), nur für das eigene, aktive Schiff (this.own), nie beim
+  // Durchblättern der Schiffswerft
+  _hdFor(faction, shipId) {
+    if (this.own !== faction + '|' + shipId) return null;
+    let q = 2;
+    try { q = qIndex(JSON.parse(localStorage.getItem('ls.settings') || '{}').quality) ?? 2; } catch { /* Standard HOCH */ }
+    return hdTextures(q) ? shipHdUrls(shipFile(faction, shipId), shipId) : null;
+  }
   _ensureModel(faction, shipId) {
     const k = `ship:${shipId}:${faction}`;
-    if (this.factory.glb.has(k) || this.pending.has(k) || (this._tried || (this._tried = new Set())).has(k)) return;
+    const hd = this._hdFor(faction, shipId);
+    if (this.factory.glb.has(k)) {
+      // schon geladen: 4K nachrüsten (eigenes Schiff) bzw. fremde Schiffe ohne 4K lassen
+      if (hd && !this.factory.glb.get(k).userData.hdTex && !this.pending.has(k + ':hd')) {
+        this.pending.add(k + ':hd');
+        this.factory.setShipHd(k, hd).then(() => this._done(k + ':hd'), () => this._done(k + ':hd'));
+      }
+      return;
+    }
+    if (this.pending.has(k) || (this._tried || (this._tried = new Set())).has(k)) return;
     this._tried.add(k);
     this.pending.add(k);
-    this.factory.registerGLB(k, shipFile(faction, shipId)).then(() => this._done(k), () => this._done(k));
+    this.factory.registerGLB(k, shipFile(faction, shipId), hd ? { hd } : {}).then(() => this._done(k), () => this._done(k));
+  }
+  /** 4K-Texturen freigeben: alle außer dem eigenen Schiff (keepOwn) oder alle (Hangar verlassen) */
+  releaseHd(keepOwn) {
+    if (!this.ok) return;
+    const [f, s] = (this.own || '|').split('|');
+    this.factory.releaseShipHd(keepOwn && f ? `ship:${s}:${f}` : null);
   }
 
   setShip(faction, shipId, loadout, locked) {
     if (!this.ok) return;
     this._ensureModel(faction, shipId);
+    this.releaseHd(true); // 4K nur für das eigene Schiff
     const key = faction + '|' + shipId + '|' + JSON.stringify(loadout || {}) + '|' + (locked ? 1 : 0) + '|' + this.factory.version;
     if (key === this._key) return;
     this._key = key;
     // Meshy-Laser/-Generatoren des Loadouts nachladen, danach neu aufbauen
     if (equipKeys(loadout).some((q) => !this.factory.glb.has(q))) this.factory.needEquip(loadout).then(() => { this._key = ''; this._dirty = true; this.onChange && this.onChange(); });
     this._buildEnv(faction);
+    // Belichtung je Lackierung: dunkle Rümpfe (Eris, Saturn-Dunkelmetall) bekommen mehr Kanten- und Umgebungslicht,
+    // damit Metall, Fugen und Kantenglanz lesbar sind; Europa (weiß/gold) bleibt, sonst brennt es aus
+    // [Oberlicht, Kante, Füllung, Umgebung, Kontur, Höhe des Kantenlichts]. Eris (Runde 3): Kantenlicht steiler und
+    // schwächer (flach von hinten spiegelte es als heller Fleck im Boden), dafür Konturlicht von oben hinten und
+    // mehr Füllung auf den Rumpf; Boden rauer (s. _buildEnv)
+    const LK = { europa: [1.5, 1.9, 0.45, 0.3, 0, 22], saturn: [1.6, 2.4, 0.6, 0.42, 0.9, 30], eris: [2.0, 1.7, 1.05, 0.62, 2.6, 58] }[faction] || [1.5, 1.9, 0.45, 0.3, 0, 22];
+    this._lit.top.intensity = LK[0]; this._lit.rim.intensity = LK[1]; this._lit.fill.intensity = LK[2]; this._lit.env = LK[3];
+    this._lit.contour.intensity = LK[4]; this._lit.rim.position.set(40, LK[5], 90);
+    // Runde 4: Saturn-Kantenlicht neutral statt kaltblau (spiegelte als lila Wolke im dunklen Metallrumpf)
+    this._lit.rim.color.set(faction === 'saturn' ? 0xdcd8d2 : 0x9db8ff);
+    // Rumpfaufhellung und Silhouettenlicht (nur Rumpf, nicht die Halle): im Hangar eigener, kleinerer Wert (Runde 4:
+    // Eris 1,4 → 0,5) – die Halle beleuchtet selbst; die Aufhellung wirkt ohnehin nur noch im Unbeleuchteten
+    this.factory.uShipFill.value = faction === 'eris' ? 0.5 : faction === 'saturn' ? 0.45 : 0.3;
     this._clear(this.shipRoot);
     this._clear(this.plan);
     const s = this.factory.buildShip(faction, shipId, loadout || { lasers: [], gens: [] });
@@ -603,8 +661,17 @@ export class HangarBay {
       }
     }
     this.shipRoot.position.set(0, 0, 0);
+    // Sehr große Rümpfe (Schiff 8 ≈ 190 m) im Hangar verkleinert zeigen, damit sie in Halle und Plattform passen;
+    // die angezeigten Maße bleiben die echten (dims.rl/rb)
+    this.shipRoot.scale.setScalar(1);
     this.shipRoot.updateMatrixWorld(true);
     this._fitBox(s.root);
+    const realL = this._box.max.x - this._box.min.x, realB = this._box.max.z - this._box.min.z;
+    if (realL > HANGAR_MAX_L) {
+      this.shipRoot.scale.setScalar(HANGAR_MAX_L / realL);
+      this.shipRoot.updateMatrixWorld(true);
+      this._fitBox(s.root);
+    }
     // Schiff so hoch setzen, dass es auf den Kufen über der Plattform steht
     const lift = PAD + 7.2 - this._box.min.y;
     this.shipRoot.position.y = lift;
@@ -617,14 +684,68 @@ export class HangarBay {
     this._fsph = this._fsph || new THREE.Sphere();
     fb.getBoundingSphere(this._fsph);
     const sz = this._box.getSize(this._v);
-    this.dims.l = sz.x; this.dims.b = sz.z;
+    this.dims.l = sz.x; this.dims.b = sz.z; this.dims.rl = realL; this.dims.rb = realB;
     // Kontaktschatten unter dem Rumpf
     this.shadow.position.set(this._sph.center.x, PAD + 0.08, this._sph.center.z);
     this.shadow.scale.set(sz.x * 1.05, 1, sz.z * 1.0);
     if (s.placeholder) this._detailHull(faction);
     this._buildFit(faction, loadout || { lasers: [], gens: [] });
+    this._craneFit();
     this._buildPlan(locked);
     this._dirty = true;
+  }
+
+  // Kran-Freiraum: Fahrweg nur dort, wo keine Kranunterkante (Haken, Laufkatze, Brücke) tiefer als Rumpf + Abstand liegt.
+  // Höhenprofil des Rumpfs (mit Kufen und Geschützträgern) je Meter in x für die z-Bänder der Kranteile; reicht der
+  // Platz über dem Schiff nicht (hohe Rümpfe S5–S8), fährt der Kran nur neben dem Rumpf bzw. parkt dort.
+  _craneFit() {
+    const N = 2 * CRANE_LIMIT + 1, prof = CRANE_PARTS.map(() => new Float32Array(N).fill(-1e9));
+    const v = this._v, M = 4; // z-Rand: große Dreiecke reichen über die Eckpunkte hinaus
+    const add = (root) => root.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position || (o.material && o.material.isShaderMaterial)) return;
+      if (o.material && o.material.blending === THREE.AdditiveBlending) return;
+      for (let p = o; p; p = p.parent) if (!p.visible) return;
+      o.updateMatrixWorld(true);
+      const P = o.geometry.attributes.position;
+      for (let i = 0; i < P.count; i++) {
+        v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld);
+        const xi = Math.round(v.x) + CRANE_LIMIT;
+        for (let k = 0; k < CRANE_PARTS.length; k++) {
+          const c = CRANE_PARTS[k];
+          if (v.z < c.z0 - M || v.z > c.z1 + M) continue;
+          for (let d = -2; d <= 2; d++) { const j = xi + d; if (j >= 0 && j < N && v.y > prof[k][j]) prof[k][j] = v.y; }
+        }
+      }
+    });
+    if (this.ship) add(this.ship.root);
+    add(this.gear); add(this.fit);
+    const free = (X) => {
+      for (let k = 0; k < CRANE_PARTS.length; k++) {
+        const c = CRANE_PARTS[k];
+        for (let x = Math.floor(X + c.x0) - 1; x <= Math.ceil(X + c.x1) + 1; x++) {
+          const j = x + CRANE_LIMIT;
+          if (j >= 0 && j < N && prof[k][j] + CRANE_CLEAR > c.y) return false;
+        }
+      }
+      return true;
+    };
+    this._craneFree = free;
+    // Standard: ganzer Fahrweg ±64 m; sonst längster freier Abschnitt (höchstens ±116 m, an der Wand)
+    let ok = true;
+    for (let X = -CRANE_TRAVEL; X <= CRANE_TRAVEL; X++) if (!free(X)) { ok = false; break; }
+    if (ok) { this._craneRange = [-CRANE_TRAVEL, CRANE_TRAVEL]; }
+    else {
+      let best = null, a = null;
+      for (let X = -CRANE_LIMIT; X <= CRANE_LIMIT + 1; X++) {
+        const f = X <= CRANE_LIMIT && free(X);
+        if (f && a === null) a = X;
+        if (!f && a !== null) { if (!best || X - 1 - a > best[1] - best[0]) best = [a, X - 1]; a = null; }
+      }
+      // Abschnitt auf höchstens 40 m Fahrweg kürzen (an der Rumpfseite), sonst steht der Kran weit hinten an der Wand
+      if (best && best[1] - best[0] > 40) { if (best[0] > 0) best[1] = best[0] + 40; else best[0] = best[1] - 40; }
+      this._craneRange = best || [CRANE_LIMIT, CRANE_LIMIT];
+    }
+    if (this.crane) { this.crane.position.x = this._craneRange[0]; this.crane.updateMatrixWorld(true); }
   }
 
   // Hülle ohne Leuchtsprites und ausgeblendete Strahlen vermessen
@@ -753,21 +874,27 @@ export class HangarBay {
       }
     }
     // Positionslichter: Backbord rot, Steuerbord grün, Heck weiß blinkend
-    const navAt = (sprite, x, y, z, s, blink) => {
+    // Runde 4: Seitenlichter gerichtet (nz = Außenrichtung in z) – das Licht der abgewandten Seite wird ausgeblendet,
+    // statt als Lichtfleck über die Rumpfsilhouette zu ragen; etwas kleiner (1,7 statt 2,4)
+    this._side = [];
+    const navAt = (sprite, x, y, z, s, blink, nz = 0) => {
       const sp = new THREE.Sprite(sprite);
       sp.position.set(x, y, z); sp.scale.setScalar(s);
       this.fit.add(sp);
       if (blink) this.nav.push(sp);
+      if (nz) { sp.userData.nz = nz; this._side.push(sp); }
     };
     const F = this.factory;
     const port = this._hit(c.x + L * 0.05, c.y, box.max.z + 6, 0, 0, -1, parts);
     const star = this._hit(c.x + L * 0.05, c.y, box.min.z - 6, 0, 0, 1, parts);
     const tail = this._hit(box.max.x + 6, c.y + 1, c.z, -1, 0, 0, parts);
     const topH = this._hit(c.x, box.max.y + 6, c.z, 0, -1, 0, parts);
-    if (port) { navAt(F.sprite(0xff3a26, 1.6, 'nav:r'), port.point.x, port.point.y, port.point.z + 0.3, 2.4, false); P.box(M.red, port.point.x, port.point.y, port.point.z + 0.05, 0.6, 0.35, 0.2); }
-    if (star) { navAt(F.sprite(0x3aff8a, 1.3, 'nav:g'), star.point.x, star.point.y, star.point.z - 0.3, 2.4, false); P.box(F.glow(0x3aff8a, 1.4), star.point.x, star.point.y, star.point.z - 0.05, 0.6, 0.35, 0.2); }
+    if (port) { navAt(F.sprite(0xff3a26, 1.6, 'nav:r'), port.point.x, port.point.y, port.point.z + 0.3, 1.7, false, 1); P.box(M.red, port.point.x, port.point.y, port.point.z + 0.05, 0.6, 0.35, 0.2); }
+    if (star) { navAt(F.sprite(0x3aff8a, 1.3, 'nav:g'), star.point.x, star.point.y, star.point.z - 0.3, 1.7, false, -1); P.box(F.glow(0x3aff8a, 1.4), star.point.x, star.point.y, star.point.z - 0.05, 0.6, 0.35, 0.2); }
     if (tail) navAt(F.sprite(0xffffff, 1.6, 'nav:w'), tail.point.x + 0.4, tail.point.y, tail.point.z, 3, true);
-    if (topH) navAt(F.sprite(0xff3a26, 1.4, 'nav:r'), topH.point.x, topH.point.y + 0.3, topH.point.z, 2, true);
+    // Rückenlicht: nur von oben sichtbar (≥ 8° über der Rumpfoberseite), kleiner; flach von der Seite stand es als roter
+    // Fleck über der Silhouette (S1 nah-flanke)
+    if (topH) { navAt(F.sprite(0xff3a26, 1.4, 'nav:r'), topH.point.x, topH.point.y + 0.3, topH.point.z, 1.5, true); const sp = this.fit.children[this.fit.children.length - 1]; sp.userData.up = true; this._side.push(sp); }
     if (this.ship.placeholder) this._greebles(P, M, parts, box, c, L, Bw);
     G.build(this.gear);
     P.build(this.fit);
@@ -908,6 +1035,19 @@ export class HangarBay {
     const vt = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
     const ht = vt * aspect;
     const d = Math.max(R / (ht * fit.w), R / (vt * fit.h)) * (this.mode === 'studio' ? 0.9 : 0.8);
+    if (this.orbit) {
+      // Prüfwerkzeug: Umlauf um den Rumpf (Gierwinkel 0 = von vorn/Bug, 90 = Steuerbord, Neigung + = von oben)
+      const o = this.orbit, R0 = this._sph.radius, cc = this._sph.center;
+      const yw = THREE.MathUtils.degToRad(o.yaw), pt = THREE.MathUtils.degToRad(o.pitch), dd = R0 * (o.dist || 1);
+      cam.position.set(cc.x - Math.cos(pt) * Math.cos(yw) * dd, cc.y + Math.sin(pt) * dd, cc.z + Math.cos(pt) * Math.sin(yw) * dd);
+      cam.up.set(0, 1, 0);
+      cam.lookAt(cc.x + (o.dx || 0) * R0, cc.y + (o.dy || 0) * R0, cc.z + (o.dz || 0) * R0);
+      cam.near = Math.max(0.1, dd * 0.02);
+      cam.clearViewOffset();
+      cam.updateProjectionMatrix();
+      return cam;
+    }
+    if (cam.near !== 1) cam.near = 1;
     if (this.mode === 'studio') {
       cam.position.set(c.x - 0.62 * d, c.y + 0.3 * d, c.z - 0.7 * d);
       cam.lookAt(c.x, c.y - R * 0.04, c.z);
@@ -945,10 +1085,11 @@ export class HangarBay {
     this.fit.visible = this.fit.visible && !this.hideShip;
     this.shadow.visible = !plan && !studio && !this.hideShip;
     this.vignette.visible = !plan && !studio;
+    if (this.orbit && this.orbit.clean) { this.env.visible = this.gear.visible = this.fit.visible = this.shadow.visible = this.vignette.visible = false; }
     this.lights.visible = !plan;
     this.plan.visible = plan;
     this.scene.fog = plan || studio ? null : this.fog || null;
-    this.scene.environmentIntensity = studio ? 0.55 : 0.3;
+    this.scene.environmentIntensity = studio ? Math.max(0.55, this._lit.env * 1.4) : this._lit.env;
     this.gl.setClearColor(BG, plan || studio ? 0 : 1);
     this._cam = this._camera();
     this.gl.render(this.scene, this._cam);
@@ -960,16 +1101,27 @@ export class HangarBay {
     const dt = now - this._last;
     if (dt < 32 && !this._dirty) return; // höchstens 30 Bilder/s
     this._last = now;
-    this._t += Math.min(0.1, dt / 1000);
+    // Prüfwerkzeug (orbit): Zeit, Kran und Blinklichter stehen still, Kran am äußeren Ende seines Fahrwegs
+    if (!this.orbit) this._t += Math.min(0.1, dt / 1000);
     this.factory.uTime.value = this._t;
     if (this.crane) {
-      const k = (this._t % 24) / 24;
-      const e = k < 0.5 ? k * 2 : 2 - k * 2;
-      this.crane.position.x = -64 + 128 * (e * e * (3 - 2 * e));
-      this.crane.updateMatrixWorld(true);
+      const [a, b] = this._craneRange || [-CRANE_TRAVEL, CRANE_TRAVEL];
+      let x;
+      if (this.orbit) x = Math.abs(a) > Math.abs(b) ? a : b;
+      else {
+        const k = (this._t % 24) / 24;
+        const e = k < 0.5 ? k * 2 : 2 - k * 2;
+        x = a + (b - a) * (e * e * (3 - 2 * e));
+      }
+      if (x !== this.crane.position.x) { this.crane.position.x = x; this.crane.updateMatrixWorld(true); }
     }
-    const on = (this._t % 1.6) < 0.12;
-    for (let i = 0; i < this.nav.length; i++) this.nav[i].visible = i === 0 ? on : (this._t + 0.8) % 1.6 < 0.12;
+    const on = this.orbit ? true : (this._t % 1.6) < 0.12;
+    for (let i = 0; i < this.nav.length; i++) this.nav[i].visible = i === 0 || this.orbit ? on : (this._t + 0.8) % 1.6 < 0.12;
+    if (this._side && this._cam) for (const sp of this._side) {
+      const d = this._cam.position;
+      if (sp.userData.up) sp.visible = sp.visible && (d.y - sp.position.y) > 0.14 * Math.hypot(d.x - sp.position.x, d.z - sp.position.z);
+      else sp.visible = (d.z - sp.position.z) * sp.userData.nz > 0;
+    }
     const wasDirty = this._dirty;
     this._dirty = false;
     this._render();
@@ -986,6 +1138,9 @@ export class HangarBay {
   stop() {
     cancelAnimationFrame(this._raf);
     this._raf = 0;
+    this.releaseHd(false); // Hangar verlassen: 4K-Texturen freigeben (beim nächsten Öffnen neu geladen)
+    // Runde 3: auch die 2K-Karten fremder Rümpfe und der Werft-Karten (nur das eigene Schiff bleibt im Grafikspeicher)
+    if (this.ok) { const [f, s] = (this.own || '|').split('|'); this.factory.releaseShipTextures(f ? `ship:${s}:${f}` : null); }
   }
 
   // Standbild für das Datenblatt im Shop: freigestellt in Dreiviertelansicht (einmal je Schiff)
@@ -1010,7 +1165,7 @@ export class HangarBay {
       const x = (v.x + 1) / 2, y = (1 - v.y) / 2;
       if (x < bx[0]) bx[0] = x; if (x > bx[1]) bx[1] = x; if (y < bx[2]) bx[2] = y; if (y > bx[3]) bx[3] = y;
     }
-    const shot = { url: this.canvas.toDataURL('image/png'), l: this.dims.l, b: this.dims.b, bx: bx.map((q) => Math.max(0, Math.min(1, q))) };
+    const shot = { url: this.canvas.toDataURL('image/png'), l: this.dims.rl ?? this.dims.l, b: this.dims.rb ?? this.dims.b, bx: bx.map((q) => Math.max(0, Math.min(1, q))) };
     this.hideShip = hide;
     this._shots.set(key, shot);
     this.mode = prev.mode;

@@ -111,10 +111,89 @@ ${VN}
   return m;
 }
 
+// ---------- Feindetail für texturierte Meshy-Schiffe ----------
+// Ergänzt die gebackenen Karten (Farbe, Normal, ORM) nur aus der Nähe: Gebrauchsspuren (Rauheit, leichte Flecken),
+// feine Kratzrichtung in der Rauheit, Glanz an Geometriekanten. Runde 2: das frühere Plattenraster im Objektraum ist
+// entfernt – es lief als gestrichelte Naht quer über die Panele der Meshy-Textur (die Fugen trägt die Textur selbst).
+// Dazu ein Fresnel-Randlicht in Fraktionsfarbe (uRimC, auch aus der Ferne: Silhouette vor dunklem Nebel).
+// uDet = Qualitätsstufe (0 = Nahdetail aus), uUnit = Meter je Modelleinheit (Rumpf-Maßstab).
+// rim: { color, k } Fresnel-Randlicht; fill: { color, k } Rumpfaufhellung; uFillMul: Faktor der Grafik-Engine
+// (Flug 1, Hangar mit eigenem Licht kleiner)
+export function glbShipDetail(m, uDet, uUnit, rim, fill, uFillMul) {
+  const prev = m.onBeforeCompile;
+  const uRimC = { value: new THREE.Color(rim ? rim.color : 0x9fb4d0) }, uRimK = { value: rim ? rim.k : 0.08 };
+  const uFillC = { value: new THREE.Color(fill ? fill.color : 0xffffff) }, uFill = { value: fill ? fill.k : 0 };
+  const uSilC = { value: new THREE.Color(fill && fill.sil ? fill.sil.color : 0xdbe8ff) }, uSilK = { value: fill && fill.sil ? fill.sil.k : 0 };
+  const uFM = uFillMul || { value: 1 };
+  m.userData.uRimC = uRimC; m.userData.uRimK = uRimK; m.userData.uFillC = uFillC; m.userData.uFill = uFill; m.userData.uSilK = uSilK;
+  m.onBeforeCompile = (sh, r) => {
+    if (prev) prev(sh, r);
+    sh.uniforms.uDet = uDet; sh.uniforms.uUnit = uUnit; sh.uniforms.uRimC = uRimC; sh.uniforms.uRimK = uRimK;
+    sh.uniforms.uFillC = uFillC; sh.uniforms.uFill = uFill; sh.uniforms.uFillMul = uFM; sh.uniforms.uSilC = uSilC; sh.uniforms.uSilK = uSilK;
+    sh.vertexShader = 'varying vec3 vSdP;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vSdP = position;`);
+    sh.fragmentShader = `uniform float uDet, uUnit, uRimK, uFill, uFillMul, uSilK; uniform vec3 uRimC, uFillC, uSilC;
+varying vec3 vSdP;
+float sdNear = 0.0, sdDirt = 0.0, sdEdge = 0.0;
+${VN}
+` + sh.fragmentShader
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        if (uDet > 0.001) {
+          vec3 p = vSdP * uUnit;
+          // nur nah: ≈ 1 m Rumpf ≥ 16 Bildpunkte
+          float fw = length(fwidth(p));
+          sdNear = (1.0 - smoothstep(0.03, 0.08, fw)) * uDet;
+          sdDirt = smoothstep(0.6, 0.95, lsVN(p * 0.35) * 0.65 + lsVN(p * 1.7) * 0.35) * sdNear;
+          diffuseColor.rgb *= 1.0 - sdDirt * 0.08;
+        }`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        if (uDet > 0.001 && sdNear > 0.001) {
+          float scr = lsVN(vec3(vSdP.x * uUnit * 9.0, vSdP.y * uUnit * 0.9, vSdP.z * uUnit * 9.0));
+          roughnessFactor = clamp(roughnessFactor + sdDirt * 0.1 + (scr - 0.5) * 0.06 * sdNear, 0.04, 1.0);
+        }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        if (uDet > 0.001 && sdNear > 0.001) {
+          sdEdge = clamp(length(fwidth(normalize(vNormal))) * 1.6 - 0.2, 0.0, 1.0) * sdNear; // Kanten der Geometrie, nicht der Normalkarte
+        }`)
+      .replace('#include <opaque_fragment>', `
+        {
+          float sdAO = 1.0;
+          #ifdef USE_AOMAP
+            sdAO = ambientOcclusion;
+          #endif
+          // Fraktions-Randlicht (Runde 3) nicht unbeleuchtet: gewichtet mit der Beleuchtung an dieser Stelle (direkt +
+          // Umgebung, auf die Grundfarbe bezogen) und der Umgebungsverdeckung – in Spalten und im Schatten kein Leuchten
+          float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
+          vec3 irr = (reflectedLight.directDiffuse + reflectedLight.indirectDiffuse) / max(diffuseColor.rgb, vec3(0.03));
+          float lit = clamp(dot(irr, vec3(0.3, 0.59, 0.11)), 0.0, 1.0);
+          outgoingLight += uRimC * fr * uRimK * sdAO * (0.2 + 0.8 * lit);
+          // Rumpfaufhellung (Runde 4): weiches Füll-/Kopflicht aus Kamerarichtung auf der Grundfarbe, NUR in unbeleuchteten
+          // Bereichen (× (1 − lit)²): beleuchtete Flächen bleiben satt (kein Pastell-Schleier über dem Violett), Schatten
+          // zeigen Platten und Fugen
+          if (uFill > 0.001) {
+            float kl = max(dot(normal, normalize(vec3(-0.35, 0.55, 0.76))), 0.0), dk = 1.0 - lit;
+            outgoingLight += diffuseColor.rgb * uFillC * (uFill * uFillMul * sdAO * (0.25 + 0.75 * kl) * dk * dk);
+          }
+          // Silhouettenlicht (Runde 4, v. a. Eris vor violettem Nebel): kühles, helles Kantenlicht nur am streifenden Rand
+          // (Fresnel hoch 4, ab 60 % Abwendung), nicht über die Fläche – trennt den Umriss vom Hintergrund
+          if (uSilK > 0.001) {
+            float ed = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
+            float sil = smoothstep(0.6, 0.97, ed); sil *= sil;
+            outgoingLight += uSilC * (sil * uSilK * uFillMul * (0.4 + 0.6 * sdAO));
+          }
+          if (uDet > 0.001) outgoingLight += vec3(0.62, 0.7, 0.82) * sdEdge * 0.05 * uDet;
+        }
+        #include <opaque_fragment>`);
+  };
+  const prevKey = m.customProgramCacheKey ? m.customProgramCacheKey.bind(m) : () => '';
+  m.customProgramCacheKey = () => prevKey() + '|glbdet4';
+  return m;
+}
+
 // ---------- Lichtpunkte ----------
 // Modus: 0 Dauerlicht, 1 langsamer Blinker, 2 Doppelblitz (weiß), 3 Lauflicht (phase = Versatz), 4 Schweißlicht
 const LIGHT_VS = /* glsl */`
-attribute vec3 aCol; attribute float aSize; attribute vec2 aBlink;
+attribute vec3 aCol; attribute float aSize; attribute vec2 aBlink; attribute vec3 aDir;
 uniform float uTime; uniform float uScale;
 varying vec3 vCol; varying float vA;
 void main() {
@@ -127,6 +206,9 @@ void main() {
   else if (m > 1.5 && m < 2.5) { float f = fract(t / 1.7); b = (f < 0.04 || (f > 0.13 && f < 0.17)) ? 1.3 : 0.0; }
   else if (m > 2.5 && m < 3.5) { float f = fract(uTime * 0.7 - aBlink.x); b = 0.06 + exp(-f * 14.0); }
   else if (m > 3.5) { float k = floor(uTime * 24.0); b = step(0.5, fract(sin(k * 91.7 + aBlink.x * 13.0) * 437.5)) * (0.5 + 0.7 * fract(sin(k * 7.3 + aBlink.x) * 77.0)); }
+  // gerichtete Lichter (Flügelspitzen, Runde 4): nur sichtbar, solange die Kamera auf ihrer Seite steht – die abgewandte
+  // Spitze blendet aus, statt als Lichtfleck über die Rumpfsilhouette zu ragen
+  if (dot(aDir, aDir) > 0.01) b *= smoothstep(-0.05, 0.35, dot(normalize(normalMatrix * aDir), normalize(-mv.xyz)));
   vCol = aCol; vA = b;
 }`;
 const LIGHT_FS = /* glsl */`
@@ -144,18 +226,21 @@ export function lightPointsMaterial(uTime, uScale) {
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   });
 }
-// list: [mode, x, y, z, size, r, g, b, phase]
+// list: [mode, x, y, z, size, r, g, b, phase, dx, dy, dz] (Richtung optional: gerichtetes Licht)
 export function lightPointsGeometry(list) {
   const n = list.length;
-  const p = new Float32Array(n * 3), c = new Float32Array(n * 3), s = new Float32Array(n), b = new Float32Array(n * 2);
+  const p = new Float32Array(n * 3), c = new Float32Array(n * 3), s = new Float32Array(n), b = new Float32Array(n * 2), d = new Float32Array(n * 3);
   list.forEach((l, i) => {
     p.set([l[1], l[2], l[3]], i * 3); c.set([l[5], l[6], l[7]], i * 3); s[i] = l[4]; b.set([l[8] || 0, l[0]], i * 2);
+    if (l.length >= 12) d.set([l[9], l[10], l[11]], i * 3);
   });
+
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(p, 3));
   g.setAttribute('aCol', new THREE.BufferAttribute(c, 3));
   g.setAttribute('aSize', new THREE.BufferAttribute(s, 1));
   g.setAttribute('aBlink', new THREE.BufferAttribute(b, 2));
+  g.setAttribute('aDir', new THREE.BufferAttribute(d, 3));
   g.computeBoundingSphere();
   return g;
 }
