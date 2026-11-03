@@ -95,6 +95,32 @@ export class HudTouch {
     el.style.bottom = `${Math.round(bottom / z)}px`;
     el.classList.remove('is-compact');
     if (el.getBoundingClientRect().height > room) el.classList.add('is-compact');
+    this._fitStick();
+  }
+  /**
+   * Joystick in die größte freie Lücke der linken Spalte (Runde 3): am Handy quer lag er in der Taktik über dem Fenster
+   * KONTO (FIN-02). Belegt sind die sichtbaren Fenster, die seine Breite schneiden; bevorzugt die bisherige Höhe.
+   */
+  _fitStick() {
+    const js = this.js;
+    if (!js) return;
+    js.style.bottom = ''; js.style.top = '';
+    const z = parseFloat(getComputedStyle(js).zoom) || 1, b = js.getBoundingClientRect();
+    if (!b.height) return;
+    const busy = [];
+    for (const e of document.querySelectorAll('[data-win]')) {
+      if (e.classList.contains('is-off') || getComputedStyle(e).display === 'none') continue;
+      const r = e.getBoundingClientRect();
+      if (!r.width || r.right < b.left - 4 || r.left > b.right + 4) continue;
+      busy.push([r.top - 8, r.bottom + 8]);
+    }
+    const g = document.querySelector('.lsg'); // SYSTEM-Karte links
+    if (g) { const r = g.getBoundingClientRect(); if (r.width && r.left < b.right && r.right > b.left) busy.push([r.top - 8, r.bottom + 8]); }
+    const hit = (t) => busy.some(([a, c]) => t + b.height > a && t < c);
+    if (!hit(b.top)) return;
+    let best = null;
+    for (let t = 8; t + b.height < innerHeight - 8; t += 6) if (!hit(t) && (best == null || Math.abs(t - b.top) < Math.abs(best - b.top))) best = t;
+    if (best != null) { js.style.bottom = 'auto'; js.style.top = `${Math.round(best / z)}px`; }
   }
 
   _tick() {

@@ -51,7 +51,11 @@ export class HudWindows {
         // Ansichtsprofil (Runde 2): im 3D-Flug eigene Sichtbarkeit. Standard dort aus: Fenster, die das Flug-HUD schon
         // zeigt oder die den Flug zustellen (Pilot, Konto, Ziel, Piloten, Chat); per Leiste oben wieder einblendbar
         hiddenT: !!(s && s.hidden),
-        hidden3: s && typeof s.hidden3 === 'boolean' ? s.hidden3 : !!d.hide3,
+        // r3: Stand der 3D-Voreinstellung je Fenster (Runde 3: Schiff im Verfolger aus, Hülle und Schild zeichnet das
+        // Flug-HUD unter dem Schiff); ältere gespeicherte Stände übernehmen die neue Voreinstellung einmal
+        hidden3: s && typeof s.hidden3 === 'boolean' && (s.r3 | 0) >= (d.r3 | 0) ? s.hidden3 : !!d.hide3,
+        // Cockpit (Runde 3): eigenes Profil, Standard nur Funk – Waffen, Auftrag und Ziel stehen auf den Konsolen
+        hiddenC: s && typeof s.hiddenC === 'boolean' ? s.hiddenC : !!d.hideC,
         num: s && s.mode ? s.mode === 'num' : d.mode !== 'bar',
         x: 0, y: 0, w: 0, h: 0,
       };
@@ -124,7 +128,7 @@ export class HudWindows {
       w.saved = Object.assign(this._anchorFor(w), { dock: dock === undefined ? null : dock });
     }
     w.hidden = on;
-    if (this.profile === '3d') w.hidden3 = on; else w.hiddenT = on;
+    if (this.profile === '3d') w.hidden3 = on; else if (this.profile === 'cock') w.hiddenC = on; else w.hiddenT = on;
     this._applyClasses(w);
     if (!on) try { window.dispatchEvent(new CustomEvent('ls:quest', { detail: { target: id } })); } catch { /* alt */ }
     w.placed = false;
@@ -141,11 +145,11 @@ export class HudWindows {
    * Jedes Profil merkt sich seine eigene Sichtbarkeit; Lage, Zuklappen und Anzeige bleiben gemeinsam.
    */
   setProfile(p) {
-    p = p === '3d' ? '3d' : 'tac';
+    p = p === '3d' || p === 'cock' ? p : 'tac';
     if (p === this.profile) return;
     this.profile = p;
     for (const w of this.wins) {
-      const want = p === '3d' ? w.hidden3 : w.hiddenT;
+      const want = p === '3d' ? w.hidden3 : p === 'cock' ? w.hiddenC : w.hiddenT;
       if (w.hidden === want) continue;
       w.hidden = want;
       this._applyClasses(w);
@@ -177,8 +181,8 @@ export class HudWindows {
     for (const w of this.wins) {
       w.saved = null;
       w.collapsed = false;
-      w.hiddenT = false; w.hidden3 = !!w.def.hide3;
-      w.hidden = this.profile === '3d' ? w.hidden3 : false;
+      w.hiddenT = false; w.hidden3 = !!w.def.hide3; w.hiddenC = !!w.def.hideC;
+      w.hidden = this.profile === '3d' ? w.hidden3 : this.profile === 'cock' ? w.hiddenC : false;
       w.placed = false;
       w.num = w.def.mode !== 'bar';
       this._applyClasses(w);
@@ -355,7 +359,7 @@ export class HudWindows {
     for (const w of this.wins) {
       const e = { collapsed: w.collapsed, mode: w.num ? 'num' : 'bar' };
       if (w.hiddenT) e.hidden = true;
-      e.hidden3 = !!w.hidden3;
+      e.hidden3 = !!w.hidden3; e.r3 = w.def.r3 | 0; e.hiddenC = !!w.hiddenC;
       if (w.saved) Object.assign(e, w.saved);
       out.win[w.id] = e;
     }

@@ -2,7 +2,7 @@
 // Die Szene bleibt dahinter sichtbar. Werte werden nur bei offenem Menü und höchstens 4-mal pro Sekunde geschrieben.
 import { flightHelp, touchHelp } from '../input/bindings.js';
 import { isTouchOnly } from '../input/flightsettings.js';
-import { HOME_BAND, SECTOR_BAND, BAND_WARN } from '../flight/params.js';
+import { HOME_BAND, SECTOR_BAND, BAND_WARN, BAND_WARN_V } from '../flight/params.js';
 const fmtM = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 import { SHIPS, ENEMIES, AMMO } from '../core/data.js';
 import { TextSlot, ClassSlot, Bar, fmt } from './hud-parts.js';
@@ -43,7 +43,7 @@ const RULES = [
   ['ZIELEN', 'Bolzen fliegen 2.400 m/s. Die Raute vor dem Gegner zeigt den Vorhalt, dort hinzielen. Große Schiffe schwenken ihre Laser weiter (Kardan).'],
   ['GEKOPPELT', 'Der Flugrechner hält das Schiff auf Kurs und bremst Seitendrift. Entkoppelt (Alt+C) fliegt es auf dem letzten Vektor weiter.'],
   ['BOOST UND REISE', 'Boost hat einen Vorrat und lädt nach. REISE ist schneller, sperrt aber Waffen und Schildaufladung, im Kampf geht sie nicht.'],
-  ['HÖHE UND RAND', `Der Heimatsektor reicht ${fmtM(HOME_BAND)} m über und unter die Ebene der Station, alle anderen ${fmtM(SECTOR_BAND)} m. Ab ${Math.round(BAND_WARN * 100)} % warnt das HUD. Jenseits der Grenze bremst ein Navigationsfeld die Bewegung nach außen und schiebt das Schiff sanft zurück, ohne Schaden.`],
+  ['HÖHE UND RAND', `Der Heimatsektor reicht ${fmtM(HOME_BAND)} m über und unter die Ebene der Station, alle anderen ${fmtM(SECTOR_BAND)} m. Ab ${Math.round(BAND_WARN * 100)} % (Höhe ab ${Math.round(BAND_WARN_V * 100)} %) warnt das HUD. Jenseits der Grenze bremst ein Navigationsfeld die Bewegung nach außen und schiebt das Schiff sanft zurück, ohne Schaden.`],
 ];
 
 // 3D-Flug (Hauptmodus, Verfolger und Cockpit): Tastennamen aus input/bindings.js; darunter die Taktik (Draufsicht)

@@ -319,9 +319,11 @@ export class Input {
     const want = this.renderer.cameraMode === 'chase';
     if (want !== w.flight3d) { w.setFlight3d(want); this.fi.resetAim(); this.mouseDown = false; this.steer.clear(); if (!want) this.fi.exitLock(true); }
     const vm = this.renderer.viewMode || 'chase', de = document.documentElement;
-    if (de.dataset.view !== vm) de.dataset.view = vm; // Cockpit: HUD-Fenster über den Konsolen ausblenden (hud.css)
+    let ch = false;
+    if (de.dataset.view !== vm) { de.dataset.view = vm; ch = true; } // Cockpit: eigenes Fensterprofil (hud-win.js „cock“)
     const f = want ? '3d' : 'taktik';
-    if (document.documentElement.dataset.flight !== f) { document.documentElement.dataset.flight = f; try { window.dispatchEvent(new CustomEvent('ls:flightview', { detail: { flight: f } })); } catch { /* alt */ } }
+    if (de.dataset.flight !== f) { de.dataset.flight = f; ch = true; }
+    if (ch) try { window.dispatchEvent(new CustomEvent('ls:flightview', { detail: { flight: f, view: vm } })); } catch { /* alt */ }
   }
 
   update(dt) {

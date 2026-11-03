@@ -8,7 +8,7 @@
 import './hud-mid.css';
 import { ENEMIES } from '../core/data.js';
 import { PLAYER_RANGE } from '../sim/config.js';
-import { fmt, clamp01, TextSlot, ClassSlot, Bar, ring3 } from './hud-parts.js';
+import { fmt, clamp01, TextSlot, ClassSlot, Bar, ring3, ring3Free } from './hud-parts.js';
 
 const EDGE = 44;          // Abstand der Randmarke zum Bildschirmrand
 const STEP = 12;          // Schrittweite beim Zurücklaufen aus einem Fenster
@@ -377,7 +377,7 @@ export class HudMid {
       dx = tx - W / 2; dy = ty - H / 2;
       if (t.behind) { dx = -dx; dy = -dy; }
       if (!dx && !dy) dy = -1;
-      const o = ring3(W, H, dx, dy, 1, this._ring || (this._ring = { x: 0, y: 0 }));
+      const o = ring3Free(W, H, dx, dy, 1, this._ring || (this._ring = { x: 0, y: 0 }));
       ax = o.x; ay = o.y;
     } else if (covered) {
       // Ziel liegt unter einem Fenster: vom Ziel Richtung Schiff laufen, bis die Fensterkante erreicht ist
@@ -514,7 +514,7 @@ export class HudMid {
         if (t.behind) { gx = -gx; gy = -gy; }
         if (!gx && !gy) gy = -1;
         const a = Math.atan2(gy, gx); dx = Math.cos(a); dy = Math.sin(a);
-        const o = ring3(W, H, dx, dy, 1.05, this._ring2 || (this._ring2 = { x: 0, y: 0 }));
+        const o = ring3Free(W, H, dx, dy, 1.05, this._ring2 || (this._ring2 = { x: 0, y: 0 }));
         ax = o.x; ay = o.y;
       } else if (covered) {
         ax = tx; ay = ty;

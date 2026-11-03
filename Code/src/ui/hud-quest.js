@@ -2,7 +2,7 @@
 // laufendes Ereignis, Station oder das Sprungtor Richtung Auftragsabschnitt) – mit Entfernung, am Bildrand als Pfeil, wenn das Ziel außerhalb des Bildes liegt.
 // Ziel wird alle 0,4 s neu gesucht (nicht jedes Bild), die Position jedes Bild aktualisiert.
 import './hud-quest.css';
-import { ring3 } from './hud-parts.js';
+import { ring3, ring3Free } from './hud-parts.js';
 
 const fmtDist = (m) => (m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m / 10) * 10 + ' m');
 
@@ -74,7 +74,7 @@ export class HudQuest {
       if (s.behind) { dx = -dx; dy = -dy; }
       if (!(dx || dy)) dy = -1;
       ang = Math.atan2(dy, dx);
-      ring3(W, H, dx, dy, 0.9, rg); x = rg.x; y = rg.y;
+      ring3Free(W, H, dx, dy, 0.9, rg); x = rg.x; y = rg.y;
     } else if (!inside) {
       // hinter der Kamera oder außerhalb: Strahl vom Mittelpunkt der freien Zone bis an ihren Rand, Pfeil zeigt hin
       edge = true;

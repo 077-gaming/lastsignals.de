@@ -59,11 +59,12 @@ export class SystemGuide {
     if (st.mode === 'guided' && !s.finished) s.reportUi(this._ui());
     let key, html;
     if (st.mode == null) {
-      key = 'choice|' + (padMode() ? pad.style : 'kb');
+      const dv = padMode() ? 'pad' : isTouchOnly() ? 'touch' : 'kb';
+      key = 'choice|' + (dv === 'pad' ? pad.style : dv);
       html = `<div class="lsg-card ls-panel lsg-choice"><span class="ls-corners"></span>
         <div class="ls-head"><span class="ls-code">SYS</span><span class="ls-title">Erster Flug</span></div>
         <div class="lsg-body">
-          <p class="lsg-text">Die Station kann dich Schritt für Schritt einweisen: fliegen, zielen, Munition. Du kannst die Einweisung jederzeit ${padMode() ? `im Bordmenü (${esc(keyHint('ESC'))}, Reiter HILFE)` : 'mit G'} aus- und wieder einblenden.</p>
+          <p class="lsg-text">Die Station kann dich Schritt für Schritt einweisen: fliegen, zielen, Munition. Du kannst die Einweisung jederzeit ${dv === 'pad' ? `im Bordmenü (${esc(keyHint('ESC'))}, Reiter HILFE)` : dv === 'touch' ? 'im Bordmenü (MENÜ, Reiter HILFE)' : 'mit G'} aus- und wieder einblenden.</p>
           <div class="lsg-row">
             <button class="ls-btn is-fx" data-act="guided">Geführter Einstieg</button>
             <button class="ls-btn" data-act="direct">Direkt spielen</button>
@@ -79,14 +80,16 @@ export class SystemGuide {
       const dev = padMode() ? 'pad' : isTouchOnly() ? 'touch' : 'kb';
       const qv = questView(q, !!(w && w.flight3d), (a, mode) => inputName(a, mode, dev, glyph));
       qv.dev = dev !== 'kb' && qv.act ? qv.key : null; // schon das Gerätesymbol: nicht noch einmal umschlüsseln
-      const max = g.count || (g.type === 'fly' ? g.meters : 1);
+      const turn3 = g.type === 'fly' && g.turn && w && w.flight3d;
+      const max = g.count || (turn3 ? g.turn : g.type === 'fly' ? g.meters : 1);
       const prog = Math.min(max, st.progress || 0);
       if (g.type === 'window') for (const t of g.target) {
         const wEl = !t.startsWith('hub:') && document.querySelector(`[data-win="${t}"]`);
         if (wEl && !wEl.classList.contains('is-off') && !wEl.classList.contains('is-min')) s.mark(t);
       }
       let goalText = '';
-      if (g.type === 'fly') goalText = `${fmt(prog)} / ${fmt(g.meters)} m geflogen${g.camera === 'chase' ? ' (Verfolgersicht)' : g.config ? ` (Konfiguration ${g.config})` : ''}`;
+      if (turn3) goalText = `${fmt(prog)}° / ${fmt(g.turn)}° Kurve geflogen`;
+      else if (g.type === 'fly') goalText = `${fmt(prog)} / ${fmt(g.meters)} m geflogen${g.camera === 'chase' ? ' (Verfolgersicht)' : g.config ? ` (Konfiguration ${g.config})` : ''}`;
       else if (g.type === 'reach') {
         const wp = s.waypoint(), p = w.player;
         const d = wp && p ? Math.hypot(wp.x - p.x, wp.z - p.z) : 0;
@@ -140,7 +143,7 @@ export class SystemGuide {
           <div class="lsg-seg">${seg}</div>
           <div class="lsg-row lsg-foot"><span class="ls-label">Lohn ${esc(rew)}</span><span class="ls-spacer"></span>
             <button class="lsg-link" data-act="skip" title="Ohne Belohnung weiter">Überspringen</button>
-            <button class="lsg-link" data-act="hide" title="Mit G wieder einblenden">Ausblenden · G</button></div>
+            <button class="lsg-link" data-act="hide" title="${dev === 'kb' ? 'Mit G wieder einblenden' : 'Im Bordmenü unter HILFE wieder einblenden'}">${dev === 'kb' ? 'Ausblenden · G' : 'Ausblenden'}</button></div>
         </div></div>`;
     }
     if (!force && key === this._key) return;

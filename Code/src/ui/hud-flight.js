@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { FACTIONS } from '../core/data.js';
 import { MODE } from '../flight/core.js';
-import { BOLT_SPEED, HOME_BAND, SECTOR_BAND, BAND_WARN } from '../flight/params.js';
+import { BOLT_SPEED, HOME_BAND, SECTOR_BAND, BAND_WARN_V } from '../flight/params.js';
 import { leadTime } from '../flight/aim.js';
 import { keyName } from '../input/bindings.js';
 import { PLAYER_RANGE } from '../sim/config.js';
@@ -34,6 +34,11 @@ export class HudFlight {
     this.flash = '';  this.flashT = 0;
     this._dpr = 1; this._w = 0; this._h = 0;
     this.lastAimPx = null;
+    // belegte Flächen des Flug-HUD (CSS-px) für die schwebenden Zahlen (hud.js) und Prüfwerkzeuge: Tempoleiter mit
+    // Zahl, M/S und Boost-Balken, Höhenanzeige mit Schubbalken
+    const Z = () => ({ x0: 0, y0: 0, x1: 0, y1: 0 });
+    this.zones = { on: false, speed: Z(), alt: Z(), list: [] };
+    this.zones.list.push(this.zones.speed, this.zones.alt);
   }
   setInput(input, bus) {
     this.input = input; this.bus = bus;
@@ -67,10 +72,13 @@ export class HudFlight {
   update(w, r, dt, hidden) {
     const g = this.g, inp = this.input;
     const show = !hidden && w && r && w.flight3d && !w.docked && !w.playerDead && r.rig && r.rig.k > 0.6 && inp;
-    if (!show) { if (this.on) { this._size(); g.clearRect(0, 0, this.cv.width, this.cv.height); this.on = false; } return; }
+    if (!show) { this.zones.on = false; if (this.on) { this._size(); g.clearRect(0, 0, this.cv.width, this.cv.height); this.on = false; } return; }
     this.on = true;
     this._size();
     const dpr = this._dpr, W = this._w, H = this._h;
+    { const Zs = this.zones.speed, Za = this.zones.alt; this.zones.on = true;
+      Zs.x0 = W / 2 - 246; Zs.x1 = W / 2 - 140; Zs.y0 = H / 2 - 88; Zs.y1 = H / 2 + 98;
+      Za.x0 = W / 2 + 146; Za.x1 = W / 2 + 290; Za.y0 = H / 2 - 78; Za.y1 = H / 2 + 98; }
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, this.cv.width, this.cv.height);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -186,11 +194,14 @@ export class HudFlight {
     this._alt(g, w, p, st, W / 2 + 150, H / 2);
     // Boost links neben der Tempozahl (bei W / 2 − 182 lag die Zahl der Leiter über der Beschriftung BOOST)
     this._boost(g, st, W / 2 - 232, H / 2, acc);
+    // Schild und Hülle (Runde 3): im Verfolger ist das Schiffsfenster aus (es lag unter dem eigenen Schiff, das jetzt tiefer
+    // im Bild sitzt) – zwei schmale Balken über der Schnellleiste. Im Cockpit stehen sie auf der linken Konsole.
+    if (!cock) this._vitals(g, w, p, W, H, acc);
     // Moduszeile über dem Kursband (früher darunter: die Marken des Bands überdeckten den Text)
     this._mode(g, w, st, W / 2, this._tapeY() - 34);
     this._edge(g, w, W, H);
-    if (warn) this._center(g, warn, W / 2, H / 2 - 110, RED, 15);
-    if (st.warn) this._center(g, st.warn, W / 2, H / 2 - 92, WARN, 13);
+    if (warn) this._center(g, warn, W / 2, H / 2 - 104, RED, 15, 1, true);
+    if (st.warn) this._center(g, st.warn, W / 2, H / 2 - 80, WARN, 13, 1, true);
     if (this.flashT > 0) { this.flashT -= dt; this._center(g, this.flash, W / 2, this._tapeY() - 54, this.flash.startsWith('ENT') ? WARN : MID, 14, Math.min(1, this.flashT * 2)); }
     // virtueller Stick
     if ((fi.set.mouse === 'vjoy' || !fi.locked) && !fi.pad?.active && !fi.touch?.active) this._vjoy(g, W / 2, H / 2, H * 0.3, fi.vx, fi.vy);
@@ -267,8 +278,16 @@ export class HudFlight {
     }
     g.globalAlpha = 1;
   }
-  _center(g, text, x, y, col, size, alpha = 1) {
-    g.globalAlpha = alpha; g.fillStyle = col; g.font = `600 ${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  _center(g, text, x, y, col, size, alpha = 1, plate = false) {
+    g.globalAlpha = alpha; g.font = `600 ${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (plate) {
+      // Warnungen auf dunkler Tafel mit Kante in der Warnfarbe (Runde 3: „OBERGRENZE · 600 M“ war vor der Sonne unleserlich)
+      const tw = g.measureText(text).width, hw = tw / 2 + 12, hh = size * 0.5 + 6, c = 6;
+      g.fillStyle = 'rgba(4,6,10,0.8)';
+      g.beginPath(); g.moveTo(x - hw + c, y - hh); g.lineTo(x + hw, y - hh); g.lineTo(x + hw, y + hh - c); g.lineTo(x + hw - c, y + hh); g.lineTo(x - hw, y + hh); g.lineTo(x - hw, y - hh + c); g.closePath(); g.fill();
+      g.fillStyle = col; g.fillRect(x - hw + c, y - hh, Math.min(32, hw), 2);
+    }
+    g.fillStyle = col;
     g.fillText(text, x, y); g.globalAlpha = 1; g.textAlign = 'left';
   }
   _tapeY() { return Math.max(124, this._h / 2 - 185); }
@@ -279,9 +298,9 @@ export class HudFlight {
     const km = E.d >= 1000 ? `${(E.d / 1000).toFixed(1).replace('.', ',')} KM` : `${Math.max(0, Math.round(E.d / 10) * 10)} M`;
     const where = E.vert ? (E.dir > 0 ? 'OBERGRENZE' : 'UNTERGRENZE') : 'SEKTORRAND';
     const y = H / 2 - 128;
-    if (!E.out) { this._center(g, `${where} · ${km}`, W / 2, y, WARN, 14); return; }
-    this._center(g, `${where} · NAVIGATIONSFELD LENKT ZURÜCK`, W / 2, y, WARN, 15, 0.8 + 0.2 * Math.sin(performance.now() / 160));
-    this._center(g, E.vert ? (E.dir > 0 ? '▾ SINKEN' : '▴ STEIGEN') : 'KURSBAND ZEIGT DIE GRENZE', W / 2, y + 18, MID, 11);
+    if (!E.out) { this._center(g, `${where} · ${km}`, W / 2, y, WARN, 14, 1, true); return; }
+    this._center(g, `${where} · NAVIGATIONSFELD LENKT ZURÜCK`, W / 2, y, WARN, 15, 0.85 + 0.15 * Math.sin(performance.now() / 160), true);
+    this._center(g, E.vert ? (E.dir > 0 ? '▾ SINKEN' : '▴ STEIGEN') : 'KURSBAND ZEIGT DIE GRENZE', W / 2, y + 24, MID, 11, 1, true);
   }
   _heading(g, w, p, W, acc) {
     const y = this._tapeY(), wd = Math.min(420, W * 0.32), x0 = W / 2 - wd / 2;
@@ -357,7 +376,41 @@ export class HudFlight {
     const vs = st.v[1];
     g.fillText(`${vs >= 0 ? '▴' : '▾'} ${Math.abs(Math.round(vs))} M/S`, x + 38, y + 10);
     const band = (w.sector && w.sector.index) === 1 ? HOME_BAND : SECTOR_BAND;
-    if (Math.abs(p.y) > band * BAND_WARN) { g.fillStyle = WARN; g.font = `600 11px ${FONT}`; g.fillText(`GRENZE ${p.y >= 0 ? '+' : '−'}${band}`, x + 38, y + 26); }
+    if (Math.abs(p.y) > band * BAND_WARN_V) { const t = `GRENZE ${p.y >= 0 ? '+' : '−'}${band}`; g.font = `600 11px ${FONT}`; g.fillStyle = 'rgba(4,6,10,0.8)'; g.fillRect(x + 34, y + 18, g.measureText(t).width + 8, 16); g.fillStyle = WARN; g.fillText(t, x + 38, y + 26); }
+  }
+  _vitals(g, w, p, W, H, acc) {
+    const now = performance.now();
+    if (!this._vT || now - this._vT > 400) {
+      // Lage aus den Fenstern (selten gemessen): nur zeichnen, wenn das Schiffsfenster aus ist; über der Schnellleiste
+      this._vT = now;
+      const sw = document.querySelector('[data-win="ship"]'), qb = document.querySelector('[data-win="quick"]');
+      this._vOn = !sw || sw.classList.contains('is-off');
+      const r = qb && !qb.classList.contains('is-off') ? qb.getBoundingClientRect() : null;
+      let top = r && r.height ? r.top : H - 14;
+      // Kontext-Knöpfe über der Schnellleiste (ANDOCKEN, SPRINGEN): darüber ausweichen
+      for (const x of document.querySelectorAll('.hx')) { if (x.classList.contains('hd-hide')) continue; const b = x.getBoundingClientRect(); if (b.width && b.left < W / 2 + 220 && b.right > W / 2 - 220 && b.bottom > top - 40) top = Math.min(top, b.top); }
+      this._vY = top - 30;
+      if (this.zones) { const Zv = this.zones.vit || (this.zones.vit = { x0: 0, y0: 0, x1: 0, y1: 0 }); if (!this.zones.list.includes(Zv)) this.zones.list.push(Zv); }
+    }
+    const Zv = this.zones && this.zones.vit;
+    if (!this._vOn) { if (Zv) { Zv.x0 = Zv.x1 = Zv.y0 = Zv.y1 = -9; } return; }
+    const y = this._vY, bw = Math.min(170, W * 0.13), gap = 34, n = 20, sw = bw / n;
+    if (Zv) { Zv.x0 = W / 2 - gap / 2 - bw - 60; Zv.x1 = W / 2 + gap / 2 + bw + 60; Zv.y0 = y - 16; Zv.y1 = y + 10; }
+    const sh = p.shieldMax ? Math.max(0, Math.min(1, p.shield / p.shieldMax)) : 0, hu = p.hpMax ? Math.max(0, Math.min(1, p.hp / p.hpMax)) : 0;
+    const row = (x0, f, col, label, val, right) => {
+      const k = Math.round(f * n);
+      for (let i = 0; i < n; i++) {
+        const j = right ? i : n - 1 - i; // Schild füllt von der Mitte nach links, Hülle von der Mitte nach rechts
+        g.fillStyle = i < k ? col : 'rgba(255,255,255,0.1)';
+        g.fillRect(x0 + j * sw, y, sw - 2, 6);
+      }
+      g.font = `600 11px ${FONT}`; g.textBaseline = 'alphabetic'; g.fillStyle = DIM;
+      g.textAlign = right ? 'left' : 'right'; g.fillText(label, right ? x0 : x0 + bw, y - 5);
+      g.font = `500 11px ${MONO}`; g.fillStyle = col === RED ? RED : MID; g.textAlign = right ? 'right' : 'left';
+      g.fillText(val, right ? x0 + bw : x0, y - 5); g.textAlign = 'left';
+    };
+    row(W / 2 - gap / 2 - bw, sh, acc, 'SCHILD', `${Math.round(sh * 100)} %`, false);
+    row(W / 2 + gap / 2, hu, hu < 0.3 ? RED : 'rgba(255,255,255,0.88)', 'HÜLLE', `${Math.round(hu * 100)} %`, true);
   }
   _boost(g, st, x, y, acc) {
     // senkrecht links neben der Tempoleiter, 16 Segmente, gesperrt in Warnfarbe

@@ -533,6 +533,11 @@
   visibility: hidden; opacity: 0;
 }
 .hd-banner.show { visibility: visible; opacity: 1; animation: ls-wipe .18s var(--ls-ease) both; }
+/* 3D-Flug (Runde 3): Belohnungen und Auftragsmeldungen oben unter der Sektorleiste, kleiner – die Bildmitte gehört
+   Fadenkreuz, Ziel und Neigungsleiter (vorher bei 27 % genau über Ziel, Kursband und Randwarnung) */
+html[data-flight="3d"] .hd .hd-banner { top: 106px; min-width: 300px; padding: 6px 22px 8px; }
+html[data-flight="3d"] .hd .hd-banner .hb-main { font-size: 22px; line-height: 26px; }
+html[data-view="cockpit"] .hd .hd-banner { top: 52px; }
 .hb-cap { color: var(--fx); }
 .hb-main { font-family: var(--ls-display); font-size: 34px; line-height: 38px; letter-spacing: .14em; margin-top: 3px; }
 .hb-sub { font-family: var(--ls-display); font-size: 13px; letter-spacing: .16em; color: var(--ls-tx-2); }

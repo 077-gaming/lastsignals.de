@@ -9,8 +9,30 @@ export const clamp01 = (v) => (v > 1 ? 1 : v < 0 || !(v === v) ? 0 : v);
  * 27-%-Streifens (SYSTEM-Karte links, Karte rechts). k staffelt Peilmarke (1), Auftrag (0,9), Warnungen (1,1).
  */
 export function ring3(W, H, dx, dy, k = 1, out = { x: 0, y: 0 }) {
-  const a = Math.atan2(dy, dx), rx = Math.min(W * 0.27, 400) * k, ry = Math.max(Math.min(H / 2 - 250, H * 0.3), H * 0.26) * k;
+  const a = Math.atan2(dy, dx);
+  // Runde 3: seitlich innerhalb der SYSTEM-Karte links (≈ 316 px breit) samt Beschriftung, oben unter Kursband und
+  // Moduszeile (Kursband bei H/2 − 185), unten über dem Schiff – vorher lagen „680 M“ auf der Karte und „AUFTRAG“ auf
+  // der Moduszeile
+  const rx = Math.max(W * 0.16, Math.min(W * 0.27, 400, (W / 2 - 350) / 1.1)) * k;
+  const ry = Math.max(H * 0.12, Math.min(H * 0.26, (185 - 40) / 1.1)) * k;
   out.x = W / 2 + Math.cos(a) * rx; out.y = H / 2 + Math.sin(a) * ry;
+  return out;
+}
+// Belegte Randmarken dieses Bildes (Ziel, Auftrag, Warnungen): eine Marke samt Beschriftung braucht ≈ 76 × 34 px.
+// ring3Free schiebt eine neue Marke auf dem Ring weiter, bis sie keine andere überdeckt (vorher lag „AUFTRAG“ auf
+// „260 M“ einer Warnung). ringReset() einmal je Bild (hud.js).
+const RB = { n: 0, x: new Float32Array(24), y: new Float32Array(24) };
+export function ringReset() { RB.n = 0; }
+export function ring3Free(W, H, dx, dy, k = 1, out = { x: 0, y: 0 }) {
+  const a0 = Math.atan2(dy, dx);
+  for (let i = 0; i < 9; i++) {
+    const a = a0 + (i === 0 ? 0 : (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.16);
+    ring3(W, H, Math.cos(a), Math.sin(a), k, out);
+    let hit = false;
+    for (let j = 0; j < RB.n; j++) if (Math.abs(RB.x[j] - out.x) < 78 && Math.abs(RB.y[j] - out.y) < 34) { hit = true; break; }
+    if (!hit) break;
+  }
+  if (RB.n < RB.x.length) { RB.x[RB.n] = out.x; RB.y[RB.n] = out.y; RB.n++; }
   return out;
 }
 

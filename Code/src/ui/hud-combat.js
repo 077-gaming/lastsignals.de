@@ -6,7 +6,7 @@
 //     eine Warnmarke am Bildrand mit Art und Countdown; im Bild ein kleines Warnschild über dem Gegner.
 // Feste Knoten-Pools, Bewegung nur per transform, DOM nur bei geänderten Werten. Keine Speicher-Neuanlage pro Bild.
 import './hud-combat.css';
-import { fmt, clamp01, TextSlot, ClassSlot, ring3 } from './hud-parts.js';
+import { fmt, clamp01, TextSlot, ClassSlot, ring3, ring3Free } from './hud-parts.js';
 
 const MARKS = 8;           // gleichzeitige Trefferzeichen
 const MARK_SECS = 0.2;
@@ -336,7 +336,7 @@ export class HudCombat {
         if (!gx && !gy) gy = -1;
         const a = Math.atan2(gy, gx);
         dx = Math.cos(a); dy = Math.sin(a);
-        const o = ring3(W, H, dx, dy, 1.1, this._ring || (this._ring = { x: 0, y: 0 }));
+        const o = ring3Free(W, H, dx, dy, 1.1, this._ring || (this._ring = { x: 0, y: 0 }));
         ax = o.x; ay = o.y;
       } else if (covered) {
         ax = t.x; ay = t.y;

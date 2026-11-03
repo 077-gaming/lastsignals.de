@@ -58,7 +58,7 @@ const CSS = `
 function readPreset() { try { const v = JSON.parse(localStorage.getItem(LAB_KEY) || 'null'); return v && typeof v === 'object' ? v : null; } catch { return null; } }
 
 /** Labor einrichten: { world, renderer, input, bus, root } */
-export function installLab({ world: w, input, bus, root }) {
+export function installLab({ world: w, renderer, input, bus, root }) {
   w.flLab = { ...LAB_DEFAULT };
   const pre = readPreset();
   if (pre && pre.lab) for (const k in LAB_DEFAULT) if (typeof pre.lab[k] === 'number') w.flLab[k] = pre.lab[k];
@@ -84,6 +84,7 @@ export function installLab({ world: w, input, bus, root }) {
     <h3>STEUERUNG UND SCHIFF</h3><div data-r="sl"></div><div data-r="tg"></div>
     <div class="fl-tog"><span>KOPPLUNG</span><button data-act="couple"></button></div>
     <h3>ÜBUNGSDROHNEN</h3><div class="fl-btns">${DRONES.map(([k, n]) => `<button data-drone="${k}">${n}</button>`).join('')}<button data-act="clear">ALLE WEG</button></div>
+    <h3>LANDEPROBE</h3><div class="fl-btns"><button data-act="ground">BODEN + SCHWERKRAFT</button></div>
     <h3>VOREINSTELLUNG</h3><div class="fl-btns"><button data-act="save">SPEICHERN</button><button data-act="load">LADEN</button><button data-act="reset">STANDARD</button></div>
     <div class="fl-read" data-r="read"></div>`;
   root.appendChild(el);
@@ -138,6 +139,7 @@ export function installLab({ world: w, input, bus, root }) {
     const act = b.dataset.act, dr = b.dataset.drone;
     if (dr) spawnDrone(w, dr);
     else if (act === 'clear') clearDrones(w);
+    else if (act === 'ground') { toggleGround(w, renderer, bus); b.textContent = w.env ? 'BODEN AUS' : 'BODEN + SCHWERKRAFT'; }
     else if (act === 'couple') { w.fl.coupled = !w.fl.coupled; sync(); }
     else if (act === 'save') {
       const s = flightSettings(), set = {};
@@ -248,4 +250,37 @@ function drill(w, e, dt) {
   e.speed = v;
   if (v > 5) { e.rot = Math.atan2(-e.vx, -e.vz); e.pitch = Math.asin(Math.max(-1, Math.min(1, e.vy / v))); }
   e.attacking = false; e.state = 'wander';
+}
+
+// ───────────────────────── Landeprobe (Runde 3) ─────────────────────────
+// Erprobt den Landemodus in der Welt (FLUGMODELL.md 12), bis der Meilenstein Planetenlandung echten Boden bringt:
+// eine Bodenplatte 400 m unter dem Schiff (Gitter 4 × 4 km), Schwerkraft 9,81 m/s², ohne Luft. N fährt das Fahrwerk
+// aus, Strg (bzw. die Taste „runter“) im Landemodus sinkt mit 2 m/s und setzt auf, Schub nach oben hebt ab.
+let groundMesh = null;
+function toggleGround(w, renderer, bus) {
+  if (w.env) {
+    w.env = null;
+    if (groundMesh && groundMesh.parent) groundMesh.parent.remove(groundMesh);
+    bus.emit('message', { kind: 'info', title: 'FLUGLABOR', text: 'Landeprobe aus: wieder Weltraum ohne Schwerkraft.' });
+    return;
+  }
+  const gy = (w.player.y || 0) - 400;
+  w.env = {
+    gravity: [0, -9.81, 0], rho: 0,
+    ground(px, py, pz, out) { out.h = py - gy; out.nx = 0; out.ny = 1; out.nz = 0; out.pad = 1; },
+  };
+  if (renderer && renderer.scene) {
+    import('three').then((THREE) => {
+      if (!w.env) return;
+      if (!groundMesh) {
+        const g = new THREE.GridHelper(4000, 80, 0xffb020, 0x5a6270);
+        groundMesh = new THREE.Group(); groundMesh.add(g);
+        const pad = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.35 }));
+        pad.rotation.x = -Math.PI / 2; pad.position.y = 0.2; groundMesh.add(pad);
+      }
+      groundMesh.position.set(w.player.x, gy, w.player.z);
+      renderer.scene.add(groundMesh);
+    });
+  }
+  bus.emit('message', { kind: 'info', title: 'FLUGLABOR', text: 'Landeprobe: Boden 400 m unter dir, Schwerkraft 9,81. N fährt das Fahrwerk aus, runter halten setzt auf.' });
 }
