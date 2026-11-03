@@ -164,7 +164,7 @@ body[data-faction="eris"] { --fx: #9a52ff; }
 
 /* Hinweis „Taste oder Klick für Ton“ (audio.js): Browser starten Ton nicht über Controller-Tasten */
 .ls-sndhint {
-  position: fixed; top: 118px; left: 50%; transform: translateX(-50%); z-index: 10000; pointer-events: none; /* unter Kopfleiste und Sektoranzeige */
+  position: fixed; top: 196px; left: 50%; transform: translateX(-50%); z-index: 10000; pointer-events: none; /* unter Sektoranzeige und Flug-Coach */
   display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 12px;
   background: rgba(6, 9, 13, .86); border: 1px solid rgba(255, 255, 255, .22);
   clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);

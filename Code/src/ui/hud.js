@@ -371,7 +371,7 @@ export class Hud {
       { id: 'pilot', el: W('pilot'), ax: 'l', ay: 't', ox: 12, oy: 12, toggle: true, mode: 'num' },
       { id: 'wallet', el: W('wallet'), ax: 'l', ay: 't', ox: 12, after: 'pilot' },
       { id: 'comms', el: W('comms'), ax: 'l', ay: 'b', ox: 12, oy: 12 },
-      { id: 'chat', el: W('chat'), ax: 'l', ay: 'b', ox: 12, after: 'comms' },
+      { id: 'chat', el: W('chat'), ax: 'l', ay: 'b', ox: 12, after: 'comms', collapsed: true }, // zugeklappt, Enter öffnet
       { id: 'players', el: W('players'), ax: 'r', ay: 'b', ox: 12, after: 'map' },
     ], (id) => this._onWinChange(id), q('bar'));
     this.barBtns = el.querySelectorAll('.hb-b[data-act="wintog"]');

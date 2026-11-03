@@ -46,7 +46,7 @@ export class HudWindows {
         head: d.el.querySelector('.hw-head'),
         // dock: Fenster, an dessen Unterkante dieses eingerastet ist (folgt dessen Höhe); undefined = noch nicht ermittelt
         saved: s && typeof s.ox === 'number' ? { ax: s.ax, ay: s.ay, ox: s.ox, oy: s.oy, dock: s.dock } : null,
-        collapsed: !!(s && s.collapsed),
+        collapsed: s ? !!s.collapsed : !!d.collapsed, // ohne gespeicherten Zustand: Vorgabe des Fensters
         hidden: !!(s && s.hidden),
         num: s && s.mode ? s.mode === 'num' : d.mode !== 'bar',
         x: 0, y: 0, w: 0, h: 0,
