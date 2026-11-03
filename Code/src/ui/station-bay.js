@@ -633,8 +633,11 @@ export class HangarBay {
     const LK = { europa: [1.5, 1.9, 0.45, 0.3, 0, 22], saturn: [1.6, 2.4, 0.6, 0.42, 0.9, 30], eris: [2.0, 1.7, 1.05, 0.62, 2.6, 58] }[faction] || [1.5, 1.9, 0.45, 0.3, 0, 22];
     this._lit.top.intensity = LK[0]; this._lit.rim.intensity = LK[1]; this._lit.fill.intensity = LK[2]; this._lit.env = LK[3];
     this._lit.contour.intensity = LK[4]; this._lit.rim.position.set(40, LK[5], 90);
-    // Rumpfaufhellung (nur Rumpf, nicht die Halle): dunkle Lackierungen stärker, damit die Silhouette vor der Halle steht
-    this.factory.uShipFill.value = faction === 'eris' ? 1.4 : faction === 'saturn' ? 0.7 : 0.45;
+    // Runde 4: Saturn-Kantenlicht neutral statt kaltblau (spiegelte als lila Wolke im dunklen Metallrumpf)
+    this._lit.rim.color.set(faction === 'saturn' ? 0xdcd8d2 : 0x9db8ff);
+    // Rumpfaufhellung und Silhouettenlicht (nur Rumpf, nicht die Halle): im Hangar eigener, kleinerer Wert (Runde 4:
+    // Eris 1,4 → 0,5) – die Halle beleuchtet selbst; die Aufhellung wirkt ohnehin nur noch im Unbeleuchteten
+    this.factory.uShipFill.value = faction === 'eris' ? 0.5 : faction === 'saturn' ? 0.45 : 0.3;
     this._clear(this.shipRoot);
     this._clear(this.plan);
     const s = this.factory.buildShip(faction, shipId, loadout || { lasers: [], gens: [] });

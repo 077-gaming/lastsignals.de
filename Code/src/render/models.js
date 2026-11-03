@@ -134,14 +134,21 @@ for (const [id, scale] of [['s3', 1.4], ['s4', 1.6], ['s5', 1.8], ['s6', 2.0], [
 // Fraktions-Randlicht (Fresnel, mit Licht und Verdeckung gewichtet) und Rumpfaufhellung je Lackierung (Runde 3).
 // Große Rümpfe (S7/S8): Randlicht kleiner (sonst violetter Umriss), Aufhellung größer (Plattenstruktur im Kampf lesbar).
 const SHIP_RIM = { europa: { color: 0xffe0a8, k: 0.05 }, saturn: { color: 0xff8434, k: 0.1 }, eris: { color: 0xa070ff, k: 0.1 } };
-const SHIP_FILL = { europa: { color: 0xfff4e6, k: 0 }, saturn: { color: 0xffe6d0, k: 0.25 }, eris: { color: 0xe4dcff, k: 0.6 } };
+// Runde 4: Aufhellung wirkt nur noch im Unbeleuchteten (Shader × (1 − lit)²), Eris 0,6 → 0,3 und für große Rümpfe nur
+// noch + 30 % (vorher × 3 für S7/S8: flacher Grauschleier, Violett wurde pastell). Lesbarkeit vor dem Nebel übernimmt
+// das kühle Silhouettenlicht (sil) am streifenden Rand.
+const SHIP_FILL = {
+  europa: { color: 0xfff4e6, k: 0, sil: { color: 0xfff1dc, k: 0 } },
+  saturn: { color: 0xffe6d0, k: 0.2, sil: { color: 0xdfe8ff, k: 0.14 } },
+  eris: { color: 0xece4ff, k: 0.3, sil: { color: 0xd4e4ff, k: 0.42 } },
+};
 const SHIP_BIG = { s5: 0.5, s6: 0.5, s7: 1, s8: 1 };
 function shipLook(key) {
   const [, cls, fac] = key.split(':'), big = SHIP_BIG[cls] || 0;
   const rim = SHIP_RIM[fac] || SHIP_RIM.europa, fill = SHIP_FILL[fac] || SHIP_FILL.europa;
   return {
     rim: { color: rim.color, k: rim.k * (1 - 0.4 * big) },
-    fill: { color: fill.color, k: fill.k * (1 + (fac === 'eris' ? 2.0 : 0.6) * big) },
+    fill: { color: fill.color, k: fill.k * (1 + 0.3 * big), sil: fill.sil },
   };
 }
 export const SHIP_FOOT = { s1: 40, s2: 45.5, s3: 51.5, s4: 58.5, s5: 66, s6: 75, s7: 85, s8: 96 };
@@ -1002,10 +1009,11 @@ export class ModelFactory {
     if (!isFinite(minX)) return;
     // Runde 3: an echten Rümpfen sitzen die Flügellichter auf der Spitze (leicht nach innen, kleiner); 0,3 m außen und
     // 0,4 m darüber schwebten sie bei hängenden Flügelspitzen sichtbar neben dem Rumpf (S3 Saturn: „Geisterpunkt“)
-    const glbN = hull.userData.glbFlip !== undefined, wo = glbN ? -0.12 : 0.3, wy = glbN ? 0.05 : 0.4, ws = glbN ? 1.8 : 2.6;
-    const geo = this.geo(`shipnav:${faction}:${shipId}:${hull.userData.glbFlip ?? 'p'}`, () => lightPointsGeometry([
-      [0, minX - wo, minYv + wy, minZv, ws, 1.6, 0.12, 0.06, 0],
-      [0, maxX + wo, maxYv + wy, maxZv, ws, 0.2, 1.4, 0.45, 0],
+    // Runde 4: echte Rümpfe kleiner (1,3) und gerichtet nach außen – die abgewandte Spitze blendet aus
+    const glbN = hull.userData.glbFlip !== undefined, wo = glbN ? -0.12 : 0.3, wy = glbN ? 0.05 : 0.4, ws = glbN ? 1.3 : 2.6;
+    const geo = this.geo(`shipnav4:${faction}:${shipId}:${hull.userData.glbFlip ?? 'p'}`, () => lightPointsGeometry([
+      [0, minX - wo, minYv + wy, minZv, ws, 1.6, 0.12, 0.06, 0, ...(glbN ? [-1, 0.25, 0] : [])],
+      [0, maxX + wo, maxYv + wy, maxZv, ws, 0.2, 1.4, 0.45, 0, ...(glbN ? [1, 0.25, 0] : [])],
       [2, 0, maxY * 0.7, maxZ - 3, 3.2, 1.7, 1.7, 1.7, 0],
       [2, 0, -1.5, maxZ - 6, 2.4, 1.7, 1.7, 1.7, 0.8],
     ]));
