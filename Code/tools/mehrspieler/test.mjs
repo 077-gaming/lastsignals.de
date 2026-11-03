@@ -2,9 +2,11 @@
 // Mehrspieler-Test im echten Chrome: drei Piloten (Alpha SATURN, Bravo ERIS, Charlie SATURN) in getrennten
 // Browser-Kontexten gegen den Entwicklungsserver, gemeinsamer Sektor 3 (Front). Prüft: sehen sich, Interpolation
 // flüssig, Chat in allen drei Reitern, Einladung → Koop (Partner nicht doppelt), PvP-Treffer und Abschuss,
-// Sektorwechsel räumt auf, Tab schließen räumt auf, keine Konsolenfehler. Bilder: --bilder <ordner>.
+// Sektorwechsel räumt auf, Tab schließen räumt auf, keine Konsolenfehler. 3D-Flug: Höhe und Lage der fremden Schiffe
+// kommen an, Taktik-Piloten werden als solche erkannt. Bilder: --bilder <ordner>. Läuft unsichtbar (headless),
+// --sichtbar öffnet echte Fenster.
 //
-//   node tools/mehrspieler/test.mjs [--url http://localhost:5191] [--bilder ~/LAST-SIGNALS-Uebergabe/bilder/mp]
+//   node tools/mehrspieler/test.mjs [--url http://localhost:5191] [--bilder ~/LAST-SIGNALS-Uebergabe/bilder/mp] [--sichtbar]
 //
 // Netzlast bleibt klein: drei Clients, gut eine Minute, je 9 Zustände pro Sekunde.
 import { chromium } from 'playwright-core';
@@ -45,7 +47,7 @@ const PILOTS = [
 async function main() {
   await fs.mkdir(IMG, { recursive: true });
   const browser = await chromium.launch({
-    channel: 'chrome', headless: false,
+    channel: 'chrome', headless: !args.includes('--sichtbar'),
     args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--window-size=1280,800'],
   });
   const errors = { A: [], B: [], C: [] };
@@ -119,6 +121,41 @@ async function main() {
   check('Verzögerung der Darstellung plausibel (Puffer + Netz < 0,6 s)', lagS > 0.05 && lagS < 0.6, `${lagS.toFixed(2)} s`);
   await A.evaluate(() => { const w = window.__ls.world; w.stopMove(); w._haltPlayer(); const p = w.player; p.x = p.px = 0; p.z = p.pz = 0; p.rot = p.prot = 0; });
   await sleep(1200);
+
+  // 3D-Flug: Alpha steigt auf 320 m und rollt 34°, Bravo sieht Höhe und Lage (Paketfelder 9–18)
+  const is3d = await A.evaluate(() => !!window.__ls.world.flight3d);
+  check('Hauptmodus ist der 3D-Flug', is3d);
+  await A.evaluate(() => {
+    const w = window.__ls.world, p = w.player, fl = w.fl;
+    p.y = p.py = 320; fl.p[0] = p.x; fl.p[1] = 320; fl.p[2] = p.z;
+    const h = 0.3; fl.q[0] = 0; fl.q[1] = 0; fl.q[2] = Math.sin(h); fl.q[3] = Math.cos(h);
+    fl.v[0] = fl.v[1] = fl.v[2] = 0; fl.w[0] = fl.w[1] = fl.w[2] = 0;
+  });
+  const pose = await waitFor(B, (sid) => {
+    const e = window.__ls.world.entities.get('rp:' + sid);
+    return e && Math.abs(e.y - 320) < 25 && e.q && Math.abs(e.q[2]) > 0.12 ? { y: e.y, q: Array.from(e.q), view: e.view } : null;
+  }, sids.A, 8000);
+  const qA = await A.evaluate(() => Array.from(window.__ls.world.fl.q));
+  const dotQ = pose ? Math.abs(pose.q[0] * qA[0] + pose.q[1] * qA[1] + pose.q[2] * qA[2] + pose.q[3] * qA[3]) : 0;
+  check('3D: Bravo sieht Alphas Höhe und Lage (Rollwinkel)', pose && dotQ > 0.97 && pose.view === 'flight', pose ? `y ${pose.y.toFixed(0)} m, Lage-Übereinstimmung ${dotQ.toFixed(3)}` : 'keine Lage');
+  await sleep(300);
+  await B.screenshot({ path: path.join(IMG, '01b-bravo-sieht-alpha-3d.png') });
+  // Taktik-Pilot: Charlie schaltet auf die Taktikansicht, Alpha erkennt das am Flugflag
+  // V wechselt Verfolger → Cockpit → Taktisch → Verfolger
+  await C.evaluate(() => { document.activeElement && document.activeElement.blur(); });
+  await C.keyboard.press('KeyV'); await sleep(250); await C.keyboard.press('KeyV');
+  await waitFor(C, () => window.__ls.renderer.viewMode === 'tactical' && !window.__ls.world.flight3d, null, 4000);
+  const tac = await waitFor(A, (sid) => { const e = window.__ls.world.entities.get('rp:' + sid); return e && e.view === 'tactical'; }, sids.C, 8000);
+  check('Taktik-Pilot wird als Taktik erkannt (Flag im Paket)', tac);
+  await C.keyboard.press('KeyV');
+  await waitFor(C, () => window.__ls.renderer.viewMode === 'chase' && window.__ls.world.flight3d, null, 4000);
+  const back3d = await waitFor(A, (sid) => { const e = window.__ls.world.entities.get('rp:' + sid); return e && e.view === 'flight'; }, sids.C, 8000);
+  check('Zurück im 3D-Flug wird wieder erkannt', back3d);
+  await A.evaluate(() => {
+    const w = window.__ls.world, p = w.player, fl = w.fl;
+    p.y = p.py = 0; fl.p[1] = 0; fl.q[0] = fl.q[1] = fl.q[2] = 0; fl.q[3] = 1; fl.v[0] = fl.v[1] = fl.v[2] = 0; fl.w[0] = fl.w[1] = fl.w[2] = 0;
+  });
+  await sleep(800);
 
   // Chat: SEKTOR (alle), FRAKTION (nur SATURN: Charlie, nicht Bravo), ALLE
   const say = (page, ch, text) => page.evaluate(([ch, text]) => window.__ls.mp.say(ch, text), [ch, text]);
