@@ -21,7 +21,7 @@ const MINUTES = Math.max(0.5, Number(String(arg('minuten', '3')).replace(',', '.
 const FR = arg('fraktion', 'saturn');
 const FACTIONS = FR === 'alle' ? ['europa', 'saturn', 'eris'] : [FR];
 const QUALITY = arg('qualitaet', 'hoch');
-const BASE = arg('url', 'http://localhost:5173');
+const BASE = arg('url', process.env.LS_URL || 'http://localhost:5173');
 const MODELS = !flag('ohne-modelle');
 const MAX_MOMENTS = 10;
 
@@ -38,7 +38,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function runFaction(faction) {
   const log = (...a) => console.log(`[${faction}]`, ...a);
   const browser = await chromium.launch({
-    channel: 'chrome', headless: false,
+    channel: 'chrome', headless: !process.argv.includes('--sichtbar'),
     args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--window-size=1440,1000'],
   });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
@@ -234,7 +234,7 @@ async function main() {
   }
   const meta = { zeit: ZEIT, minuten: MINUTES, fraktionen: FACTIONS, qualitaet: QUALITY, url: BASE, fenster: '1440x900 @2x', browser: 'Google Chrome (installiert, sichtbar)' };
   await fs.writeFile(path.join(OUT, `${ZEIT}.json`), JSON.stringify({ meta, ergebnisse: results }, null, 2));
-  const md = [`# Test-Pilot · ${ZEIT}`, '', `${FACTIONS.join(', ')} · je ${fmt(MINUTES, 1)} min · Qualität ${QUALITY} · Fenster 1440×900 (Pixeldichte 2) · Chrome sichtbar`, '',
+  const md = [`# Test-Pilot · ${ZEIT}`, '', `${FACTIONS.join(', ')} · je ${fmt(MINUTES, 1)} min · Qualität ${QUALITY} · Fenster 1440×900 (Pixeldichte 2) · Chrome ${process.argv.includes('--sichtbar') ? 'sichtbar' : 'unsichtbar (headless)'}`, '',
     'Ziele: Mac Qualität HOCH im Kampf unter 8 ms je Bild · normaler Laptop Full HD MITTEL mindestens 60 Bilder/s · erster Kampf ohne Hänger über 25 ms.', ''];
   for (const r of results) md.push(r.abgebrochen ? `## ${r.faction.toUpperCase()}\n\nAbgebrochen: ${r.abgebrochen}\n` : mdFaction(r));
   await fs.writeFile(path.join(OUT, `${ZEIT}.md`), md.join('\n'));
