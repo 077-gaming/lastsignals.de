@@ -203,6 +203,7 @@ export class Multiplayer {
     // 3D-Flug: Schütze entscheidet (Bolzentreffer auf das Abbild), Opfer prüft Trefferpunkt und Kegel
     const bh = this.world._boltHit;
     if (bh) msg.hp = [Math.round(bh.x), Math.round(bh.y), Math.round(bh.z)];
+    else if (this.world.flight3d && !rocket) msg.a = 1; // 3D-Flug ohne Bolzen: Feuerleitrechner (gewürfelt, Kegel 30°)
     this._send(this.secCh, 'hit', msg);
   }
 
@@ -616,11 +617,12 @@ export class Multiplayer {
     // Opfer entscheidet: beide PvP an, andere Fraktion, beide außerhalb geschützter Bereiche, Entfernung plausibel
     if (!R.ent.pvpOk || !this.pvp) return;
     if (Math.hypot(R.ent.x - p.x, R.ent.z - p.z, (R.ent.y || 0) - (p.y || 0)) > M.PVP_HIT_RANGE) return;
-    // 3D: Trefferpunkt gegen den eigenen Verlauf (500 ms) und Kegel vom Bug des Schützen (FLUGMODELL.md 9)
-    if (m.hp) {
+    // 3D: Trefferpunkt gegen den eigenen Verlauf (500 ms) und Kegel vom Bug des Schützen (FLUGMODELL.md 9);
+    // ohne Trefferpunkt nur von einem Taktik-Schützen, und nur wenn ich für ihn in der Ebene liege
+    {
       const q = R.ent.q, nose = q ? [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))] : null;
       const cap = Math.max(20, (FLIGHT_CLASS[w.profile.ship] || FLIGHT_CLASS.s1).len / 2);
-      if (!M.pvpPlausible(m, this._hist || [], t, R.ent, nose, cap)) return;
+      if (!M.pvpPlausible(m, this._hist || [], t, R.ent, nose, cap, p)) return;
     }
     if (R.hits.take(t) > 0) return;
     const d = M.clampHit(m.d);

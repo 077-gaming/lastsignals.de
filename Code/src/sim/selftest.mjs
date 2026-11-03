@@ -1499,6 +1499,13 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
     check('MP 3D: PvP-Treffer am eigenen Verlauf und im Kegel angenommen', M.pvpPlausible({ hp: [108, 51, 0] }, hist, 10, shooter, [0, 0, -1], 30));
     check('MP 3D: PvP-Treffer weit weg vom Verlauf abgelehnt', !M.pvpPlausible({ hp: [300, 51, 0] }, hist, 10, shooter, [0, 0, -1], 30));
     check('MP 3D: PvP-Treffer außerhalb des Kegels abgelehnt', !M.pvpPlausible({ hp: [108, 51, 0] }, hist, 10, shooter, [1, 0, 0], 30));
+    // Lücke zwischen den Ansichten: Würfel-Treffer (ohne Trefferpunkt) nur von einem Taktik-Schützen in der Ebene
+    const tac = { x: 0, y: 0, z: 0, view: 'tactical' }, f3 = { x: 0, y: 0, z: 0, view: 'flight' };
+    check('MP: Würfel-Treffer eines Taktik-Schützen in der Ebene angenommen', M.pvpPlausible({ d: 100 }, hist, 10, tac, null, 30, { x: 400, y: 30, z: 0 }));
+    check('MP: Würfel-Treffer eines Taktik-Schützen auf einen 3D-Piloten 500 m höher abgelehnt', !M.pvpPlausible({ d: 100 }, hist, 10, tac, null, 30, { x: 300, y: 500, z: 0 }));
+    check('MP: 3D-Schütze ohne Trefferpunkt (manipuliert) abgelehnt', !M.pvpPlausible({ d: 100 }, hist, 10, f3, null, 30, { x: 300, y: 0, z: 0 }));
+    check('MP: 3D-Feuerleitrechner im Kegel angenommen, außerhalb abgelehnt', M.pvpPlausible({ d: 100, a: 1 }, hist, 10, f3, [1, 0, 0], 30, { x: 300, y: 40, z: 0 }) && !M.pvpPlausible({ d: 100, a: 1 }, hist, 10, f3, [0, 0, -1], 30, { x: 300, y: 0, z: 0 }));
+    check('MP: Raketentreffer ohne Trefferpunkt bleibt gültig', M.pvpPlausible({ d: 100, r: 1 }, hist, 10, f3, null, 30, { x: 300, y: 0, z: 0 }));
   }
   // Chat
   check('MP: Chat kürzt auf 200 Zeichen und entfernt Steuerzeichen', Array.from(M.cleanText('x'.repeat(260))).length === 200 && M.cleanText('a\u0000b c‮  d ') === 'a b c d');

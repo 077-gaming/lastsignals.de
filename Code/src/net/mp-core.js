@@ -1,5 +1,7 @@
 // Mehrspieler – reine Logik ohne Netz und ohne DOM (im Selbsttest unter Node prüfbar).
 import { packFlight, unpackFlight, hermite, FM } from '../flight/net.js';
+import { tacticalReach } from '../flight/aim.js';
+export { tacticalReach };
 export { FM };
 // Kanalnamen, Zustandspaket (gerundet, kompakt), Interpolationspuffer, Chat-Reinigung, Wortfilter,
 // Ratenbegrenzung, PvP-Regeln und Ehre. Format und Regeln: Planung/MEHRSPIELER.md.
@@ -192,8 +194,25 @@ function slerpQ(out, a, b, k) {
  * den Kegel (Bug des Schützen gegen die Linie zum Opfer ≤ Waffenkegel + 15°). hist: [{ t, x, y, z }], nose: Einheitsvektor.
  */
 export const PVP_CONE = (5 + 4 + 15) * Math.PI / 180;
-export function pvpPlausible(hit, hist, now, shooter, nose, capsule = 40) {
-  if (!hit || !Array.isArray(hit.hp) || hit.hp.length !== 3) return true; // Taktik-Schütze (Würfel): alte Regeln
+export const PVP_AUTO_CONE = (30 + 15) * Math.PI / 180; // Feuerleitrechner im 3D-Flug: 30° um den Bug + Verzug
+/**
+ * Opfer prüft einen PvP-Treffer. Mit Trefferpunkt (3D-Bolzen): eigener Verlauf der letzten 500 ms und Kegel vom Bug des
+ * Schützen. Ohne Trefferpunkt nur, wenn der Schütze in der Taktik fliegt (shooter.view) und das Opfer für ihn in der
+ * Ebene liegt – ein 3D-Schütze, der den Trefferpunkt weglässt, wird abgelehnt (manipulierter Client).
+ */
+export function pvpPlausible(hit, hist, now, shooter, nose, capsule = 40, victim = null) {
+  if (!hit) return false;
+  if (!Array.isArray(hit.hp) || hit.hp.length !== 3) {
+    if (hit.r) return true; // Rakete: Aufschaltung und Laufzeit wie bisher (Entfernung prüft der Aufrufer)
+    if (!shooter) return false;
+    if (shooter.view === 'tactical') return !victim || tacticalReach(shooter, victim);
+    // 3D-Schütze mit Feuerleitrechner (gewürfelt): Opfer im 30°-Kegel um seinen Bug (+15° Verzug)
+    if (hit.a && nose && victim) {
+      const dx = victim.x - shooter.x, dy = (victim.y || 0) - (shooter.y || 0), dz = victim.z - shooter.z, d = Math.hypot(dx, dy, dz) || 1;
+      return Math.acos(Math.max(-1, Math.min(1, (dx * nose[0] + dy * nose[1] + dz * nose[2]) / d))) <= PVP_AUTO_CONE;
+    }
+    return false; // 3D-Bolzen ohne Trefferpunkt: manipulierter Client
+  }
   const [hx, hy, hz] = hit.hp.map((v) => num(v));
   let near = false;
   for (const h of hist) {

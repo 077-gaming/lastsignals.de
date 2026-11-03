@@ -31,6 +31,7 @@ import {
 } from './events.js';
 import * as C from './config.js';
 import * as F from './world3d.js';
+import { tacticalReach } from '../flight/aim.js';
 
 const AMMO_KEYS = ['L1', 'L2', 'L3', 'L4', 'SAB', 'SAL'];
 const MAX_LASERS = 16;
@@ -407,9 +408,10 @@ export class World {
 
     this._updateZones();
 
-    // außerhalb der Karte
+    // außerhalb der Karte (3D-Flug: Warnung ab 83 %, 6 s Frist mit Zählwerk im HUD, erst dann Schaden)
     const size = this.sector.size;
-    if (Math.abs(p.x) > size || Math.abs(p.z) > size || (this.flight3d && Math.abs(p.y) > F.bandOf(this))) {
+    const out3 = this.flight3d ? F.edge3d(this, dt) : false;
+    if (this.flight3d ? out3 : Math.abs(p.x) > size || Math.abs(p.z) > size) {
       this._msg('Achtung: Du bist außerhalb der Karte! Dein Schiff nimmt Schaden. Flieg zurück.', 'warn', 'oob', 3);
       if (t >= this._invulnUntil) {
         const d = p.hpMax * C.OUT_OF_MAP_DAMAGE * dt;
@@ -645,8 +647,13 @@ export class World {
         p.attacking = false;
       } else {
         const dx = tgt.x - p.x, dz = tgt.z - p.z;
-        dist = Math.sqrt(dx * dx + dz * dz);
+        // fremder Spieler (PvP): räumlich messen und nur in der Ebene treffen – ein 3D-Pilot 500 m höher ist für den
+        // Klickflug außer Reichweite (das Opfer prüft dieselbe Regel, mp-core.js tacticalReach). Gegner wie bisher
+        // in der Ebene (Taktik-Goldtest bitgleich).
+        const pvpT = tgt.kind === 'player', dy = pvpT ? (tgt.y || 0) - (p.y || 0) : 0;
+        dist = Math.sqrt(dx * dx + dz * dz + dy * dy);
         if (dist > C.PLAYER_RANGE) this._rangeMsg(tgt, 'Ziel ist zu weit weg. Flieg näher ran (650 m).', false);
+        else if (pvpT && !tacticalReach(p, tgt)) this._rangeMsg(tgt, 'Ziel fliegt zu hoch oder zu tief. In der Draufsicht trifft der Laser nur in der Ebene.', false);
         else {
           this._rangeWarnId = null;
           // Laser feuern nach vorn: Ziel muss vor der Nase liegen (die Nase dreht im Angriff selbst zum Ziel)

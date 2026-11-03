@@ -5,8 +5,10 @@
 import { createState, makeCtl, stepN, enter, derive, applyEdges, halt, interruptMode, C as CI, BTN, MODE } from '../flight/core.js';
 import {
   shipParams, labParams, BOLT_SPEED, BOLT_PER_SHOT, BOLT_SPREAD, ENEMY_HIT_PAD, AUTO_K, AUTO_CONE, CONVERGE_DEFAULT, SECTOR_BAND,
-  HOME_BAND, ZONE_DY, TRACTOR_RANGE, TRACTOR_SPEED, CLASS, PVP_GIMBAL, FLAT_BAND,
+  HOME_BAND, ZONE_DY, TRACTOR_RANGE, TRACTOR_SPEED, CLASS, PVP_GIMBAL, FLAT_BAND, AIM_PVE, ASSIST_CONE, ASSIST, K as FK,
+  BAND_WARN, EDGE_GRACE,
 } from '../flight/params.js';
+import { assistLevel } from '../flight/aim.js';
 import { qFromYPR, qRot, qSlerp, qCopy, vAngle, fwdOf } from '../flight/math3.js';
 import { segSphere, segCapsule, convergeDir, leadPoint } from '../flight/aim.js';
 import { Rng, hashString } from './rng.js';
@@ -56,7 +58,9 @@ export function initWorld3d(w, opts = {}) {
   w.ctlActive = false;        // Eingabe aktiv (bricht den Autopiloten ab)
   w.pilotView = 'tactical';   // Ansicht des Piloten (Höhenband je Ziel für die KI, Netz-Flags)
   w._convD = CONVERGE_DEFAULT;
-  w.aimInfo = { under: null, conv: CONVERGE_DEFAULT, fire: false, canFire: true, reise: false };
+  w.aimInfo = { under: null, conv: CONVERGE_DEFAULT, fire: false, canFire: true, reise: false, cone: -9, coneRad: 0 };
+  w.edge = { warn: false, out: false, d: Infinity, t: 0, dir: 0 }; // Sektorrand (HUD)
+  w._apReise = false;
   w._boltCd = new Float64Array(16); w._boltQ = new Uint8Array(16); w._boltKey = new Array(16).fill(null);
   w._wasFiring3 = false;
   w._hy = null; w._hdy = 0;
@@ -70,6 +74,26 @@ export function initPlayer3d(w, p) {
   p.y = 0; p.vy = 0; p.py = 0; p.ty = 0;
   p.q = w.fl.q; p.pq = w.fl.pq;   // Lage für die Grafik (gemeinsame Felder mit dem Flugkern)
   p.pitch3 = 0; p.roll3 = 0;
+}
+
+/**
+ * Sektorrand im 3D-Flug: Abstand zur seitlichen Grenze und zum Höhenband, Warnung ab 83 %, außerhalb läuft eine Frist
+ * von 6 s (Zählwerk im HUD), erst danach Schaden. → true, wenn Schaden fällig ist. w.edge für das HUD.
+ */
+export function edge3d(w, dt) {
+  const p = w.player, E = w.edge, size = w.sector.size, band = bandOf(w);
+  const dx = size - Math.abs(p.x), dz = size - Math.abs(p.z), dy = band - Math.abs(p.y);
+  const out = dx < 0 || dz < 0 || dy < 0;
+  // nächste Grenze: Abstand und Richtung (Kurs in Grad, ±90 = oben/unten)
+  let d = dx, dir = Math.atan2(Math.sign(p.x), 0);
+  if (dz < d) { d = dz; dir = Math.atan2(0, -Math.sign(p.z)); }
+  E.vert = false;
+  if (dy < d) { d = dy; E.vert = true; dir = p.y >= 0 ? 1 : -1; }
+  E.d = d; E.dir = dir; E.out = out;
+  E.warn = !out && (dx < size * (1 - BAND_WARN) || dz < size * (1 - BAND_WARN) || dy < band * (1 - BAND_WARN));
+  if (out) E.t += dt; else E.t = 0;
+  E.left = Math.max(0, EDGE_GRACE - E.t);
+  return out && E.t > EDGE_GRACE;
 }
 
 export function bandOf(w) { return (w.sector && w.sector.index) === 1 ? HOME_BAND : SECTOR_BAND; }
@@ -122,9 +146,9 @@ export function flyPlayer(w, dt, tgt) {
   if (msg) { w.flMsg = msg; w.bus.emit('flight', { msg, mode: st.modeWant, coupled: st.coupled, landing: st.landing }); }
   let ctl = w.ctl;
   if (p.hasMove) {
-    if (w.ctlActive) { p.hasMove = false; w.homing = false; w.bus.emit('flight', { msg: 'AUTOPILOT AUS' }); }
+    if (w.ctlActive) { p.hasMove = false; w.homing = false; apReiseOff(w, st); w.bus.emit('flight', { msg: 'AUTOPILOT AUS' }); }
     else ctl = autopilot(w);
-  }
+  } else if (w._apReise) apReiseOff(w, st);
   if (w._undockT && (w.time > w._undockT || w.ctlActive)) { if (st.cruise && st.cruiseV === 40) st.cruise = false; w._undockT = 0; }
   stepN(st, ctl, P, w.env, dt);
   collide3d(w, st, p);
@@ -147,6 +171,11 @@ export function flyPlayer(w, dt, tgt) {
   if (st.crash) { st.crash = false; st.landDmg = 0; damagePlayer(w, p.hpMax * 0.6, 'crash'); }
   else if (st.landDmg > 0) { damagePlayer(w, p.hpMax * st.landDmg, 'landing'); st.landDmg = 0; }
 }
+/** Vom Autopiloten gewählte REISE beenden (Ankunft, eigene Eingabe) */
+function apReiseOff(w, st) {
+  if (w._apReise && st.modeWant === MODE.REISE) { st.modeWant = MODE.KAMPF; st.modeT = st.mode === MODE.REISE ? FK.toKampf : 0; }
+  w._apReise = false;
+}
 function wrapA(a) { a = (a + Math.PI) % (Math.PI * 2); if (a < 0) a += Math.PI * 2; return a - Math.PI; }
 
 function damagePlayer(w, amount, kind) {
@@ -158,6 +187,7 @@ function damagePlayer(w, amount, kind) {
   if (p.hp <= 0) w._playerDie();
 }
 
+const AP_REISE = 2500, AP_KAMPF = 1400; // Autopilot: ab 2,5 km in REISE, unter 1,4 km zurück auf KAMPF
 /** Autopilot (H, Beute anfliegen, Bots): Ziel (tx, ty, tz) im 3D-Flug anfliegen, Ankunft weich */
 function autopilot(w) {
   const p = w.player, st = w.fl, P = w.flP, c = w._apCtl;
@@ -169,9 +199,16 @@ function autopilot(w) {
   w.apAim[0] = c[CI.AX]; w.apAim[1] = c[CI.AY]; w.apAim[2] = c[CI.AZ];
   fwdOf(_f, st.q);
   const cosA = (_f[0] * dx + _f[1] * dy + _f[2] * dz) / d;
+  // Lange Strecken außerhalb des Kampfes in REISE (2,8 × Kampftempo), rechtzeitig vor dem Ziel zurück auf KAMPF
+  if (!w.inCombat && d > AP_REISE && cosA > 0.9 && st.mode === MODE.KAMPF && st.modeWant === MODE.KAMPF && !st.landing) {
+    st.modeWant = MODE.REISE; st.modeT = FK.toReise; w._apReise = true;
+    w.bus.emit('flight', { msg: 'AUTOPILOT · REISE' });
+  } else if (w._apReise && (d < AP_KAMPF || w.inCombat) && st.modeWant === MODE.REISE) {
+    st.modeWant = MODE.KAMPF; st.modeT = FK.toKampf; w._apReise = false;
+  }
   let want = Math.sqrt(2 * P.aBack * 0.8 * Math.max(0, d - Cfg.ARRIVE_SNAP * 0.6));
   want *= cosA > 0 ? 0.25 + 0.75 * cosA * cosA : 0.15;
-  const top = Math.min(P.vK, st.limiter);
+  const top = Math.min(st.mode === MODE.REISE ? P.vR : P.vK, st.limiter);
   c[CI.TZ] = Math.max(0, Math.min(1, want / (top || 1)));
   return c;
 }
@@ -298,6 +335,19 @@ function aimInfo(w, dt) {
   w._convD += (want - w._convD) * (1 - Math.exp(-dt / 0.15));
   A.under = best ? best.id : null;
   A.conv = w._convD;
+  A.coneRad = coneOf(w);
+}
+
+/** Waffenkegel der Zielhilfe für Gerät, Stufe und Ziel (rad, 0 = keiner). HUD und Bot lesen ihn über aimInfo.coneRad. */
+function coneOf(w) {
+  const p = w.player, ctl = w.ctl, A = w.aimInfo;
+  const id = p.targetId != null ? p.targetId : A.under;
+  const t = id != null ? w.entities.get(id) : null;
+  if (!t || t.alive === false || !(t.kind === 'enemy' || (t.kind === 'player' && t.pvpOk))) return 0;
+  const f = ASSIST[assistLevel(ctl[CI.ASSIST], t.kind === 'player')].cone;
+  if (!(f > 0)) return 0;
+  const dev = ctl[CI.DEV] | 0;
+  return (dev === 3 ? ASSIST_CONE.touch : dev === 2 ? ASSIST_CONE.padPrecise : dev === 1 ? ASSIST_CONE.pad : ASSIST_CONE.mouse) * f;
 }
 
 /** Laser im 3D-Flug: Feuer halten → Bolzen; Feuerleitrechner (Autofeuer) gewürfelt × 0,8; Drohnen feuern mit */
@@ -391,6 +441,7 @@ function fireBolt(w, idx, laserId, ammoKey, mult, shieldOnly, crit, dmgK, sal, s
       if (Math.acos(Math.min(1, (lx * _f[0] + ly * _f[1] + lz * _f[2]) / l)) < gim + 8 * D) { _a[0] = lx / l; _a[1] = ly / l; _a[2] = lz / l; dist = l; }
     }
   }
+  if (!sal) dist = coneAssist(w, _c, _a, dist);
   convergeDir(_c[0], _c[1], _c[2], p.x, p.y, p.z, _a, dist, _f, gim, _d);
   // kleine Streuung (3D-Weg: world.rng ist hier erlaubt, der Taktikweg rechnet nie Bolzen)
   const sx = (w.rng.next() - 0.5) * 2 * BOLT_SPREAD, sy = (w.rng.next() - 0.5) * 2 * BOLT_SPREAD;
@@ -408,6 +459,28 @@ function fireBolt(w, idx, laserId, ammoKey, mult, shieldOnly, crit, dmgK, sal, s
     from: 'player', to: p.targetId, laser: laserId, ammo: ammoKey, hit: false, idx, bolt: true, sal,
     x: _c[0] + _d[0] / l * dist, y: _c[1] + _d[1] / l * dist, z: _c[2] + _d[2] / l * dist, dx: _d[0] / l, dy: _d[1] / l, dz: _d[2] / l,
   });
+}
+
+/**
+ * Waffenkegel der Zielhilfe (FLUGMODELL.md 5.3): liegt das Fadenkreuz höchstens so weit neben der Vorhaltemarke des
+ * Ziels (Maus 1,5°, Controller 2,5°, mit LT 4°, Touch 7°, je Stufe skaliert, im PvP höchstens NIEDRIG), zielen die
+ * Laser auf die Marke statt aufs Fadenkreuz. Der Spieler zielt weiter selbst; der Kegel nimmt nur die letzte Feinheit ab.
+ * aim (Zielrichtung) wird dann auf die Marke gesetzt; Rückgabe: Konvergenzentfernung.
+ */
+function coneAssist(w, mz, aim, dist) {
+  const p = w.player, A = w.aimInfo, cone = A.coneRad || 0;
+  if (!(cone > 0)) return dist;
+  const t = w.entities.get(p.targetId != null ? p.targetId : A.under);
+  if (!t) return dist;
+  _b[0] = t.x; _b[1] = t.y || 0; _b[2] = t.z; _d[0] = t.vx || 0; _d[1] = t.vy || 0; _d[2] = t.vz || 0;
+  if (leadPoint(mz, _b, _d, BOLT_SPEED, _lp) <= 0) return dist;
+  const lx = _lp[0] - p.x, ly = _lp[1] - p.y, lz = _lp[2] - p.z, l = Math.hypot(lx, ly, lz) || 1;
+  if (l > Cfg.PLAYER_RANGE * 1.05) return dist;
+  const ca = (lx * aim[0] + ly * aim[1] + lz * aim[2]) / l;
+  if (ca < Math.cos(cone)) return dist;
+  aim[0] = lx / l; aim[1] = ly / l; aim[2] = lz / l;
+  A.cone = w.time;
+  return l;
 }
 
 /** Feuerleitrechner (Autofeuer, Touch und Barrierefreiheit): gewürfelt × AUTO_K, Ziel im 30°-Kegel um den Bug */
@@ -500,7 +573,7 @@ function playerBolt(w, B, i, x0, y0, z0, x1, y1, z1) {
   const ammo = AMMO_KEYS3[B.ammo[i]] || 'L1';
   const mult = (AMMO[ammo] || AMMO.L1).mult, crit = !!B.crit[i];
   const cm = crit && ammo !== 'SAL' ? Cfg.CRIT_MULT : 1;
-  const dmg = rollDamage(w.rng, L.damage, mult * cm) * B.dmg[i];
+  const dmg = rollDamage(w.rng, L.damage, mult * cm) * B.dmg[i] * (best.kind === 'enemy' && !B.sal[i] ? AIM_PVE : 1);
   const v = Math.hypot(B.vx[i], B.vy[i], B.vz[i]) || 1;
   const dx = B.vx[i] / v, dy = B.vy[i] / v, dz = B.vz[i] / v, dl = Math.hypot(dx, dz) || 1;
   if (!w.player.targetId && best.kind === 'enemy') w.setTarget(best.id);
