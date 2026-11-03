@@ -113,6 +113,9 @@
   force = true
 
 # ---------- Kopfzeilen ----------
+# CSP geprüft gegen Website und Spiel (/play/) mit dem Chrome-Test: keine Verstöße. Erlaubt sind nur eigene Dateien
+# und Supabase (https/wss *.supabase.co für Konto, Datenbank und Realtime) sowie Profilbilder von Google/Discord.
+# 'unsafe-inline' steht nur bei style-src (Vite/Spiel setzen style-Attribute), nie bei script-src.
 [[headers]]
   for = "/*"
   [headers.values]
@@ -120,7 +123,8 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
     X-Frame-Options = "DENY"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://cdn.discordapp.com; connect-src 'self' blob: data: https://*.supabase.co wss://*.supabase.co; font-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Strict-Transport-Security = "max-age=31536000"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://cdn.discordapp.com; connect-src 'self' blob: data: https://*.supabase.co wss://*.supabase.co; font-src 'self'; media-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 [[headers]]
   for = "/assets/*"
@@ -149,6 +153,11 @@
 
 [[headers]]
   for = "/audio/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/play/fonts/*"
   [headers.values]
     Cache-Control = "public, max-age=604800"
 

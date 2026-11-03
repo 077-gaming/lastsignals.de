@@ -3,6 +3,7 @@
 // Werte sind Planungsstand, keine erfundenen Spielerzahlen, Zitate oder Bewertungen.
 import { SHIPS as GAME_SHIPS, ENEMIES as GAME_ENEMIES, sectorsFor } from '../../Code/src/core/data.js';
 import { RELEASE } from './downloads.js';
+import { SITE } from '../site.js';
 
 // Apps erst als verfügbar nennen, wenn das GitHub-Release veröffentlicht ist
 const APPS = RELEASE.published;
@@ -48,7 +49,7 @@ export const CH = {
     hero: {
       kicker: 'Übertragung 2391 · Inneres Sonnensystem',
       lead: 'Die Erde schweigt. Drei Mächte kämpfen um das, was von der Menschheit übrig ist.',
-      play: 'Jetzt losfliegen', apps: 'Apps & Download', playState: 'Öffentliche Testversion 0.1.0', reserve: 'Rufnamen mit Konto sichern',
+      play: 'Jetzt losfliegen', apps: 'Apps & Download', playState: `Öffentliche Testversion ${SITE.version}`, reserve: 'Rufnamen mit Konto sichern',
       head: '<span class="hl">Die Erde schweigt.</span> <em class="hl">Du nicht.</em>',
       sub: 'Kostenloses Weltraum-MMO im Browser. Wähle eine von drei Mächten, rüste dein Schiff, erobere das Sonnensystem.',
       trust: 'Kostenlos · Kein Download · In Sekunden im Cockpit',
@@ -204,7 +205,7 @@ export const CH = {
     hero: {
       kicker: 'Transmission 2391 · Inner solar system',
       lead: 'Earth has gone silent. Three powers fight over what is left of humanity.',
-      play: 'Launch now', apps: 'Apps & download', playState: 'Public test version 0.1.0', reserve: 'Claim your callsign with an account',
+      play: 'Launch now', apps: 'Apps & download', playState: `Public test version ${SITE.version}`, reserve: 'Claim your callsign with an account',
       head: '<span class="hl">Earth went silent.</span> <em class="hl">You won’t.</em>',
       sub: 'A free space MMO in your browser. Pick one of three powers, gear up your ship, conquer the solar system.',
       trust: 'Free · No download · In the cockpit in seconds',

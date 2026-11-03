@@ -13,9 +13,10 @@ export const RELEASE = {
   tag: `v${SITE.version}-test`,
   version: SITE.version, // so steht es auf der Seite
   test: true, // Testversion: unsigniert, nicht im App Store / bei Google Play
-  // Erst auf true setzen, wenn das GitHub-Release mit genau diesen Dateinamen veröffentlicht ist
-  // (sonst führen die Knöpfe auf 404). Bis dahin zeigt die Seite die Dateien ehrlich als „bald verfügbar“.
-  published: false,
+  // true = Knöpfe zeigen auf das GitHub-Release v<version>-test. Das Release MUSS mit genau diesen Dateinamen
+  // veröffentlicht sein, bevor die Website live geht (sonst führen die Knöpfe auf 404). Notfalls auf false setzen:
+  // dann zeigt die Seite die Dateien ehrlich als „bald verfügbar“.
+  published: true,
 };
 
 // Dateien des Releases. bytes = exakte Größe (für die Anzeige „149 MB“).
