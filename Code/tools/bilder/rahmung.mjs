@@ -1,6 +1,6 @@
 // Verfolger-Rahmung abgleichen (nur Entwicklung, unsichtbar): misst je Klasse die Bildfläche (konvexe Hülle), Höhe,
 // Unterkante gegen das HUD-Band für die Einträge in render/camrig.js CHASE_FRAME, die das Werkzeug zur Laufzeit setzt.
-// Aufruf: node tools/bilder/rahmung.mjs '<json {s1:{d,el,y},…}>' [basis-url]   F=europa · KAMPF=1 · HUD=1
+// Aufruf: node tools/bilder/rahmung.mjs '<json {s1:{d,el,y,yaw,yk,k},…} oder [[klasse,{…}],…]>' [basis-url]   F=europa · KAMPF=1 · HUD=1
 import { chromium } from 'playwright-core';
 const cfg = JSON.parse(process.argv[2] || '{}');
 const base = process.argv[3] || 'http://localhost:5198';
@@ -13,11 +13,11 @@ await page.waitForFunction(() => window.__ls?.world?.player, null, { timeout: 30
 await page.waitForTimeout(3000);
 if (!hud) await page.addStyleTag({ content: '#hud{display:none!important}' });
 const out = [];
-for (const [sh, c] of Object.entries(cfg)) {
+for (const [sh, c] of Array.isArray(cfg) ? cfg : Object.entries(cfg)) {
   await page.evaluate(([sh, c, kampf]) => {
     __ls.series?.choose('direct');
     const w = __ls.world, p = w.profile, R = __ls.renderer; p.ship = sh; w.player.ship = sh; R._playerDirty = true; __ls.bus?.emit?.('profile', p);
-    Object.assign(R.rig.frame[sh] || (R.rig.frame[sh] = {}), c);
+    R.rig.frame[sh] = { ...c };
     if (!window.__start) window.__start = { x: w.player.x + 900, z: w.player.z };
     w.player.x = window.__start.x; w.player.z = window.__start.z; w.player.rot = 2.4; w.player.vx = 0; w.player.vz = 0;
     if (kampf && !window.__foes) {

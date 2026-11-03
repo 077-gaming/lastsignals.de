@@ -15,22 +15,24 @@ export const FOV_TAC = 40, FOV_CHASE = 58;
 const CH_ELEV = 15 * Math.PI / 180, CH_ELEV_FIGHT = 21 * Math.PI / 180;
 const CH_DIST = 4.1;
 const CH_R0 = 24.7, CH_EXP = 0.5, CH_ELEV_BIG = 9 * Math.PI / 180, CH_YAW_BIG = 6 * Math.PI / 180;
-// Verfolger-Rahmung je Klasse (Meshy-Rümpfe, Runde 3): Abstand d (m, Zoom 1, ohne Tempo/Kampf-Zuschlag), zusätzliche
-// Neigung el (Grad) und Bildlage y (NDC-Versatz, + = tiefer). Abgeglichen mit tools/bilder/rahmung.mjs auf eine
-// monotone Staffelung der Bildhöhe des Rumpfs: Starter 18 %, je Klasse ≈ 10 % mehr, Schiff 8 ≈ 34 % (Obergrenze 38 %).
-// Der Hüllkugel-Radius allein taugt nicht (Flügel und Länge verfälschen ihn). Schiff 8 flacher (−6°) und höher im
-// Bild, damit das Heck in 1280 × 720 über dem unteren HUD-Band liegt. k = Abstandsfaktor im Kampf (steilere Kamera und
-// Zielschwenk verschieben die Bildhöhe je Rumpfform unterschiedlich; Abgleich mit groessen.mjs KAMPF=1).
+// Verfolger-Rahmung je Klasse (Meshy-Rümpfe): Abstand d (m, Zoom 1, ohne Tempo/Kampf-Zuschlag), zusätzliche Neigung el
+// (Grad), Bildlage y (NDC-Versatz, + = tiefer; yc im Kampf), k = Abstandsfaktor im Kampf.
+// Runde 4: gestaffelt nach Bildfläche UND Bildhöhe (tools/bilder/groessen.mjs bricht ab, wenn eine Stufe nicht um
+// mindestens 8 % wächst, je Fraktion in Flug und Kampf). Schiff 8 (189 × 49 m) in ruhiger Fahrt flach (−14°) und mit
+// 12° Gier (yaw): Länge sichtbar, größte Bildfläche, Heck über dem HUD-Band; im Kampf bleibt die doppelte Gier (yk),
+// die Kampfneigung zur Hälfte (ek) und die Zielhöhe im Bild darf bis 0,82 (tc) steigen – so liegen Zielmarke und
+// Zielbogen frei vor dem Rumpf und das Heck bleibt über dem HUD-Band. Im Kampf sind alle Klassen etwas kleiner im Bild
+// (mehr Überblick), die Stufen liegen ≈ 15 % auseinander, weil der Zielschwenk die Bildhöhe je Lage um ±4 % streut.
 // Klassen ohne Eintrag: Radius-Formel.
 export const CHASE_FRAME = {
-  s1: { d: 100.5, el: 0, y: 0, k: 1 },
-  s2: { d: 88.5, el: 0, y: 0, k: 0.97 },
-  s3: { d: 101.8, el: 0, y: 0, k: 0.9 },
-  s4: { d: 98, el: 0, y: 0, k: 0.97 },
-  s5: { d: 128.6, el: 0, y: 0, k: 0.98 },
-  s6: { d: 129.6, el: 0, y: 0, k: 0.88 },
-  s7: { d: 124.3, el: 0, y: 0, k: 0.94 },
-  s8: { d: 221.6, el: -6, y: -0.1, k: 0.94 },
+  s1: { d: 108.5, el: 0, y: 0, k: 1.26 },
+  s2: { d: 88.5, el: 0, y: 0, k: 1.21 },
+  s3: { d: 101.8, el: 0, y: 0, k: 1.11 },
+  s4: { d: 98, el: 0, y: -0.03, k: 1.11 },
+  s5: { d: 128.6, el: 0, y: -0.05, k: 1.1 },
+  s6: { d: 131.7, el: 0, y: -0.05, yc: -0.32, tc: 0.8, k: 0.92 },
+  s7: { d: 125.7, el: 0, y: -0.04, yc: -0.13, tc: 0.78, k: 0.97 },
+  s8: { d: 156, el: -14, y: -0.45, yc: -0.6, tc: 0.9, yaw: 12, yk: 2.4, ek: 0.8, k: 0.91 },
 };
 const BLEND_T = 0.9; // Sekunden für den Wechsel
 
@@ -195,22 +197,26 @@ export class CameraRig {
     if (fr) {
       // Rahmung je Klasse (Bildfläche gestaffelt), nie näher als 1,2 Radien
       D = Math.max(r * 1.2, fr.d * grow * (1 + ((fr.k ?? 1) - 1) * ck));
-      elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck + fr.el * Math.PI / 180;
+      // ek: Anteil der steileren Kampfkamera (Schiff 8: flach bleiben, sonst schrumpft die Fläche des schlanken Rumpfs)
+      elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck * (fr.ek ?? 1) + fr.el * Math.PI / 180;
     } else {
       const rEff = CH_R0 * Math.pow(r / CH_R0, CH_EXP);
       D = Math.max(r * 1.45, rEff * CH_DIST * grow);
       // lange Rümpfe (Platzhalter): Kamera steiler, damit Länge und Silhouette von hinten lesbar sind
       elev = CH_ELEV + (CH_ELEV_FIGHT - CH_ELEV) * ck + big * CH_ELEV_BIG;
     }
-    this.frameY = fr ? fr.y : 0;
+    this.frameY = fr ? fr.y + ((fr.yc ?? fr.y) - fr.y) * ck : 0; // yc: Bildlage im Kampf
     // lange Rümpfe: leichte Dreiviertelsicht (höchstens 6°), nur im ruhigen Geradeausflug; beim Lenken (Kurswechsel
     // > 0,15 rad/s) und im Kampf blendet der Versatz auf 0 aus, damit Schild- und Kursbogen am Rumpf bleiben
     const turn = this._head === null ? 0 : Math.abs(wrap(heading - this._head)) / Math.max(1e-3, dt);
     this._head = heading;
-    const sideWant = big * (1 - ck) * (turn > 0.15 ? 0 : 1);
+    // Rahmung mit eigener Gier (fr.yaw, Grad): ruhige Verfolgersicht in Dreiviertelsicht (Schiff 8 zeigt seine Länge),
+    // im Kampf bleibt der Anteil fr.yk davon stehen (Bildfläche), beim Lenken blendet sie aus
+    const own = fr && fr.yaw !== undefined;
+    const sideWant = (own ? 1 - ck * (1 - (fr.yk ?? 0)) : big * (1 - ck)) * (turn > 0.15 ? 0 : 1);
     this.side += (sideWant - this.side) * (1 - Math.exp(-dt * (sideWant < this.side ? 4 : 0.8)));
     if (this.reset) this.side = sideWant;
-    const yc = this.yaw + this.side * CH_YAW_BIG, fxc = -Math.sin(yc), fzc = -Math.cos(yc);
+    const yc = this.yaw + this.side * (own ? fr.yaw * Math.PI / 180 : CH_YAW_BIG), fxc = -Math.sin(yc), fzc = -Math.cos(yc);
     const ox = -fxc * D * Math.cos(elev), oz = -fzc * D * Math.cos(elev), oy = D * Math.sin(elev) + r * 0.3;
     // Federung: Kamera-Versatz folgt kritisch gedämpft (keine Schwingung, nur Nachziehen)
     if (this.reset) { this.pos.set(ox, oy, oz); this.posV.set(0, 0, 0); this._pitch = null; }
@@ -233,7 +239,9 @@ export class CameraRig {
     if (cv && ck > 0.001) {
       // Ziel nicht über den oberen Bildrand schieben
       const td = Math.hypot(cv.rx - cx, cv.rz - cz) || 1, aT = Math.atan2(2 - cy, td);
-      pitch = Math.max(pitch, aT - Math.atan(0.72 * tanH) * ck - (1 - ck) * 2);
+      // (tc: Grenze der Zielhöhe im Bild je Rahmung, Schiff 8 höher, damit das Heck über dem HUD-Band bleibt)
+      const tc = (this.frame[e.ship] && this.frame[e.ship].tc) || 0.72;
+      pitch = Math.max(pitch, aT - Math.atan(tc * tanH) * ck - (1 - ck) * 2);
     }
     if (this._pitch === null || this._pitch === undefined) this._pitch = pitch;
     this._pitch += (pitch - this._pitch) * (1 - Math.exp(-dt * 8));

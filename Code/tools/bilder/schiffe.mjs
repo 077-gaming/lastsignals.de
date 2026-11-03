@@ -23,6 +23,8 @@ const facOverride = process.env.FRAKTIONEN ? process.env.FRAKTIONEN.split(',') :
 const CLOSE = [
   ['nah-bug', 28, 16, 0.78, -0.32, false], ['nah-flanke', 74, 6, 0.95, 0, false], ['nah-heck', 158, 20, 0.85, 0.3, true],
   ['nah-oben', 115, 58, 1.0, 0, true], ['nah-unten', 48, -32, 1.1, 0, true],
+  // Runde 4: Heck auch mit Halle (wie im Spiel), damit „kein Hallenträger vor dem Rumpf“ für die echte Ansicht gilt
+  ['nah-heck-halle', 158, 20, 0.85, 0.3, false],
 ];
 const classes = (process.env.KLASSEN || 's1,s2,s3,s4,s5,s6,s7,s8').split(',');
 const views = (process.env.ANSICHT || 'hangar,verfolger,nah,cockpit').split(',');
