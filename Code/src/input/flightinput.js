@@ -55,7 +55,8 @@ export class FlightInput {
 
   // ───────── Zeigerfang ─────────
   requestLock() {
-    if (this.touchOnly() || this.locked || !this.canvas || !this.canvas.requestPointerLock) return;
+    if (this.touchOnly() || !this.canvas || !this.canvas.requestPointerLock) return;
+    if (document.pointerLockElement === this.canvas) return; // (this.locked hinkt dem Ereignis hinterher)
     if (this.input.menuOpen && this.input.menuOpen()) return;
     const c = this.canvas;
     const plain = () => { try { const r = c.requestPointerLock(); if (r && r.catch) r.catch(() => { this.lockFailed = true; }); } catch { this.lockFailed = true; } };

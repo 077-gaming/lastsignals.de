@@ -213,6 +213,14 @@ export function step(st, ctl, P, env, h = H) {
   st.thr[4] = _ab[2] < 0 ? -_ab[2] / aF : 0; st.thr[5] = _ab[2] > 0 ? _ab[2] / aB : 0;
   vCopy(st.accB, _ab);
   qRot(_aw, st.q, _ab);
+  // Am Tempodeckel schiebt der Schub nicht weiter (auch entkoppelt): Anteil entlang der Bewegung entfällt
+  {
+    const sp0 = vLen(st.v), cap0 = st.boostOn ? Math.max(modeMax(st, P), P.vB) : st.mode === MODE.LANDUNG ? K.landV * 1.2 : modeMax(st, P);
+    if (sp0 >= cap0 * 0.999) {
+      const along = (_aw[0] * st.v[0] + _aw[1] * st.v[1] + _aw[2] * st.v[2]) / sp0;
+      if (along > 0) { _aw[0] -= st.v[0] / sp0 * along; _aw[1] -= st.v[1] / sp0 * along; _aw[2] -= st.v[2] / sp0 * along; }
+    }
+  }
   _aw[0] += _g[0]; _aw[1] += _g[1]; _aw[2] += _g[2];
   if (env && env.rho > 0) {
     const sp = vLen(st.v), k = 0.5 * env.rho * (env.cdA || 0.02) * sp;
