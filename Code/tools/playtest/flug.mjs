@@ -33,7 +33,7 @@ function init() {
   let el = null;
   Object.defineProperty(document, 'pointerLockElement', { configurable: true, get: () => el });
   Element.prototype.requestPointerLock = function () { el = this; window.__lockReq = (window.__lockReq || 0) + 1; setTimeout(() => document.dispatchEvent(new Event('pointerlockchange')), 0); return Promise.resolve(); };
-  document.exitPointerLock = function () { el = null; setTimeout(() => document.dispatchEvent(new Event('pointerlockchange')), 0); };
+  document.exitPointerLock = function () { el = null; window.__lockExit = (window.__lockExit || 0) + 1; setTimeout(() => document.dispatchEvent(new Event('pointerlockchange')), 0); };
   window.__escLock = () => { el = null; document.dispatchEvent(new Event('pointerlockchange')); }; // Browser löst den Fang (Esc)
   window.__mv = (dx, dy) => document.dispatchEvent(new MouseEvent('mousemove', { movementX: dx, movementY: dy, bubbles: true }));
   window.__gp = { buttons: new Array(17).fill(0), axes: [0, 0, 0, 0], connected: false, id: 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)', effects: [] };
@@ -46,14 +46,29 @@ function init() {
 
 // Kampf-Bot im Spiel (läuft je Bild im Browser): zielt auf die Vorhaltemarke wie ein Mensch, Maus oder rechter Stick
 async function botFight(opts) {
-  const { secs, device } = opts;
+  // opts.pack: frische Raider-Rudel (3 vor dem Bug, nach jedem Abschuss Ersatz), bis opts.minKills Abschüsse oder secs.
+  // Gezählt werden nur diese Raider ab ihrem ersten Treffer – so misst der Median nicht angeschossene Reste früherer
+  // Kämpfe (früher 1–2 s) und hat genug Werte (früher oft nur 2 Abschüsse, ein Rückzug zum Heilen kippte ihn).
+  const { secs, device, pack = false, minKills = 0 } = opts;
   const L = window.__ls, w = L.world, p = w.player, fi = L.input.fi, cam = L.renderer.camera;
   const D = Math.PI / 180, BOLT = 2400;
   const hist = []; // Zielverlauf für die Reaktionszeit (180 ms)
   const stats = { frames: 0, worst: 0, shots0: w.stats3.bolts, hits0: w.stats3.boltHits, kills: 0, deaths0: w.profile.stats.deaths, ttk: [], first: new Map(), engaged: 0, onTarget: 0 };
+  const mine = new Set();
+  const spawn = (i) => {
+    const q = w.fl.q, f = [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))];
+    const e = w.spawnTemp('raider', p.x + f[0] * (900 + i * 80) + (i - 1) * 120, p.z + f[2] * (900 + i * 80), p.y + f[1] * 900 + (i - 1) * 60);
+    e.expire = false; w.provoke(e); mine.add(e.id);
+  };
+  if (pack) {
+    // alte Gegner weit weg, dann ein frisches Rudel
+    for (const e of w.enemies) if (e.alive && Math.hypot(e.x - p.x, e.z - p.z, (e.y || 0) - p.y) < 3000) { e.x += 6000 * Math.sign(e.x - p.x || 1); e.px = e.x; e.targetId = null; }
+    p.targetId = null; for (let i = 0; i < 3; i++) spawn(i);
+  }
+  let respawn = 0;
   const offs = [
-    L.bus.on('damage', (d) => { if (d.from === 'player' && d.id !== 'player' && !stats.first.has(d.id)) stats.first.set(d.id, w.time); }),
-    L.bus.on('explode', (e) => { if (e.kind === 'enemy') { stats.kills++; if (stats.first.has(e.id)) { stats.ttk.push(w.time - stats.first.get(e.id)); stats.first.delete(e.id); } } }),
+    L.bus.on('damage', (d) => { if (d.from === 'player' && d.id !== 'player' && !stats.first.has(d.id) && (!pack || mine.has(d.id))) stats.first.set(d.id, w.time); }),
+    L.bus.on('explode', (e) => { if (e.kind === 'enemy') { stats.kills++; if (stats.first.has(e.id)) { stats.ttk.push(w.time - stats.first.get(e.id)); stats.first.delete(e.id); } if (pack && mine.has(e.id)) respawn++; } }),
   ];
   let seed = 7; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const keys = new Set();
@@ -66,19 +81,28 @@ async function botFight(opts) {
     if (on) c.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true, pointerType: 'mouse' }));
     else window.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true, pointerType: 'mouse' }));
   };
+  // Controller: Boost mit L3 (kurz drücken schaltet ein), wenn das Ziel weit weg ist (Flucht zum Heilen)
+  let l3 = 0;
+  const padBoost = () => {
+    const t = p.targetId ? w.entities.get(p.targetId) : null;
+    const far = t && Math.hypot(t.x - p.x, t.y - p.y, t.z - p.z) > 700;
+    if (l3 > 0) { if (--l3 === 0) window.__gp.buttons[10] = 0; return; }
+    if (far && !w.fl.boostOn && !w.fl.boostLock) { window.__gp.buttons[10] = 1; l3 = 3; }
+  };
   const t0 = performance.now();
   let last = t0;
   await new Promise((res) => {
     const f = (now) => {
       const dt = now - last; last = now;
       stats.frames++; if (stats.frames > 5) stats.worst = Math.max(stats.worst, dt);
-      if (now - t0 > secs * 1000) { res(); return; }
+      if (now - t0 > secs * 1000 || (minKills && stats.ttk.length >= minKills)) { res(); return; }
+      if (respawn > 0 && stats.frames % 30 === 0) { respawn--; spawn(1); }
       if (w.playerDead) { w.repair('station'); setTimeout(() => { fi.requestLock(); }, 200); }
       // Ziel halten, bis es zerstört ist; sonst nächster Gegner
       let t = p.targetId ? w.entities.get(p.targetId) : null;
       if (!t || t.alive === false || t.kind !== 'enemy') {
         let bd = Infinity; t = null;
-        for (const e of w.enemies) { if (!e.alive) continue; const d = Math.hypot(e.x - p.x, e.y - p.y, e.z - p.z); if (d < bd) { bd = d; t = e; } }
+        for (const e of w.enemies) { if (!e.alive || (pack && !mine.has(e.id))) continue; const d = Math.hypot(e.x - p.x, e.y - p.y, e.z - p.z); if (d < bd) { bd = d; t = e; } }
         if (t) w.setTarget(t.id);
       }
       if (!t) { fire(false); requestAnimationFrame(f); return; }
@@ -102,8 +126,23 @@ async function botFight(opts) {
       const proj = (x, y, z) => [Math.atan2(x * m[0] + y * m[1] + z * m[2], x * fx + y * fy + z * fz), Math.atan2(x * m[4] + y * m[5] + z * m[6], x * fx + y * fy + z * fz)];
       const [ta, tb] = proj(dx, dy, dz), [ca, cb] = proj(am[0], am[1], am[2]);
       const eh = ta - ca, ev = tb - cb, err = Math.hypot(eh, ev);
-      if (device === 'pad') {
-        const k = Math.min(1, err / (8 * D));
+      if (device === 'pad') padBoost();
+      if (device === 'pad' && fi.set.padMode === 'rate') {
+        // Drehraten-Modus: ein Mensch führt das Ziel mit (Markenbewegung) und korrigiert den Rest – Sollrate aus der
+        // Bildwinkel-Änderung der Marke plus 4/s × Fehler, über Totzone und Achsen-Kurve auf den Stick umgerechnet
+        const pv = stats.pv || (stats.pv = { a: ta, b: tb, t: now });
+        const dtp = Math.max(0.008, (now - pv.t) / 1000);
+        const ra = (ta - pv.a) / dtp, rb = (tb - pv.b) / dtp; pv.a = ta; pv.b = tb; pv.t = now;
+        const wr = w.flP.rate || 1;
+        const vx = (ra * 0.8 + eh * 4) / wr, vy = (rb * 0.8 + ev * 4) / wr, M = Math.hypot(vx, vy);
+        const raw = M < 0.004 ? 0 : Math.min(1, Math.pow(Math.min(1, M), 1 / 1.6) * 0.85 + 0.15); // Totzone 0,15, Kurve 1,6
+        window.__gp.axes[2] = M ? vx / M * raw : 0;
+        window.__gp.axes[3] = M ? -vy / M * raw : 0;
+        window.__gp.axes[1] = Math.hypot(t.x - p.x, t.y - p.y, t.z - p.z) > 480 ? -1 : -0.35;
+      } else if (device === 'pad') {
+        // Zielrichtung (Standard): Stick schiebt das Fadenkreuz; voller Ausschlag ab 4° Fehler (ein Mensch drückt
+        // bei einem davonziehenden Ziel kräftig nach; mit 8° hinkte der Bot hinterher)
+        const k = Math.min(1, err / (4 * D));
         window.__gp.axes[2] = err > 0.3 * D ? Math.max(-1, Math.min(1, eh / (err || 1) * Math.sqrt(k))) : 0;
         window.__gp.axes[3] = err > 0.3 * D ? Math.max(-1, Math.min(1, -ev / (err || 1) * Math.sqrt(k))) : 0;
         window.__gp.axes[1] = Math.hypot(t.x - p.x, t.y - p.y, t.z - p.z) > 480 ? -1 : -0.35;
@@ -113,13 +152,17 @@ async function botFight(opts) {
         if (Math.abs(px) + Math.abs(py) > 0.2) window.__mv(px, py);
         const d3 = Math.hypot(t.x - p.x, t.y - p.y, t.z - p.z);
         key('KeyW', d3 > 480); key('KeyS', d3 < 140);
+        // flieht der Raider (Rückzug zum Heilen ab 25 % Hülle), setzt ein Mensch mit Boost nach
+        key('ShiftLeft', d3 > 700 && !w.fl.boostLock);
       }
       const d3 = Math.hypot(t.x - p.x, t.y - p.y, t.z - p.z);
       if (d3 < 700) stats.engaged++;
       // Feuer, wenn die Waffen auf der Marke liegen (Waffenkreuz im Kardankegel und Fadenkreuz auf der Marke)
       const q = w.fl.q, nf = [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))];
       const gimOk = Math.acos(Math.min(1, nf[0] * dx + nf[1] * dy + nf[2] * dz)) < w.flP.gimbal;
-      const on = d3 < 640 && err < 1.2 * D && gimOk && !w.inSafeZone;
+      // wie ein Mensch: feuern, sobald die Raute „heiß“ ist (Fadenkreuz auf der Marke oder im Waffenkegel der Zielhilfe)
+      const cone = Math.max(1.2 * D, (w.aimInfo.coneRad || 0) * 0.6);
+      const on = d3 < 640 && err < cone && gimOk && !w.inSafeZone;
       if (on) stats.onTarget++;
       fire(on);
       requestAnimationFrame(f);
@@ -127,12 +170,13 @@ async function botFight(opts) {
     requestAnimationFrame(f);
   });
   fire(false); for (const k of [...keys]) key(k, false);
-  window.__gp.axes = [0, 0, 0, 0]; window.__gp.buttons[7] = 0;
+  window.__gp.axes = [0, 0, 0, 0]; window.__gp.buttons[7] = 0; window.__gp.buttons[10] = 0;
   for (const o of offs) o();
   const shots = w.stats3.bolts - stats.shots0, hits = w.stats3.boltHits - stats.hits0;
   stats.ttk.sort((x, y) => x - y);
+  const el = (performance.now() - t0) / 1000;
   return {
-    secs, device, fps: +(stats.frames / secs).toFixed(1), worstMs: Math.round(stats.worst), shots, hits, hitRate: shots ? +(hits / shots).toFixed(3) : 0,
+    secs: +el.toFixed(1), device, fps: +(stats.frames / el).toFixed(1), worstMs: Math.round(stats.worst), shots, hits, hitRate: shots ? +(hits / shots).toFixed(3) : 0,
     kills: stats.kills, deaths: w.profile.stats.deaths - stats.deaths0, ttkMedian: stats.ttk.length ? +stats.ttk[stats.ttk.length >> 1].toFixed(1) : null,
     ttkAll: stats.ttk.map((v) => +v.toFixed(1)), onTarget: +(stats.onTarget / Math.max(1, stats.engaged)).toFixed(2),
   };
@@ -215,9 +259,10 @@ async function main() {
   check('D und Leertaste: seitlich und hoch schieben', side.right > 20 && side.up > 20, `rechts ${Math.round(side.right)}, hoch ${Math.round(side.up)} m/s`);
   // nach dem Boost auf Kampftempo zurück (weicher Deckel), dann entkoppeln
   for (let i = 0; i < 40 && (await W(() => window.__ls.world.player.speed > window.__ls.world.flP.vK + 2)); i++) await sleep(100);
+  const ex0 = await W(() => window.__lockExit || 0);
   await page.keyboard.down('AltLeft'); await page.keyboard.press('KeyC'); await page.keyboard.up('AltLeft');
   await sleep(150);
-  check('Alt gibt den Zeiger frei, danach wieder gefangen', await W(() => window.__ls.input.fi.locked === true));
+  check('Alt+C (Mac: Option+C) behält den Zeigerfang (kein Lösen, kein neuer Fang)', await W((e0) => window.__ls.input.fi.locked === true && (window.__lockExit || 0) === e0, ex0));
   const dec = await W(() => window.__ls.world.fl.coupled);
   await page.keyboard.up('KeyW');
   const v0 = await W(() => window.__ls.world.player.speed); await sleep(1500); const v1 = await W(() => window.__ls.world.player.speed);
@@ -226,10 +271,16 @@ async function main() {
   await sleep(1500);
   check('Alt+C koppelt wieder: Flugrechner bremst', (await W(() => window.__ls.world.fl.coupled)) && (await W(() => window.__ls.world.player.speed)) < v1 * 0.8);
   // Alt allein: Zeiger frei, während gehalten
-  await page.keyboard.down('AltLeft'); await sleep(150);
+  await page.keyboard.down('AltLeft'); await sleep(450);
   const free = await W(() => window.__ls.input.fi.locked);
   await page.keyboard.up('AltLeft'); await sleep(200);
   check('Alt halten: Zeiger frei für die Fenster (B-07)', free === false && (await W(() => window.__ls.input.fi.locked)) === true);
+  // Windows: Strg (runter) mit W/A/S/D – Browser-Kürzel Strg+D/S/A werden im Flug abgefangen
+  const ctl = await W(() => ['KeyD', 'KeyS', 'KeyA'].map((code) => { const e = new KeyboardEvent('keydown', { code, ctrlKey: true, bubbles: true, cancelable: true }); window.dispatchEvent(e); window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })); return e.defaultPrevented; }));
+  check('Windows: Strg+D/S/A im Flug abgefangen (kein Lesezeichen, Speichern, Markieren)', ctl.every(Boolean), JSON.stringify(ctl));
+  // K: Feuerleitrechner (MacBook ohne Strg rechts)
+  const kAuto = await W(() => { const w = window.__ls.world, p = w.player, t = w.enemies.find((e) => e.alive); if (t) w.setTarget(t.id); const a0 = !!p.attacking; window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyK', bubbles: true, cancelable: true })); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyK', bubbles: true })); const a1 = !!p.attacking; if (a1 !== a0) w.toggleAttack(); return a1 !== a0; });
+  check('K schaltet den Feuerleitrechner (Mac ohne Strg rechts)', kAuto);
   // Strg+Klick (Mac: Rechtsklick mit ctrlKey) feuert, ohne Kontextmenü
   await W(() => { window.__b0 = window.__ls.world.stats3.bolts; window.__cm = 0; window.addEventListener('contextmenu', (e) => { if (!e.defaultPrevented) window.__cm++; }, { once: false }); });
   await page.keyboard.down('ControlLeft');
@@ -249,6 +300,70 @@ async function main() {
   check('Nach dem Bordmenü: Zeiger wieder gefangen', await W(() => window.__ls.input.fi.locked === true && window.__ls.hud._menuOpen === false));
   await shot('verfolger-flug');
 
+  // ── Flache Kurve: 5 s Maus rechts (20 px je Bild) = reines Gieren, Bug bleibt in der Ebene, volle Umkehr ──
+  // Ausgangslage waagrecht und auf der Ebene (vorher wurde gerollt; ohne Horizont-Hilfe bleibt die Rolllage stehen)
+  const level = () => W(() => { const L = window.__ls, w = L.world, st = w.fl, p = w.player, y = p.rot || 0; st.q[0] = 0; st.q[1] = Math.sin(y / 2); st.q[2] = 0; st.q[3] = Math.cos(y / 2); st.w.fill(0); st.v.fill(0); p.y = 0; st.p[1] = 0; L.input.fi.resetAim(); });
+  await level(); await sleep(300);
+  const flat = await W(() => new Promise((res) => {
+    const L = window.__ls, w = L.world, q = w.fl.q;
+    const yawOf = () => Math.atan2(2 * (q[0] * q[2] + q[3] * q[1]), 1 - 2 * (q[0] * q[0] + q[1] * q[1]));
+    const pitchOf = () => Math.asin(Math.max(-1, Math.min(1, -(2 * (q[1] * q[2] - q[3] * q[0])))));
+    let last = yawOf(), sum = 0, minP = 0, maxP = 0; const t0 = performance.now(), y0 = w.player.y;
+    const f = () => {
+      window.__mv(20, 0);
+      const y = yawOf(); let d = y - last; d = Math.atan2(Math.sin(d), Math.cos(d)); sum += d; last = y;
+      const pp = pitchOf(); minP = Math.min(minP, pp); maxP = Math.max(maxP, pp);
+      if (performance.now() - t0 > 5000) { res({ yawDeg: Math.round(Math.abs(sum) * 57.3), minP: +(minP * 57.3).toFixed(1), maxP: +(maxP * 57.3).toFixed(1), dy: Math.round(w.player.y - y0) }); return; }
+      requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }));
+  metrics.flacheKurve = flat;
+  check('Maus waagrecht 5 s: reines Gieren (Bug ±3°, mehr als eine Umdrehung)', flat.minP > -3 && flat.maxP < 3 && flat.yawDeg > 360, JSON.stringify(flat));
+  // ── Rollen mit Q: ohne Horizont-Hilfe (Standard) bleibt die Lage stehen ──
+  await page.keyboard.down('KeyQ'); await sleep(700); await page.keyboard.up('KeyQ'); await sleep(400);
+  const r1 = await W(() => window.__ls.world.player.roll3); await sleep(2500);
+  const r2 = await W(() => window.__ls.world.player.roll3);
+  check('Nach Q-Rollen dreht das Schiff nicht von selbst zurück (Horizont-Hilfe Standard aus)', Math.abs(r2 - r1) < 0.05, `${(r1 * 57.3).toFixed(0)}° → ${(r2 * 57.3).toFixed(0)}°`);
+  await page.keyboard.down('KeyE'); await sleep(700); await page.keyboard.up('KeyE'); await sleep(600);
+  // ── Tempomat und Begrenzer: Mausrad senkt das gehaltene Tempo ──
+  await page.keyboard.down('KeyW'); await sleep(2500); await page.keyboard.press('KeyC'); await page.keyboard.up('KeyW'); await sleep(300);
+  for (let i = 0; i < 10; i++) { await page.mouse.wheel(0, 100); await sleep(30); }
+  await sleep(2500);
+  const cr = await W(() => { const w = window.__ls.world; return { cruise: w.fl.cruise, lim: w.fl.limiter, sp: Math.round(w.player.speed) }; });
+  check('Tempomat an, Mausrad 10× runter: Tempo folgt dem Begrenzer', cr.cruise && cr.sp <= cr.lim + 3, JSON.stringify(cr));
+  await page.keyboard.press('KeyC'); for (let i = 0; i < 30; i++) { await page.mouse.wheel(0, -100); await sleep(20); }
+  // ── Sektorrand: Warnung vorher, außerhalb Frist mit Zählwerk, erst danach Schaden ──
+  await level(); await sleep(400);
+  const edge = await W(async () => {
+    const w = window.__ls.world, p = w.player, size = w.sector.size;
+    const put = (x) => { p.x = x; w.fl.p[0] = x; };
+    const x0 = p.x; p.hp = p.hpMax;
+    put(size * 0.9); await new Promise((r) => setTimeout(r, 300));
+    const warn = w.edge.warn;
+    put(size + 60); await new Promise((r) => setTimeout(r, 2500));
+    const out = w.edge.out, left = w.edge.left, hp1 = p.hp;
+    await new Promise((r) => setTimeout(r, 4500));
+    const hp2 = p.hp;
+    put(x0); await new Promise((r) => setTimeout(r, 300));
+    p.hp = p.hpMax;
+    return { warn, out, left: +left.toFixed(1), keinSchadenInFrist: hp1 === p.hpMax || hp1 >= p.hpMax - 1, schadenDanach: hp2 < hp1, back: !w.edge.out };
+  });
+  check('Sektorrand: Warnung ab 83 %, Frist mit Zählwerk, erst danach Schaden', edge.warn && edge.out && edge.left > 0 && edge.keinSchadenInFrist && edge.schadenDanach && edge.back, JSON.stringify(edge));
+  // ── Autopilot H: lange Strecke in REISE ──
+  const ap = await W(async () => {
+    const w = window.__ls.world, L = window.__ls, p = w.player, s = w.station;
+    const x0 = p.x, z0 = p.z;
+    p.x = s.x + 4200; p.z = s.z + 600; w.fl.p[0] = p.x; w.fl.p[2] = p.z; w._lastCombat = -99;
+    L.input.home();
+    // Wende zur Station (bis 2 s) und Hochlaufen der REISE (1,5 s): bis 8 s warten
+    for (let i = 0; i < 80 && !(w.fl.mode === 1 && w.player.speed > 400); i++) await new Promise((r) => setTimeout(r, 100));
+    const r = { reise: w.fl.mode === 1, homing: !!w.homing, sp: Math.round(w.player.speed), inCombat: !!w.inCombat };
+    w.stopMove(); p.x = x0; p.z = z0; w.fl.p[0] = x0; w.fl.p[2] = z0; return r;
+  });
+  check('Autopilot H fliegt lange Strecken in REISE', ap.reise && ap.sp > 400, JSON.stringify(ap));
+  await sleep(1500);
+
   // ── Heap: 20 s ruhiger Flug, Wachstum < 2 MB (B-11) ──
   const heap0 = await W(() => { if (window.gc) window.gc(); return performance.memory ? performance.memory.usedJSHeapSize : 0; });
   await page.keyboard.down('KeyW');
@@ -262,15 +377,19 @@ async function main() {
   await W(() => {
     const w = window.__ls.world, p = w.player;
     w._invulnUntil = 0; p.hp = p.hpMax; p.shield = p.shieldMax;
-    // Raider-Rudel vor den Bug holen (wie im Heimatsektor)
-    const q = w.fl.q, f = [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))];
-    for (let i = 0; i < 3; i++) { const e = w.spawnTemp('raider', p.x + f[0] * (900 + i * 80) + (i - 1) * 120, p.z + f[2] * (900 + i * 80), p.y + f[1] * 900 + (i - 1) * 60); e.expire = false; w.provoke(e); }
   });
-  const mouse = await W(botFight, { secs: SECS, device: 'mouse' });
+  // Raider-Rudel vor den Bug (wie im Heimatsektor), bis 5 Abschüsse oder 2 × SECS
+  const mouse = await W(botFight, { secs: SECS * 2, device: 'mouse', pack: true, minKills: 5 });
   metrics.maus = mouse;
   console.log('     Maus:', JSON.stringify(mouse));
   await shot('verfolger-kampf');
-  check(`Kampf (Maus, ${SECS} s): Abschüsse gegen die 3D-KI`, mouse.kills >= 1, `${mouse.kills} Abschüsse, Median ${mouse.ttkMedian} s`);
+  check(`Kampf (Maus, bis 5 Abschüsse): Abschüsse gegen die 3D-KI`, mouse.kills >= 1, `${mouse.kills} Abschüsse, Median ${mouse.ttkMedian} s`);
+  check('Kennzahl: Raider-Abschuss mit Startausrüstung (nur Laser, Maus) im Median ≤ 8 s (FLUGMODELL.md 3)', mouse.ttkMedian != null && mouse.ttkMedian <= 8, `${mouse.ttkMedian} s · ${JSON.stringify(mouse.ttkAll)}`);
+  // Bolzen melden beim Abfeuern kein Ergebnis: kein DANEBEN-Stapel über dem Ziel
+  check('Keine DANEBEN-Zahlen je Bolzen im 3D-Flug', await W(() => [...document.querySelectorAll('.hf.hf-miss')].filter((e) => +getComputedStyle(e).opacity > 0).length === 0));
+  // Zielfenster und Zielklammer nennen dieselbe (räumliche) Entfernung
+  const dd = await W(() => { const L = window.__ls, w = L.world, p = w.player, t = w.entities.get(p.targetId); if (!t) return null; const d = Math.hypot(t.x - p.x, t.y - p.y, t.z - p.z); const n = (s) => Number(String(s || '').replace(/[^0-9]/g, '')); return { d: Math.round(d), fenster: n(document.querySelector('[data-r="tdist"]')?.textContent), klammer: n(document.querySelector('.hc-dist')?.textContent) }; });
+  check('Zielfenster und Zielklammer: gleiche Entfernung in 3D (±25 m)', !dd || (Math.abs(dd.fenster - dd.d) <= 25 && (!dd.klammer || Math.abs(dd.klammer - dd.d) <= 25)), JSON.stringify(dd));
   check('Kampf (Maus): Trefferquote ≥ 50 %', mouse.hitRate >= 0.5, (mouse.hitRate * 100).toFixed(0) + ' %');
   check('Kampf (Maus): Bildrate ≥ 30 (headless, nur Richtwert)', mouse.fps >= 30, `${mouse.fps} Bilder/s, schlechtestes ${mouse.worstMs} ms`);
   // Cockpit
@@ -299,14 +418,13 @@ async function main() {
   await sleep(120); await W(() => { window.__gp.buttons[0] = 0; }); await sleep(200);
   await W(() => {
     const w = window.__ls.world, p = w.player; p.hp = p.hpMax; p.shield = p.shieldMax;
-    const q = w.fl.q, f = [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))];
-    for (let i = 0; i < 3; i++) { const e = w.spawnTemp('raider', p.x + f[0] * (900 + i * 80) + (i - 1) * 120, p.z + f[2] * (900 + i * 80), p.y + f[1] * 900); w.provoke(e); }
   });
-  const pad = await W(botFight, { secs: Math.round(SECS * 0.7), device: 'pad' });
+  const pad = await W(botFight, { secs: SECS * 2, device: 'pad', pack: true, minKills: 5 });
   metrics.controller = pad;
   console.log('     Controller:', JSON.stringify(pad));
   await shot('controller-kampf');
   check('Kampf (Controller): Treffer gegen die 3D-KI', pad.hits > 0 && pad.hitRate >= 0.35, `${(pad.hitRate * 100).toFixed(0)} % · ${pad.kills} Abschüsse`);
+  check('Kennzahl: Raider-Abschuss mit dem Controller (Zielhilfe STANDARD) im Median ≤ 8 s', pad.ttkMedian != null && pad.ttkMedian <= 8, `${pad.ttkMedian} s · ${JSON.stringify(pad.ttkAll)}`);
   metrics.controllerZuMaus = mouse.hitRate ? +(pad.hitRate / mouse.hitRate).toFixed(2) : null;
   check('Controller-Trefferquote ≥ 70 % der Maus-Quote (Ziel 85 %)', mouse.hitRate === 0 || pad.hitRate >= mouse.hitRate * 0.7, `${metrics.controllerZuMaus}`);
   await W(() => window.__gpDisconnect());

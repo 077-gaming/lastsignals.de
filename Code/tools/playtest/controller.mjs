@@ -6,7 +6,7 @@
 // Abdocken → Sprung, dazu Tastenhinweise, Rückwechsel auf Tastatur und Touch-Knöpfe. Ergebnis: Liste der Prüfungen,
 // Konsolenfehler, Bilder in tools/playtest/berichte/controller-<zeit>/.
 //
-//   node tools/playtest/controller.mjs [--url http://localhost:5196] [--stil xbox|ps] [--sichtbar]
+//   node tools/playtest/controller.mjs [--url http://localhost:5196] [--stil xbox|ps|nin] [--sichtbar]
 import { chromium } from 'playwright-core';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -25,6 +25,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const IDS = {
   xbox: 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)',
   ps: 'DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)',
+  nin: 'Pro Controller (STANDARD GAMEPAD Vendor: 057e Product: 2009)',
 };
 const B = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, VIEW: 8, MENU: 9, L3: 10, R3: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 
@@ -183,6 +184,22 @@ async function main() {
   await setAxes([0, 0, 1, 0]); await sleep(900); await setAxes([0, 0, 0, 0]); await sleep(500);
   const a1 = await W(() => { const p = window.__ls.world.player, a = window.__ls.input.fi.aim; return { rot: p.rot, ax: a[0], az: a[2] }; });
   check('Rechter Stick zielt (Fadenkreuz), das Schiff folgt', Math.abs(a1.ax - a0.ax) + Math.abs(a1.az - a0.az) > 0.2 && Math.abs(a1.rot - a0.rot) > 0.2, `rot ${a0.rot.toFixed(2)} → ${a1.rot.toFixed(2)}`);
+  // Voller Ausschlag 0,3 s angetippt – das Schiff dreht kaum nach (früher 29° nach 19°: Fadenkreuz lief 30° voraus)
+  await away(); await sleep(400);
+  const tap = await W(() => new Promise((res) => {
+    const w = window.__ls.world, q = w.fl.q, yawOf = () => Math.atan2(2 * (q[0] * q[2] + q[3] * q[1]), 1 - 2 * (q[0] * q[0] + q[1] * q[1]));
+    let last = yawOf(), hold = 0, after = 0, still = 0; const t0 = performance.now();
+    window.__gp.axes = [0, 0, 1, 0];
+    const f = () => {
+      const y = yawOf(); let d = y - last; d = Math.atan2(Math.sin(d), Math.cos(d)); last = y;
+      const t = performance.now() - t0;
+      if (t < 300) hold += d; else { if (window.__gp.axes[2]) window.__gp.axes = [0, 0, 0, 0]; after += d; still = Math.abs(d) < 1e-4 ? still + 1 : 0; }
+      if (t > 300 && (still > 5 || t > 2500)) { res({ hold: +(Math.abs(hold) * 57.3).toFixed(1), after: +(Math.abs(after) * 57.3).toFixed(1), mode: window.__ls.input.fi.set.padMode }); return; }
+      requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }));
+  check('Rechter Stick 0,3 s voll: kaum Nachdrehen nach dem Loslassen (≤ 12°)', tap.after <= 12 && tap.hold > 5, JSON.stringify(tap));
   await setBtn(B.RB, 1); await sleep(450);
   const rr = await W(() => window.__ls.world.player.roll3);
   await setBtn(B.RB, 0); await sleep(150);
@@ -199,7 +216,9 @@ async function main() {
   const bo = await W(() => window.__ls.world.fl.boostOn);
   await setAxes([0, 0, 0, 0]); await sleep(1500);
   check('L3: Boost (wie Sprinten)', bo === true);
-  await W(() => { window.__ls.world._lastCombat = -99; });
+  // REISE ist im Kampf gesperrt und ein Treffer bricht das Hochlaufen ab: Gegner vorher weit weg (sonst flackert die
+  // Prüfung, sobald ein Raider während der 0,8 s trifft)
+  await W(() => { const w = window.__ls.world, p = w.player; for (const e of w.enemies) if (e.alive && Math.hypot(e.x - p.x, e.z - p.z, (e.y || 0) - p.y) < 3000) { e.x += 5000 * Math.sign(e.x - p.x || 1); e.px = e.x; e.targetId = null; } for (const b of [w.bolts]) if (b) b.on.fill(0); w._lastCombat = -99; });
   await setBtn(B.MENU, 1); await sleep(800); await setBtn(B.MENU, 0); await sleep(150);
   const md = await W(() => ({ want: window.__ls.world.fl.modeWant, menu: window.__ls.hud._menuOpen }));
   check('MENU halten: REISE (ohne Bordmenü)', md.want === 1 && !md.menu, JSON.stringify(md));
@@ -291,6 +310,10 @@ async function main() {
   const tabB = await W(() => window.__ls.hud.menu.tab);
   check('RB wechselt Reiter im Bordmenü', tabA !== tabB, `${tabA} → ${tabB}`);
   check('Reiter STEUERUNG zeigt Controller-Belegung', await W(() => window.__ls.hud.menu.tab !== 'steuerung' || !!document.querySelector('.mp-padsec .gp-row .ls-key')?.textContent));
+  // Belegungstabelle: Symbole der Bauart, nicht noch einmal als Tastatur-Kappe umgeschlüsselt (früher X → B)
+  const GL = { xbox: { A: 'A', B: 'B', X: 'X', Y: 'Y' }, ps: { A: '\u00D7', B: '○', X: '□', Y: '△' }, nin: { A: 'B', B: 'A', X: 'Y', Y: 'X' } }[STYLE] || { A: 'A', B: 'B', X: 'X', Y: 'Y' };
+  const tabBad = await W((G) => { const r = [...document.querySelectorAll('[data-r="menu"] .gp-row .ls-key[data-pk]')]; return r.filter((e) => G[e.dataset.pk] && e.textContent !== G[e.dataset.pk]).map((e) => e.dataset.pk + '→' + e.textContent); }, GL);
+  check(`Bordmenü STEUERUNG (${STYLE}): Tasten A/B/X/Y richtig beschriftet`, tabBad.length === 0, tabBad.join(' '));
   await shot('bordmenue');
   await press('DOWN'); await press('DOWN');
   check('Steuerkreuz bewegt Fokus im Bordmenü', await W(() => document.querySelector('[data-r="menu"]').contains(document.activeElement)), await active());
@@ -304,7 +327,7 @@ async function main() {
   await sleep(1200);
   await shot('station');
   check('Fokus in der Station', await W(() => !!document.querySelector('.sx')?.contains(document.activeElement)), await active());
-  check('Station: Abdock-Hinweis zeigt B', await W(() => document.querySelector('.sx-undock .ls-key')?.textContent === (window.__pad.style === 'ps' ? '○' : 'B')));
+  check('Station: Abdock-Hinweis zeigt B', await W(() => document.querySelector('.sx-undock .ls-key')?.textContent === (window.__pad.style === 'ps' ? '○' : window.__pad.style === 'nin' ? 'A' : 'B')));
   const st0 = await W(() => document.querySelector('.sx-tab[aria-selected="true"], .sx-tab.on, .sx-tab.is-on')?.dataset.tab);
   await press('RB'); await sleep(300);
   const st1 = await W(() => document.querySelector('.sx-tab[aria-selected="true"], .sx-tab.on, .sx-tab.is-on')?.dataset.tab);
@@ -338,12 +361,14 @@ async function main() {
   const crate = await W(() => { const w = window.__ls.world, p = w.player; const c = (w.crates || []).find((c) => c && c.alive); if (!c) return null; p.x = c.x + 500; p.z = c.z; p.y = c.y; w.fl.p[0] = p.x; w.fl.p[1] = p.y; w.fl.p[2] = p.z; w.fl.v.fill(0); p.vx = p.vz = 0; p.fs = 0; p.hasMove = false; return { x: c.x, z: c.z }; });
   if (crate) {
     await sleep(300);
+    // Ziel des Kontexts vorher merken: liegt ein Wrack im Traktorbereich, wandert es bis zur Prüfung (früher flackerte
+    // die Prüfung dann mit hit: false, weil sie die Beute erst nach dem Tastendruck suchte)
+    const want = await W(() => { const l = window.__ls.input.nearestLoot(1500); return l ? { x: l.x, z: l.z } : null; });
     await press('Y', 90, 200);
-    const mv = await W(() => {
-      const w = window.__ls.world, p = w.player;
-      const loot = [...(w.wrecks || []), ...(w.crates || []).filter((c) => c && c.alive), ...(w.ores || []).filter((o) => o && o.alive)];
-      return { m: p.hasMove, hit: loot.some((o) => Math.hypot(o.x - p.tx, o.z - p.tz) < 1) };
-    });
+    const mv = await W((want) => {
+      const p = window.__ls.world.player;
+      return { m: p.hasMove, hit: !!want && Math.hypot(want.x - p.tx, want.z - p.tz) < 1 };
+    }, want);
     check('Y fliegt Beute an (Autopilot in 3D)', mv.m && mv.hit, JSON.stringify(mv));
   }
   // Y halten = Autopilot
