@@ -314,6 +314,8 @@ export class Input {
     if (!w || !w.setFlight3d) return;
     const want = this.renderer.cameraMode === 'chase';
     if (want !== w.flight3d) { w.setFlight3d(want); this.fi.resetAim(); this.mouseDown = false; this.steer.clear(); if (!want) this.fi.exitLock(true); }
+    const f = want ? '3d' : 'taktik';
+    if (document.documentElement.dataset.flight !== f) { document.documentElement.dataset.flight = f; try { window.dispatchEvent(new CustomEvent('ls:flightview', { detail: { flight: f } })); } catch { /* alt */ } }
   }
 
   update(dt) {

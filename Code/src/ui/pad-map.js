@@ -5,7 +5,26 @@ import { glyph } from '../input/padglyph.js';
 import { pad } from '../input/gamepad.js';
 
 export const PAD_ROWS = [
-  ['FLUG', [
+  // Hauptmodus 3D-Flug (Planung/FLUGMODELL.md 5.3)
+  ['FLUG 3D', [
+    ['LS', 'Schub vor, zurück, seitlich'],
+    ['RS', 'Zielen: Fadenkreuz im Lenkkegel, das Schiff folgt'],
+    ['LB/RB', 'Rollen'],
+    ['LB+RB', 'Mit linkem Stick hoch, runter'],
+    ['L3', 'Boost · halten: Landemodus'],
+    ['RT', 'Laser feuern'],
+    ['LT', 'Präzisionszielen, schaltet Raketen auf'],
+    ['A', 'Ziel im Fadenkreuz, sonst nächstes'],
+    ['B', 'Abbrechen · halten: Raumbremse'],
+    ['X', 'Rakete · halten: gekoppelt, entkoppelt'],
+    ['Y', 'Kontext · halten: Autopilot zur Station'],
+    ['R3', 'Kamera wechseln · halten: umsehen'],
+    ['DLR', 'Schnellleiste: Platz wählen'],
+    ['DU', 'Gewählten Platz auslösen'],
+    ['DD', 'Nächste Leiste'],
+    ['MENU', 'Bordmenü · halten: KAMPF, REISE'],
+  ]],
+  ['TAKTIK', [
     ['LS', 'Lenken wie die Maus (taktisch: bildbezogen fliegen)'],
     ['RT', 'Schub, stufenlos'],
     ['LT', 'Bremsen'],
@@ -15,7 +34,7 @@ export const PAD_ROWS = [
     ['Y', 'Andocken, Springen, Beute anfliegen (wie E, J)'],
     ['Y', 'Halten: Autopilot zur Station (wie H)'],
   ]],
-  ['KAMPF', [
+  ['KAMPF · TAKTIK', [
     ['A', 'Angriff an, aus (ohne Ziel: nächster Gegner)'],
     ['X', 'Rakete'],
     ['RB', 'Nächstes Ziel (wie TAB)'],
@@ -51,7 +70,7 @@ const L = (x1, y1, y2, text, right) => {
 /** Schema eines Controllers mit Beschriftung der Flugbelegung (SVG, monochrom, angeschnittene Form) */
 export function padSvg() {
   const body = 'M230 70 L282 62 H358 L410 70 L452 92 L478 190 L468 236 L438 248 L404 214 H236 L202 248 L172 236 L162 190 L188 92 Z';
-  return `<svg class="gp-svg" viewBox="0 0 640 270" role="img" aria-label="Controller-Belegung im Flug">
+  return `<svg class="gp-svg" viewBox="0 0 640 270" role="img" aria-label="Controller-Belegung im 3D-Flug">
   <path class="gp-body" d="${body}"/>
   ${K('LT', 222, 40, 34)}${K('LB', 222, 60, 34)}${K('RT', 418, 40, 34)}${K('RB', 418, 60, 34)}
   <circle class="gp-part" cx="222" cy="116" r="15"/><text class="gp-k" x="222" y="116">L</text>
@@ -59,12 +78,12 @@ export function padSvg() {
   <path class="gp-part" d="M252 156h12v-12h12v12h12v12h-12v12h-12v-12h-12z"/>
   ${K('VIEW', 290, 108, 44)}${K('MENU', 350, 108, 46)}
   ${R('Y', 420, 94, 10)}${R('X', 398, 116, 10)}${R('B', 442, 116, 10)}${R('A', 420, 138, 10)}
-  ${L(205, 40, 26, 'BREMSEN', false)}${L(205, 60, 50, 'VORIGES ZIEL', false)}${L(207, 116, 92, 'LENKEN · L3 DAUERSCHUB', false)}
-  ${L(252, 162, 150, 'SCHNELLLEISTE', false)}${L(268, 108, 120, 'KARTE', false)}
-  ${L(435, 40, 26, 'SCHUB', true)}${L(435, 60, 50, 'NÄCHSTES ZIEL · +A PLATZ', true)}
-  ${L(430, 94, 74, 'ANDOCKEN · SPRUNG · BEUTE', true)}${L(452, 116, 98, 'ABBRECHEN', true)}
-  ${L(430, 138, 122, 'ANGRIFF', true)}${L(388, 116, 146, 'RAKETE', true)}
-  ${L(387, 170, 170, 'KAMERA · R3 WECHSEL', true)}${L(373, 108, 194, 'BORDMENÜ', true)}
+  ${L(205, 40, 26, 'PRÄZISION · AUFSCHALTEN', false)}${L(205, 60, 50, 'ROLLEN · LB+RB SCHWEBEN', false)}${L(207, 116, 92, 'SCHUB · SEITE · L3 BOOST', false)}
+  ${L(252, 162, 150, 'SCHNELLLEISTE · ▴ AUSLÖSEN', false)}${L(268, 108, 120, 'KARTE', false)}
+  ${L(435, 40, 26, 'FEUERN', true)}${L(435, 60, 50, 'ROLLEN', true)}
+  ${L(430, 94, 74, 'KONTEXT · HALTEN AUTOPILOT', true)}${L(452, 116, 98, 'ABBRECHEN · HALTEN BREMSE', true)}
+  ${L(430, 138, 122, 'ZIEL IM FADENKREUZ', true)}${L(388, 116, 146, 'RAKETE · HALTEN KOPPLUNG', true)}
+  ${L(387, 170, 170, 'ZIELEN · R3 KAMERA', true)}${L(373, 108, 194, 'BORDMENÜ · HALTEN REISE', true)}
 </svg>`;
 }
 

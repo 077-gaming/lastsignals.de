@@ -143,6 +143,11 @@ export class PadFlight {
     st.active = p.mode === 'pad'; st.lx = st.ly = st.lt = st.rt = 0;
     F.active = st.active;
     if (!F.active) { this._release(); return true; }
+    // Loslass-Befehle nur für Tasten, die im 3D-Flug gedrückt wurden (sonst löste z. B. R3 beim Wechsel aus der
+    // Taktik doppelt aus: Druck in der Taktik, Loslassen im 3D-Flug)
+    const own = this._own3 || (this._own3 = new Set());
+    for (const b of [BTN.R3, BTN.B, BTN.X, BTN.Y, BTN.L3, BTN.MENU]) if (p.pressed(b)) own.add(b);
+    const rel = (b) => { if (!p.released(b)) return false; const o = own.has(b); own.delete(b); return o; };
     const both = p.isDown(BTN.LB) && p.isDown(BTN.RB);
     // Linker Stick: Schub vor/zurück, seitlich; LB + RB zusammen: ↕ hoch/runter (Schwebemodus)
     F.tx = p.lx;
@@ -152,7 +157,7 @@ export class PadFlight {
     // L3: Boost (wie Sprinten, bleibt an, bis der Schub endet, der Vorrat leer ist oder L3 erneut), halten: Landemodus
     if (p.pressed(BTN.L3)) this._l3Hold = false;
     if (p.isDown(BTN.L3) && !this._l3Hold && p.heldFor(BTN.L3) >= HOLD) { this._l3Hold = true; F.edge |= EDGE.LAND; pad.rumble(0, 0.3, 60); }
-    if (p.released(BTN.L3) && !this._l3Hold) this._boost = !this._boost;
+    if (rel(BTN.L3) && !this._l3Hold) this._boost = !this._boost;
     if (this._boost && (F.tz < 0.1 || w.fl.boostLock)) this._boost = false;
     F.boost = this._boost;
     // Feuern, Präzision, Raketen-Aufschaltung
@@ -171,7 +176,7 @@ export class PadFlight {
       F.aimInput = false; F.rp = F.ry = 0;
     } else {
       if (this._r3Look && rig) { rig.looking = false; }
-      if (p.released(BTN.R3) && !this._r3Look) inp.toggleCamera();
+      if (rel(BTN.R3) && !this._r3Look) inp.toggleCamera();
       if (p.released(BTN.R3)) this._r3Look = false;
       F.aimInput = mag > 0.02;
       F.rateMode = fs.padMode === 'rate';
@@ -191,20 +196,21 @@ export class PadFlight {
     if (p.pressed(BTN.A)) fi.targetUnderAim();
     if (p.pressed(BTN.B)) this._bT = 0;
     F.brake = p.isDown(BTN.B) && p.heldFor(BTN.B) >= HOLD_B;
-    if (p.released(BTN.B) && p.held[BTN.B] < HOLD_B) inp.cancel();
+    if (p.released(BTN.B) && own.has(BTN.B)) { own.delete(BTN.B); if (this._bHeld < HOLD_B) inp.cancel(); }
+    this._bHeld = p.isDown(BTN.B) ? p.heldFor(BTN.B) : this._bHeld;
     if (p.pressed(BTN.X)) this._xHold = false;
     if (p.isDown(BTN.X) && !this._xHold && p.heldFor(BTN.X) >= HOLD) { this._xHold = true; F.edge |= EDGE.COUPLE; pad.rumble(0.2, 0.2, 80); }
-    if (p.released(BTN.X) && !this._xHold) {
+    if (rel(BTN.X) && !this._xHold) {
       // LT gehalten und aufgeschaltet: auf das aufgeschaltete Ziel, sonst auf das aktuelle
       if (fi.locked2 && fi.lockId) w.setTarget(fi.lockId);
       inp.rocket();
     }
     if (p.pressed(BTN.Y)) this._yHome = false;
     if (p.isDown(BTN.Y) && !this._yHome && p.heldFor(BTN.Y) >= HOLD_Y) { this._yHome = true; inp.home(); pad.rumble(0, 0.3, 60); }
-    if (p.released(BTN.Y) && !this._yHome) inp.context();
+    if (rel(BTN.Y) && !this._yHome) inp.context();
     if (p.pressed(BTN.MENU)) this._mHold = false;
     if (p.isDown(BTN.MENU) && !this._mHold && p.heldFor(BTN.MENU) >= HOLD) { this._mHold = true; F.edge |= EDGE.MODE; pad.rumble(0, 0.3, 60); }
-    if (p.released(BTN.MENU) && !this._mHold) synth('Escape');
+    if (rel(BTN.MENU) && !this._mHold) synth('Escape');
     if (p.pressed(BTN.VIEW) && this.hud && this.hud.wins) this.hud.wins.toggleHidden('map');
     if (bar) {
       // Schnellleiste ohne Tastenkombination: ◂▸ Platz wählen, ▴ auslösen, ▾ nächste Leiste

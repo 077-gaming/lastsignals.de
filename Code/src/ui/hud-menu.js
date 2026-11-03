@@ -1,5 +1,6 @@
 // Bordmenü (Esc) als Seitenpanel links über die volle Höhe, mit Reitern FLUG, ANZEIGE, STEUERUNG, SYSTEM.
 // Die Szene bleibt dahinter sichtbar. Werte werden nur bei offenem Menü und höchstens 4-mal pro Sekunde geschrieben.
+import { flightHelp } from '../input/bindings.js';
 import { SHIPS, ENEMIES, AMMO } from '../core/data.js';
 import { TextSlot, ClassSlot, Bar, fmt } from './hud-parts.js';
 import { SYSTEM_QUESTS, SYSTEM_CHAPTERS } from '../sim/system-quests.js';
@@ -35,10 +36,17 @@ const RULES = [
   ['SERIE', 'Abschüsse kurz hintereinander geben Bonus auf Erfahrung, Ehre und Credits.'],
   ['SPRUNG', 'Tor auf 150 m anfliegen, dann J. JMP springt ohne Tor nach Hause.'],
   ['EHRE UND RANG', 'Ehre gibt es für Gegner, Ereignisse und Konvois. Aus Ehre und Erfahrung entsteht der Rang.'],
+  ['3D-FLUG', 'Verfolger und Cockpit fliegen frei im Raum: die Maus zielt, das Schiff folgt. V schaltet auf die Draufsicht mit Klickflug.'],
+  ['ZIELEN', 'Bolzen fliegen 2.400 m/s. Die Raute vor dem Gegner zeigt den Vorhalt, dort hinzielen. Große Schiffe schwenken ihre Laser weiter (Kardan).'],
+  ['GEKOPPELT', 'Der Flugrechner hält das Schiff auf Kurs und bremst Seitendrift. Entkoppelt (Alt+C) fliegt es auf dem letzten Vektor weiter.'],
+  ['BOOST UND REISE', 'Boost hat einen Vorrat und lädt nach. REISE ist schneller, sperrt aber Waffen und Schildaufladung, im Kampf geht sie nicht.'],
+  ['HÖHE', 'Der Sektor reicht 1.500 m über und unter die Ebene der Station. Darüber hinaus nimmt das Schiff Schaden.'],
 ];
 
+// 3D-Flug (Hauptmodus, Verfolger und Cockpit): Tastennamen aus input/bindings.js; darunter die Taktik (Draufsicht)
+const CONTROLS3 = () => [['FLUG 3D · VERFOLGER UND COCKPIT', flightHelp()]];
 const CONTROLS = [
-  ['FLUG', [
+  ['TAKTIK · DRAUFSICHT', [
     ['LMB', 'Hinfliegen'],
     ['W A S D', 'Direkt steuern'],
     ['KARTE', 'Kurs per Klick'],
@@ -46,7 +54,7 @@ const CONTROLS = [
     ['J', 'Sprung am Tor'],
     ['E', 'Andocken, Abdocken'],
   ]],
-  ['KAMPF', [
+  ['KAMPF · TAKTIK', [
     ['TAB', 'Nächster Gegner'],
     ['LMB', 'Ziel erfassen'],
     ['2× LMB', 'Erfassen, Angriff'],
@@ -80,7 +88,7 @@ function row(label, r, cls = '') {
 export function menuHtml(windows) {
   const tabs = TABS.map(([id, no, t], i) => `<button class="mp-tab${i ? '' : ' on'}" type="button" data-act="tab" data-tab="${id}"><i>${no}</i>${t}</button>`).join('');
   const wins = windows.map(([id, code, title, k], i) => `<div class="mp-win" data-mw="${id}"><span class="mp-wc">${code}</span><span class="mp-wt">${title}</span><span class="hg-sp"></span><span class="ls-key mp-wk">${k || '⇧' + (i + 1)}</span><button class="mp-sw" type="button" data-act="winvis" data-id="${id}"><i>AN</i><i>AUS</i></button></div>`).join('');
-  const ctrl = CONTROLS.map(([g, rows]) => `<div class="mp-cg"><div class="mp-sec">${g}</div>${rows.map(([k, t]) => `<div class="mp-crow"><span class="ls-key">${esc(k)}</span><span>${esc(t)}</span></div>`).join('')}</div>`).join('');
+  const ctrl = [...CONTROLS3(), ...CONTROLS].map(([g, rows]) => `<div class="mp-cg"><div class="mp-sec">${g}</div>${rows.map(([k, t]) => `<div class="mp-crow"><span class="ls-key">${esc(k)}</span><span>${esc(t)}</span></div>`).join('')}</div>`).join('');
   return `
 <div class="hd-side" data-r="menu" role="dialog" aria-modal="true" aria-label="Bordmenü">
   <aside class="mp ls-panel">

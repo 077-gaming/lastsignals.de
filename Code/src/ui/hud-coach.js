@@ -4,6 +4,8 @@
 // Erfahrene Piloten (Stufe > 1 oder schon Abschüsse) sehen ihn nie.
 import './hud-coach.css';
 import { glyph, padMode } from '../input/padglyph.js';
+import { keyName } from '../input/bindings.js';
+import { isTouchOnly } from '../input/flightsettings.js';
 
 const STEPS = [
   { key: 'fly', title: 'FLIEGEN', text: 'Maus zeigt die Richtung · <kbd>W</kbd> Schub · <kbd>S</kbd> bremsen · Linke Maustaste halten = fliegen' },
@@ -91,6 +93,7 @@ export class HudCoach {
     if (sys && sys.mode === 'guided') { this.i = STEPS.length; w.profile.tut = STEPS.length; this.el.classList.remove('on'); return; }
     if (!p || w.docked || w.playerDead || (sys && sys.mode == null)) { this.el.classList.toggle('hidden', true); return; }
     this.el.classList.toggle('hidden', false);
+    if (!!(w.flight3d) && !isTouchOnly() !== !!this._f3) this._show(); // Ansicht gewechselt: Tasten neu
     const key = STEPS[this.i].key;
     if (key === 'fly') {
       if (this.startX === null) { this.startX = p.x; this.startZ = p.z; }

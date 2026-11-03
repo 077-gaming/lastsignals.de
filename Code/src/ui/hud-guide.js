@@ -3,6 +3,8 @@
 // Karte ein und aus bzw. setzt die Reihe fort. Bausteine aus theme.css (Planung/UI_STIL.md).
 import './hud-guide.css';
 import { keyHint, padMode } from '../input/padglyph.js';
+import { keyName } from '../input/bindings.js';
+import { questView } from '../sim/system-quests.js';
 import { pad } from '../input/gamepad.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('de-DE');
@@ -72,6 +74,7 @@ export class SystemGuide {
     } else {
       const q = s.current;
       const g = q.goal;
+      const qv = questView(q, !!(w && w.flight3d), keyName); // Text und Taste je Ansicht (bindings.js)
       const max = g.count || (g.type === 'fly' ? g.meters : 1);
       const prog = Math.min(max, st.progress || 0);
       if (g.type === 'window') for (const t of g.target) {
@@ -103,7 +106,7 @@ export class SystemGuide {
       else if (g.type === 'wreck') goalText = `${prog} / ${g.count} Wracks eingesammelt`;
       else if (g.type === 'crate') goalText = `${prog} / ${g.count} Frachtkisten`;
       else if (g.type === 'ore') goalText = `${fmt(prog)} / ${g.count} ${g.ore === 'nickel' ? 'Nickel' : g.ore === 'cobalt' ? 'Cobalt' : g.ore}`;
-      else if (g.type === 'dock') goalText = `An der Station andocken (${keyHint('E')})`;
+      else if (g.type === 'dock') goalText = `An der Station andocken (${this.world && this.world.flight3d ? keyName('context') : keyHint('E')})`;
       else if (g.type === 'sell') goalText = 'Erz im Reiter ERZ verkaufen';
       else if (g.type === 'buy') goalText = `${g.id === 'ion' ? 'Ion Laser' : g.id} im Shop kaufen`;
       else if (g.type === 'equip') goalText = 'Im Hangar ein Teil umbauen';
@@ -123,12 +126,12 @@ export class SystemGuide {
       const pct = Math.round((prog / max) * 100);
       // Segmentierter Balken (10 Segmente)
       const seg = Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(pct / 10) ? 'on' : ''}"></i>`).join('');
-      key = `${q.id}|${goalText}|${pct}|${padMode() ? pad.style : 'kb'}`;
+      key = `${q.id}|${goalText}|${pct}|${padMode() ? pad.style : 'kb'}|${w && w.flight3d ? 3 : 2}`;
       html = `<div class="lsg-card ls-panel"><span class="ls-corners"></span>
-        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${q.key ? `<span class="ls-key${padMode() && keyHint(q.key) !== q.key ? ' is-pad' : ''}" data-nopad>${esc(keyHint(q.key))}</span>` : ''}</div>
+        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${qv.key ? `<span class="ls-key${padMode() && keyHint(qv.key) !== qv.key ? ' is-pad' : ''}" data-nopad>${esc(keyHint(qv.key))}</span>` : ''}</div>
         <div class="lsg-body">
           <div class="lsg-title">${esc(q.title)}</div>
-          <p class="lsg-text">${esc(q.text)}</p>
+          <p class="lsg-text">${esc(qv.text)}</p>
           <div class="lsg-goal ls-num">${esc(goalText)}</div>
           <div class="lsg-seg">${seg}</div>
           <div class="lsg-row lsg-foot"><span class="ls-label">Lohn ${esc(rew)}</span><span class="ls-spacer"></span>

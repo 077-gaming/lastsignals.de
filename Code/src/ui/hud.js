@@ -17,6 +17,7 @@ import {
 } from './hud-parts.js';
 import { HudMid } from './hud-mid.js';
 import { HudFlight } from './hud-flight.js';
+import { keyName } from '../input/bindings.js';
 import { HudBar, quickBody } from './hud-bar.js';
 import { HudCombat } from './hud-combat.js';
 import { HudCoach } from './hud-coach.js';
@@ -991,6 +992,13 @@ export class Hud {
     }
     const st = w.sector && w.sector.station;
     this.sHDock.set(!(w.inSafeZone && !dead && !jump && st));
+    // Tastenschild je Ansicht: im 3D-Flug F (Kontext), sonst E (Planung/FLUGMODELL.md 5.2)
+    const dk = w.flight3d ? keyName('context') : 'E';
+    if (dk !== this._dockKey) {
+      this._dockKey = dk;
+      const k = this.el.querySelector('[data-r="hdock"] .ls-key');
+      if (k) { k.textContent = dk; k.dataset.kb = dk; }
+    }
     if (st) this.sHDockText.set((st.name || '').toUpperCase());
     this.sJumpBox.set(!jump);
     if (jump) {

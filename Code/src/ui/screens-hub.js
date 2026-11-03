@@ -2,6 +2,7 @@
 // oben eine schlanke Pilotenleiste, links die Bereiche als Liste mit großen Symbolen, in der Mitte immer nur EIN Bereich.
 // Start = 3D-Szene (Heimatstation, eigenes Schiff) mit großem START-Knopf und drei Kurzinfos. Jeder andere Bereich:
 // klare Überschrift, wenige große Kacheln, Details erst auf Klick. Bildsprache: Planung/UI_STIL.md.
+import { flightHelp } from '../input/bindings.js';
 import { wireInstall } from './install.js';
 import { newCode, waitForHost } from '../net/coop.js';
 import {
@@ -876,7 +877,9 @@ const EINST = { overview: (P, store, ctx) => einstView(P, ctx), details: {} };
 // ---------------------------------------------------------------- Steuerung
 
 const KEYS = [
-  ['flug', 'FLUG UND KAMERA', [
+  // Hauptmodus 3D-Flug (Verfolger, Cockpit): Belegung aus input/bindings.js
+  ['flug3d', 'FLUG 3D', flightHelp().map(([k, t]) => [[k], t])],
+  ['flug', 'TAKTIK · DRAUFSICHT', [
     [['LMB'], 'Hinfliegen, Klick ins All'],
     [['LMB', 'HALTEN'], 'Dem Mauszeiger folgen'],
     [['W', 'A', 'S', 'D'], 'Direkt steuern, auch Pfeiltasten'],
@@ -885,7 +888,7 @@ const KEYS = [
     [['E'], 'Andocken in der sicheren Zone, angedockt: Abdocken'],
     [['ESC'], 'Bordmenü'],
   ]],
-  ['kampf', 'KAMPF', [
+  ['kampf', 'KAMPF · TAKTIK', [
     [['LMB'], 'Gegner anklicken: Ziel wählen'],
     [['2×LMB'], 'Ziel wählen und angreifen'],
     [['TAB'], 'Nächster Gegner als Ziel'],
@@ -904,12 +907,13 @@ const KEYS = [
     [['ESC'], 'Zurück, dann zur Startseite'],
   ]],
 ];
+// Tastatur im Hauptmodus (3D-Flug, QWERTZ); die Taktik-Belegung steht in der Liste darunter
 const KB = [
   [['ESC', 'MENÜ', 1.5], ['1', 'L1'], ['2', 'L2'], ['3', 'L3'], ['4', 'L4'], ['5', 'SAB'], ['6', 'SAL'], ['7'], ['8'], ['9'], ['0']],
-  [['TAB', 'ZIEL', 1.5], ['Q'], ['W', 'VOR'], ['E', 'DOCK'], ['R', 'R1'], ['T'], ['Z'], ['U'], ['I'], ['O'], ['P']],
-  [['⇪', '', 1.75], ['A', 'LINKS'], ['S', 'ZURÜCK'], ['D', 'RECHTS'], ['F'], ['G'], ['H', 'HEIM'], ['J', 'SPRUNG'], ['K'], ['L'], ['Ö', '', 0.75]],
-  [['⇧', '', 2.25], ['Y'], ['X'], ['C'], ['V'], ['B', 'SHOP'], ['N'], ['M'], ['⇧', '', 2.25]],
-  [['STRG', 'ANGRIFF', 1.5], ['⌥', '', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'RAKETE', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
+  [['TAB', 'ZIEL', 1.5], ['Q', 'ROLLEN'], ['W', 'VOR'], ['E', 'ROLLEN'], ['R', 'R1'], ['T', 'ZIEL+'], ['Z'], ['U'], ['I'], ['O'], ['P']],
+  [['⇪', '', 1.75], ['A', 'LINKS'], ['S', 'ZURÜCK'], ['D', 'RECHTS'], ['F', 'KONTEXT'], ['G'], ['H', 'HEIM'], ['J', 'SPRUNG'], ['K'], ['L'], ['Ö', '', 0.75]],
+  [['⇧', 'BOOST', 2.25], ['Y', 'UMSEHEN'], ['X', 'BREMSE'], ['C', 'TEMPOMAT'], ['V', 'KAMERA'], ['B', 'REISE'], ['N', 'LANDUNG'], ['M'], ['⇧', '', 2.25]],
+  [['STRG', 'RUNTER', 1.5], ['⌥', 'ZEIGER', 1.25], ['⌘', '', 1.25], ['LEERTASTE', 'HOCH', 5], ['⌘', '', 1.25], ['⌥', '', 1.25]],
 ];
 function keyboard() {
   return `<div class="mc-kb" aria-hidden="true">${KB.map((row) => `<div class="mc-kb-r" style="grid-template-columns:${row.map((r) => `${r[2] || 1}fr`).join(' ')}">${row.map(([k, fn]) =>
