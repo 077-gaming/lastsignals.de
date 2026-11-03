@@ -90,3 +90,13 @@ export const ENEMY_STYLE = {
   guard: { rate: 80, acc: 0.9, vert: 0.4 },
   big: { rate: 20, acc: 0.3, vert: 0.15 },
 };
+
+// Fluglabor (?dev=fluglabor, Planung/FLUGMODELL.md 14): Faktoren auf die Klassenwerte, nur Entwicklung
+export const LAB_DEFAULT = Object.freeze({ kp: 1, rate: 1, acc: 1, thrust: 1, boostV: 1, boostT: 1 });
+/** Laborfaktoren auf berechnete Flugparameter anwenden (nach shipParams) */
+export function labParams(P, L) {
+  P.kp *= L.kp; P.rate *= L.rate; P.rollRate *= L.rate; P.alpha *= L.acc; P.alphaRoll *= L.acc;
+  P.aFwd *= L.thrust; P.aBack *= L.thrust; P.aLat *= L.thrust; P.aVert *= L.thrust;
+  P.vB *= L.boostV; P.boostT *= L.boostT;
+  return P;
+}

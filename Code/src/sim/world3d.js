@@ -4,7 +4,7 @@
 // damit der Taktik-Goldtest bitgleich bleibt. Höhen kommen aus dem abgeleiteten Zufall Rng(hashString(sektor + ':y')).
 import { createState, makeCtl, stepN, enter, derive, applyEdges, halt, interruptMode, C as CI, BTN, MODE } from '../flight/core.js';
 import {
-  shipParams, BOLT_SPEED, BOLT_PER_SHOT, BOLT_SPREAD, ENEMY_HIT_PAD, AUTO_K, AUTO_CONE, CONVERGE_DEFAULT, SECTOR_BAND,
+  shipParams, labParams, BOLT_SPEED, BOLT_PER_SHOT, BOLT_SPREAD, ENEMY_HIT_PAD, AUTO_K, AUTO_CONE, CONVERGE_DEFAULT, SECTOR_BAND,
   HOME_BAND, ZONE_DY, TRACTOR_RANGE, TRACTOR_SPEED, CLASS, PVP_GIMBAL, FLAT_BAND,
 } from '../flight/params.js';
 import { qFromYPR, qRot, qSlerp, qCopy, vAngle, fwdOf } from '../flight/math3.js';
@@ -116,6 +116,7 @@ export function planeCatch(w, dt) {
 export function flyPlayer(w, dt, tgt) {
   const p = w.player, st = w.fl, P = w.flP;
   shipParams(p.ship, w._speed, P);
+  if (w.flLab) labParams(P, w.flLab); // Fluglabor (nur Entwicklung)
   st.p[0] = p.x; st.p[1] = p.y; st.p[2] = p.z; // Stöße, Kollisionen der Welt aus dem letzten Schritt übernehmen
   const msg = applyEdges(st, w.ctl, P, { inCombat: w.inCombat });
   if (msg) { w.flMsg = msg; w.bus.emit('flight', { msg, mode: st.modeWant, coupled: st.coupled, landing: st.landing }); }

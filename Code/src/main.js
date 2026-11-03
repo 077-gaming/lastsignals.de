@@ -160,6 +160,8 @@ function playSession(profile, opts = {}) {
     const audio = new AudioSystem(bus, world, renderer);
     audio.start();
     if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio, series, mp, input, padFlight }; // nur Entwicklung: Test-Pilot (tools/playtest)
+    // Fluglabor (nur Entwicklung): Regler F4, Übungsdrohnen, Heimatsektor ohne Gegner
+    if (import.meta.env.DEV && Q.get('dev') === 'fluglabor') import('./ui/fluglabor.js').then((m) => { window.__lab = m.installLab({ world, renderer, input, bus, root: hudRoot }); }).catch((err) => console.warn('Fluglabor', err));
 
     // Dauerhaft unter 50 Bilder/s: eine Stufe tiefer, mit kurzer Meldung. Automatische Wahl → gespeichert,
     // eigene Wahl → nur für diese Sitzung (die Einstellung im Hub bleibt, wie der Spieler sie gesetzt hat).
@@ -319,7 +321,7 @@ function playSession(profile, opts = {}) {
   });
 }
 
-// Abkürzungen nur für Tests (Entwicklungsserver): ?dev=hub|game|dock&f=europa|saturn|eris
+// Abkürzungen nur für Tests (Entwicklungsserver): ?dev=hub|game|dock|fluglabor&f=europa|saturn|eris
 const DEV = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
 
 async function devStart() {

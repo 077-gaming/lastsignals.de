@@ -312,6 +312,7 @@ export class World {
         if (!e.temp && t >= e.respawnAt) this._respawnEnemy(e);
         continue;
       }
+      if (e.drill) { e.drill(this, e, dt); continue; } // Übungsdrohne (Fluglabor): feste Bahn, schießt nicht
       if (e.rank === 'alpha') this._alphaTick(e, dt);
       if (e.def.brood || e.def.regen || e.def.jam) this._traitTick(e, dt);
       e.thinkCd -= dt;
