@@ -16,7 +16,7 @@
 - Website: `npm ci && npm run build` (Port 5180 dev, 5181 Vorschau)
 - Test-Pilot: `cd Code && node tools/playtest/spielen.mjs --minuten 2 --fraktion alle` (Dev-Server und Google Chrome nötig)
 - Vergleichsansichten: `cd Code && Q=high node tools/bilder/ansichten.mjs <ordner> [basis-url]` (HUD aus, 15 feste Ansichten inkl. Kampf, Cockpit, Hangar, Asteroidenfeld und Sprungtor, Bildzeit/Draw Calls/Dreiecke/Speicher in `bericht.json`; `ONLY=name,name` für eine Auswahl, `HUD=1` mit HUD)
-- Schiffe je Klasse (Hangar, Verfolger, nah, Cockpit, Bildzeit in `bericht.json`): `cd Code && Q=high node tools/bilder/schiffe.mjs <ordner> [basis-url]` (`KLASSEN=s1,s8`, `ANSICHT=hangar,nah`); Materialkarten, 4K-Stufe und Größen: `Planung/SCHIFFSQUALITAET.md`
+- Schiffe je Klasse (Hangar, Verfolger, nah, Cockpit, Bildzeit in `bericht.json`): `cd Code && Q=high node tools/bilder/schiffe.mjs <ordner> [basis-url]` (`KLASSEN=s1,s8`, `ANSICHT=hangar,nah`); je Klasse fünf Hangar-Nahaufnahmen; Umlauf aller 24 Rümpfe in 4K: `tools/bilder/umlauf.mjs`, Größenstaffelung `tools/bilder/groessen.mjs`, Grafikspeicher `tools/bilder/speicher.mjs`, Cockpit `tools/bilder/cockpit.mjs`; Materialkarten (Bänderungsprüfung), Kennungen, 4K-Stufe und Größen: `Planung/SCHIFFSQUALITAET.md`
 - Einbauprüfung der Modelle über die Spiel-Fabrik (mit Lasern/Generatoren an den Ankern): `cd Code && node tools/models/einbau.mjs schiffe <ordner>`
 - Textprüfung: `node Code/tools/texte/floskeln.mjs`
 

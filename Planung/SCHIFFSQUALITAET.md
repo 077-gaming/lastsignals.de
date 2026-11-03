@@ -1,4 +1,4 @@
-# LAST SIGNALS · Schiffsqualität (Stand 02.11.2026)
+# LAST SIGNALS · Schiffsqualität (Stand 03.11.2026, Nachbesserung Runde 2)
 
 Ziel (Toni): Die Spielerschiffe sind das Wichtigste und sollen mit dem Grafikstand auf Space-Shooter-Niveau kommen.
 Dieser Stand betrifft die 24 Meshy-Rümpfe (Starter bis Schiff 8, je Europa/Saturn/Eris), Drohnen und Sprungtor.
@@ -6,98 +6,153 @@ Dieser Stand betrifft die 24 Meshy-Rümpfe (Starter bis Schiff 8, je Europa/Satu
 ## Materialkarten (alle 24 Rümpfe)
 
 Werkzeug außerhalb des Repos (liest Meshy-Rohdateien aus dem Vault, die nicht ins öffentliche Repo gehören):
-`LAST-SIGNALS-Uebergabe/werkzeug/schiffe-q/qualitaet.mjs <s1..s8>`, alle Klassen mit `alle.sh` (3 Stränge, ≈ 4 min).
+`LAST-SIGNALS-Uebergabe/werkzeug/schiffe-q/qualitaet.mjs <s1..s8>`, alle Klassen mit `alle.sh` (3 Stränge, ≈ 4–5 min).
 Eingabe sind die Spieldateien nach dem Meshy-Einbau (Fraktionslackierung schon in der Farbe, gesichert in `quelle/`).
 
 | Karte | Inhalt | Herkunft |
 |---|---|---|
-| Farbe (sRGB) | Fraktionslackierung wie bisher, Kennungen entfernt, Ränder der UV-Inseln aufgefüllt, leichte Kantenabnutzung | Spieldatei |
-| Normal (linear) | Kanten-Normalen aus der Geometrie (Auto-Glättung 50°, Anteil 55 %) + Detailhöhe (Luminanz-Bandpass der bereinigten Rohtextur, Sobel nur innerhalb einer Fläche) | Geometrie + Rohtextur |
+| Farbe (sRGB) | Fraktionslackierung, Kennungen entfernt (Spenderstück), Ränder aufgefüllt, leichte Kantenabnutzung; Europa-Gold geglättet und satter, Saturn/Eris-Akzent kräftiger | Spieldatei |
+| Normal (linear) | Kanten-Normalen aus der Geometrie (Auto-Glättung 50°, Anteil 55 %) + Detailhöhe (Luminanz-Bandpass r1–r3, Stärke 0,9; an entfernten Kennungen null) | Geometrie + Rohtextur |
 | ORM (linear) | R Umgebungsverdeckung (32 Strahlen je Texel, 1K, beide Seiten, Reichweite 12 % der Länge, Stärke 80 %), G Rauheit, B Metall | Strahlen + Farbanalyse |
-| Leuchten (sRGB) | Düsen/Lichtleisten (Cyan/Blau) + kleine warme/rote/grüne Lichtpunkte, Stärke 2,2 | Rohtextur |
+| Leuchten (sRGB) | Düsen/Lichtleisten: Europa Eisblau, Saturn Bernstein, Eris Violett (gleich hell); kleine warme/rote/grüne Lichtpunkte; Stärke 2,2. Schiff 2: keine (Rohtextur ohne Leuchtflächen, Karte weggelassen) | Rohtextur |
 
-Rauheit/Metall je Fraktion (Rumpf / Akzent): Europa 0,22 · 0,44 / 0,9 · 0,3, Saturn 0,72 · 0,38 / 0,35 · 0,42,
-Eris 0,8 · 0,32 / 0,5 · 0,3. Dunkelteile (Gummi, Öffnungen) matt und kaum metallisch, Fugen matter, an konvexen
-Kanten blankes Metall (dezent). Der Tangentenraum folgt three.js ohne Tangenten (Ableitungs-Basis, glTF-Grün = oben).
+Rauheit/Metall je Fraktion (Rumpf / Akzent): Europa 0,22 · 0,44 / 0,9 · 0,36, Saturn 0,72 · 0,36 / 0,35 · 0,4,
+Eris 0,8 · 0,3 / 0,5 · 0,28. Saturn/Eris: Rumpfrauheit höchstens 0,5, dunkler Lack zählt nicht als „Dunkelteil“
+(Gummi, Öffnungen). Der Tangentenraum folgt three.js ohne Tangenten (Ableitungs-Basis, glTF-Grün = oben).
 
 „Gebackene Formnormalen“ aus einem Hochpolygon-Modell sind nicht möglich: Meshy liefert nur das Spielnetz
-(14–33 Tsd. Dreiecke). Stattdessen werden harte Kanten aus dem Netz selbst gebacken (Kanten-Normalen gegen die
-weich interpolierten Ecken-Normalen).
+(14–33 Tsd. Dreiecke). Stattdessen werden harte Kanten aus dem Netz selbst gebacken.
+
+### Abnahmeprüfung Bänderung (neu in Runde 2)
+
+Das Werkzeug misst je Stufe das Verhältnis mittlerer Zeilen- zu Spaltengradient (Ziel ≈ 1,0) und bricht ab, wenn ein
+ORM-Kanal nach WebP über 1,3 (bzw. unter 1/1,3) liegt (`report.band` in `arbeit/<klasse>.json`).
+Ursache der Bänderung in Runde 1: `sharp` lieferte beim Vergrößern 1-kanaliger Rohdaten zeilenversetzte Ausgabe
+(Verdeckung 1K → 2K: 77 : 1, nach WebP 5–9 : 1 in allen drei Kanälen). Jetzt eigene bilineare Vergrößerung; der
+gleiche Fehler steckte in der 4K-Höhe der Klassen 1–7 und ist mit behoben.
+Stand: Verdeckung 1K/2K 1,00–1,04, ORM vor/nach Push-Pull und nach WebP 0,96–1,04 (alle 24 Rümpfe).
+Die Normalkarte hat naturgemäß ungleiche Kanäle (X 0,85 / Y 1,35: Ableitungen), das ist keine Bänderung.
 
 ## Meshy-Kennungen
 
 Weiße „S01“…„S08“-Schriftzüge: Top-Hat-Filter (Helligkeit minus Grauwert-Öffnung r = 6) auf der Rohtextur, Zeichen als
-kompakte Komponenten, Gruppen aus 2–5 Zeichen. Die Fundstellen jeder Klasse wurden im Kontaktbogen gesichtet und
-in `werkzeug/schiffe-q/kennungen.json` freigegeben (Fehltreffer an hellen Kanten verworfen). Füllung per Push-Pull
-aus der Umgebung (gleiche Maske für alle drei Fraktionen und für die 4K-Rohtextur von Schiff 8).
-Grenze: Kennungen, deren Zeichen zu einer Fläche verschmelzen, findet der Filter nicht; Nachtrag dann als
-`rechtecke` in `kennungen.json`.
+kompakte Komponenten, Gruppen aus 2–7 Zeichen. Runde 2: Kennungen mit Bindestrich fielen durch das Größenverhältnis
+(der Strich ist klein); das Verhältnis zählt jetzt nur die Hauptzeichen, neue Kandidaten hängen hinten an (Nummern der
+bisherigen Freigaben bleiben). Fundstellen werden im Kontaktbogen gesichtet und in `werkzeug/schiffe-q/kennungen.json`
+freigegeben; was der Filter nicht trennt, steht als `rechtecke` (helle Texel bzw. `[…, 1]` = ganze Fläche).
+Nachträge Runde 2: S3 Flügel rechts (UV ≈ 0,69/0,655) und „-03“ oben (zweite Insel), S5 „S05“ Flanke/Unterseite,
+S6 zwei Gruppen, S7 „S07“ unter dem unteren Flügel (geprägt) und gespiegelt auf dem Flügel.
+Maskiert werden Farbe UND Detailhöhe (2K und 4K): keine Prägung an der Fundstelle.
+
+Füllung: je Fundstelle ein Spenderstück aus der Nachbarschaft (gleiche Fläche im Raum, unmaskiert, Rand passt am
+besten, keine fremde Farbe) mit seiner Plattenstruktur und seinem Glanz; Grundton aus der Push-Pull-Füllung. Gleiche
+Spender für Rohtextur und alle drei Fraktionen. Statt Push-Pull-Fleck jetzt Plattenstruktur.
+
+„S0-01“ (S1 hinter dem Cockpit), „-03“, „xK-04“: Das war die aufgelegte Kennungstafel des Spiels („EU-01“, „SA-04“ …),
+die auf Stufen halb im Rumpf lag. Meshy-Rümpfe bekommen sie nicht mehr (`_shipMarks`), nur Platzhalter-Rümpfe.
+
+Prüfung im Spiel: `tools/bilder/umlauf.mjs` (alle 24 Rümpfe, 4K, 8 Winkel ohne Halle, Kontaktbogen je Rumpf),
+`tools/models/kennung-suche.mjs` (Texterkennung auf Hangar-Umläufen → UV), `tools/models/uv-punkt.mjs` (Bildpunkt →
+Texel für Rechtecke).
 
 ## Zwei Texturstufen
 
-- **2K** (im GLB, alle Stufen, Browser/Mobil): Farbe, Normal, ORM, Leuchten je 2048.
-- **4K** (`public/models/hd/`): Farbe je Schiff, Normalkarte je Klasse (für alle Fraktionen gleich). Geladen nur für
-  das eigene Schiff und den Hangar, auf ULTRA oder in der Desktop-App (`window.lsDesktop`), nie auf Handy/Tablet
+- **2K** (im GLB, alle Stufen, Browser/Mobil): Farbe, Normal, ORM, Leuchten je 2048 (Schiff 2 ohne Leuchten).
+- **4K** (`public/models/hd/`): Farbe je Schiff, Normalkarte je Klasse. Nur für das eigene, aktive Schiff (Flug und
+  Hangar), auf ULTRA; in der Desktop-App (`window.lsDesktop`) ab HOCH, nie auf NIEDRIG/MITTEL, nie auf Handy/Tablet
   oder ohne 4096er-Texturen (`perf/quality.js hdTextures`; Entwicklung: `?hd=1` / `?hd=0`).
-- Ehrlich: Die Rohtexturen der Klassen 1–7 haben nur 2K. Deren 4K-Farbe ist mit Lanczos hochskaliert und leicht
-  geschärft, die zusätzliche Feinstruktur kommt aus der 4K-Normalkarte (weltfestes Rauschen: Mulden, Körnung) und
-  ist keine echte Mehrinformation. Schiff 8 (Meshy image-to-3D) hat eine echte 4K-Rohtextur; sie liefert dort
-  Detailhöhe und Hochpass-Detail der Farbe.
+- Schiffswerft: Standbilder beim Durchblättern immer 2K. Schiffswechsel (Flug) und andere Rümpfe im Hangar geben
+  ihre 4K-Karten frei; Hangar verlassen gibt alle frei und leert den Zwischenspeicher (`ModelFactory.setShipHd`,
+  `releaseShipHd`, je Modell eigene Texturkopien → nur der Grafikspeicher dieser Grafik-Engine wird frei).
+- Ehrlich: Die Rohtexturen der Klassen 1–7 haben nur 2K. Deren 4K-Farbe ist mit Lanczos hochskaliert (Runde 2 ohne
+  Nachschärfen), Feinstruktur kommt aus der 4K-Normalkarte (Bandpass r1–r5, Stärke 1,5, weltfestes Rauschen 0,025)
+  und ist keine echte Mehrinformation. Schiff 8 (Meshy image-to-3D) hat eine echte 4K-Rohtextur.
 
-## Feindetail im Shader (`render/surface.js glbShipDetail`)
+## Darstellung im Shader (`render/surface.js glbShipDetail`)
 
-Plattenfugen 2,4 × 1,6 m im Objektraum (Meter über den Rumpf-Maßstab), Gebrauchsspuren (Rauheit, Flecken),
-Kantenglanz an Geometriekanten. Nur aus der Nähe (Platte ≥ ≈ 40 Bildpunkte), dezent, über `factory.uShipDetail`
-ab HOCH an, auf NIEDRIG/MITTEL aus (Zweig wird übersprungen). Hangar: immer an.
+- Runde 2: Das Plattenraster im Objektraum ist entfernt – es lief als gestrichelte Naht quer über die Meshy-Panele.
+  Die Fugen trägt die Textur. Nahdetail bleibt (Gebrauchsspuren, Kratzrichtung in der Rauheit, Kantenglanz an
+  Geometriekanten), nur nah, über `factory.uShipDetail` ab HOCH.
+- Fresnel-Randlicht in Fraktionsfarbe (Europa Blassgold 0,06, Saturn Bernstein 0,16, Eris Violett 0,24), immer an:
+  Silhouette vor dunklem Nebel.
+- Klarlack auf gebackenen Karten 0,15 (vorher 0,3), Rauheit 0,42: Schiff 8 Europa wirkt nicht mehr gläsern.
+
+## Hangar
+
+Belichtung je Lackierung (`station-bay.js setShip`): Europa unverändert (Oberlicht 1,5, Kante 1,9, Umgebung 0,3),
+Saturn 1,6 / 2,4 / 0,42, Eris 1,9 / 3,1 / 0,62 (Füllung 0,85). Prüf-Haken (nur Entwicklung): `window.__lsBay.orbit
+= { yaw, pitch, dist, dx, clean }` für feste Nahaufnahmen.
 
 ## Größe der Klassen
 
-Meshy-Rümpfe werden nach Grundfläche √(Länge × Breite) skaliert (`SHIP_FOOT` in `render/models.js`), je Klasse
-≈ 13 % mehr, Fraktionen einer Klasse gleich groß:
+Meshy-Rümpfe nach Grundfläche √(Länge × Breite) (`SHIP_FOOT`, je Klasse ≈ 13 % mehr, Fraktionen gleich groß):
 
-| Klasse | vorher L × B (Fläche) | neu L × B (Fläche) | Radius |
-|---|---|---|---|
-| S1 | 44 × 39 (1.722 m²) | 42 × 38 (1.600 m²) | 24,7 |
-| S2 | 54 × 40 (2.150) | 53 × 39 (2.070) | 29,5 |
-| S3 | 62 × 48 (2.986) | 58 × 46 (2.652) | 32,9 |
-| S4 | 70 × 62 (4.370) | 62 × 55 (3.422) | 36,2 |
-| S5 | 79 × 45 (3.547) | 88 × 50 (4.356) | 46,1 |
-| S6 | 88 × 71 (6.224) | 84 × 67 (5.625) | 47,6 |
-| S7 | 97 × 71 (6.908) | 99 × 73 (7.225) | 55,2 |
-| S8 | 106 × 27 (2.874) | 189 × 49 (9.216) | 85,5 |
+| Klasse | L × B | Radius |
+|---|---|---|
+| S1 | 42 × 38 | 24,7 |
+| S2 | 53 × 39 | 29,5 |
+| S3 | 58 × 46 | 32,9 |
+| S4 | 62 × 55 | 36,2 |
+| S5 | 88 × 50 | 46,1 |
+| S6 | 84 × 67 | 47,6 |
+| S7 | 99 × 73 | 55,2 |
+| S8 | 189 × 49 | 85,5 |
 
-Radius (Kamera-Abstand, Effekte) = 0,3 × (Grundflächen-Maß + größte Ausdehnung). Cockpit: `HP_Cockpit` wächst mit
-dem Rumpf. Hangar: Rümpfe über 128 m werden in der Halle verkleinert gezeigt, die angezeigten Maße bleiben echt.
-Trefferradius der Simulation unverändert.
+Verfolgersicht (Runde 2, `render/camrig.js`): Abstand ∝ √(Radius) (bezogen auf den Starter), nie näher als 1,45
+Radien; lange Rümpfe (Radius > 45 m) bis 9° steiler und 17° seitlich (Dreiviertelsicht). Gleiche Szene, Bildanteil
+der projizierten Hülle (Breite × Höhe, `tools/bilder/groessen.mjs`):
+
+| Klasse | S1 | S2 | S3 | S4 | S5 | S6 | S7 | S8 |
+|---|---|---|---|---|---|---|---|---|
+| nachher | 19 × 18 % | 18 × 15 % | 18 × 18 % | 25 × 18 % | 22 × 25 % | 26 × 26 % | 28 × 27 % | 22 × 57 % |
+| vorher (S1/S4/S8) | 21 × 19 % | | | 22 × 15 % | | | | 6 × 18 % |
+
+Schiff 8 ist schlank (189 × 49 m): von hinten zählt seine Länge (57 % der Bildhöhe), die Fläche im Bild ist 3,7-mal
+die des Starters. S2/S3 wirken von hinten kaum größer als der breite Starter (Flügelspannweite), ab S4 steigt es.
+
+## Cockpit (`render/cockpit.js`)
+
+Konsole, Unterbau, Seitenkonsolen und Kanzelwände mit gezeichneter Blechverkleidung (Platten, Schrauben, Schalter,
+Griffleiste, Warnstreifen), weniger Metall (ohne Umgebungskarte war es schwarz), helleres Grundlicht. Seitenkonsolen
+und Wände reichen bis hinter den Sitz, Kanzelsims mit Leuchtleiste in Fraktionsfarbe: beim Umsehen keine schwarze
+Platte mehr. Prüfung: `tools/bilder/cockpit.mjs`.
 
 ## Drohnen und Sprungtor
 
-- Voyager/Cassini/Juno: alle Stufen Meshy (Stufe 1 und 10 aus l05 abgeleitet, unterscheidbar über Größe, Ton,
-  Leuchten). Pioneer hat kein Meshy-Modell und bleibt beim bisherigen Satz.
-- Sprungtor: Meshy-Ring bleibt, Schacht unter der Flugebene im Vertex-Shader auf 12 % gestaucht (keine dunkle
-  Trommel mehr in der Verfolgersicht), Wirbel-/Tunnelschichten wieder an.
+- Voyager/Cassini/Juno: alle Stufen Meshy (Stufe 1 und 10 aus l05 abgeleitet). Pioneer hat kein Meshy-Modell.
+- Sprungtor: Meshy-Ring bleibt, Schacht unter der Flugebene auf 12 % gestaucht, Wirbel-/Tunnelschichten an.
 
-## Leistung und Speicher (Apple-Chip, 960 × 600, HOCH, `tools/bilder/ansichten.mjs`)
+## Leistung (Apple-Chip, 960 × 600, HOCH, `tools/bilder/ansichten.mjs`, unsichtbar, fester Zufall, Welt angehalten)
 
-Grafikzeit im Flug nachher 2,4–4,9 ms (flug-*, schiff-nah, kampf-*, cockpit, feld, tor, schiff5); Ziel ≤ 8 ms
-gehalten. Stationsnahe Ansichten liegen vorher wie nachher bei ≈ 9–11 ms (Station, nicht Schiff). Sprungtor
-4,7 → 2,6 ms, weil der Schacht nicht mehr den halben Bildschirm füllt. Messwerte schwanken je Lauf um ± 1–2 ms.
+Grafikzeit im Flug nachher 2,1–5,4 ms (flug-*, schiff-nah, kampf-*, cockpit, feld, tor, schiff5, kampf-eris-s6);
+Ziel ≤ 8 ms gehalten. Stationsansichten (angedockt, kein Flug) schwanken unsichtbar stark (9–21 ms, teils schwarze
+Übergangsbilder in beiden Ständen) und sind kein Flugwert.
 
-Grafikspeicher eigenes Schiff (RGBA8 mit Mipmaps, ≈ 22,4 MB je 2K-, ≈ 89,5 MB je 4K-Textur):
+## Speicher (`tools/bilder/speicher.mjs`, alle WebGL-Kontexte, Texturen + Renderpuffer)
 
-| Stufe | Texturen | Speicher |
-|---|---|---|
-| vorher S1–S4 | Farbe 2K + Leuchten 1K | ≈ 28 MB |
-| vorher S5–S8 | 4 × 2K | ≈ 90 MB |
-| 2K (alle) | Farbe, Normal, ORM, Leuchten 2K | ≈ 90 MB |
-| 4K (ULTRA/Desktop) | Farbe + Normal 4K, ORM + Leuchten 2K | ≈ 224 MB (Hangar als eigene Grafik-Engine noch einmal) |
+Ablauf: andocken, Hangar, alle 8 Klassen als eigenes Schiff, Werft durchblättern (30 Karten), Hangar verlassen.
 
-Download: Schiffsdateien 34 MB → 54 MB (24 Dateien, je 1,9–3,5 MB; ein Spieler lädt nur sein eigenes Schiff),
-4K-Zusatz 40 MB (eigenes Schiff ≈ 1,5–5,9 MB).
+| Einstellung | Spitze | Ende | 4K-Texturen gleichzeitig (höchstens) |
+|---|---|---|---|
+| Browser ULTRA | 1.746 MB | 1.746 MB | 4 (Flug + Hangar je Farbe + Normal), nach Verlassen 2 |
+| Desktop-App HOCH | 1.733 MB | 1.716 MB | 4, nach Verlassen 2 |
+| Desktop-App MITTEL | 1.864 MB | 1.864 MB | 0 |
+| Browser HOCH | 1.932 MB | 1.932 MB | 0 |
 
-## Belege
+Die 4K-Stufe ist begrenzt (nie mehr als ein Rumpf je Grafik-Engine). Die Spitze kommt aus den 2K-Karten aller
+durchgeschalteten Rümpfe, die beide Grafik-Engines im Zwischenspeicher behalten (≈ 45–85 MB je Klasse); das betrifft
+nur dieses Extrem (alle Klassen nacheinander) und ist ein offener Punkt für einen Modell-Auslagerer.
+Je 2K-Textur ≈ 22,4 MB, je 4K-Textur ≈ 89,5 MB (RGBA8 mit Mipmaps). Download: Schiffsdateien 58 MB (24 Dateien),
+4K-Zusatz 31 MB.
 
-`LAST-SIGNALS-Uebergabe/bilder/schiffe-qualitaet/`: `vorher-high`, `nachher-high` (Hangar, Verfolger, nah, Cockpit
-je Klasse), `vorher-ultra`, `nachher-ultra` (mit 4K), Vergleichsbögen `vergleich-high/`, `vergleich-ultra/`,
-Sprungtor `tor-vergleich.jpg`, Leistung `ansichten-vorher-high/`, `ansichten-nachher-high/`.
-Aufnahme: `cd Code && Q=high node tools/bilder/schiffe.mjs <ordner> http://localhost:5198`.
+## Belege (`LAST-SIGNALS-Uebergabe/bilder/schiffe-qualitaet/`)
+
+- `r2-vorher-high/`, `r2-nachher-high/`: je Klasse Hangar + 5 Hangar-Nahaufnahmen (alle drei Fraktionen),
+  Verfolger, nah, Cockpit (zwei Fraktionen je Klasse); Bögen `r2-vergleich-high/<klasse>-<fraktion>.jpg`
+- `r2-vorher-ultra/`, `r2-nachher-ultra/` (4K, S1/S2/S6/S8), Bögen `r2-vergleich-ultra/`
+- `r2-umlauf-4k/`: alle 24 Rümpfe aus 8 Winkeln, `<klasse>-<fraktion>-bogen.jpg`
+- `r2-groessen-vorher/`, `r2-groessen-nachher/` (Staffelung), `r2-kampf-eris-s6-vergleich.jpg`
+- `r2-ansichten-vorher-high/`, `r2-ansichten-nachher-high/` (Leistung), `r2-speicher-*.log`
+- Vorher-Stand: Commit f9d6716 (nach dem Meshy-Einbau) mit nur dem Kamera-Prüf-Haken der Bucht nachgerüstet.
+- Aufnahme: `cd Code && Q=high node tools/bilder/schiffe.mjs <ordner> http://localhost:5198`,
+  Bögen: `python3 vergleich2.py <vorher> <nachher> <ausgabe>` im Belegordner.
