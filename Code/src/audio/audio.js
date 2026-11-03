@@ -1,5 +1,6 @@
 // Ton im Flug: Effekte aus public/audio/sfx (ElevenLabs), räumlich nach Position auf dem Bildschirm,
-// Triebwerk als Schleife nach Schub, Musik wechselt weich zwischen Ruhe, Kampf und Stille.
+// Triebwerk als Schleife nach Schub, Musik wechselt weich zwischen Ruhe, Kampf und Stille. 3D-Flug: Steuerdüsen,
+// Boost, Vorbeiflug mit Doppler, Ortung mit Höhe, höchstens 24 Effekte zugleich (Planung/FLUGMODELL.md 12).
 import { ENEMIES } from '../core/data.js';
 // Lautstärken aus localStorage 'ls.settings' (master, sfx, music jeweils 0..1).
 
@@ -18,6 +19,8 @@ const HOME_TRACK = { EU: 'europa', SA: 'saturn', ER: 'eris' };
 const MUSIC_LEVEL = { calm: 0.55, combat: 0.7, boss: 0.75, silence: 0.55, hub: 0.5 };
 const MUSIC_FADE = 3;          // Sekunden Überblendung beim Stückwechsel
 const MUSIC_RESUME_MS = 90000; // so lange nach dem Ausblenden geht ein Stück an der alten Stelle weiter
+const VOICE_MAX = 24;          // höchstens so viele Effekte gleichzeitig
+const FLYBY_R = 40;            // Vorbeiflug näher als 40 m: Rauschen mit fallender Tonhöhe (Doppler)
 const LASER_SOUND = { pulse: 'laser_pulse', ion: 'laser_ion', plasma: 'laser_plasma', gamma: 'laser_gamma' };
 
 // Grundlautstärke je Effekt, damit das Gesamtbild stimmt (Laser leiser als Explosionen).
@@ -195,6 +198,8 @@ export class AudioSystem {
     this.musicState = null;
     this.combatUntil = 0;
     this._pos = { x: 0, y: 0, visible: true };
+    this._voices = 0;             // laufende Effekte (Stimmenbegrenzung)
+    this._fly = new Map();        // Vorbeiflug: letzte Zeit je Gegner
 
     this._unlock = () => this.start();
     window.addEventListener('pointerdown', this._unlock, { once: true });
@@ -252,7 +257,7 @@ export class AudioSystem {
 
   posOf(id) {
     const e = id && this.world.entities.get(id);
-    return e ? { x: e.x, z: e.z } : null;
+    return e ? { x: e.x, z: e.z, y: e.y || 0 } : null;
   }
 
   // Lautstärke und Stereo nach Bildschirmposition; außerhalb des Bildes leiser.
@@ -260,13 +265,15 @@ export class AudioSystem {
     if (!this.ready) return;
     const buf = this.buffers.get(id);
     if (!buf) return;
+    // Stimmenbegrenzung (FLUGMODELL.md 12): höchstens 24 Effekte zugleich, leise Treffer weichen zuerst
+    if (this._voices >= VOICE_MAX && id !== 'alarm' && id !== 'explosion_big') return;
     const now = this.ctx.currentTime;
     const prev = this.last.get(id) || 0;
     if (now - prev < 0.035) return;
     this.last.set(id, now);
     let pan = 0, vol = 1;
     if (where && this.renderer.toScreen) {
-      const s = this.renderer.toScreen(where.x, where.z, this._pos);
+      const s = this.renderer.toScreen(where.x, where.z, this._pos, this.world.flight3d ? (where.y || 0) : 0);
       const w = window.innerWidth || 1, h = window.innerHeight || 1;
       pan = Math.max(-1, Math.min(1, (s.x / w) * 2 - 1)) * 0.7;
       const dx = s.x / w - 0.5, dy = s.y / h - 0.5;
@@ -284,6 +291,8 @@ export class AudioSystem {
     const p = this.ctx.createStereoPanner();
     p.pan.value = pan;
     src.connect(g).connect(p).connect(this.sfxGain);
+    this._voices++;
+    src.onended = () => { this._voices--; };
     src.start();
   }
 
@@ -302,7 +311,7 @@ export class AudioSystem {
   onDamage(p) {
     // Eigener Treffer am Gegner: kurzer, heller Bestätigungs-Tick (Krit höher und kräftiger)
     if (p.from === 'player' && p.id !== 'player' && !p.drone && (p.hull || 0) + (p.shield || 0) > 0) this.synth(p.crit ? 'crit' : 'hit');
-    const where = { x: p.x, z: p.z };
+    const where = { x: p.x, z: p.z, y: p.y || 0 };
     if (p.shield > 0 && !p.hull) this.play('hit_shield', where);
     else if (p.hull > 0) this.play('hit_hull', where);
   }
@@ -411,11 +420,18 @@ export class AudioSystem {
   update() {
     if (!this.ready) return;
     const p = this.world.player;
+    const fl3 = this.world.flight3d && this.world.fl ? this.world.fl : null;
     if (this.engineGain && p) {
-      const thrust = this.world.docked || this.world.playerDead ? 0 : Math.max(p.thrust || 0, Math.min(1, (p.speed || 0) / 340));
+      let thrust = this.world.docked || this.world.playerDead ? 0 : Math.max(p.thrust || 0, Math.min(1, (p.speed || 0) / 340));
+      // 3D: Hauptschub und Tempo relativ zum Kampftempo, Boost hebt Ton und Pegel
+      if (fl3 && !this.world.docked && !this.world.playerDead) {
+        const vK = (this.world.flP && this.world.flP.vK) || 340, sp = Math.hypot(fl3.v[0], fl3.v[1], fl3.v[2]);
+        thrust = Math.min(1.3, Math.max(fl3.thr[4], Math.min(1, sp / vK)) + (fl3.boostOn ? 0.3 : 0));
+      }
       this.engineGain.gain.setTargetAtTime(LEVEL.engine_loop * (0.25 + thrust * 0.9), this.ctx.currentTime, 0.2);
       this.engine.playbackRate.setTargetAtTime(0.85 + thrust * 0.35, this.ctx.currentTime, 0.3);
     }
+    if (fl3) this._update3d(fl3, p);
     // Alarm nur kurz vor der Zerstörung: Hülle unter 25 %, höchstens alle 3 Sekunden.
     if (p && p.alive !== false && !this.world.playerDead && p.hpMax && p.hp / p.hpMax < 0.25) {
       const t = this.ctx.currentTime;
@@ -423,6 +439,65 @@ export class AudioSystem {
     }
     this._musicTick = (this._musicTick || 0) + 1;
     if (this._musicTick % 30 === 0) this.updateMusic();
+  }
+
+  /** 3D-Flug: Steuerdüsen-Stöße, Boost-Einsatz, Vorbeiflug mit Doppler */
+  _update3d(fl, p) {
+    if (this.ctx.state !== 'running') return;
+    const now = this.ctx.currentTime;
+    // Steuerdüsen: kurzer Stoß, wenn Seiten- oder Vertikalschub neu einsetzt
+    const side = Math.max(fl.thr[0], fl.thr[1], fl.thr[2], fl.thr[3]);
+    if (side > 0.45 && (this._sideWas || 0) < 0.2 && now - (this._puffAt || 0) > 0.12) { this._puffAt = now; this.noise(0.09, 2400, 900, 0.05, 1.4); }
+    this._sideWas = side;
+    if (fl.boostOn && !this._boostWas) this.play('boost', null, 1, 0.9);
+    this._boostWas = fl.boostOn;
+    // Vorbeiflug: Gegner näher als 40 m mit merklicher Relativgeschwindigkeit (je Gegner höchstens alle 2 s)
+    if (!p || this.world.docked) return;
+    // Gegnerbolzen knapp vorbei (Fehlwurf, Ausweichen): kurzes Zischen, höchstens alle 0,12 s
+    const B = this.world.bolts;
+    if (B && now - (this._boltFlyAt || 0) > 0.12) {
+      const r2 = FLYBY_R * FLYBY_R, py = p.y || 0;
+      for (let i = 0; i < B.cap; i++) {
+        if (!B.on[i] || B.kind[i] < 2 || B.id[i] === this._boltFlyId) continue;
+        const dx = B.x[i] - p.x, dy = B.y[i] - py, dz = B.z[i] - p.z;
+        if (dx * dx + dy * dy + dz * dz > r2) continue;
+        this._boltFlyId = B.id[i]; this._boltFlyAt = now;
+        this.noise(0.22, 4200, 1400, 0.06, 2.2);
+        break;
+      }
+    }
+    if (this._fly.size > 200) this._fly.clear();
+    const en = this.world.enemies || [];
+    for (let i = 0; i < en.length; i++) {
+      const e = en[i];
+      if (!e.alive) continue;
+      const dx = e.x - p.x, dy = (e.y || 0) - (p.y || 0), dz = e.z - p.z, r = FLYBY_R + (e.radius || 10);
+      if (dx * dx + dy * dy + dz * dz > r * r) continue;
+      const rv = Math.hypot((e.vx || 0) - fl.v[0], (e.vy || 0) - fl.v[1], (e.vz || 0) - fl.v[2]);
+      if (rv < 60 || now - (this._fly.get(e.id) || 0) < 2) continue;
+      this._fly.set(e.id, now);
+      this.noise(0.45, 1800 + Math.min(1600, rv * 4), 380, Math.min(0.14, 0.05 + rv / 3000), 1);
+    }
+  }
+
+  /** Gefiltertes Rauschen mit Frequenzfahrt (Steuerdüse, Vorbeiflug). Zählt zur Stimmenbegrenzung. */
+  noise(dur, f0, f1, vol, q = 1) {
+    if (!this.ctx || this._voices >= VOICE_MAX) return;
+    const c = this.ctx, now = c.currentTime;
+    if (!this._noiseBuf) {
+      const n = Math.floor(c.sampleRate * 0.6), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      this._noiseBuf = b;
+    }
+    const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    src.buffer = this._noiseBuf;
+    f.type = 'bandpass'; f.Q.value = q;
+    f.frequency.setValueAtTime(f0, now); f.frequency.exponentialRampToValueAtTime(Math.max(40, f1), now + dur);
+    g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(vol, now + Math.min(0.03, dur * 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    src.connect(f).connect(g).connect(this.sfxGain);
+    this._voices++;
+    src.onended = () => { this._voices--; };
+    src.start(now); src.stop(now + dur + 0.02);
   }
 
   dispose() {
