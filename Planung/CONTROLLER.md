@@ -37,7 +37,7 @@ Quelle der Belegung ist `src/input/bindings.js` (`PAD`), umgesetzt in `padflight
 | Linker Stick | Schub vor/zurück, seitlich schieben | W/S, A/D |
 | LB / RB · L1 / R1 | Rollen links / rechts | Q / E |
 | LB + RB zusammen | Linker Stick ↕ = hoch/runter (Schwebemodus) | Leertaste / Strg |
-| Rechter Stick | Zielrichtung im Lenkkegel bewegen (Kurve 1,6, bis 160°/s), das Schiff folgt mit Trägheit; Option „Drehraten“ (Stick = Drehrate) | Maus |
+| Rechter Stick | Zielrichtung bewegen (Kurve 1,6, höchstens 1,25 × Schiffsdrehrate), Vorlauf vor dem Bug kurz (1,1 × Drehrate/Kp: S1 8,7°, S8 7,7°), das Schiff folgt; Option „Drehrate“ (Stick = Schiffsdrehrate) in Mission Control → Einstellungen → CONTROLLER | Maus |
 | L3 · L3 halten | Boost an/aus (Vorrat) · Landemodus (Fahrwerk) | Umschalt · N |
 | RT · R2 | Laser feuern | Linksklick |
 | LT · L2 | Präzisionszielen (langsamer, engerer Hilfekegel), schaltet Raketen auf | Rechtsklick halten |
@@ -50,7 +50,9 @@ Quelle der Belegung ist `src/input/bindings.js` (`PAD`), umgesetzt in `padflight
 | MENU · MENU halten | Bordmenü · KAMPF/REISE | Esc · B halten |
 | VIEW · CREATE | Karte | – |
 
-**Zielhilfe** (Einstellung `ls.flight.assist`, Standard STANDARD): Zielbremse nahe der Vorhaltemarke und Mitnahme nur bei Stickeingabe, höchstens 40 % der Drehrate, im PvP höchstens NIEDRIG. **Vibration:** leichtes Rumpeln bei eigenen Bolzentreffern, dazu wie bisher Treffer am eigenen Schiff, Explosionen, Raketenstart. Loslass-Befehle zählen nur für Tasten, die im 3D-Flug gedrückt wurden (kein doppeltes R3 beim Wechsel aus der Taktik).
+**Zielhilfe** (Einstellung `ls.flight.assist`, Standard STANDARD, für Spieler in Mission Control → Einstellungen → CONTROLLER: AUS / NIEDRIG / STANDARD / HOCH): Zielbremse nahe der Vorhaltemarke und Mitnahme nur bei Stickeingabe, höchstens 40 % der Drehrate (im Drehraten-Modus als zusätzliche Drehrate zur Marke), dazu der **Waffenkegel**: liegt das Fadenkreuz höchstens 2,5° (mit LT 4°, Touch 7°, Maus 1,5°; je Stufe × 0 / 0,6 / 1 / 1,2) neben der Vorhaltemarke, zielen die Laser auf die Marke, die Raute wird dann „heiß“ (Fraktionsfarbe). Im PvP höchstens NIEDRIG.
+
+**Nachdrehen (Runde 1):** Früher lief das Fadenkreuz mit 160 °/s bis an den 30°-Lenkkegel voraus, das Schiff (S1 95 °/s, S8 28 °/s) drehte nach dem Loslassen noch rund 30° weiter. Jetzt höchstens 1,25 × Schiffsdrehrate und ein kurzer Vorlauf: 0,3 s voller Ausschlag → S1 17,6° beim Halten, 10° danach; S8 nach langem Halten 8° (vorher 30°). Wer gar kein Nachdrehen will, nimmt „Drehrate“. **Vibration:** leichtes Rumpeln bei eigenen Bolzentreffern, dazu wie bisher Treffer am eigenen Schiff, Explosionen, Raketenstart. Loslass-Befehle zählen nur für Tasten, die im 3D-Flug gedrückt wurden (kein doppeltes R3 beim Wechsel aus der Taktik).
 
 ## Belegung im Taktikmodus (Klickflug, unverändert)
 
@@ -129,4 +131,4 @@ Joystick und Knöpfe von `hud-touch.js` sind ausgeblendet, solange der Controlle
 
 ## Prüfen ohne Controller
 
-`cd Code && node tools/playtest/controller.mjs --url http://localhost:5196 [--stil xbox|ps] [--sichtbar]` (Dev-Server nötig). Ersetzt `navigator.getGamepads` per `addInitScript` durch eine steuerbare Attrappe (Standard-Mapping, Tasten und Achsen je Prüfschritt, `vibrationActuator` zeichnet Effekte auf) und löst `gamepadconnected` aus. Geprüft werden 88 Punkte (Stand 3D-Flug; Abschnitt 3 prüft die 3D-Belegung, 3b die Taktik): Titel bis Flug ohne Maus, Hub-Bereiche, Einstellungen, Shop, Schub stufenlos, Lenken, Bremsen, Kamera (Verfolger schwenken und zurückfedern, Cockpit umsehen, Taktisch bildbezogen), Ziele vor/zurück, Angriff, Rakete, Vibration, Schnellleiste, Karte, Bordmenü, Andocken, Station (Reiter, Kaufen, Fokus danach), Abdocken, Sprung, Beute, Autopilot, Tastatur weiter nutzbar, Wechsel auf einen zweiten Controller (ohne Loslass-Befehle), An-/Abstecken (auch mitten im Flug mit gehaltenem Schub) und Touch-Knöpfe. Ergebnis und Bilder unter `tools/playtest/berichte/controller-<zeit>/`.
+`cd Code && node tools/playtest/controller.mjs --url http://localhost:5196 [--stil xbox|ps|nin] [--sichtbar]` (Dev-Server nötig). Ersetzt `navigator.getGamepads` per `addInitScript` durch eine steuerbare Attrappe (Standard-Mapping, Tasten und Achsen je Prüfschritt, `vibrationActuator` zeichnet Effekte auf) und löst `gamepadconnected` aus. Geprüft werden 90 Punkte (Stand 3D-Flug Runde 1, dazu Nachdrehen nach 0,3 s vollem Ausschlag ≤ 12° und richtige A/B/X/Y-Kappen der Belegungstabelle im Bordmenü je Bauart; Abschnitt 3 prüft die 3D-Belegung, 3b die Taktik): Titel bis Flug ohne Maus, Hub-Bereiche, Einstellungen, Shop, Schub stufenlos, Lenken, Bremsen, Kamera (Verfolger schwenken und zurückfedern, Cockpit umsehen, Taktisch bildbezogen), Ziele vor/zurück, Angriff, Rakete, Vibration, Schnellleiste, Karte, Bordmenü, Andocken, Station (Reiter, Kaufen, Fokus danach), Abdocken, Sprung, Beute, Autopilot, Tastatur weiter nutzbar, Wechsel auf einen zweiten Controller (ohne Loslass-Befehle), An-/Abstecken (auch mitten im Flug mit gehaltenem Schub) und Touch-Knöpfe. Ergebnis und Bilder unter `tools/playtest/berichte/controller-<zeit>/`.

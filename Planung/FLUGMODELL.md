@@ -15,23 +15,23 @@ Auftrag (Toni): „Bisher macht das Spiel mit der Steuerung keinen Spaß – nur
 | Wo lebt das Flugmodell? | Eigener, dimensionsreiner Kern `Code/src/flight/` (reine Funktionen, double, ohne three.js und DOM, läuft in Browser, Node und später auf dem Spielserver) | gefuehl |
 | Spieler-Integrator | 6 Freiheitsgrade, Lage als Quaternion, 120-Hz-Teilschritte (2 je Sim-Schritt), semi-implizites Euler | gefuehl |
 | Flugrechner | **GEKOPPELT / ENTKOPPELT** (Alt+C), Schub in alle sechs Richtungen, Raumbremse, Tempodeckel weich auch entkoppelt | gefuehl, voll3d (Alt+C) |
-| Nasenregler | Raten-Regler mit Bremsgrenze `ω ≤ 0,92·√(2·α·θ)` (kein Überschwingen bei großen Ausschlägen), koordiniertes Kurvenrollen bis 50°, Horizont-Hilfe | schicht |
+| Nasenregler | Raten-Regler mit Bremsgrenze `ω ≤ 0,92·√(2·α·θ)` (kein Überschwingen bei großen Ausschlägen). Kurvenrollen (bis 50°) und Horizont-Hilfe sind **zuschaltbare Hilfen, Standard aus** (Runde 1: sie kippten die Mausachse und drehten Rollen und Loopings zurück); Touch schaltet beide ein | schicht, Runde 1 |
 | Betriebsarten | **KAMPF / REISE / LANDUNG**, Boost mit Vorrat, **BEGRENZER** (Mausrad) | gefuehl |
 | Kampftempo | kommt aus `world._speed` (Schiff + Tempo-Generatoren), nie aus einer eigenen Tabelle: gekaufte Generatoren behalten ihren Wert | schicht, Bedenken |
-| Maus | Fadenkreuz sofort (Zeigerfang), Schiff folgt mit Trägheit; Lenkkegel als Regler (Standard 30°, 15–70°) | gefuehl, alle |
+| Maus | Fadenkreuz sofort (Zeigerfang), Schiff folgt mit Trägheit; Maus dreht um die **Schiffsachsen** (waagrecht = reines Gieren); Lenkkegel als Regler (Standard 30°, 15–70°) | gefuehl, alle, Runde 1 |
 | Kamera | Sichtfeld 70°, Neigung 6°, Schiff im unteren Drittel, Rückzug bei Schub/Boost, Seitenversatz; Option „Kamera folgt der Zielrichtung“ | gefuehl, voll3d |
-| Waffen | gezielte Bolzen, **ein Bolzentempo 2.400 m/s für alle Laser** (eine Vorhaltemarke), 4 Bolzen je Laser und Sekunde mit ¼ Schaden, Munition je 4 Bolzen; Bolzen erben die Schützengeschwindigkeit **nicht** (Sim-Treffer, Vorhaltemarke und Gegnervorhalt nutzen dieselbe Regel) | schicht, gefuehl |
+| Waffen | gezielte Bolzen, **ein Bolzentempo 2.400 m/s für alle Laser** (eine Vorhaltemarke), 4 Bolzen je Laser und Sekunde mit ¼ Schaden, Munition je 4 Bolzen; Bolzen erben die Schützengeschwindigkeit **nicht** (Sim-Treffer, Vorhaltemarke und Gegnervorhalt nutzen dieselbe Regel); **Handzielen gegen NPC × 2,5** (PvP, SAL, Feuerleitrechner, Taktik unverändert) | schicht, gefuehl, Runde 1 |
 | Kardan | Kegel je Klasse S1 6° bis S8 28° (Geschütztürme, PvE); im PvP gedeckelt auf 5° | schicht + Bedenken |
 | Trefferform | Kapsel je Klasse nach Modellmaßen (S8 189 m lang) statt einheitlich 20 m; Gegner Kugel × 1,25 | voll3d, schicht |
 | Gegnerfeuer | Etappe 1 gewürfelt mit 3D-Querbewegung, sichtbare Bolzen fliegen zum gewürfelten Punkt; **Etappe 2 echte Gegnerbolzen** hinter Schalter (`ls.flight.enemyBolts`, `?gbolzen=1`) | voll3d |
-| Controller | Rechter Stick bewegt die Zielrichtung im Kegel (wie die Maus), Schiff folgt; Alternative „Drehraten“; Rollen auf LB/RB; Boost L3; Schnellleiste ohne Kombination | Bedenken, voll3d |
-| Zielhilfe | nur mit Stickeingabe, ≤ 40 % Klassen-Drehrate, Stufe in den Netz-Flags, PvP höchstens NIEDRIG | gefuehl |
+| Controller | Rechter Stick bewegt die Zielrichtung mit **kurzem Vorlauf** (1,1 × Drehrate/Kp), Schiff folgt; Alternative „Drehrate“ in den Einstellungen; Rollen auf LB/RB; Boost L3; Schnellleiste ohne Kombination | Bedenken, voll3d, Runde 1 |
+| Zielhilfe | nur mit Stickeingabe, ≤ 40 % Klassen-Drehrate, **Waffenkegel** (Laser schwenken auf die Marke), Stufe für Spieler einstellbar (Mission Control → Einstellungen), in den Netz-Flags, PvP höchstens NIEDRIG | gefuehl, Runde 1 |
 | Touch | Telefon startet weiter taktisch; „Flug vereinfacht“ mit Autofeuer (AUTO_K 0,8); MacBook-Trackpad: virtueller Stick empfohlen | voll3d, gefuehl |
 | KI | 3D-Bahnen, Anflug mit Abdrehen, Scheren, Durchflug und Wende (≤ 2), Hinterhalt aus dem toten Winkel; Regie-Grenzen ≤ 2 hinten, ≤ 1 senkrecht über/unter dem Spieler; Höhenband je Ziel | gefuehl, voll3d, schicht |
 | Zufall | Höhen und Bahnebenen **nie** aus `world.rng`, sondern aus abgeleitetem `Rng(hashString(sektor + ':y'))` bzw. je Gegner-Id | schicht (Pflicht) |
 | Taktikmodus | alter Weg `_movePlayer` unverändert, **bitgleicher Goldtest** (Spur aufgezeichnet vor dem Umbau) | schicht, gefuehl |
 | Netz | Felder **hinten angehängt** (alte Clients lesen weiter Stelle 0–8), Lage als Smallest-three-Quaternion plus Geschwindigkeit, Hermite-Interpolation, Version `fm` in den Presence-Daten, Sendetakt bleibt **9 Hz** | voll3d, gefuehl |
-| PvP | „Schütze entscheidet, Opfer prüft“: Verlauf der letzten 500 ms und Kegelprüfung (Bug des Schützen gegen Linie zum Opfer ≤ Waffenkegel + 15°), PvP nur zwischen gleichem `fm` | voll3d, gefuehl |
+| PvP | „Schütze entscheidet, Opfer prüft“: Verlauf der letzten 500 ms und Kegelprüfung (Bug des Schützen gegen Linie zum Opfer ≤ Waffenkegel + 15°), PvP nur zwischen gleichem `fm`; Taktik-Würfel gegen Spieler nur in der Ebene (±15°, mindestens 60 m), ohne Trefferpunkt nur von Taktik-Schützen oder Feuerleitrechner im 30°-Kegel | voll3d, gefuehl, Runde 1 |
 | Koop | Gegnerzeilen nur im 2,5-km-Umkreis des Gasts (Sichtbarkeitsfilter), Höhe und Lage angehängt | gefuehl |
 | Landung | Umgebung `env` (Schwerkraft, Luft, Boden), Landemodus mit Fahrwerk, einrastendes `landed`-Modell, Rahmenwechsel, Ursprungsversatz, `toRender()`-Naht | alle, schicht |
 | Einstellungen | eigener Schlüssel `localStorage['ls.flight']` (der Hub schreibt `ls.settings` neu); kein neues Feld im Spielstand | voll3d, Bedenken |
@@ -72,7 +72,7 @@ Ablauf wie `FLUG-ENTWURF-gefuehl.md` 4.1 (Abdocken, Maus nach rechts oben, Schub
 | 0 → Kampftempo (95 %) | aus Beschleunigung und Regler | ±10 % |
 | Bremsweg gekoppelt | `v² / (2 · a_rück · 1)` ohne Raumbremse | ±10 % |
 | Boost-Dauer / Nachladen | Tabelle | ±5 % |
-| Erster Raider-Abschuss mit Startausrüstung (Bot mit Menschenmodell, Heimatsektor) | `tools/playtest/flug.mjs` | Median ≤ 8 s (Bedenken: 6–14 s ist für die ersten Minuten zu zäh) |
+| Erster Raider-Abschuss mit Startausrüstung (Bot mit Menschenmodell, Heimatsektor, nur Laser, Maus und Controller) | `tools/playtest/flug.mjs` (prüft die Grenze seit Runde 1) | Median ≤ 8 s (Bedenken: 6–14 s ist für die ersten Minuten zu zäh) |
 | Treffermarke nach Sim-Treffer | Ereignis `damage` → HUD im nächsten Bild | ≤ 1 Bild |
 
 ---
@@ -115,7 +115,7 @@ Eingabe ist ein **fester Steuerrahmen** (`Float32Array(16)`, Gerät → Rahmen �
 ### 4.3 Schritt (h = 1/120 s, zwei Teilschritte je Sim-Schritt)
 
 1. Betriebsart, Boost-Vorrat (Sperre bis 25 % nach Leerlauf, Nachladen nach 1 s Pause).
-2. Soll-Drehrate: Mausziel → Fehlerwinkel θ und Achse im Körper, `ω_soll = min(ω_max·kB, Kp·θ, 0,92·√(2·α·θ))` (Bremsgrenze, schicht). Drehraten-Modus → `r · ω_max`. Rollen: manuell, sonst **Kurvenrollen** (Rollwinkel bis 50° in die Kurve, koordiniert aus dem Gierfehler) über der **Horizont-Hilfe** (zurück zur Sektorebene, höchstens 0,6 rad/s, nur bei |Nicken| < 60°).
+2. Soll-Drehrate: Mausziel → Fehlerwinkel θ und Achse im Körper, `ω_soll = min(ω_max·kB, Kp·θ, 0,92·√(2·α·θ))` (Bremsgrenze, schicht). Drehraten-Modus → `r · ω_max`. Rollen: manuell, sonst **hält das Schiff seine Rolllage** (Standard). Zuschaltbar: **Kurvenrollen** (Rollwinkel bis 50° in die Kurve, koordiniert aus dem seitlichen Zielfehler; nur solange die Rolllage ≤ 55° und |Nicken| < 60° ist, eine eigene Rolllage darüber bleibt; die Maus dreht dann um den entrollten Rahmen, die Kurve bleibt flach) und **Horizont-Hilfe** (zurück zur Sektorebene, höchstens 0,6 rad/s, nur in Ruhe: 1,5 s ohne eigenes Rollen und ohne Lenken, Zielfehler < 3°, |Nicken| < 45° – ein Looping oder eine Rolle wird nie zurückgedreht). Im Landemodus richtet die Hilfe immer nach der Schwerkraft aus.
 3. Drehbeschleunigung je Achse begrenzt (`α_max`), Lage exakt fortgeschrieben (`q ← q ⊗ exp(½·w·h)`, normiert).
 4. Linear im Körper: gekoppelt Soll-Geschwindigkeit je Achse (nicht gedrückte Achsen Soll 0 = Driften läuft aus), entkoppelt direkter Schub (Newton), Raumbremse Soll 0 mit Grenzen × 1,3, Boost × 1,5 Schub.
 5. Äußere Kräfte aus `env` (Schwerkraft, Luft); gekoppelt gleicht der Rechner die Schwerkraft innerhalb der Vertikalreserve aus (Schweben ohne Sonderfall).
@@ -160,7 +160,7 @@ Kp ist gegenüber dem Entwurf etwa verdoppelt: Mit der Bremsgrenze im Regler gib
 | Linke Maustaste halten | Laser feuern | hinfliegen / Ziel wählen |
 | Rechte Maustaste halten / loslassen | Raketen-Aufschaltung (Ziel im 12°-Kegel, 0,8 s) / Start | – |
 | Mittlere Maustaste halten | Umsehen | – |
-| Mausrad | Begrenzer ± 10 m/s | Zoom |
+| Mausrad | Begrenzer ± 10 m/s (gilt auch mit Tempomat) | Zoom |
 | Alt + Mausrad | Kameraabstand | – |
 | W / S | Schub vor / zurück (halten) | bildbezogen |
 | A / D | seitlich schieben | bildbezogen |
@@ -176,22 +176,22 @@ Kp ist gegenüber dem Entwurf etwa verdoppelt: Mit der Bremsgrenze im Regler gib
 | T | Ziel unter dem Fadenkreuz | – |
 | Tab / Umschalt+Tab | nächstes / voriges Ziel | Tab |
 | R | Rakete | R |
-| Strg rechts | Feuerleitrechner (Autofeuer, Barrierefreiheit) | Angriff |
+| K oder Strg rechts | Feuerleitrechner (Autofeuer, Barrierefreiheit; K für MacBooks ohne rechte Strg-Taste) | Angriff |
 | H | Autopilot zur Station (fliegt in 3D) | H |
 | 1–0, Alt+1–5, Umschalt+Zahl, J, M, P, V, Esc | wie heute | wie heute |
-| Alt halten | Zeiger frei für die HUD-Fenster (Kurs bleibt) | – |
+| Alt halten (0,25 s, allein) | Zeiger frei für die HUD-Fenster (Kurs bleibt); Alt+C und Alt+Mausrad lassen den Zeigerfang stehen | – |
 
 **Zeigerfang:** `requestPointerLock({ unadjustedMovement: true })` mit Merkmalserkennung und abgefangenem Promise-Fehler (Safari kennt die Option nicht). Angefordert nur bei einer Nutzergeste (Klick auf die Spielfläche, V, Taste im Flug). Chrome lehnt eine neue Anforderung kurz nach Esc ab: dann erscheint mittig **KLICKEN ZUM STEUERN**; bis zum Klick zielt die Maus als **virtueller Stick** mit sichtbarem Zeiger (der erste Flug ist nie kaputt). Esc löst den Fang (Browserregel) und öffnet mit **einem** Druck das Bordmenü; „Weiter“ fängt neu. Auf Touch-Geräten und in WKWebView wird nie angefordert.
 
 **Mac (Priorität 1):** Strg+Klick ergibt unter macOS einen Rechtsklick bzw. `contextmenu` (Firefox meldet sogar Taste 2). Im Flug wird `contextmenu` unterdrückt und ein Rechtsklick mit gehaltenem Strg als Linksklick (Feuer) gewertet, solange Strg als „runter“ gedrückt ist. **Trackpad:** Voreinstellung „virtueller Stick“ wird angeboten, Hinweis im ersten Flug.
 
-**Windows (Priorität 2):** Strg+W/T/N lassen sich im Browser nicht abfangen. Schutz: Rückfrage „Seite verlassen?“ im Flug (gibt es), im Vollbild `navigator.keyboard.lock()` (Chromium), in der Desktop-App kein Menü-Kürzel auf Strg+W.
+**Windows (Priorität 2):** Strg+W/T/N lassen sich im Browser ohne Vollbild nicht abfangen. Schutz: Rückfrage „Seite verlassen?“ im Flug, im Vollbild `navigator.keyboard.lock()` für W/A/S/D/T/N/Q/E/Tab (Chromium; Esc bleibt frei), alle übrigen Strg-Kürzel (Strg+D, Strg+S, Strg+A …) ruft der Flug mit `preventDefault` ab, in der Desktop-App kein Menü-Kürzel auf Strg+W.
 
 **Mausmodi (Einstellung `ls.flight.mouse`):** „Mausziel“ (Standard) oder „Virtueller Stick“ (Zeigerausschlag = Drehrate, für Trackpad und Umsteiger). **Lenkkegel** 30° (Regler 15–70°), Empfindlichkeit 0,07°/px, Y umkehrbar.
 
 ### 5.3 Controller (Xbox · PlayStation), Hauptmodus
 
-Gleiches Prinzip wie die Maus: Der **rechte Stick bewegt die Zielrichtung im Lenkkegel** (Drehrate der Zielrichtung mit Kurve 1,6, bis 160°/s), das Schiff folgt mit Trägheit. Alternative „Drehraten“ (Stick = Schiffsdrehrate, Fadenkreuz = Nase) im Fluglabor abnehmbar. Daumenkonflikt gelöst: Boost auf L3 (Klick wie Sprinten), nichts Ständiges unter dem rechten Daumen.
+Gleiches Prinzip wie die Maus: Der **rechte Stick bewegt die Zielrichtung** (Kurve 1,6, höchstens 1,25 × Schiffsdrehrate und höchstens 160°/s), das Schiff folgt. Der Vorlauf des Fadenkreuzes vor dem Bug ist am Controller kurz: 1,1 × Drehrate/Kp (S1 8,7°, S8 7,7°), gerade genug für volle Drehrate. So dreht das Schiff nach dem Loslassen höchstens diesen Vorlauf nach (Runde 1: vorher bis zu 30°). Alternative „Drehrate“ (Stick = Schiffsdrehrate, Fadenkreuz = Nase, Zielhilfe-Mitnahme als zusätzliche Drehrate). Beide und die Zielhilfe-Stufe stellt der Spieler in Mission Control → Einstellungen → CONTROLLER ein, Maus, Lenkkegel, Sichtfeld, Kurvenrollen und Horizont-Hilfe unter FLUG 3D. Daumenkonflikt gelöst: Boost auf L3 (Klick wie Sprinten), nichts Ständiges unter dem rechten Daumen.
 
 | Controller | Hauptmodus | Taktik (unverändert) |
 |---|---|---|
@@ -213,19 +213,20 @@ Gleiches Prinzip wie die Maus: Der **rechte Stick bewegt die Zielrichtung im Len
 | MENU kurz / halten 0,6 s | Bordmenü / KAMPF ↔ REISE | Bordmenü |
 | VIEW | Karte | Karte |
 
-**Zielhilfe** (Einstellung AUS / NIEDRIG / STANDARD / HOCH, Controller-Standard STANDARD): Zielbremse (Stickrate auf 55 % nahe der Vorhaltemarke), Zielmitnahme (k = 0,35 der Winkelgeschwindigkeit der Vorhaltemarke, **nur solange der Stick ausgelenkt ist**, höchstens 40 % der Klassen-Drehrate), Waffenkegel (Maus 1,5°, Controller 2,5°, LT 4°, Touch 7°). Gegen Spieler höchstens NIEDRIG, Mitnahme aus. Die Stufe steht in den Netz-Flags.
+**Zielhilfe** (Einstellung AUS / NIEDRIG / STANDARD / HOCH, Standard STANDARD): Zielbremse (Stickrate auf 55 % nahe der Vorhaltemarke), Zielmitnahme (k = 0,35 der Winkelgeschwindigkeit der Vorhaltemarke, **nur solange der Stick ausgelenkt ist**, höchstens 40 % der Klassen-Drehrate), **Waffenkegel** (Maus 1,5°, Controller 2,5°, LT 4°, Touch 7°, je Stufe × 0 / 0,6 / 1 / 1,2): liegt das Fadenkreuz so nah an der Vorhaltemarke des Ziels, zielen die Laser auf die Marke (`world3d.js coneAssist`), die Raute leuchtet in Fraktionsfarbe. Gegen Spieler höchstens NIEDRIG, Mitnahme aus. Die Stufe steht in den Netz-Flags.
 
 ### 5.4 Touch (abgestuft)
 
 - **Telefon:** startet weiter taktisch (wie heute). Hauptmodus wählbar als **Flug vereinfacht**: Joystick = Zielen (wie rechter Stick, Zielhilfe HOCH), Schub-Schieber, Feuerknopf, Boost, Rakete, Kontext; Horizont-Hilfe und Kurvenrollen immer an. **Autofeuer** (Feuerleitrechner, Treffer per Würfel × 0,8) ist auf Touch Standard.
 - **Tablet:** wie Telefon, dazu Ziehen in der rechten Bildhälfte = Zielen.
 - Joystick, Knöpfe und Pinch-Zoom des Taktikmodus bleiben unverändert.
+- Knopfraster (Runde 1): sitzt rechts zwischen Mission (oben) und Karte (unten); reicht die Höhe nicht (Handy quer, Tablet im 3D-Flug mit BOOST und SCHUB), wird es kompakt mit vier Spalten. Vorher lagen LASER, RAKETE, ZIEL und HEIM am Handy über dem Bildrand. Das Fenster PILOTEN entfällt auf Touch, die SYSTEM-Karte steht rechts neben dem Joystick.
 
 ---
 
 ## 6. Kamera
 
-- **Verfolger** (`camrig.js chasePose3d`): Kameralage folgt der Schiffslage gefedert (Gieren/Nicken 9/s bei S1 bis 5/s bei S8, Rollen zu 70 %), Blickrichtung **35 % Zielrichtung** (Option „Kamera folgt der Zielrichtung“: 100 %, Schiff dreht sichtbar hinterher). Neigung **6°**, Schiff im unteren Drittel, Sichtfeld **70°** (55–90°), Rückzug bis +8 % bei Schub, +10 % bei Boost, −5 % beim Bremsen, Seitenversatz bis 4 % gegen Seitenschub. Abstand aus `CHASE_FRAME`. Kampfschwenk zum Ziel entfällt (man zielt selbst), dafür Randpfeil.
+- **Verfolger** (`camrig.js chasePose3d`): Kameralage folgt der Schiffslage gefedert (Gieren/Nicken 9/s bei S1 bis 5/s bei S8, Rollen zu 70 %), Blickrichtung **35 % Zielrichtung**, zielt das Fadenkreuz unter den Bug bis 85 % (sonst wanderte es auf das eigene Schiff im unteren Drittel) (Option „Kamera folgt der Zielrichtung“: 100 %, Schiff dreht sichtbar hinterher). Neigung **6°**, Schiff im unteren Drittel, Sichtfeld **70°** (55–90°), Rückzug bis +8 % bei Schub, +10 % bei Boost, −5 % beim Bremsen, Seitenversatz bis 4 % gegen Seitenschub. Abstand aus `CHASE_FRAME`. Kampfschwenk zum Ziel entfällt (man zielt selbst), dafür Randpfeil.
 - **Cockpit:** Kamera am Pilotenauge mit voller Schiffslage, Kopfträgheit bis 6 cm gegen die Beschleunigung (abschaltbar über „Kamerawackeln“), Umsehen ±110°/−35…+60°.
 - **Taktisch:** unverändert. Höhen werden beim Wechsel in die Draufsicht mit dem Kamerablend auf die Ebene gestaucht (Simulation bleibt echt).
 - **Übergänge:** Taktisch → Flug: `flight.enter()` aus `rot` (kein Ruck). Flug → Taktisch: **Ebenenfänger** als sichtbares Manöver: Rollen und Nicken auf waagrecht, Höhe mit begrenzter Steigrate (≥ 180 m/s, so schnell wie nötig für höchstens 3 s) auf die Ebene, Klickflug ab dem ersten Bild.
@@ -240,7 +241,8 @@ Gleiches Prinzip wie die Maus: Der **rechte Stick bewegt die Zielrichtung im Len
 - **Konvergenz:** Ziel unter dem Fadenkreuz → dessen Entfernung, sonst aufgeschaltetes Ziel im Kegel, sonst 500 m; weich in 0,15 s.
 - **Vorhaltemarke:** eine Marke (alle Laser gleich schnell): kleinste positive Lösung von `|r + u·t| = s·t` mit `u` = Zielgeschwindigkeit (Bolzen erben nichts).
 - **Raketen:** Aufschaltung (rechte Maustaste / LT halten, Ziel im 12°-Kegel 0,8 s), Treffer und Laufzeit wie heute (`ROCKET_FLIGHT`, `rocketHits`), Flugbahn in 3D gezeichnet.
-- **Feuerleitrechner (Autofeuer):** Touch-Standard, sonst Strg rechts: feuert auf das Ziel im 30°-Kegel, Treffer gewürfelt × **0,8**. Handzielen lohnt sich so immer.
+- **Feuerleitrechner (Autofeuer):** Touch-Standard, sonst K oder Strg rechts: feuert auf das Ziel im 30°-Kegel, Treffer gewürfelt × **0,8**. Handzielen lohnt sich so immer.
+- **Handzielen gegen NPC × 2,5** (`params.js AIM_PVE`, Runde 1): Die Startausrüstung (2 Pulse-Laser, 140 Schaden/s) brauchte gegen einen Raider (1.100 Hülle + 550 Schild) bei 85 % Treffern 14 s – im Taktikmodus ebenso, dort tragen Würfel und Raketen (3,8 s mit Raketen). Ursache ist das Schadensbudget, das für Würfeltreffer plus Raketen gebaut ist; Handzielen muss Ausweichen, Kurven und Rückzug des Raiders mittragen. Mit × 2 lag der Median bei 8,0–8,1 s, mit × 2,25 bei 6,0–8,1 s je Lauf, mit × 2,5 sicher darunter (Kennzahl ≤ 8 s). PvP, SAL, Feuerleitrechner und der Taktikweg bleiben unverändert; Munition je Abschuss sinkt entsprechend.
 - **Gegnerfeuer:** Etappe 1 Würfel mit 3D-Querbewegung und 3D-Feuerkegel, Bolzen fliegen sichtbar (Vorbeiflug bei Fehlwurf, Ton unter 40 m). Etappe 2 (Schalter) echte Bolzen mit Vorhalt und Fehler je Rang.
 - **Taktikmodus:** unverändert Würfel, Laser-Kegel ±75°.
 
@@ -252,7 +254,8 @@ Gleiches Prinzip wie die Maus: Der **rechte Stick bewegt die Zielrichtung im Len
 - **Manöver** (`sim/ai3d.js`): Kreisen in eigener geneigter **Bahnebene** (Normale aus dem Zufall je Gegner-Id, nie aus `world.rng`), **Anflug mit Abdrehen** (pack, ambush), **Scheren** wenn der Spieler im Heck sitzt, **Durchflug und Wende** (halber Looping, höchstens 2 gleichzeitig), **Hinterhalt aus dem toten Winkel** (Jackal lauert 250–400 m über/unter dem Spieler, Rammangriff mit sichtbarem Aufladen), Schwarm auf der Kugelschale, Abstand halten mit Höhenwechsel, Flucht aus der Ebene.
 - **Regie-Grenzen:** höchstens **2 Angreifer gleichzeitig in der hinteren Halbkugel**, höchstens **1 direkt über oder unter** dem Spieler (unter 25° zur Senkrechten) – Prüfung T-17. Budget 3–4 Angreifer bleibt.
 - **Höhenband je Ziel:** Gegner gegen einen Piloten in der Taktikansicht fliegen flach (±40 m um dessen Höhe), gegen einen 3D-Piloten räumlich. Gemeldet über die Ansicht des Piloten (lokal sofort, im Netz über die Flags).
-- **Sektor als flacher Raum:** Höhenband ±1.500 m (Heimat ±1.200 m), Warnung und Schaden wie an der seitlichen Grenze. Station, Tore, Frachterrouten auf y = 0. Rudel ±400 m, Einzelgänger ±600 m, Felder mit Höhenstreuung, Kisten ±300 m, Wracks an der Abschusshöhe.
+- **Sektor als flacher Raum:** Höhenband ±1.500 m (Heimat ±1.200 m). **Rand (Runde 1):** ab 83 % warnt das HUD (`OBERGRENZE · 200 M`, Marke auf dem Kursband), außerhalb laufen 6 s Frist mit Zählwerk, erst danach 2 % Hülle je Sekunde (`world3d.js edge3d`). Vorher kostete jede Grenzüberschreitung sofort Hülle, ohne Vorwarnung. Taktikweg unverändert.
+- **Autopilot (H, Beute anfliegen):** ab 2,5 km außerhalb des Kampfes in REISE (2,8 × Kampftempo), unter 1,4 km zurück auf KAMPF; eigene Eingabe beendet beides. Station, Tore, Frachterrouten auf y = 0. Rudel ±400 m, Einzelgänger ±600 m, Felder mit Höhenstreuung, Kisten ±300 m, Wracks an der Abschusshöhe.
 - **Zonen als Zylinder** (sichere Zone, Tor, Andocken, Reparatur am Tor: 2D-Abstand und |Δy| ≤ 400 m). REISE ist im Kampf gesperrt, Treffer bricht das Hochlaufen ab.
 - **Beute-Traktor:** ab 150 m zieht ein Strahl Wracks, Kisten und Erz mit 60 m/s heran (außerhalb des Kampfes schneller).
 
@@ -264,6 +267,7 @@ Gleiches Prinzip wie die Maus: Der **rechte Stick bewegt die Zielrichtung im Len
 - **Darstellung:** Hermite-Interpolation aus Ort und Geschwindigkeit, Lage per Slerp, Vorhersage bis 250 ms. Sendetakt **9 Hz** (Supabase-Kontingent). Bekannte Grenze: Manövrierende Ziele wirken bei 9 Hz im Handzielen leicht „springend“, bis der eigene Server kommt.
 - **Presence:** `fm` in den Metadaten; PvP nur zwischen gleichem `fm`.
 - **PvP:** Schütze entscheidet (Bolzentreffer auf das interpolierte Abbild), sendet Trefferpunkt, Schusszeit und eigenen Bug; Opfer prüft: eigener Verlauf der letzten 500 ms innerhalb 2 × Kapsel am gemeldeten Punkt, Kegel (Bug des Schützen gegen Linie zum Opfer ≤ Waffenkegel + 15°), Reichweite × 1,6, Ratenbegrenzung wie heute.
+- **Zwischen den Ansichten (Runde 1):** Der Taktik-Würfel misst gegen fremde Spieler räumlich und trifft nur in der Ebene (höchstens 15° über/unter dem Schützen, mindestens 60 m Spielraum, `aim.js tacticalReach`, gleiche Regel beim Opfer). Treffer ohne Trefferpunkt nimmt das Opfer nur von einem Schützen in der Taktikansicht an, vom Feuerleitrechner eines 3D-Piloten nur im 30°-Kegel (+15°) um dessen Bug, Raketen wie bisher. Ein 3D-Client, der den Trefferpunkt weglässt, wird abgelehnt.
 - **Koop:** Gegnerzeilen nur im 2,5-km-Umkreis des Gasts, angehängt y und Gieren/Nicken; Kopfzeilen mit y und Lage.
 
 ---
@@ -280,7 +284,9 @@ Gleiches Prinzip wie die Maus: Der **rechte Stick bewegt die Zielrichtung im Len
 
 Eine Zeichenfläche über der Spielfläche (Gerätepixel, Linien und Text, ohne Schatten), Stil nach `UI_STIL.md` (Haarlinien, Ticks, Versalien, DIN-Schrift, Farbe nur mit Funktion):
 
-Fadenkreuz (Zielrichtung, sofort) · Bugmarke · Waffenkreuz/Kardanmarke · Flugbahnmarker · **eine** Vorhaltemarke · Zielklammer mit Entfernung, Annäherung und Balken · Randpfeil · **Treffermarke** (weiß Hülle, Fraktionsfarbe Schild, groß bei Abschuss) · **roter Bogen der Trefferrichtung** · **rote Bedrohungsbögen** am Rand (Gegner zielt oder lädt auf) · **Raketenwarnung** mit Ton · **Kursband** oben · Geschwindigkeitsleiter mit Begrenzer · Schub- und Höhenanzeige (`EBENE +240`) · Boost-Balken · Moduszeile (`KAMPF · GEKOPPELT · BEGR 330`, `ENTKOPPELT` in Warnfarbe) · Horizontleiter (Cockpit) · Hinweis **KLICKEN ZUM STEUERN** · Minikarte mit Höhenmarken ▴/▾.
+Fadenkreuz (Zielrichtung, sofort) · Bugmarke · Waffenkreuz/Kardanmarke · Flugbahnmarker · **eine** Vorhaltemarke · Zielklammer mit Entfernung, Annäherung und Balken · Randpfeil · **Treffermarke** (weiß Hülle, Fraktionsfarbe Schild, groß bei Abschuss) · **roter Bogen der Trefferrichtung** · **rote Bedrohungsbögen** am Rand (Gegner zielt oder lädt auf) · **Raketenwarnung** mit Ton · **Kursband** oben · Geschwindigkeitsleiter mit Begrenzer · Schub- und Höhenanzeige (`EBENE +240`) · Boost-Balken · Moduszeile (`KAMPF · GEKOPPELT · BEGR 330`, `ENTKOPPELT` in Warnfarbe) **über** dem Kursband · Sektorrand-Warnung mit Zählwerk · Horizontleiter (Cockpit) · Hinweis **KLICKEN ZUM STEUERN** · Minikarte mit Höhenmarken ▴/▾.
+
+**HTML-Fenster im 3D-Flug (Runde 1):** Das Schiffsfenster ist flach (nur Hülle und Schild; Tempo und Generatoren zeigt die Tempoleiter), damit es das eigene Schiff in der Verfolgersicht nicht verdeckt; im Cockpit entfällt es (Hülle und Schild stehen auf der Konsole). Das Zielschild steht in der Verfolgersicht über der Klammer (darunter sitzt das eigene Schiff), lange Namen passen (184 px). Zielfenster und Klammer messen räumlich. Schwebende Schadenszahlen stehen in Zielhöhe; Bolzen melden beim Abfeuern kein DANEBEN mehr (früher je Bolzen ein Text, 4–5-fach gestapelt). Der Flug-Coach nennt Tasten je Ansicht und Gerät (Tastatur, Controller, Touch) aus der Belegung, die SYSTEM-Karten ebenso (`bindings.js inputName`).
 
 **Ton:** Steuerdüsen-Stöße im Stereobild, Vorbeiflug mit Doppler unter 40 m, Treffer- und Abschussmarke, Boost-Schleife, Raketenwarnung; höchstens 24 Stimmen.
 
@@ -301,7 +307,7 @@ Fadenkreuz (Zielrichtung, sofort) · Bugmarke · Waffenkreuz/Kardanmarke · Flug
 | Werkzeug | Inhalt |
 |---|---|
 | `npm test` (`src/sim/selftest.mjs`) | alle bisherigen Prüfungen, dazu Flugkern (Determinismus, Stabilität 100.000 Teilschritte, Kennzahlen je Klasse aus der Tabelle, gekoppelt/entkoppelt, Modi, Horizont-Hilfe, Landung, Rahmenwechsel, Ursprungsversatz), Zielmathematik (Vorhalt < 0,5 m, Konvergenz, Kardan, Zielhilfe ohne Eingabe = 0, ≤ 40 %, PvP ≤ NIEDRIG), Netz (Packen < 0,5 m / 0,5°, Hermite stetig, altes Paket → y = 0), KI 3D (Höhenband, keine Überlappung, Manöver treten auf, Feuer nur im Kegel, T-17), Welt im 3D-Weg (Andocken, Tor, Beute, Quests, Raketen, Drohnen), **Taktik-Goldtest bitgleich** |
-| `tools/playtest/flug.mjs` (neu, headless) | Maus- und Controller-Flug geskriptet (Zeigerfang-Attrappe per `addInitScript` mit `movementX/Y`, Controller-Attrappe): Kurven, Rollen, Boost, entkoppelt, Kampf gegen 3D-KI; Kennzahlen Bildrate, Reaktionszeit, Trefferquote, Kampfdauer; Bilder in Verfolger- und Cockpitsicht; Strg+Klick ohne Kontextmenü, Esc öffnet mit einem Druck, Alt gibt den Zeiger frei, Heap-Wachstum < 2 MB über 60 s |
+| `tools/playtest/flug.mjs` (neu, headless) | Maus- und Controller-Flug geskriptet (Zeigerfang-Attrappe per `addInitScript` mit `movementX/Y`, Controller-Attrappe): Kurven, Rollen, Boost, entkoppelt, Kampf gegen 3D-KI; Kennzahlen Bildrate, Reaktionszeit, Trefferquote, Kampfdauer; Bilder in Verfolger- und Cockpitsicht; Strg+Klick ohne Kontextmenü, Esc öffnet mit einem Druck, Alt gibt den Zeiger frei, Heap-Wachstum < 2 MB über 60 s. Seit Runde 1 zusätzlich: **Kennzahl Abschuss ≤ 8 s** (Maus und Controller, nur Laser), Maus waagrecht 5 s = reines Gieren (Bug ±3°, > 360°), Q-Rollen ohne Rückdrehen, Tempomat folgt dem Begrenzer, Sektorrand (Warnung, Frist, erst dann Schaden), Autopilot in REISE, kein DANEBEN je Bolzen, Zielfenster und Klammer gleiche Entfernung, Alt+C behält den Zeigerfang, Strg+D/S/A abgefangen, K schaltet den Feuerleitrechner; der Bot feuert wie ein Mensch, sobald die Raute heiß ist (Waffenkegel), setzt fliehenden Raidern mit Boost nach und misst frische Rudel bis 5 Abschüsse (Median nicht mehr aus angeschossenen Resten früherer Kämpfe) |
 | `tools/playtest/controller.mjs` | Menüs und Taktik wie bisher, Flugteil auf die neue Belegung umgestellt (nicht abgeschwächt) |
 | `tools/mehrspieler/test.mjs` | zwei Seiten: fremdes Schiff mit Höhe und Lage, altes Paket flach |
 | `tools/playtest/tief.mjs`, `spielen.mjs`, `grafik.mjs` | headless auf freiem Port (`--url`), `tief.mjs` wahlweise `--flug=taktik` |
@@ -334,7 +340,7 @@ Fadenkreuz (Zielrichtung, sofort) · Bugmarke · Waffenkreuz/Kardanmarke · Flug
 
 ---
 
-## 16. Umsetzungsstand (03.11.2026, Zweig `claude/flug`)
+## 16. Umsetzungsstand (03.11.2026, Zweig `claude/flug`, Runde 1 eingearbeitet)
 
 **Gebaut:** Flugkern (`src/flight/`), Welt und KI im 3D-Weg (`sim/world3d.js`, `sim/ai3d.js`), Maus mit Zeigerfang und virtuellem Stick, Belegungstabelle (`input/bindings.js`), Controller (`input/padflight.js`, Zielhilfe), Touch vereinfacht, Verfolger und Cockpit mit voller Lage, Flug-HUD (`ui/hud-flight.js`), Mehrspieler mit Höhe und Lage (abwärtsverträglich), Landemodus-Vorbereitung (Fahrwerk, `env`, Rahmen und Ursprungsversatz), Fluglabor (`?dev=fluglabor`, `ui/fluglabor.js`, nur Entwicklung), Ton (Steuerdüsen, Boost, Vorbeiflug, höchstens 24 Stimmen). Neue Spieler und alte Spielstände starten im Verfolger (einmalige Umstellung `ls.flight.migrated`, Telefone bleiben taktisch); Taktik über V.
 
@@ -350,8 +356,37 @@ Fadenkreuz (Zielrichtung, sofort) · Bugmarke · Waffenkreuz/Kardanmarke · Flug
 | `tools/playtest/spielen.mjs --minuten 1` (3D) | 59,6 Bilder/s, Kampf ohne Bild über 20 ms, Raider-Abschuss Median 3,8 s (mit Raketen, wie F0) |
 | `ansichten.mjs` neue Ansichten | Kurvenkampf/Modelle von unten, Himmel steil oben/unten: keine Fehler, keine Nähte an den Polen |
 
+### Runde 1: Nachbesserung nach drei Spieltest-Gutachten (03.11.2026)
+
+| Befund | Ursache | Behebung |
+|---|---|---|
+| Abschuss Raider 13–15 s (Ziel ≤ 8 s), flug.mjs prüfte es nicht | Schadensbudget für Würfel plus Raketen; Handzielen trägt zusätzlich Ausweichen und Rückzug | Handzielen gegen NPC × 2,5 (7), Waffenkegel der Zielhilfe, Kennzahl-Prüfung in flug.mjs (Maus und Controller) |
+| Waagrechte Maus: absinkende Spirale, keine Umkehr | Maus drehte um die Kameraachsen; Kurvenrollen und mitrollende Kamera kippten sie | Maus dreht um die Schiffsachsen (`aimAxes`), Kurvenrollen Standard aus (5.2, 4.3) |
+| Horizont-Hilfe dreht Rollen und Loopings zurück, 80 °/s statt 0,6 rad/s | griff auch bei Mauseingabe; mit Kurvenrollen galt dessen Rollrate | Standard aus; nur in Ruhe, höchstens 0,6 rad/s (4.3) |
+| Sektorrand: Schaden ohne Vorwarnung | `BAND_WARN` unbenutzt, kein HUD | Warnung ab 83 %, 6 s Frist mit Zählwerk (8); Kodex aus den Werten |
+| Coach mit Klickflug-Tasten, Controller-Texte alt, SYSTEM-Karten mit „W“ und „Klick“ | feste Texte | Texte je Ansicht und Gerät aus der Belegung (11) |
+| Zielfenster 2D, Klammer 3D | `Math.hypot(dx, dz)` | räumlich |
+| HUD verdeckt das eigene Schiff, Schiff verdeckt Ziele, Cockpit-Konsolen verdeckt | Fenster der Taktik-Konsole; Fadenkreuz unter dem Bug wanderte aufs Schiff | flaches Schiffsfenster, Zielschild oben, Kamera folgt nach unten stärker, Fenster im Cockpit aus (6, 11) |
+| DANEBEN 4–5-fach gestapelt | jeder Bolzen meldete beim Abfeuern `hit: false` | Bolzen ohne DANEBEN, Zahlen in Zielhöhe |
+| Tempomat ignoriert Begrenzer | `cruiseV` nur bei Schub gekappt | immer gekappt |
+| Ruckler beim Start (200–533 ms), Cockpit 200 ms | Modelltausch während schon gesteuert wurde; Cockpit-Shader beim ersten V | Start wartet auf `sectorReady`, Simulation ruht bis zum ersten Bild; Cockpit vorübersetzt |
+| Controller dreht nach (bis 30° nach dem Loslassen) | Fadenkreuz 160 °/s bis an den 30°-Kegel | 1,25 × Drehrate, Vorlauf 1,1 × Drehrate/Kp, Drehraten-Modus wählbar (5.3) |
+| Zielhilfe nicht einstellbar, Waffenkegel fehlt | nur Fluglabor; `ASSIST_CONE` unbenutzt | Mission Control → Einstellungen; `coneAssist` (5.3) |
+| Xbox-Bordmenü zeigt B statt X | Tastatur-Umschlüsselung auch auf Controller-Kappen | Kappen mit `data-pk` ausgenommen |
+| Handy quer: LASER/RAKETE/ZIEL/HEIM außerhalb | Raster wuchs von festem Abstand nach oben | Raster passt sich ein, kompakt (5.4) |
+| Windows: Strg+W/D/S/A | kein `preventDefault`, keine Tastatursperre | Strg-Kürzel abgefangen, Tastatursperre im Vollbild, Rückfrage beim Verlassen |
+| Mac: Option löst bei Alt+C den Zeigerfang, keine Strg rechts | Alt löste sofort; Autofeuer nur auf Strg rechts | Alt erst nach 0,25 s allein; K für den Feuerleitrechner; abgelehnter Neufang wird beim nächsten Klick wiederholt |
+| PvP: Taktik-Würfel trifft 3D-Piloten 500 m höher; ohne `hp` keine Prüfung | Würfel maß in der Ebene, `pvpPlausible` gab `true` | Würfel nur in der Ebene, Opfer prüft dieselbe Regel (9) |
+| controller.mjs flackert (REISE) | Gegnertreffer sperrte REISE | Gegner vor der Prüfung weg; Beute-Prüfung merkt sich das Ziel vor dem Tastendruck |
+| Kursband-Marke über „GEKOPPELT“ | Moduszeile unter dem Band | Moduszeile darüber |
+| Autopilot H 47 s | nur Kampftempo | ab 2,5 km in REISE |
+
+**Gemessen nach Runde 1 (headless, M5, 03.11.2026):** `npm test` alle bestanden (Goldtest bitgleich, neue Prüfungen für Hilfen, flache Kurve, Tempomat, PvP zwischen den Ansichten). `flug.mjs` 38/38 in drei Läufen: Raider-Abschuss nur mit Lasern (frische Rudel, je 5 Abschüsse), Maus Median 4,8–5,8 s bei 76–89 % Treffern, Controller 5,6–5,9 s bei 75–87 % (vorher 13–15 s bzw. 21 s); Maus waagrecht 5 s: 413°, Bug 0,0°; Q-Rollen bleibt stehen; Tempomat 240/240 m/s; Sektorrand Warnung → Frist → Schaden; Autopilot in REISE. `controller.mjs` 90/90 für Xbox, PlayStation und Switch Pro; Stick 0,3 s voll: S1 17,6° beim Halten, 10° danach (vorher 19°/29°), S8 nach langem Halten 8° (vorher 30°). Startbilder über 50 ms liegen nur noch vor dem ersten sichtbaren Bild (Simulation steht); erster Kampf und erster Cockpitwechsel ohne Bild über 17 ms. Mehrspielertest alle bestanden. `tief.mjs 25 saturn` 3D und Taktik ohne Fehler, 60 Bilder/s. Handy quer: alle Knöpfe im Bild.
+
 **Offen:**
-- Abschusszeit nur mit Lasern (Startschiff S1, ein L1-Laser, Bot ohne Raketen) liegt bei ≈ 13 s und damit über dem Ziel ≤ 8 s aus 15. Ursache ist der unveränderte Dauerschaden (gleicher Schaden je Sekunde wie Taktik, Treffer 80–90 %); eine Änderung wäre eine Balance-Entscheidung, nicht Teil des Flugmodells.
+- Draw Calls im 3D-Flug ≈ 200–230 gegenüber ≈ 55–65 in der Taktik bei gleicher Szene: Die Verfolger- und Cockpitkamera sieht bis zum Horizont (Brockenfelder, alle Ansichten bis 5,2 km). Eine engere Fernausblendung kleiner Teile brachte headless keinen messbaren Gewinn. Abnahme bei 120 Hz in nativer Retina-Auflösung am M5 steht aus (Toni).
+- Zeigerfang und Tastatursperre sind headless nur mit Attrappen geprüft; echtes Verhalten in Chrome, Safari und Edge (Windows) prüft Toni.
+- `tief.mjs` erzielt in SA-5 bis SA-8 in 25 s weiterhin keine Abschüsse (alter Bot, beide Ansichten gleich); kein Flugmodell-Befund.
 - Gefühlsabnahmen 1–3 durch Toni am M5 (Maus, Waffen, Controller) im Fluglabor; erst danach Merge-Entscheidung.
 - Liegt das Schiff beim Start innerhalb der Stations-Hüllquader, schiebt die Stationsfreihaltung die Kamera bei steilem Nicken über das Schiff (Schiff kurz nicht im Bild); betrifft nur den Startpunkt an der Station.
 - Cockpit-Ebene wird auf Qualität NIEDRIG nicht gezeichnet (bestand schon vorher, kein Composer).
