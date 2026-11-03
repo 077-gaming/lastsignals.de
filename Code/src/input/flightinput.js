@@ -121,6 +121,15 @@ export class FlightInput {
     this.aim[0] /= l; this.aim[1] /= l; this.aim[2] /= l;
     this.clampAim();
   }
+  /** Zielrichtung um höchstens ang (rad) zur Richtung dir drehen (Zielhilfe-Mitnahme am Controller) */
+  turnToward(dir, ang) {
+    const a = this.aim, c = vAngle(a, dir);
+    if (c < 1e-6 || ang <= 0) return;
+    const k = Math.min(1, ang / c);
+    a[0] += (dir[0] - a[0]) * k; a[1] += (dir[1] - a[1]) * k; a[2] += (dir[2] - a[2]) * k;
+    const l = Math.hypot(a[0], a[1], a[2]) || 1; a[0] /= l; a[1] /= l; a[2] /= l;
+    this.clampAim();
+  }
   clampAim() {
     const w = this.world;
     if (!w || !w.fl) return;

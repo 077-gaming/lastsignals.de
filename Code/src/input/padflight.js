@@ -11,6 +11,17 @@
 // dann übernimmt die Menü-Navigation (padnav.js).
 import { pad, BTN, padSettings } from './gamepad.js';
 import { topModal, synth } from './padnav.js';
+import { EDGE } from '../flight/core.js';
+import { BOLT_SPEED } from '../flight/params.js';
+import { leadTime, assist } from '../flight/aim.js';
+import { flightSettings } from './flightsettings.js';
+
+// 3D-Flug (Planung/FLUGMODELL.md 5.3): rechter Stick bewegt die Zielrichtung im Lenkkegel (wie die Maus), Schiff folgt
+const AIM_RATE = 160;      // °/s Zielrichtung bei vollem Ausschlag (Empfindlichkeit 1)
+const HOLD = 0.6;          // s: X halten = Kopplung, MENU halten = KAMPF/REISE, L3 halten = Landemodus
+const HOLD_B = 0.35;       // s: B halten = Raumbremse
+const HOLD_R3 = 0.3;       // s: R3 halten = umsehen
+const D = Math.PI / 180;
 
 const HOLD_Y = 0.55;       // s: Y halten = Autopilot zur Station
 const CHORD_RB = 0.45;     // s: RB länger gehalten ohne A = kein Zielwechsel beim Loslassen
@@ -20,6 +31,11 @@ export class PadFlight {
     this.input = input; this.hud = hud; this.bus = bus;
     this.state = { active: false, lx: 0, ly: 0, lt: 0, rt: 0, sens: 1 };
     input.pad = this.state;
+    // Zustand für den Steuerrahmen des 3D-Flugs (input/flightinput.js liest ihn je Bild)
+    this.fl = { active: false, tx: 0, ty: 0, tz: 0, rr: 0, fire: false, boost: false, brake: false, precise: false, lock: false, edge: 0, rateMode: false, rp: 0, ry: 0, aimInput: false };
+    input.fi.pad = this.fl;
+    this._boost = false; this._xHold = false; this._mHold = false; this._l3Hold = false; this._r3Look = false;
+    this._pip = null; this._pipT = 0;
     this._modalT = 0; this._modal = null;
     this._yHome = false; this._rbChord = false; this._rbLast = 0;
     this._look = false;
@@ -44,6 +60,8 @@ export class PadFlight {
       }),
       bus.on('rocket', (e) => { if (e && e.from === 'player') pad.rumble(0.12, 0.45, 90); }),
       bus.on('playerDead', () => pad.rumble(1, 1, 600)),
+      // eigener Bolzentreffer: kurzes leichtes Rumpeln (Rückmeldung beim Handzielen)
+      bus.on('boltHit', (e) => { if (e && e.player && this.fl.active) pad.rumble(e.kill ? 0.5 : 0.05, e.kill ? 0.6 : 0.22, e.kill ? 160 : 40); }),
     ];
   }
 
@@ -59,6 +77,8 @@ export class PadFlight {
   frame(p, dt) {
     const st = this.state;
     if (!this.owns(dt)) { this._release(); return false; }
+    if (this.input.flight3d) return this.frame3d(p, dt);
+    this.fl.active = false;
     const inp = this.input, r = inp.renderer, set = padSettings();
     st.active = p.mode === 'pad';
     st.lx = p.lx; st.ly = p.ly; st.lt = p.lt; st.rt = p.rt; st.sens = set.sens;
@@ -117,9 +137,112 @@ export class PadFlight {
     return true;
   }
 
+  /** Controller im 3D-Flug (Verfolger, Cockpit): Belegung Planung/FLUGMODELL.md 5.3 */
+  frame3d(p, dt) {
+    const st = this.state, F = this.fl, inp = this.input, fi = inp.fi, w = inp.world, r = inp.renderer, set = padSettings(), fs = flightSettings();
+    st.active = p.mode === 'pad'; st.lx = st.ly = st.lt = st.rt = 0;
+    F.active = st.active;
+    if (!F.active) { this._release(); return true; }
+    const both = p.isDown(BTN.LB) && p.isDown(BTN.RB);
+    // Linker Stick: Schub vor/zurück, seitlich; LB + RB zusammen: ↕ hoch/runter (Schwebemodus)
+    F.tx = p.lx;
+    F.tz = both ? 0 : -p.ly;
+    F.ty = both ? -p.ly : 0;
+    F.rr = both ? 0 : (p.isDown(BTN.LB) ? 1 : 0) - (p.isDown(BTN.RB) ? 1 : 0);
+    // L3: Boost (wie Sprinten, bleibt an, bis der Schub endet, der Vorrat leer ist oder L3 erneut), halten: Landemodus
+    if (p.pressed(BTN.L3)) this._l3Hold = false;
+    if (p.isDown(BTN.L3) && !this._l3Hold && p.heldFor(BTN.L3) >= HOLD) { this._l3Hold = true; F.edge |= EDGE.LAND; pad.rumble(0, 0.3, 60); }
+    if (p.released(BTN.L3) && !this._l3Hold) this._boost = !this._boost;
+    if (this._boost && (F.tz < 0.1 || w.fl.boostLock)) this._boost = false;
+    F.boost = this._boost;
+    // Feuern, Präzision, Raketen-Aufschaltung
+    F.fire = p.rt > 0.15;
+    F.precise = p.lt > 0.3;
+    F.lock = F.precise;
+    const rig = r && r.rig;
+    if (rig) rig.precise = (rig.precise || 0) + ((F.precise ? 1 : 0) - (rig.precise || 0)) * (1 - Math.exp(-dt * 10));
+    // Rechter Stick: Zielen (Zielrichtung im Kegel) oder Drehraten; R3 halten: umsehen
+    const rx = p.rx, ry = set.invertY ? -p.ry : p.ry;
+    const mag = Math.hypot(rx, ry);
+    if (p.pressed(BTN.R3)) this._r3Look = false;
+    if (p.isDown(BTN.R3) && p.heldFor(BTN.R3) >= HOLD_R3) {
+      this._r3Look = true;
+      if (rig) { rig.looking = true; rig.lookBy(rx * 900 * set.sens * dt, ry * 650 * set.sens * dt); }
+      F.aimInput = false; F.rp = F.ry = 0;
+    } else {
+      if (this._r3Look && rig) { rig.looking = false; }
+      if (p.released(BTN.R3) && !this._r3Look) inp.toggleCamera();
+      if (p.released(BTN.R3)) this._r3Look = false;
+      F.aimInput = mag > 0.02;
+      F.rateMode = fs.padMode === 'rate';
+      const sens = set.sens * (F.precise ? 0.6 : 1);
+      // Zielhilfe: Zielbremse und Mitnahme der Vorhaltemarke, nur mit Stickeingabe (FLUGMODELL.md 5.3)
+      const A = this._assist(w, fi, dt, mag, F.precise);
+      if (F.rateMode) { F.rp = -ry * sens * A.brake; F.ry = -rx * sens * A.brake; }
+      else if (mag > 0.0) {
+        const rate = AIM_RATE * sens * A.brake;      // °/s
+        const px = (rx * rate * dt) / (fi.set.sens), py = (ry * rate * dt) / (fi.set.sens);
+        fi.turnAim(px, py * (fi.set.invertY ? -1 : 1));
+        if (A.follow > 0 && this._pipDir) fi.turnToward(this._pipDir, A.follow * dt);
+      }
+    }
+    // Tasten
+    const bar = this.hud && this.hud.bar;
+    if (p.pressed(BTN.A)) fi.targetUnderAim();
+    if (p.pressed(BTN.B)) this._bT = 0;
+    F.brake = p.isDown(BTN.B) && p.heldFor(BTN.B) >= HOLD_B;
+    if (p.released(BTN.B) && p.held[BTN.B] < HOLD_B) inp.cancel();
+    if (p.pressed(BTN.X)) this._xHold = false;
+    if (p.isDown(BTN.X) && !this._xHold && p.heldFor(BTN.X) >= HOLD) { this._xHold = true; F.edge |= EDGE.COUPLE; pad.rumble(0.2, 0.2, 80); }
+    if (p.released(BTN.X) && !this._xHold) {
+      // LT gehalten und aufgeschaltet: auf das aufgeschaltete Ziel, sonst auf das aktuelle
+      if (fi.locked2 && fi.lockId) w.setTarget(fi.lockId);
+      inp.rocket();
+    }
+    if (p.pressed(BTN.Y)) this._yHome = false;
+    if (p.isDown(BTN.Y) && !this._yHome && p.heldFor(BTN.Y) >= HOLD_Y) { this._yHome = true; inp.home(); pad.rumble(0, 0.3, 60); }
+    if (p.released(BTN.Y) && !this._yHome) inp.context();
+    if (p.pressed(BTN.MENU)) this._mHold = false;
+    if (p.isDown(BTN.MENU) && !this._mHold && p.heldFor(BTN.MENU) >= HOLD) { this._mHold = true; F.edge |= EDGE.MODE; pad.rumble(0, 0.3, 60); }
+    if (p.released(BTN.MENU) && !this._mHold) synth('Escape');
+    if (p.pressed(BTN.VIEW) && this.hud && this.hud.wins) this.hud.wins.toggleHidden('map');
+    if (bar) {
+      // Schnellleiste ohne Tastenkombination: ◂▸ Platz wählen, ▴ auslösen, ▾ nächste Leiste
+      if (p.pressed(BTN.LEFT)) bar.padMove(-1);
+      if (p.pressed(BTN.RIGHT)) bar.padMove(1);
+      if (p.pressed(BTN.UP)) bar.padFire();
+      if (p.pressed(BTN.DOWN)) bar.setBar(bar.cur + 1);
+    }
+    return true;
+  }
+
+  /** Zielhilfe je Bild: Winkel Fadenkreuz → Vorhaltemarke, deren Winkelgeschwindigkeit → { brake, follow } */
+  _assist(w, fi, dt, stick, precise) {
+    const p = w.player, id = p.targetId != null ? p.targetId : w.aimInfo.under;
+    const t = id != null ? w.entities.get(id) : null;
+    const lvl = flightSettings().assist;
+    if (!t || t.alive === false || !lvl) { this._pipDir = null; this._hadPip = false; return assist(0, false, 1, 0, 0, 0, 1); }
+    const rx = t.x - p.x, ry = (t.y || 0) - p.y, rz = t.z - p.z;
+    const lt = leadTime(rx, ry, rz, t.vx || 0, t.vy || 0, t.vz || 0, BOLT_SPEED);
+    if (lt <= 0) { this._pipDir = null; this._hadPip = false; return assist(0, false, 1, 0, 0, 0, 1); }
+    let dx = rx + (t.vx || 0) * lt, dy = ry + (t.vy || 0) * lt, dz = rz + (t.vz || 0) * lt;
+    const d = Math.hypot(dx, dy, dz) || 1; dx /= d; dy /= d; dz /= d;
+    // Winkelgeschwindigkeit der Marke aus dem letzten Bild
+    const last = this._last || (this._last = new Float64Array(3));
+    const had = this._hadPip;
+    const pipRate = had ? Math.acos(Math.min(1, last[0] * dx + last[1] * dy + last[2] * dz)) / Math.max(1e-3, dt) : 0;
+    last[0] = dx; last[1] = dy; last[2] = dz; this._hadPip = true;
+    this._pipDir = last;
+    const a = fi.aim, err = Math.acos(Math.min(1, a[0] * dx + a[1] * dy + a[2] * dz));
+    const pvp = t.kind === 'player';
+    return assist(lvl, pvp, err, pipRate, stick, Math.atan((t.radius || 20) / d), w.flP.rate * (precise ? 0.6 : 1));
+  }
+
   _release() {
     const st = this.state;
     st.active = false; st.lx = st.ly = st.lt = st.rt = 0;
+    const F = this.fl;
+    if (F) { F.active = false; F.tx = F.ty = F.tz = F.rr = 0; F.fire = F.boost = F.brake = F.precise = F.lock = false; F.aimInput = false; this._boost = false; }
     if (this._look && this.input.renderer && this.input.renderer.rig) { this.input.renderer.rig.looking = false; this._look = false; }
   }
 

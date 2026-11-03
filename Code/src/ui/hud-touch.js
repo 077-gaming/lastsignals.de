@@ -9,7 +9,14 @@ export const isTouch = () => typeof window !== 'undefined' && (matchMedia('(poin
 const KEYS = [
   ['ControlLeft', 'LASER', 'big'], ['Space', 'RAKETE', 'mid'], ['Tab', 'ZIEL', 'mid'],
   ['KeyH', 'HEIM', ''], ['KeyJ', 'SPRUNG', ''], ['KeyE', 'DOCK', ''], ['KeyB', 'SHOP', ''], ['KeyV', 'ANSICHT', ''], ['Escape', 'MENÜ', ''],
+  ['Boost', 'BOOST', 'f3'], ['Throttle', 'SCHUB', 'f3'],
 ];
+// 3D-Flug „Flug vereinfacht“ (Planung/FLUGMODELL.md 5.4): Joystick zielt, Schub als Hebel, LASER schaltet den
+// Feuerleitrechner (Autofeuer, Treffer gewürfelt × 0,8); die Knöpfe rufen dieselben Befehle wie Tastatur und Controller
+const CMD3 = {
+  ControlLeft: (i) => i.attack(), Space: (i) => i.rocket(), Tab: (i) => i.cycleTarget(1), KeyH: (i) => i.home(),
+  KeyJ: (i) => i.world.tryJump(), KeyE: (i) => i.context(), KeyV: (i) => i.toggleCamera(),
+};
 
 export class HudTouch {
   constructor(root, world = null, renderer = null, input = null) {
@@ -25,6 +32,10 @@ export class HudTouch {
       if (!b) return;
       e.preventDefault(); e.stopPropagation();
       const code = b.dataset.code;
+      const inp = this.input;
+      if (code === 'Boost') { this.boost = true; b.classList.add('is-hit'); return; }
+      if (code === 'Throttle') { this.throttle = this.throttle > 0 ? 0 : 0.7; b.classList.toggle('is-on', this.throttle > 0); return; }
+      if (inp && inp.flight3d && CMD3[code]) { CMD3[code](inp); b.classList.add('is-hit'); setTimeout(() => b.classList.remove('is-hit'), 140); if (navigator.vibrate) navigator.vibrate(8); return; }
       const ev = { code, key: code === 'Space' ? ' ' : code, bubbles: true, cancelable: true };
       window.dispatchEvent(new KeyboardEvent('keydown', ev));
       window.dispatchEvent(new KeyboardEvent('keyup', ev));
@@ -32,6 +43,10 @@ export class HudTouch {
       if (navigator.vibrate) navigator.vibrate(8);
     };
     el.addEventListener('pointerdown', press);
+    const up = (e) => { const b = e.target.closest && e.target.closest('[data-code="Boost"]'); if (b || this.boost) { this.boost = false; el.querySelector('[data-code="Boost"]')?.classList.remove('is-hit'); } };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('pointerleave', up);
+    this.boost = false; this.throttle = 0.7;
+    if (input && input.fi) input.fi.touch = this.t3 = { active: false, ax: 0, ay: 0, fire: false, boost: false, throttle: 0 };
     document.body.appendChild(el); // über der Spielfläche (im HUD-Container lag sie unter der Leinwand)
 
     // Joystick links unten: Daumen ziehen = in diese Richtung fliegen (wie Maus halten), loslassen = Kurs halten
@@ -66,8 +81,15 @@ export class HudTouch {
     const w = this.world, r = this.renderer, inp = this.input;
     if (!w || !r || !r.toScreen) return;
     const p = w.player;
+    const f3 = !!(inp && inp.flight3d);
+    if (this.el) this.el.classList.toggle('is-3d', f3);
+    if (this.t3) {
+      // 3D-Flug: Joystick zielt (wie der rechte Stick), Schub-Hebel, Boost gehalten
+      this.t3.active = f3; this.t3.ax = f3 ? this.jx : 0; this.t3.ay = f3 ? this.jy : 0;
+      this.t3.boost = f3 && this.boost; this.t3.throttle = f3 ? this.throttle : 0;
+    }
     // Joystick → Lenkpunkt relativ zum eigenen Schiff auf dem Bildschirm
-    if (inp && (this.jx || this.jy)) {
+    if (!f3 && inp && (this.jx || this.jy)) {
       const s = r.toScreen(p.x, p.z, this._s);
       inp.mouseX = s.x + this.jx * 320; inp.mouseY = s.y + this.jy * 320;
       inp.mouseOnCanvas = true; inp.mouseDown = Math.hypot(this.jx, this.jy) > 0.2;
@@ -75,7 +97,7 @@ export class HudTouch {
     const t = p.targetId ? w.entities.get(p.targetId) : null;
     if (!t || !t.alive || w.docked) { this.tg.className = 'ht-tgt'; return; }
     const s = r.toScreen(t.x, t.z, this._s, r.ry ? r.ry(t.y) : 0), W = innerWidth, H = innerHeight, m = 60;
-    const d = Math.hypot(t.x - p.x, t.z - p.z);
+    const d = Math.hypot(t.x - p.x, t.z - p.z, f3 ? (t.y || 0) - p.y : 0);
     this.tg.lastChild.textContent = (d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m') + (p.attacking ? ' · FEUER' : '');
     if (s.visible && s.x > m && s.x < W - m && s.y > m && s.y < H - m) {
       this.tg.className = 'ht-tgt on' + (p.attacking ? ' fire' : '');

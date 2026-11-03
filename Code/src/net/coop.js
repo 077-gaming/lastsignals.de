@@ -7,6 +7,7 @@
 // Grenzen: Ereignisse, Kisten und Erz sind je Spieler getrennt; Gegner auf der Seite des Gastgebers zielen nur auf ihn.
 import { VARIANTS } from '../core/data.js';
 import { sb } from './supa.js'; // gemeinsamer Client (öffentlicher Schlüssel, eine Auth-Instanz für Konto, Koop und Mehrspieler)
+import { packQuat, unpackQuat } from '../flight/net.js';
 
 export { sb }; // Mehrspieler (mp.js) nutzt denselben Client und damit dieselbe Websocket-Verbindung
 
@@ -54,9 +55,20 @@ export class Coop {
     if (this.acc < RATE) return;
     this.acc = 0;
     const me = { x: Math.round(p.x), z: Math.round(p.z), r: +p.rot.toFixed(2), alive: p.alive, ship: w.profile.ship, fac: w.profile.faction, cs: w.profile.callsign, sec: w.sector.id, lo: w.profile.loadout };
+    // 3D-Flug: Höhe und Lage dazu (alte Gegenstellen lesen die Felder einfach nicht)
+    me.y = Math.round(p.y || 0); if (w.fl) me.q = packQuat(w.fl.q); me.v = w.flight3d ? 'f' : 't';
     if (this.guest) { this._send('g', me); return; }
     const E = [];
-    for (const e of w.enemies) E.push([e.id, Math.round(e.x), Math.round(e.z), +(e.rot || 0).toFixed(2), Math.round(e.hp), Math.round(e.shield), e.alive ? 1 : 0, e.rank === 'normal' ? 0 : e.rank === 'elite' ? 1 : 2]);
+    // Sichtbarkeitsfilter (FLUGMODELL.md 9): je Paket nur Gegner im 2,5-km-Umkreis des Gasts, Wechsel zwischen
+    // lebend und zerstört immer, alle übrigen einmal je Sekunde (Supabase-Kontingent)
+    const g = this.ally, full = (this._snapN = (this._snapN || 0) + 1) % 8 === 0;
+    for (const e of w.enemies) {
+      const near = !g || Math.hypot(e.x - g.x, e.z - g.z, (e.y || 0) - (g.y || 0)) < 2500;
+      const flip = e._coopAlive !== e.alive;
+      if (!near && !flip && !full) continue;
+      e._coopAlive = e.alive;
+      E.push([e.id, Math.round(e.x), Math.round(e.z), +(e.rot || 0).toFixed(2), Math.round(e.hp), Math.round(e.shield), e.alive ? 1 : 0, e.rank === 'normal' ? 0 : e.rank === 'elite' ? 1 : 2, Math.round(e.y || 0), +(e.pitch || 0).toFixed(2)]);
+    }
     me.h = 1;
     this._send('snap', { h: me, e: E });
   }
@@ -73,6 +85,7 @@ export class Coop {
     }
     const a = this.ally;
     a.px = a.x; a.pz = a.z; a.prot = a.rot; a.x = g.x; a.z = g.z; a.rot = g.r; a.alive = g.alive !== false;
+    allyPose(a, g);
   }
   _onHit(h) {
     const w = this.world, e = w.entities.get(h.id);
@@ -95,6 +108,7 @@ export class Coop {
     // Schiff des Gastgebers
     if (!this.ally) { this.ally = { id: 'ally', kind: 'player', type: 'ally', name: h.cs, faction: h.fac, ship: h.ship, loadout: h.lo, radius: 24, alive: true, x: h.x, z: h.z, px: h.x, pz: h.z, rot: h.r, prot: h.r, hp: 1, hpMax: 1, shield: 0, shieldMax: 0 }; w.entities.set('ally', this.ally); this._msg(`Mit ${h.cs} im Sektor.`); }
     const a = this.ally; a.px = a.x; a.pz = a.z; a.prot = a.rot; a.x = h.x; a.z = h.z; a.rot = h.r; a.alive = h.alive !== false;
+    allyPose(a, h);
     // Gegner auf den Stand des Gastgebers
     const byId = this._byId || (this._byId = new Map(w.enemies.map((e) => [e.id, e])));
     this.applying = true;
@@ -106,8 +120,9 @@ export class Coop {
         if (!e.alive) w._revive(e);
         const rank = row[7] === 2 ? 'alpha' : row[7] === 1 ? 'elite' : 'normal';
         if (e.rank !== rank) { e.rank = rank; e.lootMult = rank === 'normal' ? 1 : VARIANTS[rank].mult; }
-        e.px = e.x; e.pz = e.z; e.prot = e.rot;
+        e.px = e.x; e.pz = e.z; e.prot = e.rot; e.py = e.y;
         e.x = row[1]; e.z = row[2]; e.rot = row[3];
+        if (typeof row[8] === 'number') { e.y = row[8]; e.pitch = typeof row[9] === 'number' ? row[9] : 0; }
         e.hp = row[4]; e.shield = row[5];
         e.respawnAt = Infinity;
       } else if (e.alive) {
@@ -134,4 +149,11 @@ export class Coop {
     if (this.world.entities.get('ally')) { this.world.entities.delete('ally'); this.bus.emit('despawn', { id: 'ally' }); }
     this.ally = null;
   }
+}
+
+/** Höhe und Lage des Mitspielers (3D-Flug); alte Pakete: flach, Lage aus rot */
+function allyPose(a, m) {
+  a.py = a.y || 0; a.y = typeof m.y === 'number' ? m.y : 0;
+  a.view = m.v === 't' ? 'tactical' : 'flight';
+  if (Array.isArray(m.q) && m.q.length === 4) { a.q = a.q || new Float64Array(4); unpackQuat(m.q[0], m.q[1], m.q[2], m.q[3], a.q); a.remote = true; }
 }

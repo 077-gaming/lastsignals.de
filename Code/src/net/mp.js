@@ -7,6 +7,8 @@
 import { Coop, newCode } from './coop.js';
 import { sb } from './supa.js'; // ein gemeinsamer Supabase-Client (Konto, Koop, Mehrspieler)
 import * as M from './mp-core.js';
+import { FF } from '../flight/net.js';
+import { CLASS as FLIGHT_CLASS } from '../flight/params.js';
 import { FACTIONS, SHIPS, LASERS, GENERATORS, sectorsFor } from '../core/data.js';
 import { LASER_INTERVAL, PLAYER_RADIUS } from '../sim/config.js';
 
@@ -33,6 +35,7 @@ function cleanMeta(m) {
     cp: typeof m.cp === 'string' && /^\d{4}$/.test(m.cp) ? m.cp : '',
     hm: Math.round(n(m.hm, 1, 1e7, 1000)), sm: Math.round(n(m.sm, 0, 1e7, 0)),
     lo: { lasers: lasers.length ? lasers : ['pulse'], gens },
+    fm: Math.round(n(m.fm, 0, 99, 0)), // Flugmodell-Version (PvP nur zwischen gleichen Versionen)
   };
 }
 const metaSig = (m) => `${m.fac}|${m.ship}|${m.lo.lasers.join(',')}|${m.lo.gens.join(',')}`;
@@ -196,7 +199,11 @@ export class Multiplayer {
     const sid = ent && ent.id && ent.id.startsWith('rp:') ? ent.id.slice(3) : null;
     if (!sid || !ent.pvpOk || !this.pvp) return;
     this.hitOn.set(sid, nowS());
-    this._send(this.secCh, 'hit', { i: this.sid, to: sid, d: Math.round(dmg), s: shieldOnly ? 1 : 0, c: crit ? 1 : 0, r: rocket ? 1 : 0 });
+    const msg = { i: this.sid, to: sid, d: Math.round(dmg), s: shieldOnly ? 1 : 0, c: crit ? 1 : 0, r: rocket ? 1 : 0 };
+    // 3D-Flug: Schütze entscheidet (Bolzentreffer auf das Abbild), Opfer prüft Trefferpunkt und Kegel
+    const bh = this.world._boltHit;
+    if (bh) msg.hp = [Math.round(bh.x), Math.round(bh.y), Math.round(bh.z)];
+    this._send(this.secCh, 'hit', msg);
   }
 
   // ───────────────────────── jedes Bild ─────────────────────────
@@ -228,17 +235,39 @@ export class Multiplayer {
     if (tid) tgt = tid.startsWith('rp:') ? tid.slice(3) : String(tid);
     let flags = 0;
     if (p.alive) flags |= M.FLAG.alive;
-    if (p.alive && p.attacking && w._wasFiring) flags |= M.FLAG.fire;
+    if (p.alive && ((p.attacking && w._wasFiring) || (w.aimInfo && w.aimInfo.fire))) flags |= M.FLAG.fire;
     if (this.pvp) flags |= M.FLAG.pvp;
     if (me.zone) flags |= M.FLAG.zone;
     if (w.docked) flags |= M.FLAG.docked;
+    // 3D-Flug: Höhe, Lage (smallest-three), Tempo und Flugflags hinten angehängt (alte Clients lesen Stelle 0–8)
+    const fl = w.fl;
+    let ff = 0;
+    if (fl) {
+      if (fl.boostOn) ff |= FF.boost;
+      if (fl.mode === 1) ff |= FF.reise;
+      if (!fl.coupled) ff |= FF.decoupled;
+      if (fl.landing) ff |= FF.landing;
+      if (fl.gear > 0.5) ff |= FF.gear;
+      if (!w.flight3d) ff |= FF.tactical;
+      const as = (w.ctl && w.ctl[14]) | 0;
+      if (as & 1) ff |= FF.assist0; if (as & 2) ff |= FF.assist1;
+    }
+    this._myHist(t, p);
     const pk = M.packState({
       x: p.x, z: p.z, rot: p.rot, crs: typeof p.course === 'number' ? p.course : p.rot, spd: Math.hypot(p.vx || 0, p.vz || 0),
       hull: p.hpMax ? p.hp / p.hpMax : 1, shield: p.shieldMax ? p.shield / p.shieldMax : 0, flags, tgt,
+      q: fl ? fl.q : null, y: p.y || 0, vx: p.vx || 0, vy: p.vy || 0, vz: p.vz || 0, ff,
     });
     if (!M.stateChanged(pk, this._lastPack) && t - this._lastSentAt < M.KEEPALIVE) return;
     this._lastPack = pk; this._lastSentAt = t;
     this._send(this.secCh, 's', { i: this.sid, t: Math.round(performance.now() / 10), d: pk });
+  }
+
+  /** eigener Verlauf (PvP: Opfer prüft Trefferpunkte gegen die letzten 500 ms) */
+  _myHist(t, p) {
+    const H = this._hist || (this._hist = []);
+    H.push({ t, x: p.x, y: p.y || 0, z: p.z });
+    while (H.length && t - H[0].t > 0.8) H.shift();
   }
 
   _me(t) {
@@ -272,6 +301,7 @@ export class Multiplayer {
         id: 'rp:' + R.sid, kind: 'player', type: 'remote', remote: true, sid: R.sid, name: R.meta.cs, faction: R.meta.fac, ship: R.meta.ship,
         loadout: { lasers: R.meta.lo.lasers.slice(), gens: R.meta.lo.gens.slice() }, level: R.meta.lv, radius: PLAYER_RADIUS,
         x: s.x, z: s.z, px: s.x, pz: s.z, rot: s.rot, prot: s.rot, vx: 0, vz: 0, speed: 0, turnRate: 0,
+        y: s.y || 0, py: s.y || 0, vy: 0, q: new Float64Array(4), pq: null, view: 'flight',
         alive: true, hp: R.meta.hm, hpMax: R.meta.hm, shield: 0, shieldMax: R.meta.sm, targetId: null, attacking: false, pvpOk: false, mapColor: '#9fe8ff',
       };
       R.sig = metaSig(R.meta);
@@ -281,6 +311,10 @@ export class Multiplayer {
     e.turnRate = dt > 0 ? e.turnRate + ((dr / dt) - e.turnRate) * Math.min(1, dt * 8) : e.turnRate;
     e.x = e.px = s.x; e.z = e.pz = s.z; e.rot = e.prot = s.rot;
     e.vx = s.vx; e.vz = s.vz; e.speed = s.spd;
+    // Höhe und Lage (3D-Flug); alte Pakete: flach, Lage nur aus rot
+    e.y = e.py = s.y || 0; e.vy = s.vy || 0;
+    if (s.q) { e.q[0] = s.q[0]; e.q[1] = s.q[1]; e.q[2] = s.q[2]; e.q[3] = s.q[3]; }
+    e.view = R.st && (R.st.ff & FF.tactical) ? 'tactical' : 'flight';
     const st = R.st;
     const wasAlive = e.alive;
     e.alive = !!(st.flags & M.FLAG.alive);
@@ -292,7 +326,7 @@ export class Multiplayer {
     const o = R.o || (R.o = { pvp: false, fac: '', zone: false, coop: '' });
     o.pvp = !!(st.flags & M.FLAG.pvp); o.fac = R.meta.fac; o.zone = !!(st.flags & M.FLAG.zone); o.coop = R.meta.cp;
     const was = e.pvpOk;
-    e.pvpOk = e.alive && M.canAttack(me, o);
+    e.pvpOk = e.alive && M.canAttack(me, o) && (R.meta.fm || 0) === M.FM; // PvP nur zwischen gleichem Flugmodell
     if (was && !e.pvpOk && w.player.targetId === e.id) w.player.attacking = false;
     e.mapColor = e.pvpOk ? '#ff4a3a' : R.meta.fac === w.profile.faction ? '#f2f2f2' : '#9fe8ff';
     // Ziel und Feuern (nur Darstellung): Ziel bin ich, ein anderer fremder Spieler oder ein Gegner in der Nähe
@@ -301,7 +335,7 @@ export class Multiplayer {
     if (tg) {
       if (tg === this.sid) to = 'player';
       else if (M.validSid(tg)) { const O = this.remotes.get(tg); if (O && O.ent && w.entities.get(O.ent.id) === O.ent) to = O.ent.id; }
-      else { const en = w.entities.get(tg); if (en && en.kind === 'enemy' && en.alive && Math.hypot(en.x - e.x, en.z - e.z) < VIS_RANGE) to = tg; }
+      else { const en = w.entities.get(tg); if (en && en.kind === 'enemy' && en.alive && Math.hypot(en.x - e.x, en.z - e.z, (en.y || 0) - e.y) < VIS_RANGE) to = tg; }
     }
     e.targetId = to;
     const firing = e.alive && !!(st.flags & M.FLAG.fire) && to;
@@ -414,6 +448,7 @@ export class Multiplayer {
       cs: pr.callsign, fac: pr.faction, ship: pr.ship, lv: pr.level || 1, cp: w.coop ? w.coop.code : '',
       hm: Math.round(p.hpMax || 1), sm: Math.round(p.shieldMax || 0),
       lo: { lasers: (pr.loadout.lasers || []).slice(0, 10), gens: (pr.loadout.gens || []).slice(0, 12) },
+      fm: M.FM,
     };
   }
   _track(force) {
@@ -580,7 +615,13 @@ export class Multiplayer {
     const t = nowS();
     // Opfer entscheidet: beide PvP an, andere Fraktion, beide außerhalb geschützter Bereiche, Entfernung plausibel
     if (!R.ent.pvpOk || !this.pvp) return;
-    if (Math.hypot(R.ent.x - p.x, R.ent.z - p.z) > M.PVP_HIT_RANGE) return;
+    if (Math.hypot(R.ent.x - p.x, R.ent.z - p.z, (R.ent.y || 0) - (p.y || 0)) > M.PVP_HIT_RANGE) return;
+    // 3D: Trefferpunkt gegen den eigenen Verlauf (500 ms) und Kegel vom Bug des Schützen (FLUGMODELL.md 9)
+    if (m.hp) {
+      const q = R.ent.q, nose = q ? [-(2 * (q[0] * q[2] + q[3] * q[1])), -(2 * (q[1] * q[2] - q[3] * q[0])), -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))] : null;
+      const cap = Math.max(20, (FLIGHT_CLASS[w.profile.ship] || FLIGHT_CLASS.s1).len / 2);
+      if (!M.pvpPlausible(m, this._hist || [], t, R.ent, nose, cap)) return;
+    }
     if (R.hits.take(t) > 0) return;
     const d = M.clampHit(m.d);
     if (!d) return;

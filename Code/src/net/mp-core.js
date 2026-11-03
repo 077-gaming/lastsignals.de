@@ -1,4 +1,6 @@
 // Mehrspieler – reine Logik ohne Netz und ohne DOM (im Selbsttest unter Node prüfbar).
+import { packFlight, unpackFlight, hermite, FM } from '../flight/net.js';
+export { FM };
 // Kanalnamen, Zustandspaket (gerundet, kompakt), Interpolationspuffer, Chat-Reinigung, Wortfilter,
 // Ratenbegrenzung, PvP-Regeln und Ehre. Format und Regeln: Planung/MEHRSPIELER.md.
 
@@ -58,24 +60,31 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
  * ziel: Sitzungskennung eines Spielers, Gegner-ID oder ''.
  */
 export function packState(s) {
-  return [
+  const a = [
     Math.round(num(s.x)), Math.round(num(s.z)),
     Math.round(wrap(num(s.rot)) * 100), Math.round(wrap(num(s.crs, s.rot)) * 100),
     Math.round(clamp(num(s.spd), 0, 5000)),
     Math.round(clamp(num(s.hull, 1), 0, 1) * 100), Math.round(clamp(num(s.shield), 0, 1) * 100),
     num(s.flags) | 0, typeof s.tgt === 'string' ? s.tgt.slice(0, 24) : '',
   ];
+  // 3D-Flug (Planung/FLUGMODELL.md 9): hinten angehängt, alte Clients lesen weiter Stelle 0–8
+  if (s.q) for (const v of packFlight(s)) a.push(v);
+  return a;
 }
 /** Feld → Zustand (prüft und begrenzt alles, was von außen kommt). → null bei Unsinn. */
 export function unpackState(a) {
   if (!Array.isArray(a) || a.length < 8) return null;
   const x = a[0], z = a[1];
   if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 50000 || Math.abs(z) > 50000) return null;
-  return {
+  const s = {
     x, z, rot: wrap(num(a[2]) / 100), crs: wrap(num(a[3]) / 100), spd: clamp(num(a[4]), 0, 5000),
     hull: clamp(num(a[5], 100), 0, 100) / 100, shield: clamp(num(a[6]), 0, 100) / 100,
     flags: num(a[7]) | 0, tgt: typeof a[8] === 'string' ? a[8].slice(0, 24) : '',
+    y: 0, q: null, vx: 0, vy: 0, vz: 0, ff: 0, fm: 0,
   };
+  // altes Paket (9 Stellen): flach, Lage aus rot (der Empfänger baut sie)
+  unpackFlight(a, s);
+  return s;
 }
 /** Hat sich ein gepackter Zustand so geändert, dass er gesendet werden muss? */
 export function stateChanged(a, b) {
@@ -105,7 +114,7 @@ export class Interp {
       if (t < b[0].t - 2) b.length = 0; // anderer Spieler hat neu gestartet (Uhr zurück): Puffer neu
       else return false;                // veraltet oder doppelt
     }
-    b.push({ t, x: s.x, z: s.z, rot: s.rot, crs: s.crs, spd: s.spd });
+    b.push({ t, x: s.x, z: s.z, rot: s.rot, crs: s.crs, spd: s.spd, y: s.y || 0, q: s.q ? s.q.slice() : null, vx: s.vx || 0, vy: s.vy || 0, vz: s.vz || 0, h3: !!s.q });
     if (b.length > BUF) b.shift();
     return true;
   }
@@ -118,6 +127,7 @@ export class Interp {
     if (b.length === 1 || rt <= b[0].t) {
       const s = rt <= b[0].t ? b[0] : b[b.length - 1];
       out.x = s.x; out.z = s.z; out.rot = s.rot; out.spd = s.spd; out.vx = 0; out.vz = 0; out.extra = 0;
+      out.y = s.y; out.vy = 0; setQ(out, s.q, s.rot);
       return out;
     }
     const L = b[b.length - 1];
@@ -128,7 +138,10 @@ export class Interp {
       let vx = (L.x - P.x) / dt, vz = (L.z - P.z) / dt;
       if (dt > 1.5) { vx = 0; vz = 0; } // Lücke (Ruhezustand): nicht hochrechnen
       const e = Math.min(rt - L.t, this.maxExtra);
+      if (L.h3 && dt <= 1.5) { vx = L.vx; vz = L.vz; } // 3D: gesendetes Tempo statt Differenz
+      const vy = L.h3 && dt <= 1.5 ? L.vy : 0;
       out.x = L.x + vx * e; out.z = L.z + vz * e; out.rot = L.rot; out.spd = L.spd; out.vx = vx; out.vz = vz; out.extra = e;
+      out.y = L.y + vy * e; out.vy = vy; setQ(out, L.q, L.rot);
       return out;
     }
     let i = b.length - 2;
@@ -136,12 +149,64 @@ export class Interp {
     const A = b[i], B = b[i + 1];
     const span = Math.max(1e-3, B.t - A.t);
     const k = clamp((rt - A.t) / span, 0, 1);
-    out.x = A.x + (B.x - A.x) * k; out.z = A.z + (B.z - A.z) * k;
+    if (A.h3 && B.h3 && span < 1.5) {
+      // 3D: Hermite aus Ort und Tempo an beiden Stützstellen (Kurven statt Ecken), Lage per Slerp
+      out.x = hermite(A.x, A.vx, B.x, B.vx, span, k); out.z = hermite(A.z, A.vz, B.z, B.vz, span, k);
+      out.y = hermite(A.y, A.vy, B.y, B.vy, span, k);
+      out.vx = A.vx + (B.vx - A.vx) * k; out.vz = A.vz + (B.vz - A.vz) * k; out.vy = A.vy + (B.vy - A.vy) * k;
+      slerpQ(out, A.q, B.q, k);
+    } else {
+      out.x = A.x + (B.x - A.x) * k; out.z = A.z + (B.z - A.z) * k;
+      out.y = A.y + (B.y - A.y) * k;
+      out.vx = (B.x - A.x) / span; out.vz = (B.z - A.z) / span; out.vy = (B.y - A.y) / span;
+      setQ(out, B.q || A.q, wrap(A.rot + wrap(B.rot - A.rot) * k));
+    }
     out.rot = wrap(A.rot + wrap(B.rot - A.rot) * k);
     out.spd = A.spd + (B.spd - A.spd) * k;
-    out.vx = (B.x - A.x) / span; out.vz = (B.z - A.z) / span; out.extra = 0;
+    out.extra = 0;
     return out;
   }
+}
+
+/** Lage in out.q schreiben: gesendete Quaternion oder (altes Paket) nur Gieren aus rot */
+function setQ(out, q, rot) {
+  const o = out.q || (out.q = [0, 0, 0, 1]);
+  if (q) { o[0] = q[0]; o[1] = q[1]; o[2] = q[2]; o[3] = q[3]; return; }
+  const h = rot * 0.5; o[0] = 0; o[1] = Math.sin(h); o[2] = 0; o[3] = Math.cos(h);
+}
+function slerpQ(out, a, b, k) {
+  if (!a || !b) { setQ(out, b || a, 0); return; }
+  const o = out.q || (out.q = [0, 0, 0, 1]);
+  let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+  let c = a[0] * bx + a[1] * by + a[2] * bz + a[3] * bw;
+  if (c < 0) { c = -c; bx = -bx; by = -by; bz = -bz; bw = -bw; }
+  let ka = 1 - k, kb = k;
+  if (c < 0.9995) { const th = Math.acos(c), s = Math.sin(th); ka = Math.sin((1 - k) * th) / s; kb = Math.sin(k * th) / s; }
+  o[0] = a[0] * ka + bx * kb; o[1] = a[1] * ka + by * kb; o[2] = a[2] * ka + bz * kb; o[3] = a[3] * ka + bw * kb;
+  const l = Math.hypot(o[0], o[1], o[2], o[3]) || 1; o[0] /= l; o[1] /= l; o[2] /= l; o[3] /= l;
+}
+
+/**
+ * PvP im 3D-Flug („Schütze entscheidet, Opfer prüft“, FLUGMODELL.md 9): Der Schütze meldet Trefferpunkt hp und
+ * Schusszeit; das Opfer prüft gegen den eigenen Verlauf der letzten 500 ms (innerhalb von 2 × Kapsel am Punkt) und
+ * den Kegel (Bug des Schützen gegen die Linie zum Opfer ≤ Waffenkegel + 15°). hist: [{ t, x, y, z }], nose: Einheitsvektor.
+ */
+export const PVP_CONE = (5 + 4 + 15) * Math.PI / 180;
+export function pvpPlausible(hit, hist, now, shooter, nose, capsule = 40) {
+  if (!hit || !Array.isArray(hit.hp) || hit.hp.length !== 3) return true; // Taktik-Schütze (Würfel): alte Regeln
+  const [hx, hy, hz] = hit.hp.map((v) => num(v));
+  let near = false;
+  for (const h of hist) {
+    if (now - h.t > 0.5) continue;
+    if (Math.hypot(h.x - hx, h.y - hy, h.z - hz) <= 2 * capsule) { near = true; break; }
+  }
+  if (!near) return false;
+  if (shooter && nose) {
+    const dx = hx - shooter.x, dy = hy - (shooter.y || 0), dz = hz - shooter.z, d = Math.hypot(dx, dy, dz) || 1;
+    const c = (dx * nose[0] + dy * nose[1] + dz * nose[2]) / d;
+    if (Math.acos(Math.max(-1, Math.min(1, c))) > PVP_CONE) return false;
+  }
+  return true;
 }
 
 // ───────────────────────── Chat ─────────────────────────

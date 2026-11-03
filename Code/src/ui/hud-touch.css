@@ -21,3 +21,8 @@ html[data-vpfit] .ht-stick { zoom: 1.45; }
 .ht-tgt em { position: absolute; left: 44px; top: -10px; font: 600 13px var(--ls-mono, monospace); color: #ff8a7a; white-space: nowrap; font-style: normal; text-shadow: 0 1px 4px #000; }
 .ht-tgt.edge b { left: -18px; top: -18px; width: 36px; height: 36px; border: 0; background: #ff4a3a; clip-path: polygon(100% 50%, 0 0, 25% 50%, 0 100%); transform: rotate(var(--a)); }
 
+
+/* 3D-Flug („Flug vereinfacht“): BOOST und SCHUB nur im Verfolger/Cockpit */
+.ht-pad .ht-f3 { display: none; }
+.ht-pad.is-3d .ht-f3 { display: block; }
+.ht-pad .ht-b.is-on { border-color: var(--fx, #d8b25a); color: #fff; }

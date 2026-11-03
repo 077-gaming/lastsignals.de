@@ -1479,6 +1479,27 @@ check('Deterministisch (gleicher Seed)', B.profile.credits === profile.credits &
   ip2.push(5, { x: 0, z: 0, rot: 3.1, crs: 0, spd: 0 }, 5); ip2.push(5.1, { x: 0, z: 0, rot: -3.1, crs: 0, spd: 0 }, 5.1);
   ip2.sample(5.1 + 0.13 - 0.05, o);
   check('MP: Winkel über ±180° kurz interpoliert', Math.abs(Math.abs(o.rot) - Math.PI) < 0.1, `rot=${o.rot.toFixed(2)}`);
+  // 3D-Flug: angehängte Felder, alte Pakete, Hermite im Kurvenflug, PvP „Schütze entscheidet, Opfer prüft“
+  {
+    const q = [0, Math.sin(0.6), 0, Math.cos(0.6)];
+    const p3 = M.packState({ x: 10, z: 20, rot: 1.2, crs: 1.2, spd: 300, hull: 1, shield: 1, flags: 1, tgt: '', q, y: -321.4, vx: 100, vy: -20, vz: 5, ff: 6 });
+    const u3 = M.unpackState(p3);
+    check('MP 3D: Felder hinten angehängt (19 Stellen), alte Stellen 0–8 unverändert', p3.length === 19 && p3[0] === 10 && p3[8] === '' && Math.abs(u3.y + 321.4) < 0.5 && Math.abs(u3.q[1] - q[1]) < 1e-3 && u3.ff === 6 && u3.fm === M.FM);
+    const old = M.unpackState(p3.slice(0, 9));
+    check('MP 3D: altes Paket → y = 0, Lage aus rot', old && old.y === 0 && old.q === null);
+    // Kurvenflieger 300 m/s, 60°/s Gieren, 9 Hz: Darstellung gegen die Wahrheit < 6 m
+    const ip3 = new M.Interp(0.13, 0.25), om = 60 * Math.PI / 180, R = 300 / om;
+    const pos = (t) => ({ x: R * Math.sin(om * t), z: R * (1 - Math.cos(om * t)), vx: 300 * Math.cos(om * t), vz: 300 * Math.sin(om * t) });
+    for (let i = 0; i < 30; i++) { const t = i / 9, P = pos(t); ip3.push(t + 50, { ...P, rot: 0, crs: 0, spd: 300, y: 0, vy: 0, q: [0, 0, 0, 1] }, t + 0.05); }
+    let err = 0;
+    for (let k = 0; k < 60; k++) { const now = 2.3 + k * 0.012, o3 = ip3.sample(now + 0.05, {}); const tr = pos(now - 0.13); err = Math.max(err, Math.hypot(o3.x - tr.x, o3.z - tr.z)); }
+    check('MP 3D: Hermite-Interpolation im Kurvenflug (300 m/s, 60°/s) < 6 m', err < 6, err.toFixed(2) + ' m');
+    const hist = [{ t: 9.7, x: 100, y: 50, z: 0 }, { t: 9.9, x: 110, y: 52, z: 0 }];
+    const shooter = { x: 100, y: 50, z: 600 };
+    check('MP 3D: PvP-Treffer am eigenen Verlauf und im Kegel angenommen', M.pvpPlausible({ hp: [108, 51, 0] }, hist, 10, shooter, [0, 0, -1], 30));
+    check('MP 3D: PvP-Treffer weit weg vom Verlauf abgelehnt', !M.pvpPlausible({ hp: [300, 51, 0] }, hist, 10, shooter, [0, 0, -1], 30));
+    check('MP 3D: PvP-Treffer außerhalb des Kegels abgelehnt', !M.pvpPlausible({ hp: [108, 51, 0] }, hist, 10, shooter, [1, 0, 0], 30));
+  }
   // Chat
   check('MP: Chat kürzt auf 200 Zeichen und entfernt Steuerzeichen', Array.from(M.cleanText('x'.repeat(260))).length === 200 && M.cleanText('a\u0000b c‮  d ') === 'a b c d');
   check('MP: HTML wird escaped', M.escapeHtml('<img src=x onerror="a()">&\'') === '&lt;img src=x onerror=&quot;a()&quot;&gt;&amp;&#39;');
