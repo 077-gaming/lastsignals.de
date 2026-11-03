@@ -1,17 +1,18 @@
 // Download-Seite: EINE Stelle für Version, Release-Tag, Dateinamen und Dateigrößen.
 // Die Dateien liegen als Anhänge eines GitHub-Releases im öffentlichen Repository:
 //   https://github.com/<repo>/releases/download/<tag>/<datei>
-// Neue Version: tag/version hier ändern, Dateien mit genau diesen Namen ans Release hängen,
+// Neue Version: APP_VERSION hier ändern (und Apps/package.json), Dateien mit genau diesen Namen ans Release hängen,
 // danach `node Apps/download-groessen.mjs` (überträgt die Größen aus ~/LAST-SIGNALS-Uebergabe/downloads) und `npm run build`.
 // Texte der Seite stehen in text.js (download), die Symbole in icons.js (pf*).
 
-import { SITE } from '../site.js';
-
-// Eine Versionsnummer für Website, Fußzeile, Download-Seite und Browser-Kachel: SITE.version (site.js).
+// Die App-Version steht in Apps/package.json (die Dateinamen enthalten sie: LAST-SIGNALS-<Version>-...) und hier in
+// APP_VERSION; beide müssen übereinstimmen (Apps/bauen.sh schreibt die Prüfsummen unter diesem Namen).
+// SITE.version (site.js) ist die Versionsnummer der Website selbst (Fußzeile, Browser-Kachel).
+const APP_VERSION = '0.9.0';
 export const RELEASE = {
   repo: '077-gaming/lastsignals.de',
-  tag: `v${SITE.version}-test`,
-  version: SITE.version, // so steht es auf der Seite
+  tag: `v${APP_VERSION}-test`,
+  version: APP_VERSION, // so steht es auf der Seite (Download-Kacheln)
   test: true, // Testversion: unsigniert, nicht im App Store / bei Google Play
   // true = Knöpfe zeigen auf das GitHub-Release v<version>-test. Das Release MUSS mit genau diesen Dateinamen
   // veröffentlicht sein, bevor die Website live geht (sonst führen die Knöpfe auf 404). Notfalls auf false setzen:
@@ -19,16 +20,17 @@ export const RELEASE = {
   published: true,
 };
 
-// Dateien des Releases. bytes = exakte Größe (für die Anzeige „149 MB“).
+// Dateien des Releases. bytes = exakte Größe (für die Anzeige „149 MB“). Prüfsummen: LAST-SIGNALS-<Version>-SHA256.txt (Anhang des Releases).
+const N = (rest) => `LAST-SIGNALS-${APP_VERSION}-${rest}`;
 export const FILES = {
-  macArm: { file: 'LAST-SIGNALS-mac-arm64.dmg', bytes: 174460674 },
-  macArmZip: { file: 'LAST-SIGNALS-mac-arm64.zip', bytes: 163970709 },
-  macUni: { file: 'LAST-SIGNALS-mac-universal.dmg', bytes: 287433104 },
-  macUniZip: { file: 'LAST-SIGNALS-mac-universal.zip', bytes: 267752625 },
-  winSetup: { file: 'LAST-SIGNALS-windows-x64-setup.exe', bytes: 156625033 },
-  winZip: { file: 'LAST-SIGNALS-windows-x64.zip', bytes: 203709271 },
-  ipa: { file: 'LAST-SIGNALS-ios-unsigniert.ipa', bytes: 46159115 },
-  apk: { file: 'LAST-SIGNALS-android-debug.apk', bytes: 51100960 },
+  macArm: { file: N('mac-arm64.dmg'), bytes: 284142035 },
+  macArmZip: { file: N('mac-arm64.zip'), bytes: 272772097 },
+  macUni: { file: N('mac-universal.dmg'), bytes: 287433104 },
+  macUniZip: { file: N('mac-universal.zip'), bytes: 267752625 },
+  winSetup: { file: N('windows-x64-setup.exe'), bytes: 156625033 },
+  winZip: { file: N('windows-x64.zip'), bytes: 203709271 },
+  ipa: { file: N('ios-unsigniert.ipa'), bytes: 46159115 },
+  apk: { file: N('android-debug.apk'), bytes: 51100960 },
 };
 
 // Kacheln in dieser Reihenfolge. main = Hauptknopf, alt = weitere Dateien (kleiner), web = Web-App-Weg statt Datei.

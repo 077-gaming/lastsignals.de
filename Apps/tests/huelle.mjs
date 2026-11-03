@@ -1,7 +1,7 @@
 // Selbsttest der Desktop-Hülle (Electron, ungepackt) ohne sichtbares Fenster: Apps/desktop/main.cjs mit dem
 // Web-Build in Apps/www (node web.mjs), eigenes leeres Profil, LS_HIDE_WINDOW=1.
 // Aufruf (in Apps/): node tests/huelle.mjs   (Electron aus Apps/node_modules oder ELECTRON_BIN=/pfad/zu/Electron)
-// Prüft: window.lsDesktop mit setGraphics, Desktop-Kennung schaltet EXTREM frei, Bildrate UNBEGRENZT (0) wird in
+// Prüft: window.lsDesktop mit setGraphics, Desktop-Kennung schaltet EXTREM frei, Bildrate UNBEGRENZT (0; Standard ist -1 = BILDSCHIRM) wird in
 // einstellungen.json gemerkt und schaltet beim nächsten Start disable-frame-rate-limit/disable-gpu-vsync, eine
 // Begrenzung (60) schaltet zurück auf Standard, Umstellung über das App-Menü bleibt beim Start erhalten.
 import { createRequire } from 'node:module';
@@ -55,8 +55,8 @@ try {
     check('EXTREM wählbar und gespeichert', q === 'extreme', String(q));
     await settle(page);
     let s = readS();
-    check('Spiel meldet Grafik beim Start (graphics in einstellungen.json)', s.graphics && s.graphics.fpsCap === 0 && s.graphics.renderScale === 100, JSON.stringify(s.graphics));
-    check('UNBEGRENZT (Standard im Spiel) → beim nächsten Start ohne Begrenzung', s.unlimitedFps === true);
+    check('Spiel meldet Grafik beim Start (graphics in einstellungen.json)', s.graphics && s.graphics.fpsCap === -1 && s.graphics.renderScale === 100, JSON.stringify(s.graphics));
+    check('BILDSCHIRM (Standard im Spiel, -1 = V-Sync) → beim nächsten Start mit Begrenzung', s.unlimitedFps === false);
     await page.click('.st [data-gx] [data-gfx="tab"][data-v="system"]');
     const tag = await page.$eval('.st [data-gx] .gx-row[data-k="fpsCap"] .gx-tag', (e) => e.textContent);
     check('Hinweis NEUSTART (APP) an der Bildrate', /NEUSTART \(APP\)/.test(tag), tag);
@@ -85,7 +85,7 @@ try {
     // im Spiel UNBEGRENZT wählen (wie der GRAFIK-Bereich: Einstellung schreiben, Ereignis ls:settings)
     await page.evaluate(() => {
       const s = JSON.parse(localStorage.getItem('ls.settings') || '{}');
-      s.gfx = { ...(s.gfx || {}) }; delete s.gfx.fpsCap; // 0 = Standardwert des Schemas
+      s.gfx = { ...(s.gfx || {}), fpsCap: 0 }; // 0 = UNBEGRENZT (Standard des Spiels ist -1 = BILDSCHIRM/V-Sync)
       localStorage.setItem('ls.settings', JSON.stringify(s));
       window.dispatchEvent(new Event('ls:settings'));
     });

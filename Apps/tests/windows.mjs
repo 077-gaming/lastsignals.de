@@ -15,8 +15,9 @@ const require = createRequire(path.join(APPS, 'package.json'));
 const asar = require('@electron/asar');
 const ResEdit = require('resedit');
 const ZIEL = path.resolve(process.argv[2] || path.join(os.homedir(), 'LAST-SIGNALS-Uebergabe', 'downloads'));
-const ZIP = path.join(ZIEL, 'LAST-SIGNALS-windows-x64.zip');
-const SETUP = path.join(ZIEL, 'LAST-SIGNALS-windows-x64-setup.exe');
+const VERSION = JSON.parse(fs.readFileSync(path.join(APPS, 'package.json'), 'utf8')).version;
+const ZIP = path.join(ZIEL, `LAST-SIGNALS-${VERSION}-windows-x64.zip`);
+const SETUP = path.join(ZIEL, `LAST-SIGNALS-${VERSION}-windows-x64-setup.exe`);
 let failed = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FEHL'}  ${name}${extra ? '  ' + extra : ''}`); if (!ok) failed++; };
 const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
@@ -74,6 +75,7 @@ try {
   check('www/index.html ohne /play/-Pfade (relative Basis)', !/\/play\//.test(html) && /\.\/assets\//.test(html));
   const pj = JSON.parse(asar.extractFile(ar, 'package.json').toString('utf8'));
   check('package.json: main.cjs, productName LAST SIGNALS', pj.main === 'main.cjs' && pj.productName === 'LAST SIGNALS', `Version ${pj.version}`);
+  check(`Version ${VERSION} im Paket`, pj.version === VERSION, pj.version);
 } finally {
   fs.rmSync(TMP, { recursive: true, force: true });
 }

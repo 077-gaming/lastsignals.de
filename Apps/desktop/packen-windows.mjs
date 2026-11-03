@@ -19,8 +19,8 @@ const MIT_SETUP = !process.argv.includes('--ohne-setup');
 const OUT = path.join(APPS, 'out', 'windows');
 const NAME = 'LAST SIGNALS';
 const EXE = `${NAME}.exe`;
-const BASE = 'LAST-SIGNALS-windows-x64';
 const pkg = JSON.parse(fs.readFileSync(path.join(APPS, 'package.json'), 'utf8'));
+const BASE = `LAST-SIGNALS-${pkg.version}-windows-x64`; // Version aus Apps/package.json im Dateinamen
 const electronVersion = JSON.parse(fs.readFileSync(path.join(APPS, 'node_modules', 'electron', 'package.json'), 'utf8')).version;
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit', ...opts });
 const which = (cmd) => { try { return execFileSync('/usr/bin/which', [cmd], { encoding: 'utf8' }).trim(); } catch { return ''; } };

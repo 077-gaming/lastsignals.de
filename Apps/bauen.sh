@@ -8,6 +8,13 @@
 #   MAC_ARCH=arm64 bash Apps/bauen.sh  → nur Apple Silicon (Standard: arm64 und universal)
 #   ZIEL=/pfad bash Apps/bauen.sh      → Ausgabeordner (Standard: ~/LAST-SIGNALS-Uebergabe/downloads)
 #
+# Version: steht nur in Apps/package.json ("version"). Der Aufruf gleicht iOS (MARKETING_VERSION/Build) und Android
+# (versionName/versionCode) darauf an (node version.mjs). Dateinamen: LAST-SIGNALS-<Version>-<Plattform>-<Art>.<Endung>, z. B.
+#   LAST-SIGNALS-0.9.0-mac-arm64.dmg, -mac-universal.zip, -windows-x64-setup.exe, -windows-x64.zip,
+#   -ios-unsigniert.ipa, -ios-simulator.zip, -android-debug.apk
+# Am Ende entsteht LAST-SIGNALS-<Version>-SHA256.txt (SHA-256 aller Pakete dieser Version, prüfbar mit
+# `shasum -a 256 -c LAST-SIGNALS-<Version>-SHA256.txt` im Ausgabeordner).
+#
 # Voraussetzungen: Node 20+, Xcode (iOS), JDK 21 und Android-SDK (Android, siehe ANLEITUNG.md),
 # für den Windows-Installer makensis (brew install makensis; ohne makensis entsteht nur die portable .zip). Wine ist nicht nötig.
 set -euo pipefail
@@ -20,6 +27,11 @@ WAS=("$@"); [ ${#WAS[@]} -eq 0 ] && WAS=(mac windows ios android)
 will() { local x; for x in "${WAS[@]}"; do [ "$x" = "$1" ] && return 0; done; return 1; }
 schritt() { printf '\n==== %s\n' "$*"; }
 mkdir -p "$ZIEL"
+
+schritt "Version"
+(cd "$APPS" && node version.mjs)
+VERSION="$(cd "$APPS" && node version.mjs --zeigen)"
+P="LAST-SIGNALS-$VERSION" # Dateinamen-Vorsatz mit Versionsnummer
 
 schritt "Abhängigkeiten"
 [ -d "$ROOT/Code/node_modules" ] || (cd "$ROOT/Code" && npm ci)
@@ -55,8 +67,8 @@ if will ios; then
     -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DD" -packageAuthorizationProvider netrc \
     CODE_SIGNING_ALLOWED=NO build -quiet
   SIMAPP="$DD/Build/Products/Debug-iphonesimulator/App.app"
-  rm -f "$ZIEL/LAST-SIGNALS-ios-simulator.zip"
-  (cd "$(dirname "$SIMAPP")" && ditto -c -k --keepParent App.app "$ZIEL/LAST-SIGNALS-ios-simulator.zip")
+  rm -f "$ZIEL/$P-ios-simulator.zip"
+  (cd "$(dirname "$SIMAPP")" && ditto -c -k --keepParent App.app "$ZIEL/$P-ios-simulator.zip")
 
   schritt "iPhone/iPad: unsignierte .ipa (für Sideloadly/AltStore)"
   xcodebuild -project "$APPS/ios/App/App.xcodeproj" -scheme App -configuration Release \
@@ -66,8 +78,8 @@ if will ios; then
   PAY="$APPS/out/ipa"
   rm -rf "$PAY" && mkdir -p "$PAY/Payload"
   ditto "$DEVAPP" "$PAY/Payload/App.app"
-  rm -f "$ZIEL/LAST-SIGNALS-ios-unsigniert.ipa"
-  (cd "$PAY" && zip -qry "$ZIEL/LAST-SIGNALS-ios-unsigniert.ipa" Payload)
+  rm -f "$ZIEL/$P-ios-unsigniert.ipa"
+  (cd "$PAY" && zip -qry "$ZIEL/$P-ios-unsigniert.ipa" Payload)
 fi
 
 if will android; then
@@ -85,11 +97,24 @@ if will android; then
   [ -f "$APPS/android/local.properties" ] || echo "sdk.dir=$ANDROID_HOME" > "$APPS/android/local.properties"
   (cd "$APPS/android" && ./gradlew --no-daemon -q assembleDebug)
   APK="$APPS/android/app/build/outputs/apk/debug/app-debug.apk"
-  cp "$APK" "$ZIEL/LAST-SIGNALS-android-debug.apk"
+  cp "$APK" "$ZIEL/$P-android-debug.apk"
   BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
-  "$BT/apksigner" verify --print-certs "$ZIEL/LAST-SIGNALS-android-debug.apk" | head -3
-  "$BT/aapt" dump badging "$ZIEL/LAST-SIGNALS-android-debug.apk" | grep -E "^package|^sdkVersion|^targetSdkVersion|^application-label:|launchable-activity" || true
+  "$BT/apksigner" verify --print-certs "$ZIEL/$P-android-debug.apk" | head -3
+  "$BT/aapt" dump badging "$ZIEL/$P-android-debug.apk" | grep -E "^package|^sdkVersion|^targetSdkVersion|^application-label:|launchable-activity" || true
 fi
 
+schritt "Prüfsummen (SHA-256)"
+SUMS="$P-SHA256.txt"
+(
+  cd "$ZIEL"
+  rm -f "$SUMS"
+  PAKETE=()
+  for f in "$P"-*; do [ -f "$f" ] && [ "$f" != "$SUMS" ] && PAKETE+=("$f"); done
+  if [ ${#PAKETE[@]} -eq 0 ]; then echo "Keine Pakete für Version $VERSION in $ZIEL gefunden."; exit 1; fi
+  shasum -a 256 "${PAKETE[@]}" > "$SUMS"
+  shasum -a 256 -c "$SUMS" >/dev/null && echo "$SUMS: ${#PAKETE[@]} Datei(en), Prüfung bestanden"
+  cat "$SUMS"
+)
+
 schritt "Fertig"
-ls -lh "$ZIEL" | grep -E 'LAST-SIGNALS' || true
+ls -lh "$ZIEL" | grep -E "$P" || true

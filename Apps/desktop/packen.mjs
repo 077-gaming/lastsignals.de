@@ -1,5 +1,6 @@
 // Mac-App packen: LAST SIGNALS.app (Electron, unsigniert bzw. nur ad-hoc signiert) → .zip und .dmg
 // Aufruf (in Apps/): node desktop/packen.mjs [--arch arm64|x64|universal|alle] [--ziel <ordner>]
+// Dateinamen: LAST-SIGNALS-<Version>-mac-<arch>.zip/.dmg (Version aus Apps/package.json)
 // Voraussetzung: Apps/www enthält den Web-Build (npm run web oder bauen.sh).
 import { packager } from '@electron/packager';
 import { execFileSync } from 'node:child_process';
@@ -58,7 +59,7 @@ for (const arch of arches) {
   const app = path.join(appDir, `${NAME}.app`);
   run('codesign', ['--force', '--deep', '--sign', '-', app]);
   run('codesign', ['--verify', '--deep', '--strict', app]);
-  const base = `LAST-SIGNALS-mac-${arch}`;
+  const base = `LAST-SIGNALS-${pkg.version}-mac-${arch}`;
   const zip = path.join(ZIEL, `${base}.zip`);
   const dmg = path.join(ZIEL, `${base}.dmg`);
   fs.rmSync(zip, { force: true }); fs.rmSync(dmg, { force: true });

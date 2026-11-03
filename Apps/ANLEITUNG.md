@@ -8,14 +8,24 @@ Das Spiel selbst steckt komplett in der App und startet auch ohne Internet. Koop
 
 | Datei | Gerät |
 |---|---|
-| `LAST-SIGNALS-mac-arm64.dmg` oder `.zip` | Mac mit Apple-Chip (M1 bis M5) |
-| `LAST-SIGNALS-mac-universal.dmg` oder `.zip` | jeder Mac (Apple-Chip und ältere Intel-Macs), etwas größer |
-| `LAST-SIGNALS-windows-x64-setup.exe` | Windows 10 oder 11 (64 Bit), Installer mit Startmenü- und Desktop-Verknüpfung |
-| `LAST-SIGNALS-windows-x64.zip` | Windows 10 oder 11 (64 Bit), ohne Installation: entpacken und starten |
-| `LAST-SIGNALS-ios-unsigniert.ipa` | iPhone und iPad (eine App für beide), über Sideloadly oder AltStore |
-| `LAST-SIGNALS-ios-simulator.zip` | nur für den iOS-Simulator in Xcode, nicht für echte Geräte |
-| `LAST-SIGNALS-android-debug.apk` | Android-Handy oder -Tablet (Android 7 oder neuer) |
+| `LAST-SIGNALS-0.9.0-mac-arm64.dmg` oder `.zip` | Mac mit Apple-Chip (M1 bis M5) |
+| `LAST-SIGNALS-0.9.0-mac-universal.dmg` oder `.zip` | jeder Mac (Apple-Chip und ältere Intel-Macs), etwas größer |
+| `LAST-SIGNALS-0.9.0-windows-x64-setup.exe` | Windows 10 oder 11 (64 Bit), Installer mit Startmenü- und Desktop-Verknüpfung |
+| `LAST-SIGNALS-0.9.0-windows-x64.zip` | Windows 10 oder 11 (64 Bit), ohne Installation: entpacken und starten |
+| `LAST-SIGNALS-0.9.0-ios-unsigniert.ipa` | iPhone und iPad (eine App für beide), über Sideloadly oder AltStore |
+| `LAST-SIGNALS-0.9.0-ios-simulator.zip` | nur für den iOS-Simulator in Xcode, nicht für echte Geräte |
+| `LAST-SIGNALS-0.9.0-android-debug.apk` | Android-Handy oder -Tablet (Android 7 oder neuer) |
+| `LAST-SIGNALS-0.9.0-SHA256.txt` | Prüfsummen (SHA-256) aller Dateien, siehe unten |
 | `belege/` | Bildschirmfotos aus den automatischen Tests |
+
+---
+
+## Dateien prüfen (Prüfsummen)
+
+Die Zahl im Dateinamen ist die Versionsnummer (hier 0.9.0). Zu jeder Version gibt es eine Datei `LAST-SIGNALS-<Version>-SHA256.txt`. Ob eine heruntergeladene Datei unverändert ist, prüfst du so:
+
+- Mac: im Ordner mit den Dateien `shasum -a 256 -c LAST-SIGNALS-0.9.0-SHA256.txt` (nur vorhandene Dateien prüfen: `--ignore-missing`).
+- Windows (PowerShell): `Get-FileHash .\LAST-SIGNALS-0.9.0-windows-x64-setup.exe -Algorithm SHA256` und den Wert mit der Zeile in der Textdatei vergleichen.
 
 ---
 
@@ -41,14 +51,14 @@ Tipps:
 
 Die Windows-Version ist **nicht signiert**. Windows SmartScreen kennt die Datei deshalb noch nicht und warnt beim ersten Start. Das ist bei unsignierten Testversionen normal.
 
-### Weg A: Installer (`LAST-SIGNALS-windows-x64-setup.exe`)
+### Weg A: Installer (`LAST-SIGNALS-0.9.0-windows-x64-setup.exe`)
 
 1. Datei doppelklicken.
 2. Erscheint **„Der Computer wurde durch Windows geschützt“**: auf **Weitere Informationen** klicken, dann auf **Trotzdem ausführen**.
 3. Der Installer braucht keine Administratorrechte. Er installiert nach `%LOCALAPPDATA%\Programs\LAST SIGNALS` und legt eine Verknüpfung im Startmenü und auf dem Desktop an. Am Ende kannst du LAST SIGNALS direkt starten.
 4. Entfernen: **Einstellungen → Apps → Installierte Apps → LAST SIGNALS → Deinstallieren**. Spielstände bleiben dabei erhalten.
 
-### Weg B: ohne Installation (`LAST-SIGNALS-windows-x64.zip`)
+### Weg B: ohne Installation (`LAST-SIGNALS-0.9.0-windows-x64.zip`)
 
 1. Rechtsklick auf die `.zip` → **Alle extrahieren…** (nicht direkt aus der .zip heraus starten).
 2. Im entpackten Ordner **LAST SIGNALS** die Datei **LAST SIGNALS.exe** doppelklicken.
@@ -72,14 +82,14 @@ Apple erlaubt Apps außerhalb des App Stores nur mit einer Signatur. Ohne bezahl
 
 1. Sideloadly von der offiziellen Seite `sideloadly.io` laden und installieren.
 2. iPhone/iPad per Kabel anschließen und entsperren, „Diesem Computer vertrauen“ bestätigen.
-3. `LAST-SIGNALS-ios-unsigniert.ipa` in Sideloadly ziehen, deine Apple-ID eintragen, **Start**.
+3. `LAST-SIGNALS-0.9.0-ios-unsigniert.ipa` in Sideloadly ziehen, deine Apple-ID eintragen, **Start**.
 4. Auf dem Gerät: **Einstellungen → Allgemein → VPN und Geräteverwaltung** → deine Apple-ID → **Vertrauen**.
 5. Ab iOS 16: **Einstellungen → Datenschutz & Sicherheit → Entwicklermodus** einschalten (das Gerät startet neu).
 
 ### Weg B: AltStore
 
 1. AltServer auf dem Mac/PC installieren (`altstore.io`), damit AltStore aufs Gerät bringen.
-2. Auf dem Gerät in AltStore unter **Meine Apps** auf **+** tippen und `LAST-SIGNALS-ios-unsigniert.ipa` wählen (z. B. über die Dateien-App oder AirDrop aufs Gerät gelegt).
+2. Auf dem Gerät in AltStore unter **Meine Apps** auf **+** tippen und `LAST-SIGNALS-0.9.0-ios-unsigniert.ipa` wählen (z. B. über die Dateien-App oder AirDrop aufs Gerät gelegt).
 3. AltStore erneuert die 7 Tage automatisch, wenn AltServer im selben WLAN läuft.
 
 ### Weg C: Xcode mit kostenloser Apple-ID (für Entwickler)
@@ -93,7 +103,7 @@ Die App läuft nur im **Querformat**, im Vollbild ohne Status-Leiste. Notch bzw.
 
 ## Android
 
-1. `LAST-SIGNALS-android-debug.apk` aufs Handy bringen (Kabel, Google Drive, Mail an dich selbst, …) und in der Dateien-App antippen.
+1. `LAST-SIGNALS-0.9.0-android-debug.apk` aufs Handy bringen (Kabel, Google Drive, Mail an dich selbst, …) und in der Dateien-App antippen.
 2. Android fragt nach **Installation aus unbekannten Quellen**: auf **Einstellungen** tippen und für die App, mit der du die Datei geöffnet hast (z. B. Dateien oder Chrome), **Dieser Quelle vertrauen** einschalten. Zurück, **Installieren**.
 3. Google Play Protect kann warnen („App wurde nicht geprüft“): **Weitere Details → Trotzdem installieren**.
 
@@ -103,7 +113,7 @@ Die App läuft im Querformat ohne Status- und Navigationsleiste. Wischen vom Ran
 
 ## Für Entwickler: neu bauen
 
-Alles aus dem aktuellen Spielstand neu bauen (Ausgabe nach `~/LAST-SIGNALS-Uebergabe/downloads/`):
+Alles aus dem aktuellen Spielstand neu bauen (Ausgabe nach `~/LAST-SIGNALS-Uebergabe/downloads/`, Dateinamen mit Versionsnummer aus `Apps/package.json`, dazu `LAST-SIGNALS-<Version>-SHA256.txt`). Neue Version: nur `"version"` in `Apps/package.json` ändern, `bauen.sh` gleicht iOS und Android selbst an (`node Apps/version.mjs --pruefen` prüft ohne zu ändern); die Website-Dateinamen stehen in `src/content/downloads.js` (`APP_VERSION`):
 
 ```bash
 bash Apps/bauen.sh               # Mac, Windows, iPhone/iPad, Android
