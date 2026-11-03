@@ -22,13 +22,13 @@
 
 /* Schild mit eigener dunkler Unterlage, damit es über heller Geometrie lesbar bleibt */
 .hc-lab {
-  position: absolute; left: -75px; top: 0; width: 150px; min-height: 46px; box-sizing: border-box;
+  position: absolute; left: -92px; top: 0; width: 184px; min-height: 46px; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 8px 4px;
   background: rgba(4, 7, 10, .78);
   border-top: 1px solid color-mix(in srgb, var(--tc) 70%, transparent);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%);
 }
-.hc-l1 { display: flex; align-items: baseline; justify-content: center; gap: 8px; white-space: nowrap; max-width: 134px; }
+.hc-l1 { display: flex; align-items: baseline; justify-content: center; gap: 8px; white-space: nowrap; max-width: 168px; }
 .hc-name {
   font-family: var(--ls-display); font-weight: 400; font-size: 15px; letter-spacing: .14em; padding-top: 2px;
   color: var(--tc); overflow: hidden; text-overflow: clip; min-width: 0;

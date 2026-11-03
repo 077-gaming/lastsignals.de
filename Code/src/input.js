@@ -11,6 +11,7 @@
 // Controller: input/padflight.js setzt this.pad (Sticks, Trigger) und ruft die Befehle unten (attack, rocket, context …).
 import { FlightInput } from './input/flightinput.js';
 import { keyName } from './input/bindings.js';
+import { isTouchOnly } from './input/flightsettings.js';
 
 const AMMO_KEYS = { Digit1: 'L1', Digit2: 'L2', Digit3: 'L3', Digit4: 'L4', Digit5: 'SAB' };
 const STEER_KEYS = {
@@ -228,11 +229,14 @@ export class Input {
     this.cruise = false;
     this.syncView();
     if (m !== 'tactical') this.fi.requestLock(); // V ist die Nutzergeste für den Zeigerfang
-    const pd = this.pad && this.pad.active;
+    const pd = this.pad && this.pad.active, tc = isTouchOnly();
     const k = (a) => keyName(a);
     this.bus.emit('message', {
       kind: 'info',
-      text: pd
+      text: tc
+        ? (m === 'tactical' ? 'Kamera: Taktisch – Joystick fliegt, Gegner antippen wählt, zwei Finger zoomen (ANSICHT wechselt).'
+          : `Kamera: ${m === 'cockpit' ? 'Cockpit' : 'Verfolger'} – Joystick zielt, SCHUB gibt Gas, LASER schaltet das Autofeuer, BOOST halten (ANSICHT wechselt).`)
+        : pd
         ? (m === 'cockpit' ? 'Kamera: Cockpit – rechter Stick zielt, linker Stick schiebt, R3 halten sieht sich um (R3 wechselt).'
           : m === 'chase' ? 'Kamera: Verfolger – rechter Stick zielt, linker Stick schiebt, RT feuert, LB/RB rollen (R3 wechselt).'
             : 'Kamera: Taktisch – linker Stick fliegt bildbezogen, rechter Stick zoomt (R3 wechselt).')
@@ -314,6 +318,8 @@ export class Input {
     if (!w || !w.setFlight3d) return;
     const want = this.renderer.cameraMode === 'chase';
     if (want !== w.flight3d) { w.setFlight3d(want); this.fi.resetAim(); this.mouseDown = false; this.steer.clear(); if (!want) this.fi.exitLock(true); }
+    const vm = this.renderer.viewMode || 'chase', de = document.documentElement;
+    if (de.dataset.view !== vm) de.dataset.view = vm; // Cockpit: HUD-Fenster über den Konsolen ausblenden (hud.css)
     const f = want ? '3d' : 'taktik';
     if (document.documentElement.dataset.flight !== f) { document.documentElement.dataset.flight = f; try { window.dispatchEvent(new CustomEvent('ls:flightview', { detail: { flight: f } })); } catch { /* alt */ } }
   }

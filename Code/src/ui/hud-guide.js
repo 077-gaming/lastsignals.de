@@ -2,8 +2,9 @@
 // ersten Flug eines neuen Piloten die Wahl „Geführter Einstieg“ oder „Direkt spielen“. Taste G blendet die
 // Karte ein und aus bzw. setzt die Reihe fort. Bausteine aus theme.css (Planung/UI_STIL.md).
 import './hud-guide.css';
-import { keyHint, padMode } from '../input/padglyph.js';
-import { keyName } from '../input/bindings.js';
+import { keyHint, padMode, glyph } from '../input/padglyph.js';
+import { keyName, inputName } from '../input/bindings.js';
+import { isTouchOnly } from '../input/flightsettings.js';
 import { questView } from '../sim/system-quests.js';
 import { pad } from '../input/gamepad.js';
 
@@ -74,7 +75,10 @@ export class SystemGuide {
     } else {
       const q = s.current;
       const g = q.goal;
-      const qv = questView(q, !!(w && w.flight3d), keyName); // Text und Taste je Ansicht (bindings.js)
+      // Text und Taste je Ansicht und Gerät (bindings.js): Controller nennt Symbole, Touch die Knöpfe
+      const dev = padMode() ? 'pad' : isTouchOnly() ? 'touch' : 'kb';
+      const qv = questView(q, !!(w && w.flight3d), (a, mode) => inputName(a, mode, dev, glyph));
+      qv.dev = dev !== 'kb' && qv.act ? qv.key : null; // schon das Gerätesymbol: nicht noch einmal umschlüsseln
       const max = g.count || (g.type === 'fly' ? g.meters : 1);
       const prog = Math.min(max, st.progress || 0);
       if (g.type === 'window') for (const t of g.target) {
@@ -128,7 +132,7 @@ export class SystemGuide {
       const seg = Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(pct / 10) ? 'on' : ''}"></i>`).join('');
       key = `${q.id}|${goalText}|${pct}|${padMode() ? pad.style : 'kb'}|${w && w.flight3d ? 3 : 2}`;
       html = `<div class="lsg-card ls-panel"><span class="ls-corners"></span>
-        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${qv.key ? `<span class="ls-key${padMode() && keyHint(qv.key) !== qv.key ? ' is-pad' : ''}" data-nopad>${esc(keyHint(qv.key))}</span>` : ''}</div>
+        <div class="ls-head"><span class="ls-code">${s.key === 'story' ? `KAPITEL ${q.ch} · ${no}/${s.quests.length}` : `SYSTEM · ${String(no).padStart(2, '0')}/${s.quests.length}`}</span><span class="ls-title">${esc(s.chapters[q.ch] || '')}</span><span class="ls-spacer"></span>${qv.dev ? `<span class="ls-key${dev === 'pad' ? ' is-pad' : ''}" data-nopad>${esc(qv.dev)}</span>` : qv.key ? `<span class="ls-key${padMode() && keyHint(qv.key) !== qv.key ? ' is-pad' : ''}" data-nopad>${esc(keyHint(qv.key))}</span>` : ''}</div>
         <div class="lsg-body">
           <div class="lsg-title">${esc(q.title)}</div>
           <p class="lsg-text">${esc(qv.text)}</p>

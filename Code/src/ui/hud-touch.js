@@ -77,12 +77,36 @@ export class HudTouch {
     this._raf = requestAnimationFrame(loop);
   }
 
+  /**
+   * Knopfraster einpassen: rechts zwischen Ziel/Mission (oben) und Karte (unten). Passt es nicht, wird es kompakt (vier
+   * Spalten, flachere Knöpfe). Früher wuchs das Raster von einem festen Abstand nach oben und lag am Handy quer
+   * (und im 3D-Flug mit BOOST/SCHUB auch am Tablet) mit LASER, RAKETE, ZIEL und HEIM über dem Bildrand.
+   */
+  _fit() {
+    const el = this.el;
+    if (!el) return;
+    const H = innerHeight, rect = (sel) => { const e = document.querySelector(sel); if (!e || getComputedStyle(e).display === 'none') return null; const b = e.getBoundingClientRect(); return b.width ? b : null; };
+    const map = rect('[data-win="map"]'), quest = rect('[data-win="quest"]') || rect('[data-win="target"]');
+    const z = parseFloat(getComputedStyle(el).zoom) || 1;
+    const bottom = map ? H - map.top + 8 : 24;
+    const room = (map ? map.top - 8 : H - 24) - (quest ? quest.bottom + 8 : 8);
+    el.style.bottom = `${Math.round(bottom / z)}px`;
+    el.classList.remove('is-compact');
+    if (el.getBoundingClientRect().height > room) el.classList.add('is-compact');
+  }
+
   _tick() {
     const w = this.world, r = this.renderer, inp = this.input;
     if (!w || !r || !r.toScreen) return;
     const p = w.player;
     const f3 = !!(inp && inp.flight3d);
-    if (this.el) this.el.classList.toggle('is-3d', f3);
+    if (this.el) {
+      const was = this.el.classList.contains('is-3d');
+      this.el.classList.toggle('is-3d', f3);
+      // Raster neu einpassen: Ansichtswechsel (BOOST/SCHUB kommen dazu), Größenänderung, alle 0,5 s
+      this._fitT = (this._fitT || 0) - 1;
+      if (was !== f3 || this._fitT <= 0 || this._fitW !== innerWidth + innerHeight) { this._fitT = 30; this._fitW = innerWidth + innerHeight; this._fit(); }
+    }
     if (this.t3) {
       // 3D-Flug: Joystick zielt (wie der rechte Stick), Schub-Hebel, Boost gehalten
       this.t3.active = f3; this.t3.ax = f3 ? this.jx : 0; this.t3.ay = f3 ? this.jy : 0;

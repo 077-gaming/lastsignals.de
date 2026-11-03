@@ -8,7 +8,7 @@ export const PAD_ROWS = [
   // Hauptmodus 3D-Flug (Planung/FLUGMODELL.md 5.3)
   ['FLUG 3D', [
     ['LS', 'Schub vor, zurück, seitlich'],
-    ['RS', 'Zielen: Fadenkreuz im Lenkkegel, das Schiff folgt'],
+    ['RS', 'Zielen: Fadenkreuz kurz vor dem Bug, das Schiff folgt'],
     ['LB/RB', 'Rollen'],
     ['LB+RB', 'Mit linkem Stick hoch, runter'],
     ['L3', 'Boost · halten: Landemodus'],
@@ -25,12 +25,12 @@ export const PAD_ROWS = [
     ['MENU', 'Bordmenü · halten: KAMPF, REISE'],
   ]],
   ['TAKTIK', [
-    ['LS', 'Lenken wie die Maus (taktisch: bildbezogen fliegen)'],
+    ['LS', 'Fliegen, bildbezogen (wie Klick ins All)'],
     ['RT', 'Schub, stufenlos'],
     ['LT', 'Bremsen'],
     ['L3', 'Dauerschub an, aus (wie W)'],
-    ['RS', 'Kamera schwenken, im Cockpit umsehen, taktisch Zoom'],
-    ['R3', 'Kamera wechseln (wie V)'],
+    ['RS', 'Zoom'],
+    ['R3', 'Kamera wechseln: Verfolger, Cockpit, Taktisch (wie V)'],
     ['Y', 'Andocken, Springen, Beute anfliegen (wie E, J)'],
     ['Y', 'Halten: Autopilot zur Station (wie H)'],
   ]],

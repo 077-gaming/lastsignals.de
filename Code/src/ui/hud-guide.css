@@ -23,3 +23,5 @@
 
 /* Bordmenü offen: Karte weicht */
 .hd-menu .lsg, .hd-menu ~ .lsg, .hd-menu ~ * .lsg { display: none; }
+/* Cockpit: Karte über den Konsolen (die linke Konsole SCHIFF beginnt auf halber Höhe) */
+html[data-view="cockpit"] .lsg { top: 214px; transform: none; }

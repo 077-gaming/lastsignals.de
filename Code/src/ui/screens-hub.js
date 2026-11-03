@@ -23,6 +23,7 @@ import { Bus } from '../core/events.js';
 import { hallBoard, statusText, toast, modalOpen, clearHallCache } from './account-ui.js';
 import { openAccount } from './account-flow.js';
 import { padSettings, setPadSetting, pad as gamepad } from '../input/gamepad.js';
+import { flightSettings, setFlightSetting } from '../input/flightsettings.js';
 import { padMapHtml, paintPadKeys, padStatus, PAD_ROWS } from './pad-map.js';
 
 const BEHAVIOR = {
@@ -806,6 +807,7 @@ function kontoSection(P, account) {
 function einstView(P, ctx) {
   const s = settings();
   const ps = padSettings();
+  const fs = flightSettings();
   const h = hudState();
   return `<div class="st">
     <div class="st-c">
@@ -860,8 +862,23 @@ function einstView(P, ctx) {
         </div>
       </section>
       <section class="ak-sec">
+        ${sub('FL', 'FLUG 3D', '<span class="ls-label">SOFORT</span>')}
+        <div class="mc-set st-set">
+          ${setRow('MAUS', 'Mausziel: Fadenkreuz sofort, das Schiff folgt. Virtueller Stick: Zeigerausschlag dreht das Schiff (Trackpad).', seg('fl.mouse', [['aim', 'MAUSZIEL'], ['vjoy', 'VIRT. STICK']], fs.mouse))}
+          ${setRow('MAUS-EMPFINDLICHKEIT', 'Grad je Mauspunkt beim Zielen.', seg('fl.sens', [[0.04, 'SEHR NIEDRIG'], [0.055, 'NIEDRIG'], [0.07, 'MITTEL'], [0.09, 'HOCH'], [0.12, 'SEHR HOCH']], fs.sens))}
+          ${setRow('LENKKEGEL', 'So weit darf das Fadenkreuz der Nase vorauslaufen.', seg('fl.cone', [[15, '15°'], [22, '22°'], [30, '30°'], [45, '45°'], [70, '70°']], fs.cone))}
+          ${setRow('SICHTFELD', 'Verfolgersicht.', seg('fl.fov', [[60, '60°'], [70, '70°'], [80, '80°'], [90, '90°']], fs.fov))}
+          ${setRow('Y-ACHSE UMKEHREN', 'Maus nach oben: Nase nach unten.', seg('fl.invertY', [[false, 'AUS'], [true, 'AN']], fs.invertY))}
+          ${setRow('KURVENROLLEN', 'Das Schiff legt sich in die Kurve. Aus: reines Gieren wie im Simulator.', seg('fl.autoRoll', [[false, 'AUS'], [true, 'AN']], fs.autoRoll))}
+          ${setRow('HORIZONT-HILFE', 'In Ruhe richtet sich das Schiff langsam waagrecht aus. Nie während eines Manövers.', seg('fl.horizon', [[false, 'AUS'], [true, 'AN']], fs.horizon))}
+          ${setRow('KAMERA', 'Verfolger: Mischung aus Bug und Zielrichtung oder ganz der Zielrichtung nach.', seg('fl.cam', [['mix', 'MISCHUNG'], ['aim', 'ZIELRICHTUNG']], fs.cam))}
+        </div>
+      </section>
+      <section class="ak-sec">
         ${sub('CT', 'CONTROLLER', `<span class="ls-label gp-st" data-padst>${padStatus()}</span>`)}
         <div class="mc-set st-set">
+          ${setRow('RECHTER STICK', 'Zielrichtung: der Stick schiebt das Fadenkreuz kurz vor den Bug, das Schiff folgt sofort. Drehrate: der Stick dreht das Schiff direkt.', seg('fl.padMode', [['aim', 'ZIELRICHTUNG'], ['rate', 'DREHRATE']], fs.padMode))}
+          ${setRow('ZIELHILFE', 'Bremst nahe der Vorhaltemarke, zieht sanft mit und richtet die Laser im Waffenkegel auf die Marke. Gegen Spieler höchstens NIEDRIG.', seg('fl.assist', [[0, 'AUS'], [1, 'NIEDRIG'], [2, 'STANDARD'], [3, 'HOCH']], fs.assist))}
           ${setRow('EMPFINDLICHKEIT', 'Lenken und Umsehen mit den Sticks.', seg('pad.sens', [[0.7, 'NIEDRIG'], [1, 'MITTEL'], [1.3, 'HOCH'], [1.6, 'SEHR HOCH']], ps.sens))}
           ${setRow('Y-ACHSE UMKEHREN', 'Rechter Stick: nach oben drücken schaut nach unten.', seg('pad.invertY', [[false, 'AUS'], [true, 'AN']], ps.invertY))}
           ${setRow('TOTZONE', 'Ab welchem Ausschlag die Sticks reagieren. Höher bei driftenden Sticks.', seg('pad.dead', [[0.08, '8 %'], [0.15, '15 %'], [0.22, '22 %'], [0.3, '30 %']], ps.dead))}
@@ -1431,6 +1448,11 @@ export async function hubScreen(root, profile, store, account = null) {
     let val = b.dataset.val;
     if (key === 'hudMode') { hudSet((v) => { for (const id of HUD_TOGGLE) v.win[id] = { ...(v.win[id] || { collapsed: false }), mode: val }; }); }
     else if (key === 'hudLock') { val = val === 'true'; hudSet((v) => { v.locked = val; }); }
+    else if (key.startsWith('fl.')) {
+      const k = key.slice(3);
+      val = val === 'true' ? true : val === 'false' ? false : /^-?\d+(\.\d+)?$/.test(val) ? Number(val) : val;
+      setFlightSetting(k, val);
+    }
     else if (key.startsWith('pad.')) {
       const k = key.slice(4);
       val = k === 'invertY' || k === 'rumble' ? val === 'true' : Number(val);

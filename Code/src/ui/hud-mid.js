@@ -13,7 +13,7 @@ import { fmt, clamp01, TextSlot, ClassSlot, Bar } from './hud-parts.js';
 const EDGE = 44;          // Abstand der Randmarke zum Bildschirmrand
 const STEP = 12;          // Schrittweite beim Zurücklaufen aus einem Fenster
 const BOX_MIN = 22, BOX_MAX = 84;
-const LAB_W = 150, LAB_H = 46;
+const LAB_W = 184, LAB_H = 46; // breit genug für lange Namen (ÜBUNGSDROHNE 320 M wurde abgeschnitten)
 const HOT_SECS = 4;
 const FLASH_SECS = 1.6;
 const LOW = 0.3;
@@ -329,12 +329,13 @@ export class HudMid {
       half = half < BOX_MIN ? BOX_MIN : half > BOX_MAX ? BOX_MAX : half;
       half = Math.round(half / 2) * 2;
       const bx = Math.round(tx), by = Math.round(ty);
-      // Schild: unter der Klammer; stößt es an ein Fenster oder den Rand, über die Klammer, dann seitlich
+      // Schild: unter der Klammer; stößt es an ein Fenster oder den Rand, über die Klammer, dann seitlich.
+      // Verfolgersicht im 3D-Flug: zuerst über der Klammer – darunter sitzt dort das eigene Schiff.
       let lx = 0, ly = half + 8;
       const below = by + ly, above = by - half - 8 - LAB_H;
-      if (below + LAB_H > H - 8 || rectHit(wins, bx - LAB_W / 2, below, bx + LAB_W / 2, below + LAB_H)) {
-        if (above > 8 && !rectHit(wins, bx - LAB_W / 2, above, bx + LAB_W / 2, above + LAB_H)) ly = -half - 8 - LAB_H;
-      }
+      const up3 = w.flight3d && r.viewMode === 'chase';
+      const okAbove = above > 8 && !rectHit(wins, bx - LAB_W / 2, above, bx + LAB_W / 2, above + LAB_H);
+      if (up3 ? okAbove : (below + LAB_H > H - 8 || rectHit(wins, bx - LAB_W / 2, below, bx + LAB_W / 2, below + LAB_H)) && okAbove) ly = -half - 8 - LAB_H;
       const o = rectHit(wins, bx - LAB_W / 2, by + ly, bx + LAB_W / 2, by + ly + LAB_H);
       if (o) lx = o.x + o.w / 2 < bx ? Math.round(o.x + o.w + 10 - (bx - LAB_W / 2)) : Math.round(o.x - 10 - (bx + LAB_W / 2));
       if (bx + lx - LAB_W / 2 < 8) lx = 8 - (bx - LAB_W / 2);

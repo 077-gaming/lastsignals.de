@@ -10,7 +10,7 @@ export const FLIGHT = {
   rollL: ['KeyQ'], rollR: ['KeyE'],
   boost: ['ShiftLeft'], brake: ['KeyX'], cruise: ['KeyC'], couple: ['Alt+KeyC'],
   mode: ['KeyB'], landing: ['KeyN'], context: ['KeyF'], aimTarget: ['KeyT'], next: ['Tab'], prev: ['Shift+Tab'],
-  rocket: ['KeyR'], autofire: ['ControlRight'], home: ['KeyH'], camera: ['KeyV'], jump: ['KeyJ'],
+  rocket: ['KeyR'], autofire: ['KeyK', 'ControlRight'], home: ['KeyH'], camera: ['KeyV'], jump: ['KeyJ'],
   look: ['KeyZ'], free: ['AltLeft'], menu: ['Escape'],
   fire: ['Mouse0'], lock: ['Mouse2'], lookMouse: ['Mouse1'], limiter: ['Wheel'], camDist: ['Alt+Wheel'],
 };
@@ -26,6 +26,62 @@ export const PAD = {
   context: 'Y', home: 'Y HALTEN', camera: 'R3', look: 'R3 HALTEN', barSel: 'DPAD ◂▸', barFire: 'DPAD ▴', barNext: 'DPAD ▾',
   menu: 'MENU', mode: 'MENU HALTEN', map: 'VIEW',
 };
+
+// Dieselben Handlungen mit Controller (Glyphen-Schlüssel für padglyph.glyph) und Touch (Knopfbeschriftung), damit
+// Hilfetexte (SYSTEM-Karten, Coach, Funk) je Gerät die richtige Taste nennen statt „W“ oder „Klick“.
+export const PAD_ACT = {
+  flight: {
+    fwd: 'LS', back: 'LS', left: 'LS', right: 'LS', up: 'LB+RB', down: 'LB+RB', rollL: 'LB', rollR: 'RB', boost: 'L3', brake: 'B HALTEN',
+    couple: 'X HALTEN', mode: 'MENU HALTEN', landing: 'L3 HALTEN', context: 'Y', aimTarget: 'A', next: 'A', rocket: 'X', lock: 'LT',
+    home: 'Y HALTEN', camera: 'R3', look: 'R3 HALTEN', fire: 'RT', menu: 'MENU', MAUS: 'RS',
+  },
+  tactic: { attack: 'A', rocket: 'X', dock: 'Y', jump: 'Y', next: 'RB', home: 'Y HALTEN', camera: 'R3', fly: 'LS', steer: 'RT', MAUS: 'LS', KLICK: 'LS' },
+};
+export const TOUCH_ACT = {
+  flight: { fwd: 'SCHUB', brake: 'SCHUB', boost: 'BOOST', fire: 'LASER', autofire: 'LASER', next: 'ZIEL', aimTarget: 'ZIEL', rocket: 'RAKETE', home: 'HEIM', camera: 'ANSICHT', context: 'DOCK', MAUS: 'JOYSTICK' },
+  tactic: { attack: 'LASER', rocket: 'RAKETE', next: 'ZIEL', home: 'HEIM', camera: 'ANSICHT', dock: 'DOCK', jump: 'SPRUNG', fly: 'JOYSTICK', KLICK: 'JOYSTICK' },
+};
+// Satzteile je Gerät ({aimDev} „die Maus“, {tacGo} „Klick in Richtung Wegpunkt“ …): Text oder Funktion (glyph)
+const PHRASE = {
+  aimDev: { kb: 'die Maus', pad: 'der rechte Stick', touch: 'der Joystick' },
+  tacFly: { kb: 'per Klick', pad: 'mit dem linken Stick', touch: 'mit dem Joystick oder per Fingertipp' },
+  tacGo: { kb: 'Klick in Richtung Wegpunkt', pad: 'Lenk mit dem linken Stick Richtung Wegpunkt', touch: 'Tipp in Richtung Wegpunkt' },
+  thrustHow: { kb: () => `${keyName('fwd')} gibt Schub`, pad: 'Der linke Stick gibt Schub', touch: 'Der Knopf SCHUB gibt Schub' },
+  stopHow: {
+    kb: () => `Lass ${keyName('fwd')} los, der Flugrechner bremst von selbst ab. ${keyName('brake')} ist die Raumbremse und noch stärker.`,
+    pad: (g) => `Lass den linken Stick los, der Flugrechner bremst von selbst ab. ${g('B')} halten ist die Raumbremse und noch stärker.`,
+    touch: 'Schalt SCHUB aus, der Flugrechner bremst von selbst ab.',
+  },
+  targetHow: {
+    kb: () => `${keyName('next')} erfasst den nächsten Gegner, ${keyName('aimTarget')} den unter dem Fadenkreuz.`,
+    pad: (g) => `${g('A')} erfasst den Gegner im Fadenkreuz, sonst den nächsten.`,
+    touch: 'Der Knopf ZIEL erfasst den nächsten Gegner.',
+  },
+  fireHow: {
+    kb: () => `${keyName('fire')} feuert die Laser.`, pad: (g) => `${g('RT')} feuert die Laser.`, touch: 'Der Knopf LASER schaltet das Autofeuer an.',
+  },
+  autoHint: {
+    kb: () => `${keyName('autofire')} schaltet den Feuerleitrechner zu, der trifft schlechter.`,
+    pad: 'Nahe der Raute richtet die Zielhilfe die Laser selbst aus (Stufe in den Einstellungen).',
+    touch: 'Der Feuerleitrechner trifft schlechter als eigenes Zielen.',
+  },
+  rocketHow: {
+    kb: () => `${keyName('rocket')} oder ein kurzer Rechtsklick schickt eine R1 aufs Ziel, ${keyName('lock')} gehalten schaltet erst auf.`,
+    pad: (g) => `${g('X')} schickt eine R1 aufs Ziel, ${g('LT')} gehalten schaltet erst auf.`,
+    touch: 'Der Knopf RAKETE schickt eine R1 aufs Ziel.',
+  },
+};
+/**
+ * Name einer Handlung je Gerät für Hilfetexte: dev 'kb' (Tastatur/Maus), 'pad' (glyph: Controller-Symbol der Bauart),
+ * 'touch' (Knopfbeschriftung). Unbekannt → Tastaturname.
+ */
+export function inputName(action, mode = 'flight', dev = 'kb', glyph = null) {
+  if (PHRASE[action]) { const v = PHRASE[action][dev] ?? PHRASE[action].kb; return typeof v === 'function' ? v(glyph || ((x) => x)) : v; }
+  if (dev === 'pad') { const g = PAD_ACT[mode === 'tactic' ? 'tactic' : 'flight'][action]; if (g) return glyph ? glyph(g) : g; }
+  if (dev === 'touch') { const t = TOUCH_ACT[mode === 'tactic' ? 'tactic' : 'flight'][action]; if (t) return t; }
+  if (action === 'MAUS' || action === 'KLICK') return action;
+  return keyName(action, mode === 'tactic' ? 'tactic' : 'flight');
+}
 
 // Beschriftung je e.code (QWERTZ, Mac und Windows)
 const QWERTZ = {
@@ -103,7 +159,7 @@ export function flightHelp() {
     [k('context'), 'andocken, springen, Beute anfliegen'],
     [`${k('aimTarget')} / ${k('next')}`, 'Ziel im Fadenkreuz / nächstes Ziel'],
     [k('rocket'), 'Rakete'],
-    [k('autofire'), 'Feuerleitrechner (Autofeuer)'],
+    [`${k('autofire')} / ${label('ControlRight')}`, 'Feuerleitrechner (Autofeuer)'],
     [k('home'), 'Autopilot zur Station'],
     [`${k('free')} HALTEN`, 'Zeiger frei für die Fenster'],
     [k('camera'), 'Kamera: Verfolger → Cockpit → Taktisch'],
@@ -111,7 +167,7 @@ export function flightHelp() {
 }
 export function padHelp() {
   return [
-    ['LS', 'Schub vor/zurück, seitlich'], ['RS', 'Zielen (Fadenkreuz im Lenkkegel), Schiff folgt'], ['LB / RB', 'rollen'],
+    ['LS', 'Schub vor/zurück, seitlich'], ['RS', 'Zielen: Fadenkreuz kurz vor dem Bug, das Schiff folgt'], ['LB / RB', 'rollen'],
     ['LB + RB', 'linker Stick ↕ = hoch/runter'], ['L3', 'Boost · halten: Landemodus'], ['RT', 'Laser feuern'],
     ['LT', 'Präzisionszielen, schaltet Raketen auf'], ['A', 'Ziel im Fadenkreuz / nächstes'], ['B', 'abbrechen · halten: Raumbremse'],
     ['X', 'Rakete · halten: gekoppelt/entkoppelt'], ['Y', 'Kontext · halten: Autopilot'], ['R3', 'Kamera · halten: umsehen'],

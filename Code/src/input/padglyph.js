@@ -48,7 +48,9 @@ export function keyHint(label, full = true) {
 export const padMode = () => pad.mode === 'pad';
 
 // Tabellen und Grafiken, die bewusst die Tastatur zeigen (Steuerungsübersichten), bleiben unverändert
-const KEEP = '.mc-kb, .hb-keys, .mp-ctrl, .gp-map, .qs-k, [data-nopad]';
+// (.gp-tab: Belegungstabelle des Controllers – ihre Kappen tragen schon das Symbol der Bauart über data-pk; die
+// Tastatur-Umschlüsselung hätte sie ein zweites Mal getauscht, z. B. X → B für die Raumbremse)
+const KEEP = '.mc-kb, .hb-keys, .mp-ctrl, .gp-map, .gp-tab, .qs-k, [data-nopad], [data-pk]';
 
 /** Tastenkappen unter root auf die aktuelle Eingabeart umstellen (billig: nur geänderte Kappen werden geschrieben) */
 export function applyKeyHints(root, force = false) {

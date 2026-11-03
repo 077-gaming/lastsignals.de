@@ -1033,7 +1033,8 @@ export class Hud {
     const atk = !!(pl.attacking && pl.targetId === id);
     this.sTargetAtk.set(atk);
     this.sTAtkText.set(atk ? 'ANGRIFF' : 'ERFASST');
-    const dist = Math.hypot(e.x - pl.x, e.z - pl.z);
+    // Entfernung wie Zielklammer und Waffen: im 3D-Flug räumlich (mit Höhe), in der Taktik in der Ebene
+    const dist = Math.hypot(e.x - pl.x, this.world.flight3d ? (e.y || 0) - (pl.y || 0) : 0, e.z - pl.z);
     this.cTDist.set(dist, dt);
     const inR = dist <= PLAYER_RANGE;
     this.sTInRange.set(inR);
@@ -1200,6 +1201,8 @@ export class Hud {
     f.age = 0;
     f.life = life || 1.1;
     f.x = x; f.z = z; f.id = id;
+    const ent = id != null && this.world && this.world.entities ? this.world.entities.get(id) : null;
+    f.y = ent ? ent.y || 0 : 0;
     f.kind = lane || cls;
     f.sum = 0;
     if (lane === 'loot') {
@@ -1260,9 +1263,10 @@ export class Hud {
       if (t >= 1 || !r) { this._hideFloat(f); continue; }
       if (f.id != null && w && w.entities) {
         const e = w.entities.get(f.id);
-        if (e && e.alive !== false) { f.x = e.x; f.z = e.z; }
+        if (e && e.alive !== false) { f.x = e.x; f.z = e.z; f.y = e.y || 0; }
       }
-      const s = r.toScreen(f.x, f.z, this._scr);
+      // Höhe mitnehmen (3D-Flug): sonst stand die Zahl auf der Ebene statt am Ziel, oft genau auf dem eigenen Schiff
+      const s = r.toScreen(f.x, f.z, this._scr, r.ry ? r.ry(f.y || 0) : 0);
       if (!s || !s.visible) {
         if (f.op !== 0) { f.op = 0; f.el.style.opacity = '0'; }
         continue;
@@ -1317,7 +1321,9 @@ export class Hud {
   }
 
   _onShot(p) {
-    if (!p || p.hit !== false || p.from !== 'player') return;
+    // Bolzen (3D-Flug) melden beim Abfeuern noch kein Ergebnis (hit ist dort immer false): kein DANEBEN je Bolzen –
+    // Treffer zeigt die Treffermarke am Fadenkreuz, Fehlschüsse sieht man am Bolzen selbst
+    if (!p || p.hit !== false || p.from !== 'player' || p.bolt) return;
     const w = this.world;
     const e = w && w.entities && w.entities.get(p.to);
     if (e) this._spawnFloat('DANEBEN', '', 'hf-miss', e.x, e.z, p.to, 0.8, false);

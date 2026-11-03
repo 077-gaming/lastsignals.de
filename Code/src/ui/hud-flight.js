@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { FACTIONS } from '../core/data.js';
 import { MODE } from '../flight/core.js';
-import { BOLT_SPEED } from '../flight/params.js';
+import { BOLT_SPEED, HOME_BAND, SECTOR_BAND, BAND_WARN } from '../flight/params.js';
 import { leadTime } from '../flight/aim.js';
 import { keyName } from '../input/bindings.js';
 import { PLAYER_RANGE } from '../sim/config.js';
@@ -123,7 +123,12 @@ export class HudFlight {
           const pip = this._proj(cam, tx + (t.vx || 0) * lt, ty + (t.vy || 0) * lt * yK, tz + (t.vz || 0) * lt, { x: 0, y: 0, z: 0, on: false });
           const tp = this._proj(cam, tx, ty, tz, { x: 0, y: 0, z: 0, on: false });
           if (pip.on) {
-            pipHit = Math.hypot(pip.x - wx.x, pip.y - wx.y) < 9 && inGim;
+            // „auf der Marke“: Waffenkreuz auf der Raute, oder das Fadenkreuz liegt im Waffenkegel der Zielhilfe
+            // (dann schwenken die Laser selbst auf die Marke, sim/world3d.js coneAssist)
+            const cr = A.coneRad || 0;
+            let inCone = false;
+            if (cr > 0) { const pd = Math.hypot(t.x + (t.vx || 0) * lt - p.x, (t.y || 0) + (t.vy || 0) * lt - p.y, t.z + (t.vz || 0) * lt - p.z) || 1; inCone = ((t.x + (t.vx || 0) * lt - p.x) * aim[0] + ((t.y || 0) + (t.vy || 0) * lt - p.y) * aim[1] + (t.z + (t.vz || 0) * lt - p.z) * aim[2]) / pd > Math.cos(cr); }
+            pipHit = (Math.hypot(pip.x - wx.x, pip.y - wx.y) < 9 || inCone) && inGim;
             this._pip(g, pip.x, pip.y, tp.on ? tp : null, pipHit ? acc : RED, pipHit);
           }
         }
@@ -180,14 +185,16 @@ export class HudFlight {
     this._speed(g, w, st, W / 2 - 150, H / 2, acc);
     this._alt(g, w, p, st, W / 2 + 150, H / 2);
     this._boost(g, st, W / 2 - 182, H / 2, acc);
-    this._mode(g, w, st, W / 2, Math.max(150, H / 2 - 168));
+    // Moduszeile über dem Kursband (früher darunter: die Marken des Bands überdeckten den Text)
+    this._mode(g, w, st, W / 2, this._tapeY() - 34);
+    this._edge(g, w, W, H);
     if (warn) this._center(g, warn, W / 2, H / 2 - 110, RED, 15);
     if (st.warn) this._center(g, st.warn, W / 2, H / 2 - 92, WARN, 13);
-    if (this.flashT > 0) { this.flashT -= dt; this._center(g, this.flash, W / 2, H / 2 + 140, this.flash.startsWith('ENT') ? WARN : MID, 14, Math.min(1, this.flashT * 2)); }
+    if (this.flashT > 0) { this.flashT -= dt; this._center(g, this.flash, W / 2, this._tapeY() - 54, this.flash.startsWith('ENT') ? WARN : MID, 14, Math.min(1, this.flashT * 2)); }
     // virtueller Stick
     if ((fi.set.mouse === 'vjoy' || !fi.locked) && !fi.pad?.active && !fi.touch?.active) this._vjoy(g, W / 2, H / 2, H * 0.3, fi.vx, fi.vy);
     if (fi.clickHint) this._center(g, 'KLICKEN ZUM STEUERN', W / 2, H / 2 + 60, WHITE, 16, 0.75 + 0.25 * Math.sin(performance.now() / 260));
-    if (fi.keys.has('AltLeft')) this._center(g, `${keyName('free')} · ZEIGER FREI`, W / 2, H / 2 + 60, MID, 13);
+    if (fi.altFreed) this._center(g, `${keyName('free')} · ZEIGER FREI`, W / 2, H / 2 + 60, MID, 13);
     void P0;
   }
 
@@ -262,8 +269,23 @@ export class HudFlight {
     g.globalAlpha = alpha; g.fillStyle = col; g.font = `600 ${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText(text, x, y); g.globalAlpha = 1; g.textAlign = 'left';
   }
+  _tapeY() { return Math.max(124, this._h / 2 - 185); }
+  /** Sektorrand: Warnung ab 83 %, außerhalb Zählwerk der Frist, danach Schaden (sim/world3d.js edge3d) */
+  _edge(g, w, W, H) {
+    const E = w.edge;
+    if (!E || !(E.warn || E.out)) return;
+    const km = E.d >= 1000 ? `${(E.d / 1000).toFixed(1).replace('.', ',')} KM` : `${Math.max(0, Math.round(E.d / 10) * 10)} M`;
+    const where = E.vert ? (E.dir > 0 ? 'OBERGRENZE' : 'UNTERGRENZE') : 'SEKTORRAND';
+    const y = H / 2 - 128;
+    if (!E.out) { this._center(g, `${where} · ${km}`, W / 2, y, WARN, 14); return; }
+    const blink = 0.7 + 0.3 * Math.sin(performance.now() / 120);
+    if (E.left > 0) {
+      this._center(g, `${where} ÜBERSCHRITTEN · ZURÜCK IN ${Math.ceil(E.left)} S`, W / 2, y, RED, 16, blink);
+      this._center(g, E.vert ? (E.dir > 0 ? '▾ SINKEN' : '▴ STEIGEN') : 'KURSBAND ZEIGT DIE GRENZE', W / 2, y + 18, WARN, 11);
+    } else this._center(g, `${where} · SCHIFF NIMMT SCHADEN`, W / 2, y, RED, 16, blink);
+  }
   _heading(g, w, p, W, acc) {
-    const y = Math.max(120, this._h / 2 - 185), wd = Math.min(420, W * 0.32), x0 = W / 2 - wd / 2;
+    const y = this._tapeY(), wd = Math.min(420, W * 0.32), x0 = W / 2 - wd / 2;
     const hdg = ((-p.rot / D) % 360 + 360) % 360; // 0° = Sektor-Nord (−z), im Uhrzeigersinn
     g.strokeStyle = 'rgba(255,255,255,0.16)'; g.lineWidth = 1;
     g.beginPath(); g.moveTo(x0, y + 10); g.lineTo(x0 + wd, y + 10); g.stroke();
@@ -286,6 +308,13 @@ export class HudFlight {
     for (const o of w.portals) mark(o.x, o.z, '#9fe8ff');
     const t = p.targetId != null ? w.entities.get(p.targetId) : null;
     if (t && t.alive !== false) mark(t.x, t.z, RED);
+    // nächste seitliche Sektorgrenze (Warnfarbe), sobald die Randwarnung greift
+    const E = w.edge;
+    if (E && (E.warn || E.out) && !E.vert) {
+      let dd = E.dir / D - hdg; dd = ((dd % 360) + 540) % 360 - 180;
+      const x = W / 2 + Math.max(-span / 2, Math.min(span / 2, dd)) * k;
+      g.strokeStyle = WARN; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 6, y + 22); g.lineTo(x + 6, y + 22); g.moveTo(x, y + 12); g.lineTo(x, y + 22); g.stroke(); g.lineWidth = 1;
+    }
     g.fillStyle = WHITE; g.font = `600 13px ${FONT}`;
     g.fillText(String(Math.round(hdg) % 360).padStart(3, '0'), W / 2, y - 14);
     g.strokeStyle = acc; g.beginPath(); g.moveTo(W / 2, y + 1); g.lineTo(W / 2, y + 11); g.stroke();
@@ -328,8 +357,8 @@ export class HudFlight {
     g.font = `500 10px ${MONO}`; g.fillStyle = DIM;
     const vs = st.v[1];
     g.fillText(`${vs >= 0 ? '▴' : '▾'} ${Math.abs(Math.round(vs))} M/S`, x + 38, y + 10);
-    const band = (w.sector && w.sector.index) === 1 ? 1200 : 1500;
-    if (Math.abs(p.y) > band * 0.83) { g.fillStyle = WARN; g.font = `600 11px ${FONT}`; g.fillText('HÖHENGRENZE', x + 38, y + 26); }
+    const band = (w.sector && w.sector.index) === 1 ? HOME_BAND : SECTOR_BAND;
+    if (Math.abs(p.y) > band * BAND_WARN) { g.fillStyle = WARN; g.font = `600 11px ${FONT}`; g.fillText(`GRENZE ${p.y >= 0 ? '+' : '−'}${band}`, x + 38, y + 26); }
   }
   _boost(g, st, x, y, acc) {
     // senkrecht links neben der Tempoleiter, 16 Segmente, gesperrt in Warnfarbe

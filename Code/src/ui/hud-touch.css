@@ -26,3 +26,12 @@ html[data-vpfit] .ht-stick { zoom: 1.45; }
 .ht-pad .ht-f3 { display: none; }
 .ht-pad.is-3d .ht-f3 { display: block; }
 .ht-pad .ht-b.is-on { border-color: var(--fx, #d8b25a); color: #fff; }
+
+/* Kompakt (wenig Höhe zwischen Mission und Karte, z. B. Handy quer): vier Spalten, flachere Knöpfe; die Lage setzt
+   hud-touch.js (_fit) zwischen Missionsfenster und Karte */
+.ht-pad.is-compact { grid-template-columns: repeat(4, 64px); gap: 6px; }
+.ht-pad.is-compact .ht-b, .ht-pad.is-compact .ht-b.ht-mid { height: 50px; font-size: 11px; letter-spacing: .1em; }
+.ht-pad.is-compact .ht-b.ht-big { grid-column: span 2; height: 50px; font-size: 13px; }
+/* Touch: Fenster PILOTEN liegt im Knopfraster (Liste im Bordmenü), SYSTEM-Karte rechts neben dem Joystick */
+body.is-touch [data-win="players"] { display: none !important; }
+body.is-touch .lsg { left: 310px; }
