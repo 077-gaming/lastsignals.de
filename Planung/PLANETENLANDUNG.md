@@ -303,3 +303,22 @@ Bodenkampf, Waffen zu Fuß, Fahrzeuge, Höhlen, Innenräume, Bauen, Rohstoffabba
 3. Wünsche an den Flugkern (Abschnitt 6) in den Flug-Zweig übernehmen lassen.
 4. Bildraten und Gefühl am echten Mac (M5), einem Windows-Browser und einem Handy abnehmen (headless liefert nur Richtwerte).
 5. Später: ob eine Meshy-Pilotenfigur die Code-Figur ersetzen soll (Generierung nur mit Freigabe).
+
+## Nachtrag 03.11.2026: Weite, Hyperschub und Schubregler (Wunsch Toni, geht vor E4)
+
+Toni will Realismus: Der Weg zu einem Mond soll sich **wirklich weit** anfühlen. Lange Strecken fliegt man mit einem eigenen Fernantrieb, dem **HYPERSCHUB** (eigener Name, kein Nachbau). Kurze Strecken fliegt man mit normalem Schub, den man **stufenlos regeln** kann.
+
+- **Maßstab neu:** Der landbare Mond liegt nicht mehr 120 km unter dem Sektor, sondern **mehrere tausend Kilometer entfernt** (Richtwert 8.000–25.000 km vom Heimatsektor). Mit normalem Schub dauert der Weg Stunden. Das ist gewollt, damit der Hyperschub Sinn hat. Am Himmel des Sektors steht der Mond klein und in echter Größe, kein Kulissenbild.
+- **Größe des Körpers:** Radius möglichst **150–300 km**, wenn das Chunk-Budget es zulässt (zwei weitere Quadtree-Stufen). Das Handy zeigt denselben Körper gröber. Messung vor der Entscheidung, Untergrenze bleibt E4 (45–70 km).
+- **HYPERSCHUB:**
+  - Ziel wählen (Mond, Station, Orbitmarke) und den Bug in einen Ausrichtekegel von etwa 5° bringen.
+  - Taste halten → **Hochlaufen 4–6 s** mit Ton, Vibration und Lichttunnel → Reise mit sehr hohem Tempo (Richtwert: 20.000 km in 30–60 s, sanft beschleunigen und abbremsen).
+  - **Austritt** etwa 300–1.000 km über dem Ziel, dann normaler Schub oder REISE hinunter in die Atmosphäre (Ablauf ab Schritt 3 wie oben).
+  - Im Kampf, mit offenem Fahrwerk und in Atmosphäre gesperrt. Treffer beim Hochlaufen brechen ab.
+  - HUD: Zielmarke mit Entfernung und Ankunftszeit, Ausrichtehilfe, Hochlaufbalken. Funktioniert auf Maus, Controller und Touch, auch im Mehrspieler: Der Mitspieler kann sich an den Sprung anhängen oder hinterher fliegen.
+- **Schubregler:** Der normale Schub ist stufenlos regelbar, als Zieltempo zwischen 0 und dem Höchsttempo des Modus (KAMPF, REISE, LANDUNG).
+  - Auf dem Mausrad liegt der vorhandene BEGRENZER bzw. Tempomat. Auf dem Controller das Steuerkreuz hoch und runter oder ein eigener Regler, auf Touch ein Schieber.
+  - Das HUD zeigt Soll- und Ist-Tempo.
+  - REISE darf auf dem freien Weg zum Mond deutlich schneller sein als im Sektor (Richtwert bis einige km/s), bleibt aber weit unter dem Hyperschub.
+- **Gefühl für Weite:** Mond und Planet wachsen beim Anflug spürbar. Entfernungen stehen in km bzw. Mm, Ankunftszeiten im HUD. Bei sehr hohem Tempo gibt es Sternstreifen bzw. Partikel, damit Geschwindigkeit sichtbar wird.
+- **Technik:** Weltorte in double, kameranah gezeichnet (siehe Abschnitt Rahmen), damit 25.000 km ohne Zittern gehen. Selbsttest: Flug 25.000 km, danach Genauigkeit < 1 mm.
