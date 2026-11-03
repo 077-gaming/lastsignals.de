@@ -74,7 +74,7 @@ export class HudTouch {
     }
     const t = p.targetId ? w.entities.get(p.targetId) : null;
     if (!t || !t.alive || w.docked) { this.tg.className = 'ht-tgt'; return; }
-    const s = r.toScreen(t.x, t.z, this._s), W = innerWidth, H = innerHeight, m = 60;
+    const s = r.toScreen(t.x, t.z, this._s, r.ry ? r.ry(t.y) : 0), W = innerWidth, H = innerHeight, m = 60;
     const d = Math.hypot(t.x - p.x, t.z - p.z);
     this.tg.lastChild.textContent = (d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m') + (p.attacking ? ' · FEUER' : '');
     if (s.visible && s.x > m && s.x < W - m && s.y > m && s.y < H - m) {

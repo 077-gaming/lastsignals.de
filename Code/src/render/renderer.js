@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { CameraLookPass } from './post.js';
 import { BloomPass } from './bloom.js';
-import { FACTIONS, SHIPS, ENEMIES } from '../core/data.js';
+import { FACTIONS, SHIPS, ENEMIES, LASERS } from '../core/data.js';
 import { ModelFactory, ENEMY_VIS, ENEMY_LEN, SHIELD_COLOR, PORTAL_VIS, ASTEROID_KEYS, EQUIP_URL, equipKeys, preloadGLB, shipHdUrls } from './models.js';
 import { store } from '../core/store.js';
 import { JumpMarker } from './marker.js';
@@ -122,6 +122,7 @@ const PLAYER_LAYER = 5, FOV_COCKPIT = 74; // Cockpit: eigenes Schiff auf eigener
 const SKY_Q_CHASE = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), PITCH);
 const SKY_Q_ID = new THREE.Quaternion();
 const _s3 = new THREE.Vector3();
+const _sq2 = new THREE.Quaternion(), _qTac = new THREE.Quaternion(), _q3c = new THREE.Quaternion(), _p3c = new THREE.Vector3(), _m4c = new THREE.Matrix4();
 const _sq = new THREE.Quaternion(), _cp = new THREE.Vector3(), _cl = new THREE.Vector3(), _so = new THREE.Vector3(), _s2 = new THREE.Vector2();
 // Schiff bei Standard-Abstand ≈ 8 % der Bildhöhe, ganz nah ≈ 25 %, ganz weit für die Übersicht
 const ZOOM_MIN = 230, ZOOM_MAX = 3400, ZOOM_START = 520;
@@ -272,6 +273,7 @@ export class Renderer {
     this.camLead = new THREE.Vector3();
     this.dist = ZOOM_START; this.targetDist = ZOOM_START;
     this.combatK = 0;          // 0 = frei, 1 = Kampf-Rahmung (Spieler und Ziel im freien Bildbereich)
+    this.yK = 1;               // Höhenanteil der Darstellung (3D-Flug 1, Draufsicht 0)
     this._nav = this.factory.navMats();
     this._snap = true;
 
@@ -313,6 +315,9 @@ export class Renderer {
     on('rocket', (p) => { if (p && p.from === 'player') this._need('rocket:' + (p.rocket || 'R1')); this.effects.rocket(p); });
     on('explode', (p) => this._onExplode(p));
     on('damage', (p) => { this.effects.damage(p); this._onDamage(p); });
+    // 3D-Flug: Einschläge der Simulationsbolzen (Ziel, eigenes Schiff, Brocken)
+    on('boltHit', (p) => { if (p) this.effects.boltImpact(p.x, this.ry(p.y), p.z, p.player ? LASERS[p.laser]?.color : ENEMIES[p.enemyType]?.accent, p.dx || 0, p.dy || 0, p.dz || 0, p.shield, p.crit || p.sal || p.kill); });
+    on('impact', (p) => { if (p) this.effects.boltImpact(p.x, this.ry(p.y), p.z, 0xffc890, 0, 1, 0, false, false); });
     on('telegraph', (p) => this.tele.start(p));
     on('telegraphEnd', (p) => this.tele.end(p));
     on('special', (p) => this.tele.special(p));
@@ -933,6 +938,8 @@ export class Renderer {
       }
     }
     v.root = v.model.root;
+    v.root.rotation.order = 'YXZ'; // 3D-Flug: erst Gieren, dann Nicken um die eigene Querachse
+    v.ry = 0; v.pitch3 = 0; v.qs = new THREE.Quaternion();
     this.entityGroup.add(v.root);
     this.views.set(e.id, v);
     return v;
@@ -993,6 +1000,9 @@ export class Renderer {
     const rot = e.rot || 0, prot = e.prot ?? rot;
     const dr = wrapAngle(rot - prot);
     v.rrot = prot + dr * a;
+    // Höhe (3D-Flug): beim Wechsel in die Draufsicht mit dem Kamerablend auf die Ebene gestaucht
+    const ey = e.y || 0, epy = e.py ?? ey;
+    v.ry = (epy + (ey - epy) * a) * this.yK;
     const root = v.root;
     const alive = e.alive !== false;
     if (!alive) {
@@ -1022,7 +1032,8 @@ export class Renderer {
     switch (v.kind) {
       case 'player': {
         if (this._dockK > 0 || this._docking) this._dockGlide(v, dt);
-        root.position.set(v.rx + fx, Math.sin(t * 1.2 + v.phase) * 1.2, v.rz + fz);
+        const q3 = !!e.q && this.yK > 0.001 && !(this._dockK > 0.001);
+        root.position.set(v.rx + fx, Math.sin(t * 1.2 + v.phase) * 1.2 * (1 - this.yK) + v.ry, v.rz + fz);
         const speed = typeof e.speed === 'number' ? e.speed : Math.hypot(e.vx || 0, e.vz || 0);
         const n = Math.min(1.3, speed / v.maxSpeed);
         // Schub 0..1 von der Simulation (langsames Hochbeschleunigen); fehlt er, aus der Tempoänderung geschätzt
@@ -1052,10 +1063,21 @@ export class Renderer {
         v.pitch = (v.pitch || 0) + (pitchT - (v.pitch || 0)) * (1 - Math.exp(-dt * 4));
         // Nachdriften: die Nase dreht etwas weiter in die Kurve, als die Bahn folgt
         const lead = Math.max(-0.1, Math.min(0.1, v.yawRate * 0.065));
-        root.rotation.y = v.rrot + lead;
-        root.rotation.x = -v.fl * 0.08;
-        m.bank.rotation.z = v.bank;
-        m.bank.rotation.x = v.pitch - n * 0.02;
+        if (q3) {
+          // 3D-Flug: volle Lage aus dem Flugkern (zwischen den Sim-Schritten interpoliert); Schräglage und Nicken
+          // als Anzeige entfallen (das Schiff rollt und nickt wirklich)
+          _sq.set(e.pq ? e.pq[0] : e.q[0], e.pq ? e.pq[1] : e.q[1], e.pq ? e.pq[2] : e.q[2], e.pq ? e.pq[3] : e.q[3]);
+          _sq2.set(e.q[0], e.q[1], e.q[2], e.q[3]);
+          v.qs.slerpQuaternions(_sq, _sq2, e.remote ? 1 : a);
+          root.quaternion.copy(v.qs);
+          m.bank.rotation.z = v.bank * (1 - this.yK); m.bank.rotation.x = (v.pitch - n * 0.02) * (1 - this.yK) - v.fl * 0.08;
+        } else {
+          root.rotation.y = v.rrot + lead;
+          root.rotation.x = -v.fl * 0.08; root.rotation.z = 0;
+          m.bank.rotation.z = v.bank;
+          m.bank.rotation.x = v.pitch - n * 0.02;
+          v.qs.copy(root.quaternion);
+        }
         // Rückstoß der Laser schiebt das ganze Schiff kurz zurück
         v.recoil *= Math.exp(-dt * 9);
         m.bank.position.z = v.recoil * 1.6;
@@ -1144,9 +1166,11 @@ export class Renderer {
         }
         if (v.aura) v.aura.scale.setScalar(v.auraS * (1 + Math.sin(t * (v.auraK > 0.8 ? 4.2 : 2.2) + v.phase) * 0.08));
         if (m.pods) { this._nestAnim(v, m, t, fx, fz); break; }
-        root.position.set(v.rx + fx, 2 + Math.sin(t * 1.5 + v.phase) * 2, v.rz + fz);
+        root.position.set(v.rx + fx, 2 + Math.sin(t * 1.5 + v.phase) * 2 + v.ry, v.rz + fz);
         root.rotation.y = v.rrot;
-        root.rotation.x = -v.fl * 0.12;
+        // Nicken (3D-Flug) aus der Simulation, weich
+        v.pitch3 += ((e.pitch || 0) * this.yK - v.pitch3) * (1 - Math.exp(-dt * 10));
+        root.rotation.x = v.pitch3 - v.fl * 0.12;
         // dezenter Schweif hinter Gegnern in Bildnähe
         {
           const sp = Math.hypot(e.vx || 0, e.vz || 0) / v.maxSpeed;
@@ -1155,7 +1179,7 @@ export class Renderer {
             if (ddx * ddx + ddz * ddz < 2600 * 2600) {
               const back = v.vr * (m.swarm ? 0.35 : 0.55);
               const k = Math.min(1, sp);
-              this.trails.feed(e.id, v.rx + Math.sin(v.rrot) * back, root.position.y - 2, v.rz + Math.cos(v.rrot) * back,
+              this.trails.feed(e.id, v.rx + Math.sin(v.rrot) * back * Math.cos(v.pitch3), root.position.y - 2 + Math.sin(v.pitch3) * back, v.rz + Math.cos(v.rrot) * back * Math.cos(v.pitch3),
                 k, v.vr * (m.swarm ? 0.13 : 0.15), 0.08 + (m.swarm ? 0.25 : 0.4) * k, v.trailCol, m.swarm ? 0.22 : 0.6);
             }
           }
@@ -1175,21 +1199,21 @@ export class Renderer {
         break;
       }
       case 'crate':
-        root.position.set(v.rx, 8 + Math.sin(t * 2 + v.phase) * 3, v.rz);
+        root.position.set(v.rx, 8 + Math.sin(t * 2 + v.phase) * 3 + v.ry, v.rz);
         m.spin.rotation.set(0.45 + Math.sin(t * 0.7 + v.phase) * 0.2, t * 0.9 + v.phase, 0.3);
         m.glow.scale.setScalar(22 + Math.sin(t * 3 + v.phase) * 4);
         break;
       case 'wreck':
-        root.position.set(v.rx, 0, v.rz);
+        root.position.set(v.rx, v.ry, v.rz);
         m.spin.rotation.y = v.phase + t * 0.08;
         m.glow.scale.setScalar(20 + Math.sin(t * 4 + v.phase) * 3);
         break;
       case 'ore':
-        root.position.set(v.rx, 0, v.rz);
+        root.position.set(v.rx, v.ry, v.rz);
         m.spin.rotation.set(t * v.spinX + v.phase, t * v.spinY, v.phase * 0.5);
         break;
       case 'station': {
-        root.position.set(v.rx, -44, v.rz);
+        root.position.set(v.rx, -44 + v.ry, v.rz);
         if (m.spin) m.spin.rotation.y = t * (m.spinRate ?? 0.035);
         if (v.life) v.life.update(dt, t, v, this.world, this);
         if (this._shadowOn && (!this._shadowAt || this._shadowAt.distanceToSquared(root.position) > 1)) this._placeShadow(root.position);
@@ -1207,7 +1231,7 @@ export class Renderer {
         break;
       }
       case 'portal': {
-        root.position.set(v.rx, 0, v.rz);
+        root.position.set(v.rx, v.ry, v.rz);
         const d2 = (v.rx - this.camTarget.x) ** 2 + (v.rz - this.camTarget.z) ** 2;
         if (d2 < this._lensD2) { this._lensD2 = d2; this._lensV = v; }
         m.spin.rotation.y = t * 0.12;
@@ -1216,7 +1240,7 @@ export class Renderer {
         break;
       }
       case 'freighter': {
-        root.position.set(v.rx + fx, -6, v.rz + fz);
+        root.position.set(v.rx + fx, -6 + v.ry, v.rz + fz);
         root.rotation.y = v.rrot;
         const tb = Math.max(-0.25, Math.min(0.25, dr * 60 * 0.3));
         v.bank += (tb - v.bank) * (1 - Math.exp(-dt * 2));
@@ -1241,20 +1265,20 @@ export class Renderer {
         this._nestAnim(v, m, t, fx, fz);
         break;
       case 'asteroid': {
-        root.position.set(v.rx + fx, -10, v.rz + fz);
+        root.position.set(v.rx + fx, -10 + v.ry, v.rz + fz);
         const sp = typeof e.spin === 'number' ? e.spin : v.spinY;
         m.spin.rotation.set(v.phase + t * sp * 0.35, (e.rot || 0) + t * sp, v.phase * 0.5);
         break;
       }
       default:
-        root.position.set(v.rx + fx, 0, v.rz + fz);
+        root.position.set(v.rx + fx, v.ry, v.rz + fz);
         if (m.spin) m.spin.rotation.y = t * 0.6;
     }
   }
 
   // Nest: langsames Atmen, Eiersäcke pulsieren versetzt, Treffer lassen es zusammenzucken
   _nestAnim(v, m, t, fx, fz) {
-    v.root.position.set(v.rx + fx, -4, v.rz + fz);
+    v.root.position.set(v.rx + fx, -4 + (v.ry || 0), v.rz + fz);
     const br = 1 + Math.sin(t * 1.6 + v.phase) * 0.035 - v.fl * 0.05;
     m.spin.scale.set(br, 1 + Math.sin(t * 1.6 + v.phase + 1.1) * 0.05, br);
     m.spin.rotation.y = v.phase + t * 0.05;
@@ -1616,6 +1640,19 @@ export class Renderer {
     if (kc > 0.5 && (pv._ckHidden !== pv.root || this.time > (pv._ckAt || 0))) { pv._ckHidden = pv.root; pv._ckAt = this.time + 0.5; pv.root.traverse((o) => o.layers.set(PLAYER_LAYER)); } // nachgeladene Teile mit erfassen
   }
 
+  // 3D-Cockpit: Pilotenauge am Anker HP_Cockpit (bzw. vorn oben im Rumpf), volle Schiffslage, Umsehen, Kopfträgheit.
+  // Überblendet die Verfolger-Pose (pos, q) mit kc.
+  _cockpitPose3d(pv, kc, st, pos, q) {
+    if (pv._ckRoot !== pv.root) { pv._ckRoot = pv.root; pv._ckNode = pv.root.getObjectByName('HP_Cockpit') || null; }
+    pv.root.updateMatrixWorld();
+    if (pv._ckNode) pv._ckNode.getWorldPosition(_v);
+    else pv.root.localToWorld(_v.set(0, pv.vr * 0.2, -pv.vr * 0.42));
+    this._ckP = this._ckP || new THREE.Vector3(); this._ckQ = this._ckQ || new THREE.Quaternion();
+    this.rig.cockpitPose3d(_v, pv.qs, st, this._ckP, this._ckQ);
+    pos.lerp(this._ckP, kc); q.slerp(this._ckQ, kc);
+    if (kc > 0.5 && (pv._ckHidden !== pv.root || this.time > (pv._ckAt || 0))) { pv._ckHidden = pv.root; pv._ckAt = this.time + 0.5; pv.root.traverse((o) => o.layers.set(PLAYER_LAYER)); }
+  }
+
   // Verfolger: liegt die Kamera in einem großen Stationsteil (Hüllquader je Teil), rückt sie zum Schiff heran;
   // steht schon das Schiff darin, steigt sie über dessen Oberkante. Quader einmal je Station (Stationen stehen still).
   _clearStation(pv) {
@@ -1777,9 +1814,11 @@ export class Renderer {
   getPos(id, out) {
     const v = this.views.get(id);
     if (!v) return false;
-    out.set(v.rx, v.kind === 'crate' ? v.root.position.y : 4, v.rz);
+    out.set(v.rx, v.kind === 'crate' ? v.root.position.y : 4 + (v.ry || 0), v.rz);
     return true;
   }
+  /** Simulationshöhe → Zeichenhöhe (3D-Flug 1:1, Taktik gestaucht auf die Ebene) */
+  ry(y) { return (y || 0) * this.yK; }
   getRadius(id) { const v = this.views.get(id); return v ? (this.entity(id)?.radius || v.vr) : 0; }
   visualRadius(id) { const v = this.views.get(id); return v ? v.vr : 0; }
   playerShieldColor() { const v = this.views.get(this.world?.player?.id ?? 'player'); return v?.shieldColor ?? SHIELD_COLOR; }
@@ -1787,7 +1826,7 @@ export class Renderer {
     const id = this.world?.player?.id ?? 'player';
     const v = this.views.get(id);
     if (!v || !v.root.visible) return null;
-    out.set(v.rx, 4, v.rz);
+    out.set(v.rx, 4 + (v.ry || 0), v.rz);
     return out;
   }
   getMuzzle(id, laser, out, slot = -1) {
@@ -1811,7 +1850,8 @@ export class Renderer {
       return true;
     }
     const r = v.vr * 0.8;
-    out.set(v.rx - Math.sin(v.rrot) * r, 4, v.rz - Math.cos(v.rrot) * r);
+    if (v.kind === 'enemy') { const cp = Math.cos(v.pitch3 || 0); out.set(v.rx - Math.sin(v.rrot) * r * cp, 4 + (v.ry || 0) + Math.sin(v.pitch3 || 0) * r, v.rz - Math.cos(v.rrot) * r * cp); return true; }
+    out.set(v.rx - Math.sin(v.rrot) * r, 4 + (v.ry || 0), v.rz - Math.cos(v.rrot) * r);
     return true;
   }
   shake(a) { this.rig.shake(a); }
@@ -1882,6 +1922,8 @@ export class Renderer {
     this.frame++;
     this._dt = dt;
     this._alpha = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
+    // Höhenanteil: 3D-Flug 1, Draufsicht 0 (folgt dem Kamerablend; die Simulation bleibt echt)
+    this.yK = this.rig.k;
     this.factory.uTime.value = this.time;
     const W = this.world;
 
@@ -1974,25 +2016,51 @@ export class Renderer {
       const Hh = Math.max(1, this.rect.height), freeTop = Math.max(40, HF.top), freeBot = Hh - Math.max(0, HF.bottom);
       const shipPx = freeTop + Math.max(80, freeBot - freeTop) * 0.6;
       const shipY = Math.max(-0.4, Math.min(0.3, 1 - 2 * shipPx / Hh));
-      const tanC = Math.tan((this._fovChase + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * Math.PI / 360);
-      rig.chasePose(dt, pv, e, hostile ? cv : null, hostile ? this.combatK : 0, pv.maxSpeed, shipY, tanC);
-      _cp.lerp(rig._outPos, K); _cl.lerp(rig._outLook, K);
-      viewD = d + (rig._outPos.distanceTo(_v.set(pv.rx, 0, pv.rz)) - d) * K;
-      if (rig.kc > 0.001) this._cockpitPose(pv, rig.kc);
-      else if (K > 0.5) this._clearStation(pv);
-    } else rig.reset = true;
+      const tanC = Math.tan((this._fovChase + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion) - 8 * (rig.precise || 0)) * Math.PI / 360);
+      if (W.flight3d && e.q) {
+        // 3D-Flug: Verfolger mit voller Lage (FLUGMODELL.md 6), Cockpit am Pilotenauge, Draufsicht weich überblendet
+        const C3 = W.ctl;
+        this._aim3 = this._aim3 || new Float64Array(3);
+        this._aim3[0] = C3[7]; this._aim3[1] = C3[8]; this._aim3[2] = C3[9];
+        _p3c.set(pv.rx, pv.root.position.y, pv.rz);
+        rig.chasePose3d(dt, _p3c, pv.qs, e, C3[6] > 0.5 ? this._aim3 : null, W.fl, pv.maxSpeed, tanC, pv.vr);
+        _q3c.copy(rig._out3Q); _p3c.copy(rig._out3Pos);
+        if (rig.kc > 0.001) this._cockpitPose3d(pv, rig.kc, W.fl, _p3c, _q3c);
+        else if (K > 0.5) { _cp.copy(_p3c); this._clearStation(pv); _p3c.copy(_cp); }
+        _m4c.lookAt(_cp.set(ct.x, d * SIN_P, ct.z + d * COS_P), _cl.set(ct.x, 0, ct.z), _v.set(0, 1, 0));
+        _qTac.setFromRotationMatrix(_m4c);
+        _cp.lerp(_p3c, K);
+        this._camQ3 = this._camQ3 || new THREE.Quaternion();
+        this._camQ3.slerpQuaternions(_qTac, _q3c, K);
+        viewD = d + (_p3c.distanceTo(_v.set(pv.rx, pv.root.position.y, pv.rz)) - d) * K;
+        rig.reset = false;
+      } else {
+        rig.chasePose(dt, pv, e, hostile ? cv : null, hostile ? this.combatK : 0, pv.maxSpeed, shipY, tanC);
+        _cp.lerp(rig._outPos, K); _cl.lerp(rig._outLook, K);
+        viewD = d + (rig._outPos.distanceTo(_v.set(pv.rx, 0, pv.rz)) - d) * K;
+        if (rig.kc > 0.001) this._cockpitPose(pv, rig.kc);
+        else if (K > 0.5) this._clearStation(pv);
+        this._camQ3 = null;
+      }
+    } else { rig.reset = true; rig.reset3 = true; this._camQ3 = null; }
     this._viewD = viewD;
     cam.position.copy(_cp);
     // Wackeln: Taktisch nur Verschiebung (Himmel ist ein gebackenes Bild), Verfolger auch leichte Neigung
     rig.shakeOffset(this.time, _so, (d * 0.022) * (1 - K) + Math.max(14, pv ? pv.vr : 20) * 0.16 * K * (1 - 0.85 * rig.kc));
     cam.position.add(_so);
     cam.up.set(0, 1, 0);
-    cam.lookAt(_cl);
-    if (K > 0.001) cam.rotateZ((-(pv ? pv.bank : 0) * (0.16 + 0.34 * rig.kc) + rig.shakeRoll(this.time) * (1 - 0.6 * rig.kc)) * K);
+    if (this._camQ3) {
+      cam.quaternion.copy(this._camQ3);
+      if (K > 0.001) cam.rotateZ(rig.shakeRoll(this.time) * (1 - 0.6 * rig.kc) * K);
+    } else {
+      cam.lookAt(_cl);
+      if (K > 0.001) cam.rotateZ((-(pv ? pv.bank : 0) * (0.16 + 0.34 * rig.kc) + rig.shakeRoll(this.time) * (1 - 0.6 * rig.kc)) * K);
+    }
     // Sichtfeld: Kick bei hohem Tempo und Nachbrenner (Taktik nur leicht)
     let fov = FOV + 2.6 * rig.fovKick * rig.motion * (1 - K) + (this._fovChase - FOV + 9 * rig.fovKick * (0.5 + 0.5 * rig.motion)) * K
       - (rig.firePunch || 0) * (0.6 + 1.4 * K); // Schuss: kurzes Heranrücken (negativer FOV-Puls)
     fov += ((rig.cockpitFov || FOV_COCKPIT) + 6 * rig.fovKick * rig.motion - fov) * rig.kc;
+    fov -= 8 * (rig.precise || 0) * K; // Präzisionszielen (LT): Sichtfeld −8°
     this._cockpitFrame(dt, W, pv, fov);
     if (Math.abs(fov - this._fov) > 0.01) {
       this._fov = fov; this._tanH = Math.tan(fov * Math.PI / 360);
@@ -2024,7 +2092,7 @@ export class Renderer {
       this.sel.visible = true;
       const r = tv.vr * 1.3 + 12;
       this.sel.scale.setScalar(r);
-      this.sel.position.set(tv.rx, tv.kind === 'station' ? -8 : -3, tv.rz);
+      this.sel.position.set(tv.rx, (tv.kind === 'station' ? -8 : -3) + (tv.ry || 0), tv.rz);
       this.sel.rotation.y = this.time * 0.6;
       const sk = tv.kind === 'player' ? (this._pvpPick(tid) ? 'pvp' : 'player') : tv.kind;
       if (this._selKind !== sk) {
@@ -2293,9 +2361,9 @@ export class Renderer {
   }
 
   // Welt-Punkt (Ebene y=0) → Bildschirm (CSS-Pixel wie clientX/clientY). out optional (vermeidet Speicher).
-  toScreen(x, z, out) {
+  toScreen(x, z, out, y = 0) {
     const o = out || { x: 0, y: 0, visible: false };
-    _v.set(x, 0, z).project(this.camera);
+    _v.set(x, y, z).project(this.camera);
     o.x = this.rect.left + (_v.x + 1) * 0.5 * this.rect.width;
     o.y = this.rect.top + (1 - _v.y) * 0.5 * this.rect.height;
     o.visible = _v.z > -1 && _v.z < 1 && _v.x > -1.1 && _v.x < 1.1 && _v.y > -1.1 && _v.y < 1.1;
@@ -2346,10 +2414,10 @@ export class Renderer {
     cam.getWorldDirection(_h);
     this.views.forEach((v, id) => {
       if (!v.root.visible || !(PICK_KINDS[v.kind] || this._pvpPick(id))) return;
-      const dx = v.rx - cam.position.x, dy = 2 - cam.position.y, dz = v.rz - cam.position.z;
+      const dx = v.rx - cam.position.x, dy = 2 + (v.ry || 0) - cam.position.y, dz = v.rz - cam.position.z;
       const depth = dx * _h.x + dy * _h.y + dz * _h.z;
       if (depth < 30) return;
-      _w.set(v.rx, 2, v.rz).project(cam);
+      _w.set(v.rx, 2 + (v.ry || 0), v.rz).project(cam);
       if (_w.z > 1) return;
       const sx = R.left + (_w.x * 0.5 + 0.5) * R.width, sy = R.top + (-_w.y * 0.5 + 0.5) * R.height;
       const rpx = Math.max(22, (v.kind === 'station' ? 200 : v.vr * 1.25) * kpx / depth);

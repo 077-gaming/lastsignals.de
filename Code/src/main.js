@@ -14,8 +14,10 @@ import { HudTouch } from './ui/hud-touch.js';
 import { Coop } from './net/coop.js';
 import { Multiplayer } from './net/mp.js';
 import { Input } from './input.js';
+import { flightSettings, isTouchOnly } from './input/flightsettings.js';
+import { loadLayout } from './input/bindings.js';
 import { PadFlight } from './input/padflight.js';
-import './input/padnav.js';      // Controller: Menü-Navigation überall (Titel, Hub, Station, Dialoge)
+import { topModal } from './input/padnav.js'; // Controller: Menü-Navigation überall (Titel, Hub, Station, Dialoge)
 import './input/padglyph.js';    // Controller: Tastenhinweise tauschen
 import './input/pad.css';
 import { AudioSystem, hubMusic, uiSound } from './audio/audio.js';
@@ -27,6 +29,7 @@ import './ui/theme.css';
 import { initAccount, linkPilot, settle, resolvePending, openAccount } from './ui/account-flow.js';
 import { toast } from './ui/account-ui.js';
 
+loadLayout(); // Tastatur-Layout für die Tastennamen (Chrome, Edge, Electron)
 const CLOUD_EVERY = 120; // s: im Flug alle 2 Minuten auf dem Server sichern (nur mit Konto)
 
 const STEP = 1 / 60;          // feste Simulationsschrittweite
@@ -94,7 +97,11 @@ function playSession(profile, opts = {}) {
     // Koop (Hub hat Raum gewählt): Gast spielt in den Sektoren des Gastgebers
     let coopCfg = null;
     try { coopCfg = JSON.parse(sessionStorage.getItem('ls.coop') || 'null'); } catch { coopCfg = null; }
-    const world = new World(profile, bus, coopCfg && coopCfg.role === 'guest' ? { coopFaction: coopCfg.faction, coopSector: coopCfg.sector } : {});
+    const Q = new URLSearchParams(location.search);
+    const fs0 = flightSettings();
+    const wopts = coopCfg && coopCfg.role === 'guest' ? { coopFaction: coopCfg.faction, coopSector: coopCfg.sector } : {};
+    wopts.enemyBolts = fs0.enemyBolts || Q.get('gbolzen') === '1'; // Etappe 2: echte Gegnerbolzen (Schalter)
+    const world = new World(profile, bus, wopts);
     if (coopCfg) new Coop(world, bus, coopCfg); // trägt sich als world.coop ein (Einladung im Flug startet ihn später)
     // Mehrspieler: gemeinsame Sektoren, Chat, Einladung, PvP (Realtime, ohne Datenbank). ?mp=0 schaltet ab.
     let mp = null;
@@ -139,9 +146,17 @@ function playSession(profile, opts = {}) {
     const story = new SystemSeries(world, bus, () => renderer.cameraMode, { quests: STORY_QUESTS, chapters: STORY_CHAPTERS, key: 'story', label: 'FUNK', mode: 'guided' });
     const guide = new SystemGuide(hudRoot, series, world, story);
     const contracts = new Contracts(world, bus); // Tages- und Wochenaufträge
+    // ?flug=taktik: im Taktikmodus starten (alter Klickflug), ?flug=3d: im 3D-Flug (Verfolger)
+    if (Q.get('flug') === 'taktik' && renderer.rig.mode !== 'tactical') { renderer.rig.mode = 'tactical'; renderer.rig.cockpit = false; renderer.rig.k = renderer.rig.kRaw = 0; }
+    else if (Q.get('flug') === '3d' && renderer.rig.mode !== 'chase') { renderer.rig.mode = 'chase'; renderer.rig.k = renderer.rig.kRaw = 1; }
+    world.setFlight3d(renderer.cameraMode === 'chase');
+    // Feuerleitrechner (Autofeuer): auf Touch-Geräten Standard (Flug vereinfacht), sonst Strg rechts
+    world.autofireDefault = fs0.autofire != null ? fs0.autofire : isTouchOnly();
     const input = new Input(canvas, world, renderer, bus);
     const touch = new HudTouch(hudRoot, world, renderer, input); // iPad/Tablet: Joystick, Knöpfe, Zielanzeige
     const padFlight = new PadFlight(input, hud, bus); // Controller im Flug (Planung/CONTROLLER.md)
+    input.menuOpen = () => !!(hud._menuOpen || topModal());
+    hud.setInput(input);
     const audio = new AudioSystem(bus, world, renderer);
     audio.start();
     if (import.meta.env.DEV) window.__ls = { world, renderer, bus, hud, audio, series, mp, input, padFlight }; // nur Entwicklung: Test-Pilot (tools/playtest)

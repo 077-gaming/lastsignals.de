@@ -56,7 +56,7 @@ export class HudQuest {
     if (!t) { this._hide(); return; }
     const dist = Math.hypot(t.x - p.x, t.z - p.z);
     if (dist < 180) { this._hide(); return; } // nah genug: dann übernimmt das normale Ziel-/Kistenbild
-    const s = r.toScreen(t.x, t.z, this._s);
+    const s = r.toScreen(t.x, t.z, this._s, r.ry ? r.ry(t.y) : 0);
     // freie Zone: unter den oberen Fenstern (Sektor, Coach), über den Instrumenten unten
     const W = innerWidth, H = innerHeight, m = 46, top = Math.min(200, H * 0.26), bot = H - Math.min(190, H * 0.24);
     let x = s.x, y = s.y, edge = false, ang = 0;

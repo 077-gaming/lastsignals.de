@@ -16,6 +16,7 @@ import {
   fmt, clamp01, TextSlot, ClassSlot, Counter, Bar, Gauge, gaugeHtml,
 } from './hud-parts.js';
 import { HudMid } from './hud-mid.js';
+import { HudFlight } from './hud-flight.js';
 import { HudBar, quickBody } from './hud-bar.js';
 import { HudCombat } from './hud-combat.js';
 import { HudCoach } from './hud-coach.js';
@@ -401,6 +402,7 @@ export class Hud {
 
     // Konto
     this.mid = new HudMid(q('mid'));
+    this.flight = new HudFlight(q('mid')); // 3D-Flug: Fadenkreuz, Vorhalt, Leitern, Warnungen (ui/hud-flight.js)
     this.sMenuCls = new ClassSlot(el, 'hd-menu');
     this.sTFlash = new ClassSlot(W('target'), 'is-flash');
     this._tFlash = 0;
@@ -637,6 +639,8 @@ export class Hud {
   }
 
   setRenderer(renderer) { this.renderer = renderer || null; this.questMark?.setRenderer(this.renderer); }
+  /** Eingabe (Zielrichtung, Zeigerfang) für das Flug-HUD */
+  setInput(input) { this.input = input; this.flight.setInput(input, this.bus); }
 
   toggleMenu(force) {
     const open = force === undefined ? !this._menuOpen : !!force;
@@ -693,6 +697,7 @@ export class Hud {
     this._updateTarget(w, pl, dt);
     this._updateQuest(w, dt);
     this.mid.update(w, this.renderer, dt, !!w.playerDead, this.wins.occluders);
+    this.flight.update(w, this.renderer, dt, !!w.playerDead || this._menuOpen || this.el.classList.contains('hd-hide-all'));
     this._zoneAcc += dt;
     if (this._zoneAcc >= 0.2) { this._zoneAcc = 0; this._updateZones(); }
     this.combat.update(w, this.renderer, dt, !!w.playerDead || this._menuOpen, this.wins.occluders, this._comboY);
@@ -719,6 +724,7 @@ export class Hud {
     this.coach?.dispose();
     this.questMark?.dispose();
     this.mid.dispose();
+    this.flight.dispose();
     window.removeEventListener('keydown', this._onKey);
     window.removeEventListener('keydown', this._onWinKey, true);
     window.removeEventListener('resize', this._onResize);

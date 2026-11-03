@@ -297,7 +297,7 @@ export class HudMp {
         if (e.alive === false || e.id === p.targetId) continue; // Ziel: Name steht an der Zielklammer
         const d = Math.hypot(e.x - p.x, e.z - p.z);
         if (d > TAG_RANGE) continue;
-        const s = r.toScreen(e.x, e.z, this._scr);
+        const s = r.toScreen(e.x, e.z, this._scr, r.ry ? r.ry(e.y) + 20 : 0);
         if (!s.visible || s.behind) continue;
         const T = this.tags[n++];
         if (!T.on) { T.on = true; T.el.classList.add('on'); }

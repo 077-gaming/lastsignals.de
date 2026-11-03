@@ -505,9 +505,11 @@ function playerBolt(w, B, i, x0, y0, z0, x1, y1, z1) {
   if (!w.player.targetId && best.kind === 'enemy') w.setTarget(best.id);
   w._hy = hy; w._hdy = dy;
   w._boltHit = { x: hx, y: hy, z: hz, t: w.time };
+  const shieldBefore = best.shield > 0;
   w._hitEnemy(best, dmg, !!B.shield[i], crit, dx / dl, dz / dl, hx, hz);
   w._hy = null; w._hdy = 0; w._boltHit = null;
   w.stats3.boltHits++;
+  w.bus.emit('boltHit', { x: hx, y: hy, z: hz, id: best.id, laser: B.type[i], shield: shieldBefore, dx, dy, dz, crit, kill: best.alive === false, sal: !!B.sal[i], player: true });
   return true;
 }
 
@@ -662,6 +664,7 @@ function applyEnemyHit(w, e, dmg, vx, vy, vz, hx, hy, hz) {
   const v = Math.hypot(vx, vz) || 1;
   w.bus.emit('damage', { id: 'player', hull: HIT.hull, shield: HIT.shield, x: p.x, z: p.z, y: p.y, hy, crit: false, dx: vx / v, dz: vz / v, dy: vy / (Math.hypot(vx, vy, vz) || 1), hx, hz, from: e ? e.id : 'enemy' });
   w._lastHit = w.time;
+  w.bus.emit('boltHit', { x: hx, y: hy, z: hz, id: 'player', enemyType: e ? e.type : null, shield: HIT.shield > 0, dx: vx / v, dy: 0, dz: vz / v, player: false });
   if (interruptMode(w.fl)) w.bus.emit('flight', { msg: 'REISE ABGEBROCHEN · TREFFER' });
   if (p.hp <= 0) w._playerDie();
 }

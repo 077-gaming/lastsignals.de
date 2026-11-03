@@ -244,12 +244,14 @@ export class HudMid {
 
     // ---------- eigenes Schiff: zwei Bögen ----------
     const pv = views && views.get(pl.id);
-    const px = pv ? pv.rx : pl.x, pz = pv ? pv.rz : pl.z;
-    const s = r.toScreen(px, pz, this._scr);
+    const px = pv ? pv.rx : pl.x, pz = pv ? pv.rz : pl.z, py = pv ? (pv.ry || 0) : 0;
+    this._py = py;
+    const s = r.toScreen(px, pz, this._scr, py);
     const pr = pv && pv.vr ? pv.vr : 30;
-    const s2 = r.toScreen(px + pr, pz, this._scr2);
+    const s2 = r.toScreen(px + pr, pz, this._scr2, py);
     const prs = Math.abs(s2.x - s.x);
-    this.sShipOn.set(s.visible);
+    // 3D-Flug: Bögen unter dem Schiff aus (Mitte gehört Fadenkreuz und Vorhalt, Werte im Fenster SCHIFF)
+    this.sShipOn.set(s.visible && !(w.flight3d && r.rig && r.rig.k > 0.5));
     this._cx = s.x; this._cy = s.y;
     if (s.visible) {
       let size = Math.round(Math.max(64, Math.min(150, prs * 2.6)) / 4) * 4;
@@ -303,10 +305,10 @@ export class HudMid {
       this._bs = NaN;
     }
     const ev = views && views.get(id);
-    const ex = ev ? ev.rx : e.x, ez = ev ? ev.rz : e.z;
-    const t = r.toScreen(ex, ez, this._scr);
+    const ex = ev ? ev.rx : e.x, ez = ev ? ev.rz : e.z, ey = ev ? (ev.ry || 0) : 0;
+    const t = r.toScreen(ex, ez, this._scr, ey);
     const tx = t.x, ty = t.y;
-    const dist = Math.hypot(e.x - pl.x, e.z - pl.z);
+    const dist = Math.hypot(e.x - pl.x, e.z - pl.z, w.flight3d ? (e.y || 0) - pl.y : 0);
     const atk = !!(pl.attacking && pl.targetId === id);
     const out = dist > PLAYER_RANGE;
     this.sAtk.set(atk);
@@ -322,8 +324,8 @@ export class HudMid {
 
     if (showBox) {
       const er = ev && ev.vr ? ev.vr : (e.radius || 20);
-      const t2 = r.toScreen(ex + er, ez, this._scr2);
-      let half = Math.abs(t2.x - tx) * 1.25 + 8;
+      const t2 = r.toScreen(ex + er, ez, this._scr2, ey);
+      let half = Math.hypot(t2.x - tx, t2.y - ty) * 1.25 + 8;
       half = half < BOX_MIN ? BOX_MIN : half > BOX_MAX ? BOX_MAX : half;
       half = Math.round(half / 2) * 2;
       const bx = Math.round(tx), by = Math.round(ty);
@@ -409,7 +411,7 @@ export class HudMid {
       const op = Math.round(k * k * 100) / 100;
       if (op !== h.op) { h.op = op; h.el.style.opacity = String(op); }
       if (op <= 0) continue;
-      const q = r.toScreen(px + h.ux * 60, pz + h.uz * 60, this._scr2);
+      const q = r.toScreen(px + h.ux * 60, pz + h.uz * 60, this._scr2, this._py || 0);
       const ang = Math.round(Math.atan2(q.y - this._cy, q.x - this._cx) * 180 / Math.PI);
       if (ang !== h.ang || size !== h.size) {
         h.ang = ang;
@@ -456,8 +458,8 @@ export class HudMid {
       const T = this.threats[i];
       const fresh = this._hitAt.has(e.id);
       const ev = views && views.get(e.id);
-      const ex = ev ? ev.rx : e.x, ez = ev ? ev.rz : e.z;
-      const t = r.toScreen(ex, ez, this._scr2);
+      const ex = ev ? ev.rx : e.x, ez = ev ? ev.rz : e.z, ey = ev ? (ev.ry || 0) : 0;
+      const t = r.toScreen(ex, ez, this._scr2, ey);
       const tx = t.x, ty = t.y;
       const inView = t.visible && tx > 0 && tx < W && ty > 0 && ty < H;
       const covered = inView && !!winAt(wins, tx, ty, 4);
@@ -466,7 +468,7 @@ export class HudMid {
       if (inView && !covered) {
         T.sA.set(false);
         const er = ev && ev.vr ? ev.vr : (e.radius || 20);
-        const t2 = r.toScreen(ex + er, ez, this._scr);
+        const t2 = r.toScreen(ex + er, ez, this._scr, ey);
         let half = Math.abs(t2.x - tx) * 1.6 + 12;
         half = half < T_MIN ? T_MIN : half > T_MAX ? T_MAX : half;
         half = Math.round(half / 2) * 2;
@@ -487,7 +489,7 @@ export class HudMid {
       let ux = e.x - pl.x, uz = e.z - pl.z;
       const wl = Math.hypot(ux, uz) || 1;
       ux /= wl; uz /= wl;
-      const q = r.toScreen(px + ux * 60, pz + uz * 60, this._scr);
+      const q = r.toScreen(px + ux * 60, pz + uz * 60, this._scr, this._py || 0);
       let dx = q.x - cx, dy = q.y - cy;
       const len = Math.hypot(dx, dy) || 1;
       dx /= len; dy /= len;

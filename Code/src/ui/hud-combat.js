@@ -230,7 +230,7 @@ export class HudCombat {
         const e = ents.get(m.id);
         if (e && e.alive !== false) { m.x = e.x + m.ox; m.z = e.z + m.oz; }
       }
-      const s = r.toScreen(m.x, m.z, this._scr);
+      const s = r.toScreen(m.x, m.z, this._scr, r.ry ? r.ry(m.y) : 0);
       if (!s.visible) { if (m.op !== 0) { m.op = 0; m.el.style.opacity = '0'; } continue; }
       const k = clamp01(m.t / m.life);
       const x = Math.round(s.x), y = Math.round(s.y);
@@ -246,7 +246,7 @@ export class HudCombat {
     const K = this.kill;
     if (K.t <= 0) { if (K.op !== 0) { K.op = 0; K.el.style.opacity = '0'; K.el.classList.remove('on'); } return; }
     K.t -= dt;
-    const s = r.toScreen(K.x, K.z, this._scr);
+    const s = r.toScreen(K.x, K.z, this._scr, r.ry ? r.ry(K.y) : 0);
     const x = Math.round(s.x), y = Math.round(s.y);
     if (x !== K.tx || y !== K.ty) { K.tx = x; K.ty = y; K.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)'; }
     const k = clamp01(K.t / KILL_SECS);
@@ -280,7 +280,7 @@ export class HudCombat {
     const ents = w.entities;
     const views = r.views;
     const pv = views && views.get(pl.id);
-    const px = pv ? pv.rx : pl.x, pz = pv ? pv.rz : pl.z;
+    const px = pv ? pv.rx : pl.x, pz = pv ? pv.rz : pl.z, py = pv ? (pv.ry || 0) : 0;
     let cs = null;
     for (let i = 0; i < WARNS; i++) {
       const A = this.warns[i];
@@ -289,12 +289,12 @@ export class HudCombat {
       if (A.t <= -0.25) { A.sA.set(false); A.sM.set(false); continue; }
       const e = A.id != null && ents ? ents.get(A.id) : null;
       if (A.id != null && (!e || e.alive === false)) { A.t = -1; A.sA.set(false); A.sM.set(false); continue; }
-      let ex = A.x, ez = A.z;
-      if (e) { const ev = views && views.get(e.id); ex = ev ? ev.rx : e.x; ez = ev ? ev.rz : e.z; A.x = e.x; A.z = e.z; }
+      let ex = A.x, ez = A.z, ey = r.ry ? r.ry(A.y || 0) : 0;
+      if (e) { const ev = views && views.get(e.id); ex = ev ? ev.rx : e.x; ez = ev ? ev.rz : e.z; ey = ev ? (ev.ry || 0) : ey; A.x = e.x; A.z = e.z; A.y = e.y; }
       const urgent = A.t < 0.6;
       const tq = Math.max(0, Math.ceil(A.t * 10));
       const txt = tq > 0 ? NF1.format(tq / 10) + ' S' : 'JETZT';
-      const t = r.toScreen(ex, ez, this._scr2);
+      const t = r.toScreen(ex, ez, this._scr2, ey);
       const inView = t.visible && t.x > 0 && t.x < W && t.y > 0 && t.y < H;
       const covered = inView && !!winAt(wins, t.x, t.y, 4);
       if (inView && !covered) {
@@ -302,7 +302,7 @@ export class HudCombat {
         A.sA.set(false);
         // über der Zielklammer (gleiche Größenformel wie hud-mid), nie in sie hinein
         const er = e ? ((views && views.get(e.id) && views.get(e.id).vr) || e.radius || 20) : 20;
-        const t2 = r.toScreen(ex + er, ez, this._scr);
+        const t2 = r.toScreen(ex + er, ez, this._scr, ey);
         let half = Math.abs(t2.x - t.x) * 1.25 + 8;
         half = half < 22 ? 22 : half > 84 ? 84 : half;
         // gewähltes Ziel hat oben/unten schon sein Namensschild (hud-mid): Warnung links neben die Klammer
@@ -316,13 +316,13 @@ export class HudCombat {
         continue;
       }
       A.sM.set(false);
-      if (!cs) cs = r.toScreen(px, pz, this._scr);
+      if (!cs) cs = r.toScreen(px, pz, this._scr, py);
       const cx = cs.x, cy = cs.y;
       // Richtung im Bild: Punkt kurz vor dem Schiff Richtung Angreifer projizieren (berücksichtigt Kameraneigung)
       let ux = A.x - pl.x, uz = A.z - pl.z;
       const wl = Math.hypot(ux, uz) || 1;
       ux /= wl; uz /= wl;
-      const q = r.toScreen(px + ux * 60, pz + uz * 60, this._scr2);
+      const q = r.toScreen(px + ux * 60, pz + uz * 60, this._scr2, py);
       let dx = q.x - cx, dy = q.y - cy;
       const len = Math.hypot(dx, dy) || 1;
       dx /= len; dy /= len;

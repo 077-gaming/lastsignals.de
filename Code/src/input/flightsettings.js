@@ -1,0 +1,60 @@
+// Einstellungen des 3D-Flugs (Planung/FLUGMODELL.md 5): eigener Schlüssel localStorage 'ls.flight', weil der Hub
+// 'ls.settings' nur mit seinen eigenen Werten neu schreibt. Kein Feld im Spielstand.
+export const FLIGHT_KEY = 'ls.flight';
+export const FLIGHT_DEFAULT = Object.freeze({
+  mouse: 'aim',        // 'aim' Mausziel (Fadenkreuz sofort, Schiff folgt) | 'vjoy' virtueller Stick (Trackpad, Umsteiger)
+  sens: 0.07,          // Grad je Pixel (Mausziel)
+  invertY: false,
+  cone: 30,            // Lenkkegel: so weit darf das Fadenkreuz vom Bug abweichen (Grad, 15–70)
+  cam: 'mix',          // 'mix' 35 % Zielrichtung | 'aim' Kamera folgt der Zielrichtung
+  camRoll: 0.7,        // Anteil, mit dem die Verfolgerkamera das Rollen mitmacht
+  fov: 70,             // Sichtfeld Verfolger (55–90)
+  autoRoll: true,      // Kurvenrollen
+  horizon: true,       // Horizont-Hilfe
+  assist: 2,           // Zielhilfe Controller 0 AUS, 1 NIEDRIG, 2 STANDARD, 3 HOCH
+  padMode: 'aim',      // Controller: 'aim' Stick bewegt die Zielrichtung im Kegel | 'rate' Stick = Drehrate
+  autofire: null,      // Feuerleitrechner beim Start an (null = auf Touch-Geräten an)
+  enemyBolts: false,   // Etappe 2: echte Gegnerbolzen
+  hint: true,          // Hinweise im ersten Flug
+  migrated: false,     // alte Kamerawahl „taktisch“ einmalig auf den neuen Hauptmodus umgestellt
+});
+export const FLIGHT_CHOICES = {
+  mouse: ['aim', 'vjoy'], sens: [0.04, 0.055, 0.07, 0.09, 0.12], cone: [15, 22, 30, 45, 70], cam: ['mix', 'aim'],
+  fov: [60, 70, 80, 90], autoRoll: [true, false], horizon: [true, false], assist: [0, 1, 2, 3], padMode: ['aim', 'rate'],
+  invertY: [false, true], enemyBolts: [false, true],
+};
+let cache = null;
+export function flightSettings() {
+  if (cache) return cache;
+  const s = { ...FLIGHT_DEFAULT };
+  try {
+    const raw = JSON.parse(localStorage.getItem(FLIGHT_KEY) || 'null');
+    if (raw && typeof raw === 'object') for (const k in FLIGHT_DEFAULT) if (k in raw && typeof raw[k] === typeof FLIGHT_DEFAULT[k] || (k === 'autofire' && (raw[k] === true || raw[k] === false))) s[k] = raw[k];
+  } catch { /* privater Modus */ }
+  s.sens = Math.max(0.02, Math.min(0.3, Number(s.sens) || FLIGHT_DEFAULT.sens));
+  s.cone = Math.max(15, Math.min(70, Number(s.cone) || 30));
+  s.fov = Math.max(55, Math.min(90, Number(s.fov) || 70));
+  s.assist = Math.max(0, Math.min(3, s.assist | 0));
+  cache = s;
+  return s;
+}
+export function setFlightSetting(key, value) {
+  if (!(key in FLIGHT_DEFAULT)) return flightSettings();
+  const s = { ...flightSettings(), [key]: value };
+  cache = null;
+  try { localStorage.setItem(FLIGHT_KEY, JSON.stringify(s)); } catch { /* privater Modus */ }
+  cache = null;
+  const out = flightSettings();
+  try { window.dispatchEvent(new CustomEvent('ls:flight', { detail: { settings: out } })); } catch { /* alt */ }
+  return out;
+}
+/** Touch-Telefon (kleiner Bildschirm, nur Fingerbedienung): startet weiter taktisch */
+export function isPhone() {
+  try {
+    const coarse = matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
+    return coarse && Math.min(screen.width, screen.height) < 760;
+  } catch { return false; }
+}
+export function isTouchOnly() {
+  try { return matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches; } catch { return false; }
+}
