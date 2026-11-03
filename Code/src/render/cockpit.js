@@ -112,11 +112,13 @@ export class Cockpit {
     this._accent = new THREE.Color(0xff8a2a);
 
     // ohne Umgebungskarte wird stark metallisches Material schwarz: Verkleidung als lackiertes Blech (wenig Metall)
-    const metal = new THREE.MeshStandardMaterial({ color: 0x5a6270, metalness: 0.45, roughness: 0.5 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x24282f, metalness: 0.2, roughness: 0.65 });
+    const metal = new THREE.MeshStandardMaterial({ color: 0x5a6270, metalness: 0.45, roughness: 0.5, emissive: 0x17191e });
+    // Runde 4: dunkle Teile und Schale mit schwacher Eigenhelligkeit (Grundlicht der Kanzelbeleuchtung): beim Umsehen
+    // (Gier ±1,9, Neigung −0,6…0,7) keine schwarzen Flächen (Prüfung tools/bilder/cockpit.mjs: ≤ 5 % unter 6/255)
+    const dark = new THREE.MeshStandardMaterial({ color: 0x2c3038, metalness: 0.2, roughness: 0.65, emissive: 0x15171c });
     const trim = new THREE.MeshStandardMaterial({ map: consoleTexture(), color: 0xc0c6d0, metalness: 0.3, roughness: 0.6 });
-    const trimSide = new THREE.MeshStandardMaterial({ map: wallTexture(), color: 0xc0c6d0, metalness: 0.3, roughness: 0.6 });
-    const shell = new THREE.MeshStandardMaterial({ map: wallTexture(), color: 0x8a909a, metalness: 0.25, roughness: 0.7 });
+    const trimSide = new THREE.MeshStandardMaterial({ map: wallTexture(), color: 0xc0c6d0, metalness: 0.3, roughness: 0.6, emissive: 0x2b2e36, emissiveMap: wallTexture() });
+    const shell = new THREE.MeshStandardMaterial({ map: wallTexture(), color: 0xc4cad4, metalness: 0.25, roughness: 0.7, emissive: 0x2b2e36, emissiveMap: wallTexture() });
     this.glowMat = new THREE.MeshBasicMaterial({ color: 0xff8a2a, toneMapped: false });
     const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => {
       const m = new THREE.Mesh(geo, mat);
@@ -180,7 +182,14 @@ export class Cockpit {
     // Sitz: Sitzfläche und Lehne (dunkel), damit der Blick nach hinten unten nicht ins Leere geht
     add(new THREE.BoxGeometry(0.62, 0.12, 0.6), dark, 0, -0.75, 0.55);
     add(new THREE.BoxGeometry(0.62, 0.9, 0.12), dark, 0, -0.25, 0.9, -0.12);
-    this.scene.add(new THREE.HemisphereLight(0x8592a8, 0x1a1c22, 1.25));
+    this.scene.add(new THREE.HemisphereLight(0x8592a8, 0x3a3f4a, 1.25));
+    // Füll-Licht von vorn unten (Instrumentenschein): Rückwand, Sitz und Innenseiten der Schale, die das Hauptlicht von
+    // hinten oben nicht erreicht
+    const fillF = new THREE.DirectionalLight(0xc8d2e4, 0.75);
+    fillF.position.set(0, -0.35, -1);
+    this.scene.add(fillF);
+    // seitliche Füll-Lichter (beide Seiten): Innenflächen der Seitenkonsolen beim Blick nach links/rechts unten
+    for (const sx of [-1, 1]) { const fs = new THREE.DirectionalLight(0xb8c2d4, 0.45); fs.position.set(sx, 0.15, 0.25); this.scene.add(fs); }
     const key = new THREE.DirectionalLight(0xffffff, 1.6);
     key.position.set(0.4, 1, 0.6);
     this.scene.add(key);
