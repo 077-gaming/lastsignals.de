@@ -23,14 +23,14 @@ export const RELEASE = {
 // Dateien des Releases. bytes = exakte Größe (für die Anzeige „149 MB“). Prüfsummen: LAST-SIGNALS-<Version>-SHA256.txt (Anhang des Releases).
 const N = (rest) => `LAST-SIGNALS-${APP_VERSION}-${rest}`;
 export const FILES = {
-  macArm: { file: N('mac-arm64.dmg'), bytes: 284142035 },
-  macArmZip: { file: N('mac-arm64.zip'), bytes: 272772097 },
-  macUni: { file: N('mac-universal.dmg'), bytes: 287433104 },
-  macUniZip: { file: N('mac-universal.zip'), bytes: 267752625 },
-  winSetup: { file: N('windows-x64-setup.exe'), bytes: 156625033 },
-  winZip: { file: N('windows-x64.zip'), bytes: 203709271 },
-  ipa: { file: N('ios-unsigniert.ipa'), bytes: 46159115 },
-  apk: { file: N('android-debug.apk'), bytes: 51100960 },
+  macArm: { file: N('mac-arm64.dmg'), bytes: 284302033 },
+  macArmZip: { file: N('mac-arm64.zip'), bytes: 272819972 },
+  macUni: { file: N('mac-universal.dmg'), bytes: 397396195 },
+  macUniZip: { file: N('mac-universal.zip'), bytes: 376601883 },
+  winSetup: { file: N('windows-x64-setup.exe'), bytes: 261823550 },
+  winZip: { file: N('windows-x64.zip'), bytes: 312571748 },
+  ipa: { file: N('ios-unsigniert.ipa'), bytes: 155028292 },
+  apk: { file: N('android-debug.apk'), bytes: 159190932 },
 };
 
 // Kacheln in dieser Reihenfolge. main = Hauptknopf, alt = weitere Dateien (kleiner), web = Web-App-Weg statt Datei.
