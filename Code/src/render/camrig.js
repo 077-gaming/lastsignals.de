@@ -294,10 +294,18 @@ export class CameraRig {
    */
   chasePose3d(dt, pos, qs, e, aim, st, maxSpeed, tanH, radius) {
     const set = flightSettings();
-    const mix = set.cam === 'aim' ? 1 : 0.35;
+    let mix = set.cam === 'aim' ? 1 : 0.35;
     const rollK = (this.motion < 1 ? 0.3 : set.camRoll);
     _f3.set(0, 0, -1).applyQuaternion(qs);
-    if (aim) { _a3.set(aim[0], aim[1], aim[2]); _f3.lerp(_a3, mix).normalize(); }
+    if (aim) {
+      _a3.set(aim[0], aim[1], aim[2]);
+      // Zielt das Fadenkreuz unter den Bug, folgt die Kamera stärker (bis 85 %): sonst wanderte es auf das eigene Schiff
+      // im unteren Bilddrittel, und Ziele unter dem Bug lagen hinter dem Rumpf
+      _u3.set(0, 1, 0).applyQuaternion(qs);
+      const down = -_a3.dot(_u3);
+      if (down > 0 && mix < 0.85) mix += (0.85 - mix) * Math.min(1, down / 0.5);
+      _f3.lerp(_a3, mix).normalize();
+    }
     _u3.set(0, 1, 0).applyQuaternion(qs);
     _u3.multiplyScalar(rollK).addScaledVector(WUP, 1 - rollK);
     if (_u3.lengthSq() < 1e-6 || Math.abs(_u3.clone().normalize().dot(_f3)) > 0.995) _u3.set(0, 1, 0).applyQuaternion(qs);

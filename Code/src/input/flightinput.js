@@ -2,7 +2,7 @@
 // Schiff folgt), virtueller Stick, Tastatur in sechs Richtungen, Rollen, Boost, Raumbremse, Tempomat, Kopplung,
 // Betriebsart, Landemodus, Begrenzer, Raketen-Aufschaltung. Schreibt je Bild den Steuerrahmen world.ctl
 // (Gerät → Rahmen → Simulation; Controller und Touch schreiben über dieselben Felder).
-import { C, BTN, EDGE } from '../flight/core.js';
+import { C, BTN, EDGE, aimAxes } from '../flight/core.js';
 import { qFromAxisAngle, qRot, fwdOf, vAngle } from '../flight/math3.js';
 import { clampCone } from '../flight/aim.js';
 import { LOCK_TIME, LOCK_CONE } from '../flight/params.js';
@@ -11,7 +11,9 @@ import { flightSettings, isTouchOnly } from './flightsettings.js';
 import { synth } from './padnav.js';
 
 const D = Math.PI / 180;
-const HOLD_MODE = 0.3, TAP_E = 0.25;
+const HOLD_MODE = 0.3, TAP_E = 0.25, ALT_FREE = 0.25;
+// Im Vollbild fängt die Tastatursperre (Chromium) Strg+W/T/N/Tab ab, die sonst den Tab schließen bzw. wechseln
+const LOCK_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyT', 'KeyN', 'KeyQ', 'KeyE', 'Tab'];
 const _q = new Float64Array(4), _t = new Float64Array(3), _n = new Float64Array(3), _r = new Float64Array(3), _u = new Float64Array(3);
 const MOVE_KEYS = new Set(['KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space', 'ControlLeft', 'KeyQ', 'KeyE']);
 
@@ -27,6 +29,7 @@ export class FlightInput {
     this.vx = 0; this.vy = 0;                                    // virtueller Stick (−1..1)
     this.moved = 0;                                              // Mausweg in diesem Bild (px)
     this.bDown = -1; this.eDown = -1; this.eRolled = false;
+    this.altDown = -1; this.altUsed = false; this.altFreed = false;
     this.edge = 0; this.lim = 0;
     this.pad = null;      // Controller (padflight.js): { tx, ty, tz, rr, aimRate, rateMode, rp, ry, fire, boost, brake, precise, active }
     this.touch = null;    // Touch (hud-touch.js): { ax, ay, fire, boost, throttle }
@@ -36,7 +39,8 @@ export class FlightInput {
     this._onSet = () => { this.set = flightSettings(); };
     window.addEventListener('ls:flight', this._onSet);
     this._onLock = () => this.onLockChange();
-    this._onLockErr = () => { this.lockFailed = true; };
+    // abgelehnter Fang (Ereignis und Promise melden denselben Fehler: innerhalb 100 ms nur einmal zählen)
+    this._onLockErr = () => { const t = performance.now(); if (!(this.lockFailed && t - (this.lockFailedAt || 0) < 100)) this.lockFails = (this.lockFails || 0) + 1; this.lockFailed = true; this.lockFailedAt = t; };
     document.addEventListener('pointerlockchange', this._onLock);
     document.addEventListener('pointerlockerror', this._onLockErr);
     this._onMove = (e) => this.onMove(e);
@@ -46,6 +50,13 @@ export class FlightInput {
       if (e.target && e.target.closest && e.target.closest('[data-act="resume"], [data-act="close"]') && this.active()) setTimeout(() => this.requestLock(), 0);
     };
     window.addEventListener('click', this._onResume, true);
+    this._onFull = () => {
+      const kb = navigator.keyboard;
+      if (!kb || !kb.lock) return;
+      try { if (document.fullscreenElement) { const r = kb.lock(LOCK_KEYS); if (r && r.catch) r.catch(() => {}); } else kb.unlock(); } catch { /* nicht unterstützt */ }
+    };
+    document.addEventListener('fullscreenchange', this._onFull);
+    this._onFull();
   }
 
   get world() { return this.input.world; }
@@ -59,7 +70,7 @@ export class FlightInput {
     if (document.pointerLockElement === this.canvas) return; // (this.locked hinkt dem Ereignis hinterher)
     if (this.input.menuOpen && this.input.menuOpen()) return;
     const c = this.canvas;
-    const plain = () => { try { const r = c.requestPointerLock(); if (r && r.catch) r.catch(() => { this.lockFailed = true; }); } catch { this.lockFailed = true; } };
+    const plain = () => { try { const r = c.requestPointerLock(); if (r && r.catch) r.catch(() => this._onLockErr()); } catch { this._onLockErr(); } };
     try {
       const r = c.requestPointerLock({ unadjustedMovement: true });
       if (r && r.catch) r.catch(() => plain()); // Safari/ältere Browser: Option unbekannt → ohne
@@ -72,7 +83,7 @@ export class FlightInput {
   onLockChange() {
     const was = this.locked;
     this.locked = document.pointerLockElement === this.canvas;
-    if (this.locked) { this.lockFailed = false; this.vx = this.vy = 0; }
+    if (this.locked) { this.lockFailed = false; this.lockFails = 0; this.vx = this.vy = 0; }
     if (was && !this.locked) {
       const quiet = this._quiet;
       this._quiet = false;
@@ -109,13 +120,17 @@ export class FlightInput {
     }
     this.turnAim(mx, my);
   }
-  /** Zielrichtung um die Kamera-Achsen drehen (Mausweg in Pixeln) – sofort, ohne auf die Simulation zu warten */
+  /**
+   * Zielrichtung drehen (Mausweg in Pixeln) – sofort, ohne auf die Simulation zu warten. Drehachsen sind die Achsen
+   * des Schiffs (flight/core.js aimAxes): Maus waagrecht = reines Gieren, senkrecht = reines Nicken, unabhängig von
+   * der mitrollenden Kamera. (Früher drehte die Maus um die Kameraachsen; mit Kurvenrollen und rollender Kamera
+   * kippte die Drehachse, und eine waagrechte Maus flog eine absinkende Spirale.)
+   */
   turnAim(mx, my, sensK = 1) {
-    const cam = this.renderer.camera;
-    if (!cam) return;
+    const w = this.world;
+    if (!w || !w.fl) return;
     const s = this.set.sens * D * sensK, inv = this.set.invertY ? -1 : 1;
-    const m = cam.matrixWorld.elements;
-    _r[0] = m[0]; _r[1] = m[1]; _r[2] = m[2]; _u[0] = m[4]; _u[1] = m[5]; _u[2] = m[6];
+    aimAxes(w.fl, _r, _u);
     if (mx) { qFromAxisAngle(_q, _u[0], _u[1], _u[2], -mx * s); qRot(this.aim, _q, this.aim); }
     if (my) { qFromAxisAngle(_q, _r[0], _r[1], _r[2], -my * s * inv); qRot(this.aim, _q, this.aim); }
     const l = Math.hypot(this.aim[0], this.aim[1], this.aim[2]) || 1;
@@ -131,6 +146,13 @@ export class FlightInput {
     const l = Math.hypot(a[0], a[1], a[2]) || 1; a[0] /= l; a[1] /= l; a[2] /= l;
     this.clampAim();
   }
+  /** Zielrichtung höchstens ang (rad) vom Bug (Controller: kurzer Vorlauf) */
+  clampAimTo(ang) {
+    const w = this.world;
+    if (!w || !w.fl) return;
+    fwdOf(_n, w.fl.q);
+    clampCone(this.aim, _n, Math.min(ang, this.set.cone * D), this.aim);
+  }
   clampAim() {
     const w = this.world;
     if (!w || !w.fl) return;
@@ -144,8 +166,11 @@ export class FlightInput {
     if (!this.active()) return false;
     if (this.touchOnly() && e.pointerType === 'touch') return false;
     if (!this.locked) {
-      // erster Klick auf die Spielfläche fängt den Zeiger (Nutzergeste), feuert aber nicht
-      if (e.target === this.canvas && e.button === 0 && !this.lockFailed) { this.requestLock(); return true; }
+      // erster Klick auf die Spielfläche fängt den Zeiger (Nutzergeste), feuert aber nicht. Nach einem abgelehnten
+      // Fang (z. B. Neufang nach Alt ohne Nutzergeste) versucht es der nächste Klick noch einmal; erst nach zwei
+      // Ablehnungen in Folge feuert der Klick ohne Fang (virtueller Stick bleibt der Rückfall)
+      const retry = this.lockFailed && (this.lockFails || 0) < 2 && performance.now() - (this.lockFailedAt || 0) > 300;
+      if (e.target === this.canvas && e.button === 0 && (!this.lockFailed || retry)) { this.requestLock(); return true; }
     }
     // Mac: Strg+Klick meldet sich als Rechtsklick (Firefox: Taste 2) – mit Strg als „runter“ ist es ein Linksklick
     const ctrlClick = e.button === 2 && e.ctrlKey && this.keys.has('ControlLeft');
@@ -167,7 +192,7 @@ export class FlightInput {
   }
   wheel(e) {
     if (!this.active()) return false;
-    if (e.altKey) { this.renderer.setZoom(e.deltaY); return true; }
+    if (e.altKey) { if (this.altDown >= 0) this.altUsed = true; this.renderer.setZoom(e.deltaY); return true; }
     this.lim += e.deltaY < 0 ? 1 : -1;
     return true;
   }
@@ -176,14 +201,22 @@ export class FlightInput {
   keyDown(e) {
     if (!this.active()) return false;
     const w = this.world, inp = this.input;
+    // Strg links ist „runter“ und wird mit W/A/S/D kombiniert: Browser-Kürzel (Strg+D Lesezeichen, Strg+S Speichern,
+    // Strg+A Alles markieren …) im Flug abfangen. Strg+W/T/N lässt Chrome nur im Vollbild mit Tastatursperre abfangen
+    // (keyboardLock), sonst sichert die Rückfrage „Seite verlassen?“ (main.js) ab.
+    if (e.ctrlKey && e.code !== 'ControlRight') e.preventDefault();
     if (MOVE_KEYS.has(e.code) || e.code === 'ShiftLeft' || e.code === 'KeyX' || e.code === 'KeyZ' || e.code === 'AltLeft') {
       if (e.code === 'Space' || e.code === 'ControlLeft' || e.code === 'AltLeft') e.preventDefault();
       if (e.code === 'KeyE' && !e.repeat) { this.eDown = performance.now(); this.eRolled = false; }
       if (e.code === 'KeyZ' && !e.repeat) { this.look = true; this.renderer.rig.looking = true; }
-      if (e.code === 'AltLeft' && !e.repeat) { this.exitLock(true); }
+      // Alt/Option allein gehalten gibt den Zeiger frei – aber erst nach 0,25 s ohne weitere Taste, damit Alt+C
+      // (Kopplung) und Alt+Mausrad den Zeigerfang nicht lösen (Mac: sonst jedes Mal Hinweis und neuer Fang)
+      if (e.code === 'AltLeft' && !e.repeat) { this.altDown = performance.now(); this.altUsed = false; this.altFreed = false; }
+      else if (this.altDown >= 0 && e.code !== 'AltLeft') this.altUsed = true;
       this.keys.add(e.code);
       return true;
     }
+    if (this.altDown >= 0) this.altUsed = true;
     if (e.repeat) return e.code === 'KeyB' || e.code === 'Tab';
     if (matches(e, 'couple')) { this.edge |= EDGE.COUPLE; return true; }
     switch (e.code) {
@@ -194,7 +227,7 @@ export class FlightInput {
       case 'KeyJ': w.tryJump(); return true;
       case 'KeyT': this.targetUnderAim(); return true;
       case 'Tab': e.preventDefault(); inp.cycleTarget(e.shiftKey ? -1 : 1); return true;
-      case 'ControlRight': e.preventDefault(); inp.attack(); return true;
+      case 'ControlRight': case 'KeyK': e.preventDefault(); inp.attack(); return true; // Feuerleitrechner (K: MacBook ohne Strg rechts)
       case 'KeyR': inp.rocket(); return true;
       default: return false;
     }
@@ -203,7 +236,12 @@ export class FlightInput {
     this.keys.delete(e.code);
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.delete('ShiftLeft');
     if (e.code === 'KeyZ' && this.look && !this._mmb) { this.look = false; if (this.renderer.rig) this.renderer.rig.looking = false; }
-    if (e.code === 'AltLeft' && this.active()) this.requestLock(); // Alt löst die Nutzergeste noch aus (≈ 5 s)
+    if (e.code === 'AltLeft') {
+      // Fang nur neu anfordern, wenn Alt ihn wirklich gelöst hat (Alt+C, Alt+Mausrad lassen ihn stehen)
+      const freed = this.altFreed;
+      this.altDown = -1; this.altFreed = false;
+      if (freed && this.active()) this.requestLock();
+    }
     if (e.code === 'KeyB' && this.bDown >= 0) {
       const held = (performance.now() - this.bDown) / 1000;
       this.bDown = -1;
@@ -217,7 +255,7 @@ export class FlightInput {
       if (held < TAP_E && w && !w.docked && (w.inSafeZone || w.nearPortal)) this.input.context();
     }
   }
-  release() { this.keys.clear(); this.fire = false; this.rmb = false; this.vx = this.vy = 0; this.look = false; }
+  release() { this.keys.clear(); this.fire = false; this.rmb = false; this.vx = this.vy = 0; this.look = false; this.altDown = -1; this.altFreed = false; }
 
   /** Ziel unter dem Fadenkreuz (T, A am Controller): kleinster Winkel bis 12°, sonst nächstes im Blickkegel */
   targetUnderAim() {
@@ -240,7 +278,9 @@ export class FlightInput {
     if (!this.active()) { this.clickHint = false; return; }
     // Zeigerfang wünschen (Hinweis „KLICKEN ZUM STEUERN“, bis die Nutzergeste kommt)
     const menu = this.input.menuOpen && this.input.menuOpen();
-    this.wantLock = !this.touchOnly() && !menu && !this.keys.has('AltLeft');
+    // Alt allein 0,25 s gehalten: Zeiger frei
+    if (this.altDown >= 0 && !this.altUsed && !this.altFreed && performance.now() - this.altDown > ALT_FREE * 1000) { this.altFreed = true; this.exitLock(true); }
+    this.wantLock = !this.touchOnly() && !menu && !this.altFreed;
     this.clickHint = this.wantLock && !this.locked && !this.pad?.active && !this.touch?.active;
     if (menu && this.locked) this.exitLock(true);
     const k = this.keys, pad = this.pad && this.pad.active ? this.pad : null, tch = this.touch && this.touch.active ? this.touch : null;
@@ -310,7 +350,10 @@ export class FlightInput {
     c[C.EDGE] = (c[C.EDGE] | 0) | this.edge; this.edge = 0;
     c[C.LIM] += this.lim; this.lim = 0;
     c[C.ASSIST] = this.set.assist;
-    st.autoRoll = this.set.autoRoll; st.horizon = this.set.horizon;
+    // Gerät für den Waffenkegel der Zielhilfe: 0 Maus, 1 Controller, 2 Controller mit LT, 3 Touch
+    c[C.DEV] = tch ? 3 : pad ? (pad.precise ? 2 : 1) : 0;
+    // Touch („Flug vereinfacht“): Kurvenrollen und Horizont-Hilfe immer an (FLUGMODELL.md 5.4)
+    st.autoRoll = this.set.autoRoll || !!tch; st.horizon = this.set.horizon || !!tch;
   }
   lockCandidate() {
     const w = this.world, p = w.player;
@@ -333,6 +376,7 @@ export class FlightInput {
     document.removeEventListener('pointerlockerror', this._onLockErr);
     document.removeEventListener('mousemove', this._onMove);
     window.removeEventListener('click', this._onResume, true);
+    document.removeEventListener('fullscreenchange', this._onFull);
   }
 }
 function clamp1(v) { return v > 1 ? 1 : v < -1 ? -1 : v; }

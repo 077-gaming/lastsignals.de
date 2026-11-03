@@ -1,8 +1,8 @@
 // Selbsttest des Flugkerns (Teil von npm test, Planung/FLUGMODELL.md 13). Sollwerte werden aus der Wertetabelle
 // (flight/params.js) berechnet, nicht von Hand eingetragen.
-import { createState, makeCtl, stepN, step, enter, derive, applyEdges, setFrame, leaveFrame, shiftOrigin, toRender, C, BTN, EDGE, MODE, H } from './core.js';
+import { createState, makeCtl, stepN, step, enter, derive, applyEdges, setFrame, leaveFrame, shiftOrigin, toRender, aimAxes, C, BTN, EDGE, MODE, H } from './core.js';
 import { shipParams, CLASS, K, BOLT_SPEED, ASSIST_MAX_RATE } from './params.js';
-import { qFromYPR, qLen, rollOf, pitchOf, yawOf, fwdOf, vAngle, qRot, qCopy } from './math3.js';
+import { qFromYPR, qLen, rollOf, pitchOf, yawOf, fwdOf, vAngle, qRot, qCopy, qFromAxisAngle } from './math3.js';
 import { leadPoint, segSphere, segCapsule, convergeDir, clampCone, assist, assistLevel } from './aim.js';
 import { packQuat, unpackQuat, packFlight, unpackFlight, hermite } from './net.js';
 import { SHIPS } from '../core/data.js';
@@ -164,21 +164,70 @@ export function runFlightTests(check) {
     ctl[C.EDGE] = EDGE.CRUISE; applyEdges(st, ctl, P, {}); ctl[C.TZ] = 0;
     for (let i = 0; i < 300; i++) stepN(st, ctl, P, null, DT);
     check('Tempomat hält das Tempo ohne Schubtaste', Math.abs(-st.v[2] - (P.vK - 50)) < 2, (-st.v[2]).toFixed(1));
+    ctl[C.LIM] = -10; applyEdges(st, ctl, P, {});
+    for (let i = 0; i < 300; i++) stepN(st, ctl, P, null, DT);
+    check('Tempomat: Begrenzer gilt auch ohne Schubtaste (Mausrad senkt das Tempo)', Math.abs(-st.v[2] - st.limiter) < 2 && st.cruiseV <= st.limiter, `${(-st.v[2]).toFixed(1)} / ${st.limiter}`);
   }
-  // ── Horizont-Hilfe und Kurvenrollen ──
+  // ── Horizont-Hilfe und Kurvenrollen (Hilfen zum Zuschalten; Standard aus) ──
   {
     const P = shipParams('s1', 320);
-    let st = createState(), ctl = makeCtl(); st.autoRoll = false; qFromYPR(st.q, 0, 0, 45 * D);
-    let t = 0; while (Math.abs(rollOf(st.q)) > 2 * D && t < 5) { stepN(st, ctl, P, null, DT); t += DT; }
-    check('Horizont-Hilfe: aus 45° Rolllage ohne Eingabe in ≤ 2 s auf < 2°', t <= 2, t.toFixed(2) + ' s');
-    st = createState(); st.autoRoll = false; qFromYPR(st.q, 0, 70 * D, 30 * D); const r0 = rollOf(st.q);
+    let st = createState(), ctl = makeCtl();
+    check('Standard: Kurvenrollen und Horizont-Hilfe aus (6 Freiheitsgrade, nichts dreht von selbst)', st.autoRoll === false && st.horizon === false);
+    qFromYPR(st.q, 0, 0, 45 * D); for (let i = 0; i < 180; i++) stepN(st, ctl, P, null, DT);
+    check('Ohne Hilfe: 45° Rolllage bleibt ohne Eingabe stehen', Math.abs(rollOf(st.q) - 45 * D) < 0.5 * D, (rollOf(st.q) / D).toFixed(1) + '°');
+    st = createState(); st.horizon = true; qFromYPR(st.q, 0, 0, 45 * D);
+    let t = 0, maxRate = 0; while (Math.abs(rollOf(st.q)) > 2 * D && t < 5) { stepN(st, ctl, P, null, DT); t += DT; maxRate = Math.max(maxRate, Math.abs(st.w[2])); }
+    check('Horizont-Hilfe: aus 45° Rolllage in Ruhe in ≤ 2 s auf < 2°', t <= 2, t.toFixed(2) + ' s');
+    check('Horizont-Hilfe: höchstens 0,6 rad/s', maxRate <= K.horizonRate + 1e-6, maxRate.toFixed(3));
+    st = createState(); st.horizon = true; qFromYPR(st.q, 0, 70 * D, 30 * D); const r0 = rollOf(st.q);
     for (let i = 0; i < 60; i++) stepN(st, ctl, P, null, DT);
     check('Horizont-Hilfe: bei 70° Nicken keine Wirkung', Math.abs(rollOf(st.q) - r0) < 0.5 * D);
-    st = createState(); ctl = makeCtl(); aimAt(ctl, 25 * D, 0); let mx = 0;
+    // Rollen mit Q, dann loslassen: die Hilfe wartet 1,5 s Ruhe ab und dreht nicht während des Manövers zurück
+    st = createState(); st.horizon = true; ctl = makeCtl(); ctl[C.ROLLMAN] = 1; ctl[C.RR] = 1;
+    for (let i = 0; i < 40; i++) stepN(st, ctl, P, null, DT);
+    ctl[C.ROLLMAN] = 0; ctl[C.RR] = 0;
+    for (let i = 0; i < 18; i++) stepN(st, ctl, P, null, DT); // ausgerollt (Drehbeschleunigung)
+    const rq = rollOf(st.q);
+    for (let i = 0; i < 60; i++) stepN(st, ctl, P, null, DT); // bis 1,3 s nach dem Loslassen
+    check('Horizont-Hilfe: nach eigenem Rollen 1,3 s keine Gegenbewegung', Math.abs(rollOf(st.q) - rq) < 1 * D, `${(rq / D).toFixed(0)}° → ${(rollOf(st.q) / D).toFixed(0)}°`);
+    // Looping mit Horizont-Hilfe: Ziel dauernd 30° über dem Bug → Bug zeigt im Verlauf senkrecht nach unten
+    st = createState(); st.horizon = true; ctl = makeCtl(); let minP = 0, rollMax = 0; const up = new Float64Array(3);
+    for (let i = 0; i < 600; i++) {
+      qRot(up, st.q, [0, Math.sin(30 * D), -Math.cos(30 * D)]);
+      ctl[C.AIM] = 1; ctl[C.AX] = up[0]; ctl[C.AY] = up[1]; ctl[C.AZ] = up[2];
+      stepN(st, ctl, P, null, DT); minP = Math.min(minP, pitchOf(st.q));
+      if (Math.abs(pitchOf(st.q)) < 40 * D) rollMax = Math.max(rollMax, Math.abs(Math.abs(rollOf(st.q)) - Math.PI));
+    }
+    check('Looping mit Horizont-Hilfe: Bug zeigt nach unten (keine Halbrollen)', minP < -80 * D, (minP / D).toFixed(0) + '°');
+    // Kurvenrollen zugeschaltet
+    st = createState(); st.autoRoll = true; ctl = makeCtl(); aimAt(ctl, 25 * D, 0); let mx = 0;
     for (let i = 0; i < 40; i++) { stepN(st, ctl, P, null, DT); mx = Math.max(mx, rollOf(st.q)); }
     check('Kurvenrollen: Linkskurve legt das Schiff nach links (bis 50°)', mx > 10 * D && mx <= 51 * D, (mx / D).toFixed(1) + '°');
     for (let i = 0; i < 240; i++) stepN(st, ctl, P, null, DT);
     check('Kurvenrollen: nach der Kurve wieder waagrecht', Math.abs(rollOf(st.q)) < 3 * D, (rollOf(st.q) / D).toFixed(1) + '°');
+    // Eigene Rolllage über 55° bleibt mit Kurvenrollen stehen
+    st = createState(); st.autoRoll = true; ctl = makeCtl(); qFromYPR(st.q, 0, 0, 120 * D);
+    for (let i = 0; i < 180; i++) stepN(st, ctl, P, null, DT);
+    check('Kurvenrollen: eigene Rolllage 120° bleibt', Math.abs(rollOf(st.q) - 120 * D) < 1 * D, (rollOf(st.q) / D).toFixed(1) + '°');
+  }
+  // ── Maus-Achsen: waagrechte Maus = reines Gieren (flache Kurve, volle Umkehr) ──
+  {
+    const P = shipParams('s1', 320);
+    for (const ar of [false, true]) {
+      const st = createState(); st.autoRoll = ar; const ctl = makeCtl();
+      const aim = new Float64Array([0, 0, -1]), R = new Float64Array(3), U = new Float64Array(3), q = new Float64Array(4), n = new Float64Array(3);
+      let minE = 0, maxE = 0, yaw = 0, last = yawOf(st.q, 0);
+      for (let i = 0; i < 300; i++) { // 5 s, 20 px je Bild mit 0,07°/px
+        aimAxes(st, R, U); qFromAxisAngle(q, U[0], U[1], U[2], -20 * 0.07 * D); qRot(aim, q, aim);
+        fwdOf(n, st.q); clampCone(aim, n, 30 * D, aim);
+        ctl[C.AIM] = 1; ctl[C.AX] = aim[0]; ctl[C.AY] = aim[1]; ctl[C.AZ] = aim[2];
+        stepN(st, ctl, P, null, DT);
+        const e = pitchOf(st.q); minE = Math.min(minE, e); maxE = Math.max(maxE, e);
+        const y = yawOf(st.q, last); let dy = y - last; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); yaw += dy; last = y;
+      }
+      check(`Maus rechts 5 s (${ar ? 'mit' : 'ohne'} Kurvenrollen): Bug bleibt in der Ebene (±2°)`, minE > -2 * D && maxE < 2 * D, `${(minE / D).toFixed(1)}° … ${(maxE / D).toFixed(1)}°`);
+      check(`Maus rechts 5 s (${ar ? 'mit' : 'ohne'} Kurvenrollen): mehr als eine volle Umdrehung`, Math.abs(yaw) > 2 * Math.PI, (yaw / D).toFixed(0) + '°');
+    }
   }
   // ── Landung (Schwerkraft, Fahrwerk, Aufsetzen, Abheben, Autoland) ──
   {

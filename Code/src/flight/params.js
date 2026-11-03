@@ -31,8 +31,12 @@ export const K = {
   toReise: 1.5, toKampf: 0.8, toLand: 0.6, gearTime: 1.5,
   rollAccK: 2.0,       // Rollbeschleunigung × Nick-/Gierbeschleunigung
   autoRollMax: 50 * D, // Kurvenrollen bis 50°
+  autoRollSlack: 5 * D,// Kurvenrollen führt nur bis 55° Rolllage (darüber gehört die Lage dem Piloten)
   horizonRate: 0.6,    // Horizont-Hilfe: höchstens 0,6 rad/s
-  horizonPitch: 60 * D,// darüber kein Horizont
+  horizonPitch: 60 * D,// darüber kein Kurvenrollen, kein Ausrichten im Landemodus
+  horizonPitchIdle: 45 * D, // Horizont-Hilfe in Ruhe nur bis 45° Nicken
+  horizonIdle: 1.5,    // Horizont-Hilfe erst 1,5 s nach dem letzten Rollen und Lenken
+  steerErr: 3 * D,     // Mausziel weiter als 3° vom Bug = der Pilot lenkt
   brakeK: 0.92,        // Bremsgrenze im Nasenregler ω ≤ 0,92·√(2·α·θ)
   capK: 3,             // weicher Tempodeckel: Überschuss baut mit 1 − e^(−3h) ab
 };
@@ -44,6 +48,12 @@ export const BOLT_SPREAD = 0.12 * D;
 export const ENEMY_HIT_PAD = 1.25;  // Trefferkugel Gegner × Radius (PvE großzügig)
 export const PVP_GIMBAL = 5 * D;    // Kardan im PvP höchstens 5°
 export const AUTO_K = 0.8;          // Feuerleitrechner: Trefferchance × 0,8
+// Handzielen gegen NPC (PvE): Bolzenschaden × 2,5. Die Startausrüstung (2 Laser, 140 Schaden/s) braucht gegen einen
+// Raider (1.650 Hülle + Schild) bei 85 % Treffern sonst 14 s – im Taktikmodus gleich, dort tragen Würfel und Raketen
+// (3,8 s mit Raketen). Mit × 2,5 liegt der Abschuss nur mit Lasern im Median bei ≈ 6 s, auch mit Ausweichen und
+// Rückzug des Raiders sicher unter der Kennzahl ≤ 8 s (FLUGMODELL.md 3; × 2,25 ergab 6,0–8,1 s je Lauf). PvP, SAL,
+// Feuerleitrechner und Taktik bleiben unverändert (Taktik-Goldtest bitgleich).
+export const AIM_PVE = 2.5;
 export const AUTO_CONE = 30 * D;    // Feuerleitrechner: Ziel im 30°-Kegel um den Bug
 export const CONVERGE_DEFAULT = 500;
 export const LOCK_TIME = 0.8, LOCK_CONE = 12 * D;
@@ -60,6 +70,8 @@ export const ASSIST_MAX_RATE = 0.4; // Mitnahme höchstens 40 % der Klassen-Dreh
 
 // Sektor als flacher Raum
 export const SECTOR_BAND = 1500, HOME_BAND = 1200, BAND_WARN = 0.83;
+// Sektorrand im 3D-Flug: Warnung ab 83 % (seitlich und Höhe), außerhalb 6 s Frist mit Zählwerk, erst dann Schaden
+export const EDGE_GRACE = 6;
 export const ZONE_DY = 400;         // Zonen (sichere Zone, Tor, Andocken) als Zylinder: |Δy| ≤ 400 m
 export const TRACTOR_RANGE = 150, TRACTOR_SPEED = 60;
 export const FLAT_BAND = 40;        // Gegner gegen Taktik-Piloten: ±40 m um dessen Höhe

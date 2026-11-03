@@ -4,7 +4,7 @@
 // Schritt. Teilschritt h = 1/120 s (zwei je Sim-Schritt von 1/60 s).
 import {
   vSet, vCopy, vLen, vDot, vNorm, vCross, vAngle, qRot, qInvRot, qStepBody, qFromYPR, qNorm, qMul, qConj, qCopy,
-  fwdOf, rollOf, pitchOf, yawOf, clamp,
+  fwdOf, rightOf, upOf, rollOf, pitchOf, yawOf, clamp,
 } from './math3.js';
 import { K } from './params.js';
 import { updateLanding } from './landing.js';
@@ -13,7 +13,7 @@ export const H = 1 / 120;
 export const MODE = { KAMPF: 0, REISE: 1, LANDUNG: 2 };
 export const MODE_NAME = ['KAMPF', 'REISE', 'LANDUNG'];
 // Steuerrahmen (Float32Array(16)), siehe FLUGMODELL.md 4.2
-export const C = { TX: 0, TY: 1, TZ: 2, RP: 3, RY: 4, RR: 5, AIM: 6, AX: 7, AY: 8, AZ: 9, BTN: 10, EDGE: 11, LIM: 12, ROLLMAN: 13, ASSIST: 14 };
+export const C = { TX: 0, TY: 1, TZ: 2, RP: 3, RY: 4, RR: 5, AIM: 6, AX: 7, AY: 8, AZ: 9, BTN: 10, EDGE: 11, LIM: 12, ROLLMAN: 13, ASSIST: 14, DEV: 15 };
 export const BTN = { BOOST: 1, BRAKE: 2, FIRE: 4, PRECISE: 8, AUTOLAND: 16 };
 export const EDGE = { COUPLE: 1, MODE: 2, LAND: 4, CRUISE: 8 };
 
@@ -28,7 +28,9 @@ export function createState() {
     coupled: true, limiter: Infinity, cruise: false, cruiseV: 0,
     gear: 0, landing: false, landed: false, alt: Infinity, vs: 0, touch: 0, crash: false, landDmg: 0,
     thr: new Float64Array(6), rcs: new Float64Array(3), accB: new Float64Array(3), accW: new Float64Array(3),
-    frame: 0, vmax: 0, gLoad: 0, autoRoll: true, horizon: true, warn: '', rollIdle: 9,
+    // Kurvenrollen und Horizont-Hilfe sind Hilfen zum Zuschalten (Standard aus, wie in großen 6-DoF-Simulatoren);
+    // Touch („Flug vereinfacht“) schaltet beide ein. rollIdle / steerIdle: Zeit seit eigenem Rollen bzw. Lenken.
+    frame: 0, vmax: 0, gLoad: 0, autoRoll: false, horizon: false, warn: '', rollIdle: 9, steerIdle: 9, aimErr: 0,
   };
 }
 
@@ -108,6 +110,7 @@ export function step(st, ctl, P, env, h = H) {
 
   // 2. Soll-Drehrate (Körper: x Nicken, y Gieren, z Rollen)
   const w = st.w;
+  let steering;
   if (ctl[C.AIM] > 0.5) {
     // Mausziel: Fehler zwischen Bug und Zielrichtung, Drehachse im Körper, Bremsgrenze gegen Überschwingen
     _tmp[0] = ctl[C.AX]; _tmp[1] = ctl[C.AY]; _tmp[2] = ctl[C.AZ];
@@ -117,7 +120,7 @@ export function step(st, ctl, P, env, h = H) {
     let axx = _f[1], axy = -_f[0];
     const al = Math.sqrt(axx * axx + axy * axy);
     const th = Math.atan2(al, -_f[2]);
-    if (al > 1e-9) { axx /= al; axy /= al; } else if (_f[2] > 0) { axx = 0; axy = 1; th; } else { axx = 0; axy = 0; }
+    if (al > 1e-9) { axx /= al; axy /= al; } else if (_f[2] > 0) { axx = 0; axy = 1; } else { axx = 0; axy = 0; }
     let kp = P.kp;
     if (th < 0.5 * Math.PI / 180) kp *= 0.6 + 0.4 * th / (0.5 * Math.PI / 180);
     // Bremsgrenze je Achse aus der jeweils wirksamen Drehbeschleunigung
@@ -126,35 +129,41 @@ export function step(st, ctl, P, env, h = H) {
     const mx = Math.max(Math.abs(axx), Math.abs(axy)) || 1;
     if (om * mx > wR) om = wR / mx;
     _cmd[0] = axx * om; _cmd[1] = axy * om;
+    st.aimErr = th;
+    steering = th > K.steerErr;
   } else {
     _cmd[0] = clamp(ctl[C.RP], -1, 1) * wR; _cmd[1] = clamp(ctl[C.RY], -1, 1) * wR;
+    st.aimErr = 0;
+    steering = Math.abs(ctl[C.RP]) + Math.abs(ctl[C.RY]) > 0.04;
   }
+  st.steerIdle = steering ? 0 : (st.steerIdle || 0) + h;
   if (ctl[C.ROLLMAN] > 0.5) { _cmd[2] = clamp(ctl[C.RR], -1, 1) * wRoll; st.rollIdle = 0; }
   else {
-    // Kurvenrollen (koordiniert, bis 50°) über der Horizont-Hilfe; ohne Horizont (Bug steil) nur halten.
-    // Nach eigenem Rollen greift die Hilfe erst nach 1 s weich ein (ein Rollmanöver wird nicht sofort zurückgedreht).
     st.rollIdle = (st.rollIdle || 0) + h;
+    _cmd[2] = 0; // ohne Hilfe hält das Schiff seine Rolllage (6 Freiheitsgrade, nichts dreht von selbst)
     const up = env && env.gravity && (env.gravity[0] || env.gravity[1] || env.gravity[2]) ? negUp(env.gravity) : null;
     const pit = pitchOf(st.q);
-    const ramp = clamp((st.rollIdle - 1) / 0.6, 0, 1);
-    if ((st.horizon || st.autoRoll || st.landing) && Math.abs(pit) < K.horizonPitch && ramp > 0) {
-      const phi = up ? rollOf(st.q, up) : rollOf(st.q);
-      let want = 0;
-      if (st.autoRoll && !st.landing) {
-        // seitlicher Zielfehler gegen die waagrechte Rechte (unabhängig von der aktuellen Schräglage)
-        let lat;
-        if (ctl[C.AIM] > 0.5) {
-          fwdOf(_ax, st.q); vCross(_tmp, _ax, up || UPW);
-          const hl = vLen(_tmp) || 1;
-          lat = (ctl[C.AX] * _tmp[0] + ctl[C.AY] * _tmp[1] + ctl[C.AZ] * _tmp[2]) / hl;
-          lat = clamp(lat * 3, -1, 1);
-        } else lat = -clamp(_cmd[1] / (wR || 1), -1, 1);
-        want = -lat * K.autoRollMax;
-      }
-      const lim = (st.autoRoll ? Math.min(wRoll, 1.4) : K.horizonRate) * ramp;
+    const phi = up ? rollOf(st.q, up) : rollOf(st.q);
+    if (autoRollOn(st, pit, phi)) {
+      // Kurvenrollen (koordiniert, bis 50°): seitlicher Zielfehler gegen die waagrechte Rechte. Greift nur nahe der
+      // Waagrechten; eine eigene Rolllage (Q/E über 55°) bleibt unangetastet. Nach eigenem Rollen weich ab 0,3 s.
+      let lat;
+      if (ctl[C.AIM] > 0.5) {
+        fwdOf(_ax, st.q); vCross(_tmp, _ax, up || UPW);
+        const hl = vLen(_tmp) || 1;
+        lat = (ctl[C.AX] * _tmp[0] + ctl[C.AY] * _tmp[1] + ctl[C.AZ] * _tmp[2]) / hl;
+        lat = clamp(lat * 3, -1, 1);
+      } else lat = -clamp(_cmd[1] / (wR || 1), -1, 1);
+      const want = -lat * K.autoRollMax;
+      const lim = Math.min(wRoll, 1.4) * clamp((st.rollIdle - 0.3) / 0.6, 0, 1);
       _cmd[2] = clamp((want - phi) * 3.2, -lim, lim);
-      if (!st.horizon && !st.landing && Math.abs(want) < 1e-6) _cmd[2] = 0;
-    } else _cmd[2] = 0;
+    } else if (st.landing ? Math.abs(pit) < K.horizonPitch : (st.horizon && Math.abs(pit) < K.horizonPitchIdle)) {
+      // Horizont-Hilfe: nur in Ruhe (kein eigenes Rollen und kein Lenken seit 1,5 s), höchstens 0,6 rad/s – ein
+      // Looping oder eine Rolle wird nie zurückgedreht. Im Landemodus richtet sie immer nach der Schwerkraft aus.
+      const idle = st.landing ? st.rollIdle - 1 : Math.min(st.rollIdle, st.steerIdle) - K.horizonIdle;
+      const lim = K.horizonRate * clamp(idle / 0.6, 0, 1);
+      if (lim > 0) _cmd[2] = clamp(-phi * 3.2, -lim, lim);
+    }
   }
   // 3. Drehbeschleunigung begrenzen
   for (let i = 0; i < 3; i++) {
@@ -178,7 +187,12 @@ export function step(st, ctl, P, env, h = H) {
   let fwdMax = st.boostOn ? top : Math.min(top, st.limiter);
   if (st.mode === MODE.LANDUNG) fwdMax = K.landV;
   st.vmax = fwdMax;
-  if (st.cruise && Math.abs(tz) > 0.05) { st.cruiseV = clamp(st.cruiseV + tz * P.aFwd * 0.6 * h, 0, fwdMax); }
+  if (st.cruise) {
+    // Tempomat: Schubtaste verstellt das gehaltene Tempo; Begrenzer und Betriebsart gelten immer (auch ohne Schub)
+    const capC = st.mode === MODE.LANDUNG ? K.landV : Math.min(st.mode === MODE.REISE ? P.vR : P.vK, st.limiter);
+    if (Math.abs(tz) > 0.05) st.cruiseV += tz * P.aFwd * 0.6 * h;
+    st.cruiseV = clamp(st.cruiseV, 0, capC);
+  }
   if (brake) {
     _ab[0] = clamp(-_vb[0] / h, -aL, aL); _ab[1] = clamp(-_vb[1] / h, -aV, aV); _ab[2] = clamp(-_vb[2] / h, -aF, aB);
   } else if (st.coupled) {
@@ -241,6 +255,27 @@ export function step(st, ctl, P, env, h = H) {
 }
 
 const _up = new Float64Array(3), UPW = new Float64Array([0, 1, 0]);
+/** Kurvenrollen aktiv? (zugeschaltet, kein Landemodus, Bug nicht steil, Rolllage nahe der Waagrechten, nicht direkt nach eigenem Rollen) */
+function autoRollOn(st, pit, phi) {
+  return st.autoRoll && !st.landing && Math.abs(pit) < K.horizonPitch && Math.abs(phi) <= K.autoRollMax + K.autoRollSlack && st.rollIdle > 0.3;
+}
+const _af = new Float64Array(3), _ar = new Float64Array(3);
+/**
+ * Achsen, um die die Maus die Zielrichtung dreht (Gieren um oben, Nicken um rechts): die Schiffsachsen – Maus rechts
+ * ist reines Gieren im Schiff, auch mit rollender Kamera. Nur solange das Kurvenrollen die Rolllage führt, gilt der
+ * entrollte Rahmen (Bug, waagrechte Rechte), damit die Kurve trotz Schräglage flach bleibt.
+ */
+export function aimAxes(st, outR, outU) {
+  rightOf(outR, st.q); upOf(outU, st.q);
+  const pit = pitchOf(st.q), phi = rollOf(st.q);
+  if (!autoRollOn(st, pit, phi)) return false;
+  fwdOf(_af, st.q); vCross(_ar, _af, UPW);
+  const l = vLen(_ar);
+  if (l < 0.2) return false;
+  outR[0] = _ar[0] / l; outR[1] = _ar[1] / l; outR[2] = _ar[2] / l;
+  vCross(outU, outR, _af);
+  return true;
+}
 function negUp(g) { const l = Math.hypot(g[0], g[1], g[2]) || 1; _up[0] = -g[0] / l; _up[1] = -g[1] / l; _up[2] = -g[2] / l; return _up; }
 
 /** Ein Sim-Schritt dt (1/60 s) in Teilschritten zu 1/120 s */
@@ -256,7 +291,7 @@ export function enter(st, e) {
   vSet(st.v, e.vx || 0, e.vy || 0, e.vz || 0);
   qFromYPR(st.q, e.rot || 0, 0, 0); qCopy(st.pq, st.q);
   st.w[0] = st.w[1] = st.w[2] = 0;
-  st.landed = false; st.cruise = false; st.rollIdle = 9;
+  st.landed = false; st.cruise = false; st.rollIdle = 9; st.steerIdle = 9;
   return st;
 }
 /** Bewegung anhalten (Andocken, Tod) */

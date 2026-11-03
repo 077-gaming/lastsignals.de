@@ -113,4 +113,12 @@ export function assist(level, pvp, err, pipRate, stick, targetAng, classRate) {
   if (!pvp && A.k > 0 && sk > 0) AS.follow = Math.min(A.k * pipRate * sk, ASSIST_MAX_RATE * classRate);
   return AS;
 }
+// PvP zwischen den Ansichten: Ein Taktik-Schütze (Würfel, misst in der Ebene) trifft einen fremden Spieler nur, wenn
+// der für ihn in der Ebene liegt – höchstens 15° über/unter ihm, mindestens 60 m Spielraum. Sonst träfe ein
+// Klickflieger einen 3D-Piloten 500 m über sich. Gleiche Regel beim Schützen (world.js) und beim Opfer (mp-core.js).
+export const PVP_TAC_ELEV = 15 * Math.PI / 180, PVP_TAC_DY = 60;
+export function tacticalReach(shooter, victim) {
+  const dxz = Math.hypot(victim.x - shooter.x, victim.z - shooter.z), dy = Math.abs((victim.y || 0) - (shooter.y || 0));
+  return dy <= Math.max(PVP_TAC_DY, dxz * Math.tan(PVP_TAC_ELEV));
+}
 export { vDot };

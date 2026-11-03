@@ -17,7 +17,9 @@ import { leadTime, assist } from '../flight/aim.js';
 import { flightSettings } from './flightsettings.js';
 
 // 3D-Flug (Planung/FLUGMODELL.md 5.3): rechter Stick bewegt die Zielrichtung im Lenkkegel (wie die Maus), Schiff folgt
-const AIM_RATE = 160;      // °/s Zielrichtung bei vollem Ausschlag (Empfindlichkeit 1)
+const AIM_RATE = 160;      // °/s Zielrichtung bei vollem Ausschlag (Empfindlichkeit 1), Modus „Zielrichtung“
+const AIM_LEAD = 1.25;     // … höchstens 1,25 × Schiffsdrehrate
+const PAD_LEAD = 1.1;      // … und höchstens 1,1 × Drehrate/Kp vor dem Bug (S1 8,7°, S8 7,7°): gerade genug für volle Drehrate
 const HOLD = 0.6;          // s: X halten = Kopplung, MENU halten = KAMPF/REISE, L3 halten = Landemodus
 const HOLD_B = 0.35;       // s: B halten = Raumbremse
 const HOLD_R3 = 0.3;       // s: R3 halten = umsehen
@@ -183,12 +185,31 @@ export class PadFlight {
       const sens = set.sens * (F.precise ? 0.6 : 1);
       // Zielhilfe: Zielbremse und Mitnahme der Vorhaltemarke, nur mit Stickeingabe (FLUGMODELL.md 5.3)
       const A = this._assist(w, fi, dt, mag, F.precise);
-      if (F.rateMode) { F.rp = -ry * sens * A.brake; F.ry = -rx * sens * A.brake; }
-      else if (mag > 0.0) {
-        const rate = AIM_RATE * sens * A.brake;      // °/s
+      if (F.rateMode) {
+        // Drehraten (Standard): Stick = Schiffsdrehrate, Fadenkreuz = Bug – nichts läuft voraus, nichts dreht nach.
+        // Zielhilfe: Zielbremse auf die Stickrate, Mitnahme als zusätzliche Drehrate zur Vorhaltemarke hin.
+        F.rp = -ry * sens * A.brake; F.ry = -rx * sens * A.brake;
+        if (A.follow > 0 && this._pipDir && w.fl) {
+          const q = w.fl.q, b = this._bv || (this._bv = new Float64Array(3)), d = this._pipDir;
+          // Marke im Körper (q⁻¹ · d): Nicken + nach oben, Gieren + nach links
+          const x = d[0], y = d[1], z = d[2], qx = -q[0], qy = -q[1], qz = -q[2], qw = q[3];
+          const ix = qw * x + qy * z - qz * y, iy = qw * y + qz * x - qx * z, iz = qw * z + qx * y - qy * x, iw = -qx * x - qy * y - qz * z;
+          b[0] = ix * qw + iw * -qx + iy * -qz - iz * -qy; b[1] = iy * qw + iw * -qy + iz * -qx - ix * -qz; b[2] = iz * qw + iw * -qz + ix * -qy - iy * -qx;
+          const ep = Math.atan2(b[1], -b[2]), ey = Math.atan2(-b[0], -b[2]), el = Math.hypot(ep, ey);
+          const cr = w.flP.rate || 1;
+          if (el > 1e-4) { const k = Math.min(A.follow, el * 6) / cr; F.rp += ep / el * k; F.ry += ey / el * k; }
+        }
+      } else if (mag > 0.0) {
+        // Zielrichtung im Kegel: höchstens 25 % schneller als das Schiff dreht, damit das Fadenkreuz nicht wegläuft
+        // und das Schiff nach dem Loslassen kaum nachdreht (früher 160 °/s gegen 28–95 °/s Schiffsdrehrate)
+        const rate = Math.min(AIM_RATE * sens, (w.flP.rate / D) * AIM_LEAD * sens) * A.brake;  // °/s
         const px = (rx * rate * dt) / (fi.set.sens), py = (ry * rate * dt) / (fi.set.sens);
         fi.turnAim(px, py * (fi.set.invertY ? -1 : 1));
         if (A.follow > 0 && this._pipDir) fi.turnToward(this._pipDir, A.follow * dt);
+        // Vorlauf des Fadenkreuzes am Controller kurz (gerade so viel, dass der Nasenregler volle Drehrate gibt): kleine
+        // Korrekturen sofort, lange Kurven mit voller Rate – nach dem Loslassen dreht das Schiff nur diesen Vorlauf nach
+        // (früher lief das Fadenkreuz bis an den 30°-Lenkkegel voraus)
+        fi.clampAimTo(PAD_LEAD * w.flP.rate / (w.flP.kp || 1));
       }
     }
     // Tasten
